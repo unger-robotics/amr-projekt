@@ -34,23 +34,10 @@ Die Navigation erfolgt mittels 2D-LiDAR-Sensorik und dem **Nav2-Stack**, konfigu
 
 Die Validierung bestätigt die Robustheit des Systems: Nach der Kalibrierung konnte die Odometrie-Abweichung signifikant reduziert werden. Das System erreicht in realen Testszenarien eine Navigationsgenauigkeit von  **[X]** cm und eine erfolgreiche Docking-Rate von **[Y]** %. Die Arbeit zeigt somit, dass sich mit aktueller Open-Source-Software und Low-Cost-Hardware leistungsfähige Intralogistik-Lösungen realisieren lassen, sofern Echtzeit-Constraints und Kalibrierung methodisch berücksichtigt werden.
 
-**Platzhalter ausfüllen**
-
-Bevor du das in die Arbeit kopierst, musst du am Ende noch zwei Zahlen einfügen (die du in Kapitel 6 ermittelst):
-
-1. **[X] cm:** Wie genau kommt der Roboter am Ziel an? (z. B.  cm).
-2. **[Y] %:** Wie oft klappt das Docking bei 10 Versuchen? (z. B. 90%).
-
 ---
 
 Inhaltsverzeichnis
 Abkürzungsverzeichnis
-
-Die Gliederung für **Kapitel 1: Einleitung** ist **strukturell korrekt** und deckt die Pflichtbestandteile einer wissenschaftlichen Arbeit ab.
-
-Um jedoch von einer „Standard-Einleitung“ zu einer „Sehr-GUT-Einleitung“ zu kommen, müssen wir die Punkte **1.1** und **1.2** inhaltlich schärfen. Ein Prüfer entscheidet oft schon hier, ob er der Arbeit vertraut.
-
-Hier ist die **optimierte Detail-Gliederung** für Kapitel 1, die perfekt zu deiner technischen Tiefe (Dual-Core, ArUco, Kalibrierung) passt:
 
 ---
 

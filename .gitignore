@@ -18,6 +18,9 @@ log/
 .vscode/
 .idea/
 
+# Claude Code local settings
+.claude/
+
 # rosbag recordings
 *.db3
 metadata.yaml
