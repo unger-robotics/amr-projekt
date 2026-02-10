@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# PlatformIO
+.pio/
+
+# macOS
+.DS_Store
+
+# ROS2 colcon build artifacts
+build/
+install/
+log/
+
+# IDEs
+.vscode/
+.idea/
+
+# rosbag recordings
+*.db3
+metadata.yaml
