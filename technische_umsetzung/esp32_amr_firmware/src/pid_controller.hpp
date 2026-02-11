@@ -13,10 +13,10 @@ class PidController {
     float compute(float setpoint, float measured, float dt) {
         float error = setpoint - measured;
         integral += error * dt * ki;
-        integral = std::clamp(integral, min_out, max_out); // Anti-Windup
+        integral = std::max(min_out, std::min(integral, max_out)); // Anti-Windup
         float derivative = (error - prev_error) / dt;
         float output = (kp * error) + integral + (kd * derivative);
         prev_error = error;
-        return std::clamp(output, min_out, max_out);
+        return std::max(min_out, std::min(output, max_out));
     }
 };

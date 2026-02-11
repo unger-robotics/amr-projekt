@@ -25,6 +25,9 @@ struct SharedData {
 SharedData shared;
 SemaphoreHandle_t mutex;
 
+volatile uint32_t last_cmd_time = 0;
+volatile uint32_t core1_heartbeat = 0;
+
 rcl_publisher_t pub_odom;
 rcl_subscription_t sub_vel;
 geometry_msgs__msg__Twist msg_vel;
@@ -38,13 +41,13 @@ void controlTask(void *p) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     float last_sp_l = 0, last_sp_r = 0;
     while (1) {
-        long tl, tr;
+        int32_t tl, tr;
         hal.readEncoders(tl, tr);
-        static long ptl = 0, ptr = 0;
+        static int32_t ptl = 0, ptr = 0;
         float ml =
-            ((tl - ptl) / TICKS_PER_REV_LEFT) * 2 * PI / 0.02;
+            (static_cast<float>(tl - ptl) / TICKS_PER_REV_LEFT) * 2 * PI / 0.02;
         float mr =
-            ((tr - ptr) / TICKS_PER_REV_RIGHT) * 2 * PI / 0.02;
+            (static_cast<float>(tr - ptr) / TICKS_PER_REV_RIGHT) * 2 * PI / 0.02;
         ptl = tl;
         ptr = tr;
 
@@ -53,6 +56,12 @@ void controlTask(void *p) {
             tv = shared.tv;
             tw = shared.tw;
             xSemaphoreGive(mutex);
+        }
+
+        // Failsafe: Motoren stoppen wenn kein cmd_vel empfangen
+        if (millis() - last_cmd_time > FAILSAFE_TIMEOUT_MS) {
+            tv = 0;
+            tw = 0;
         }
 
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
@@ -85,17 +94,20 @@ void controlTask(void *p) {
             shared.ow = (mr - ml) * WHEEL_RADIUS / WHEEL_BASE;
             xSemaphoreGive(mutex);
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20));
+        core1_heartbeat++;
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_LOOP_PERIOD_MS));
     }
 }
 
 void vel_cb(const void *m) {
+    if (m == nullptr) return;
     const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)m;
     if (xSemaphoreTake(mutex, 10)) {
         shared.tv = msg->linear.x;
         shared.tw = msg->angular.z;
         xSemaphoreGive(mutex);
     }
+    last_cmd_time = millis();
 }
 
 void setup() {
@@ -107,26 +119,63 @@ void setup() {
     delay(2000);
 
     allocator = rcl_get_default_allocator();
-    rclc_support_init(&support, 0, NULL, &allocator);
-    rclc_node_init_default(&node, "esp32_bot", "", &support);
-    rclc_executor_init(&executor, &support.context, 1, &allocator);
-    rclc_subscription_init_default(
+    rcl_ret_t rc;
+    bool init_ok = true;
+
+    rc = rclc_support_init(&support, 0, NULL, &allocator);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_node_init_default(&node, "esp32_bot", "", &support);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_executor_init(&executor, &support.context, 1, &allocator);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_subscription_init_default(
         &sub_vel, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
         "cmd_vel");
-    rclc_executor_add_subscription(&executor, &sub_vel, &msg_vel, &vel_cb,
-                                   ON_NEW_DATA);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_executor_add_subscription(&executor, &sub_vel, &msg_vel, &vel_cb,
+                                        ON_NEW_DATA);
+    if (rc != RCL_RET_OK) init_ok = false;
 
     rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
-    rclc_publisher_init(&pub_odom, &node,
-                        ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-                        "odom", &qos);
+    rc = rclc_publisher_init(&pub_odom, &node,
+                             ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
+                             "odom", &qos);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    if (!init_ok) {
+        // LED-Blinken als Fehlersignal
+        while (1) {
+            ledcWrite(LED_PWM_CHANNEL, 255);
+            delay(200);
+            ledcWrite(LED_PWM_CHANNEL, 0);
+            delay(200);
+        }
+    }
+
     rmw_uros_sync_session(1000);
 }
 
 void loop() {
+    // Inter-Core Watchdog: Core 1 Heartbeat pruefen
+    static uint32_t last_hb = 0;
+    static uint32_t hb_miss_count = 0;
+    uint32_t hb = core1_heartbeat;
+    if (hb == last_hb) {
+        if (++hb_miss_count > 50) {  // ~50 loop() Zyklen ohne Heartbeat
+            hal.setMotors(0, 0);      // Notfall-Stopp
+        }
+    } else {
+        hb_miss_count = 0;
+    }
+    last_hb = hb;
+
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
     static unsigned long last = 0;
-    if (millis() - last > 50) {
+    if (millis() - last > ODOM_PUBLISH_PERIOD_MS) {
         float x, y, th, v, w;
         if (xSemaphoreTake(mutex, 10)) {
             x = shared.ox;
@@ -150,7 +199,7 @@ void loop() {
         msg_odom.pose.pose.orientation.w = cos(th / 2);
         msg_odom.twist.twist.linear.x = v;
         msg_odom.twist.twist.angular.z = w;
-        rcl_publish(&pub_odom, &msg_odom, NULL);
+        (void)rcl_publish(&pub_odom, &msg_odom, NULL);
         last = millis();
     }
 }

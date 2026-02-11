@@ -2,8 +2,12 @@
 #include <Arduino.h>
 #include "config.h"
 
-volatile long encoder_left_count = 0;
-volatile long encoder_right_count = 0;
+volatile int32_t encoder_left_count = 0;
+volatile int32_t encoder_right_count = 0;
+
+// Overflow-Analyse: int32_t max ~2.147 Mrd Ticks
+// Bei 0,546 mm/Tick entspricht dies ~1.172 km Gesamtfahrstrecke
+// Fuer Indoor-AMR praktisch kein Overflow-Risiko
 
 // Drehrichtung wird aus der PWM-Ansteuerung abgeleitet,
 // nicht aus dem Encoder-Signal (A-only, kein Phase B).
@@ -22,8 +26,8 @@ class RobotHAL {
   private:
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-    void driveMotor(int ch_a, int ch_b, float speed, volatile int8_t &dir) {
-        int duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
+    void driveMotor(uint8_t ch_a, uint8_t ch_b, float speed, volatile int8_t &dir) {
+        int16_t duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
         // Deadzone-Kompensation: Werte unter PWM_DEADZONE erzeugen keine Bewegung
         if (duty > 0 && duty < PWM_DEADZONE) {
             duty = PWM_DEADZONE;
@@ -67,7 +71,7 @@ class RobotHAL {
         ledcAttachPin(PIN_LED_MOSFET, LED_PWM_CHANNEL);
     }
 
-    void readEncoders(long &left, long &right) {
+    void readEncoders(int32_t &left, int32_t &right) {
         portENTER_CRITICAL(&mux);
         left = encoder_left_count;
         right = encoder_right_count;
