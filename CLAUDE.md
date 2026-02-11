@@ -24,8 +24,24 @@ pio run -t upload -t monitor  # Upload + Monitor kombiniert
 # Im Verzeichnis: technische_umsetzung/pi5/ros2_ws/
 colcon build
 source install/setup.bash
-ros2 launch slam_toolbox async_slam_toolbox_launch.py
-ros2 launch nav2_bringup navigation_launch.py
+ros2 launch my_bot full_stack.launch.py               # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
+ros2 launch my_bot full_stack.launch.py use_nav:=false # Nur SLAM (ohne Navigation)
+```
+
+### Validierungsskripte (Raspberry Pi)
+
+```bash
+# Im Verzeichnis: technische_umsetzung/scripts/
+python3 pre_flight_check.py          # Interaktive Hardware-Checkliste (kein ROS2 noetig)
+ros2 run my_bot encoder_test.py      # Encoder-Kalibrierung (10-Umdrehungen-Test)
+ros2 run my_bot motor_test.py        # Motor-Deadzone und Richtungstest
+python3 umbmark_analysis.py          # UMBmark-Auswertung (Standalone, nur numpy/matplotlib)
+ros2 run my_bot pid_tuning.py        # PID-Sprungantwort-Analyse
+ros2 run my_bot kinematic_test.py    # Geradeaus-/Dreh-/Kreisfahrt-Verifikation
+ros2 run my_bot slam_validation.py   # ATE-Berechnung und TF-Ketten-Check
+ros2 run my_bot nav_test.py          # Waypoint-Navigation mit Positionsfehler-Messung
+ros2 run my_bot docking_test.py      # 10-Versuch ArUco-Docking-Test
+python3 validation_report.py         # Gesamt-Report aus JSON-Ergebnissen (Standalone)
 ```
 
 ### Python-Hilfsskripte
@@ -71,7 +87,8 @@ Konfiguration in `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/`:
 
 - **nav2_params.yaml**: Vollständiger Nav2-Stack – AMCL-Lokalisierung, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Auflösung, Loop Closure aktiv
-- **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern für Ladestation-Andockung (OpenCV)
+- **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern für Ladestation-Andockung (OpenCV, moderne `cv2.aruco.ArucoDetector`-API >= 4.7)
+- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File für micro-ROS Agent + SLAM Toolbox + Nav2 + RViz2
 
 ### Kommunikationsschicht
 
@@ -103,10 +120,13 @@ XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, USB-CDC,
 
 ## Validierung
 
-- Odometrie-Kalibrierung: UMBmark-Test
+- Odometrie-Kalibrierung: UMBmark-Test (Borenstein 1996, `umbmark_analysis.py`)
+- PID-Tuning: Sprungantwort-Analyse (`pid_tuning.py`)
 - Testparcours: 10 m × 10 m mit statischen/dynamischen Hindernissen
 - Datenaufzeichnung: rosbag2 für Sensor-Replay und Analyse
-- Keine automatisierten Tests vorhanden – Validierung erfolgt experimentell
+- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell über V-Modell-Phasenplan (`08_validierungsplan.md`)
+- Validierungsskripte in `technische_umsetzung/scripts/` (10 Skripte, alle `py_compile`-validiert)
+- Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 
 ## Hardware-Dokumentation
 
@@ -118,8 +138,12 @@ Detaillierte Hardware-Docs in `hardware/docs/`:
 | `02_antriebsstrang_leistungselektronik.md` | Motortreiber, Leistungselektronik, Cytron MDD3A |
 | `03_stromversorgung_akkusystem.md` | 4S LiFePO4, Spannungsverteilung, DC/DC-Converter |
 | `04_systemintegration_stueckliste.md` | BOM mit Lieferanten, Interconnect-Diagramm |
+| `05_firmware_migrationsplan.md` | Migration robot_hal.hpp → config.h Defines |
+| `06_thesis_aenderungsliste.md` | Aenderungshistorie der Bachelorarbeit |
 | `07_hardware_firmware_mapping.md` | Traceability-Matrix Pins ↔ Firmware-Defines |
-| `08_validierungsplan.md` | Testprotokoll mit Akzeptanzkriterien |
+| `08_validierungsplan.md` | Testprotokoll mit Akzeptanzkriterien (V-Modell Phasen 1-9) |
+
+Weitere Hardware-Dateien im `hardware/`-Verzeichnis: `hardware-setup.md` (Aufbauanleitung), `kosten.md` (Kostenkalkulation), `schaltplan.pdf`, `datasheet/` (Datenblätter), `media/` (Aufbaufotos).
 
 ## Bachelorarbeit (Markdown-Dokument)
 
@@ -211,13 +235,20 @@ Für jede Quelle existiert eine extrahierte Kernaussagen-Datei in `sources/kerna
 ```
 hardware/
   config.h                   # Zentrale Hardware-Konfiguration (Single Source of Truth)
-  docs/                      # Hardware-Dokumentation, Migrationsplan, Aenderungsliste
+  docs/                      # Hardware-Dokumentation (01-08), Migrationsplan, Aenderungsliste
+  datasheet/                 # Komponenten-Datenblaetter
+  media/                     # Aufbaufotos
+  schaltplan.pdf             # Schaltplan
+  hardware-setup.md          # Aufbauanleitung
+  kosten.md                  # Kostenkalkulation
 technische_umsetzung/
   esp32_amr_firmware/        # PlatformIO-Projekt (XIAO ESP32-S3 Firmware)
     src/                     # main.cpp, robot_hal.hpp, pid_controller.hpp, diff_drive_kinematics.hpp
   pi5/ros2_ws/               # ROS2 Colcon-Workspace (Raspberry Pi 5)
     src/my_bot/config/       # nav2_params.yaml, mapper_params_online_async.yaml
     src/my_bot/scripts/      # aruco_docking.py
+    src/my_bot/launch/       # full_stack.launch.py
+  scripts/                   # Validierungsskripte (10 Python-Dateien, V-Modell Phasen 1-5)
 bachelorarbeit/              # Bachelorarbeit als Markdown (vollstaendig, 7 Kapitel)
   kapitel_01_einleitung.md   # Kombinierte Kapiteldateien (01-07)
   ...
