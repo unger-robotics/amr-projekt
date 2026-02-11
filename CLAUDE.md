@@ -112,12 +112,13 @@ Fertige Kapitel liegen als kombinierte Dateien und als Einzelabschnitte vor:
 | `bachelorarbeit/kapitel/03_1_*.md` bis `03_5_*.md` | Einzelabschnitte Kap. 3 |
 | `bachelorarbeit/kapitel_04_systemkonzept.md` | Kap. 4: Systemkonzept und Entwurf (kombiniert, ~8.500 Woerter) |
 | `bachelorarbeit/kapitel/04_1_*.md` bis `04_5_*.md` | Einzelabschnitte Kap. 4 |
+| `bachelorarbeit/kapitel_05_implementierung.md` | Kap. 5: Implementierung (kombiniert, ~8.800 Woerter) |
+| `bachelorarbeit/kapitel/05_1_*.md` bis `05_6_*.md` | Einzelabschnitte Kap. 5 |
 
 ### Geplante Kapitel (noch nicht geschrieben)
 
 Gemaess Expose (`suche/amr_expose_literaturstrategie.md`, VDI 2206 V-Modell):
 
-- **Kap. 5**: Implementierung (Hardwareaufbau, ESP32-Firmware, ROS2-Integration, Kalibrierung/SLAM, Navigation/Docking)
 - **Kap. 6**: Validierung und Testergebnisse (Testkonzept, Subsystem-Verifikation, Navigations-/Docking-Validierung, Soll-Ist-Vergleich)
 - **Kap. 7**: Fazit und Ausblick (Beantwortung der Forschungsfragen FF1-FF3)
 
