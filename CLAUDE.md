@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektübersicht
 
-Bachelorarbeit: Autonomer Mobiler Roboter (AMR) für Intralogistik (KLT-Transport). Differentialantrieb-Roboter mit ESP32 (Low-Level-Steuerung) und Raspberry Pi 5 (Navigation/SLAM) über micro-ROS/UART verbunden. Sprache: Deutsch (wissenschaftlicher Stil, keine Umlaute in Markdown-Dateien).
+Bachelorarbeit: Autonomer Mobiler Roboter (AMR) für Intralogistik (KLT-Transport). Differentialantrieb-Roboter mit XIAO ESP32-S3 (Low-Level-Steuerung) und Raspberry Pi 5 (Navigation/SLAM) über micro-ROS/UART verbunden. Sprache: Deutsch (wissenschaftlicher Stil, keine Umlaute in Markdown-Dateien).
 
 ## Build & Deployment
 
@@ -38,24 +38,26 @@ python suche/download_sources.py   # Literatur-PDFs herunterladen
 
 ## Architektur
 
-### Dual-Core ESP32 Firmware (`technische_umsetzung/esp32_amr_firmware/src/`)
+### Dual-Core XIAO ESP32-S3 Firmware (`technische_umsetzung/esp32_amr_firmware/src/`)
 
-Die Firmware partitioniert die ESP32-Kerne für Echtzeit-Garantien:
+Die Firmware läuft auf einem Seeed Studio XIAO ESP32-S3 (Xtensa LX7 Dual-Core) und partitioniert die Kerne für Echtzeit-Garantien:
 
 - **Core 0**: micro-ROS Agent – empfängt `cmd_vel` (Twist), publiziert `Odometry` (20 Hz)
 - **Core 1**: Regelschleife – PID-Motorregelung bei 50 Hz (20 ms Takt)
 - **Thread-Safety**: FreeRTOS-Mutex schützt geteilte Daten zwischen den Cores
 
-Datenfluss: `cmd_vel` → inverse Kinematik → PID → PWM-Motoren → Encoder-Feedback → Vorwärtskinematik → Odometrie-Publish
+Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, A-only) → Vorwärtskinematik → Odometrie-Publish
 
 ### Firmware-Module (Header-only Pattern)
 
 | Datei | Funktion |
 |---|---|
 | `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Subscriber/Publisher |
-| `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR, PWM-Steuerung |
+| `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (A-only), PWM-Steuerung, Deadzone |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
-| `diff_drive_kinematics.hpp` | Vorwärts-/Inverskinematik (Radradius 32mm, Spurbreite 145mm) |
+| `diff_drive_kinematics.hpp` | Vorwärts-/Inverskinematik (Parameter aus `config.h`) |
+
+Alle Hardware-Parameter werden zentral über `hardware/config.h` definiert (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag.
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
@@ -67,15 +69,24 @@ Konfiguration in `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/`:
 
 ### Kommunikationsschicht
 
-ESP32 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, Humble-Distribution). Gewählt wegen deterministischem Timing gegenüber WiFi/Ethernet.
+XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, USB-CDC, Humble-Distribution). Gewählt wegen deterministischem Timing gegenüber WiFi/Ethernet.
 
 ## Roboter-Parameter
 
-- Radradius: 32 mm
-- Spurbreite (Wheelbase): 145 mm
+- MCU: Seeed Studio XIAO ESP32-S3 (Xtensa LX7 Dual-Core)
+- Motortreiber: Cytron MDD3A (Dual-PWM-Modus, 3,3 V Logik, keine Pegelanpassung)
+- Encoder: JGA25-370 Hall-Encoder, A-only (~374 Ticks/Rev), Richtung aus PWM abgeleitet
+- Raddurchmesser: 65 mm (Radradius 32,5 mm)
+- Spurbreite (Wheelbase): 178 mm
+- Konversionsfaktor: 0,546 mm/Tick
+- PWM-Deadzone: 35
+- LiDAR: RPLIDAR A1 (SLAMTEC, 12 m Reichweite)
+- Kamera: Raspberry Pi Global Shutter Camera (Sony IMX296) mit 6 mm CS-Mount über CSI
+- Akku: 4S LiFePO4 (12,8 V nominal)
 - Zielgeschwindigkeit: 0.4 m/s
 - Positionstoleranz: 10 cm (xy), 8° (Gier)
 - Kartenauflösung: 5 cm
+- Materialkosten: 482,48 EUR (beschafft) + ~31 EUR (vorhanden)
 
 ## Validierung
 
@@ -171,8 +182,11 @@ Für jede Quelle existiert eine extrahierte Kernaussagen-Datei in `sources/kerna
 ## Projektstruktur
 
 ```
+hardware/
+  config.h                   # Zentrale Hardware-Konfiguration (Single Source of Truth)
+  docs/                      # Hardware-Dokumentation, Migrationsplan, Aenderungsliste
 technische_umsetzung/
-  esp32_amr_firmware/        # PlatformIO-Projekt (ESP32 C++ Firmware)
+  esp32_amr_firmware/        # PlatformIO-Projekt (XIAO ESP32-S3 Firmware)
     src/                     # main.cpp, robot_hal.hpp, pid_controller.hpp, diff_drive_kinematics.hpp
   pi5/ros2_ws/               # ROS2 Colcon-Workspace (Raspberry Pi 5)
     src/my_bot/config/       # nav2_params.yaml, mapper_params_online_async.yaml
