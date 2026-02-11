@@ -90,16 +90,36 @@ ESP32 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, Humble-Distribut
 
 Das Exposé und die vollständige Gliederung befinden sich in `suche/amr_expose_literaturstrategie.md`. Die Arbeit folgt dem V-Modell nach VDI 2206 für mechatronische Systeme.
 
+### Forschungsfragen
+
+Die drei Forschungsfragen strukturieren die gesamte Arbeit und muessen in Kapitel 7 beantwortet werden:
+
+- **FF1 (Architektur):** Wie laesst sich auf einem ESP32 eine echtzeitfaehige Regelung unter Nutzung von micro-ROS realisieren, ohne dass WLAN-Latenzen die Motorsteuerung destabilisieren?
+- **FF2 (Praezision):** Welchen Einfluss hat eine systematische Odometrie-Kalibrierung (UMBmark) auf die absolute Navigationsgenauigkeit eines Low-Cost-Differentialantriebs?
+- **FF3 (Funktionalitaet):** Ist ein monokulares Kamerasystem mit ArUco-Markern hinreichend robust, um einen mechanischen Ladekontakt autonom zu treffen?
+
 ### Kapitelstruktur
 
 Fertige Kapitel liegen als kombinierte Dateien und als Einzelabschnitte vor:
 
 | Datei | Inhalt |
 |---|---|
-| `bachelorarbeit/kapitel_01_einleitung.md` | Kap. 1: Einleitung (kombiniert, ~2.900 Wörter) |
-| `bachelorarbeit/kapitel_02_grundlagen.md` | Kap. 2: Grundlagen und Stand der Technik (kombiniert, ~4.400 Wörter) |
+| `bachelorarbeit/kapitel_01_einleitung.md` | Kap. 1: Einleitung (kombiniert, ~2.900 Woerter) |
+| `bachelorarbeit/kapitel_02_grundlagen.md` | Kap. 2: Grundlagen und Stand der Technik (kombiniert, ~4.400 Woerter) |
+| `bachelorarbeit/kapitel_03_anforderungsanalyse.md` | Kap. 3: Anforderungsanalyse (kombiniert) |
 | `bachelorarbeit/kapitel/01_1_*.md` bis `01_4_*.md` | Einzelabschnitte Kap. 1 |
 | `bachelorarbeit/kapitel/02_1_*.md` bis `02_6_*.md` | Einzelabschnitte Kap. 2 |
+| `bachelorarbeit/kapitel/03_1_*.md` bis `03_5_*.md` | Einzelabschnitte Kap. 3 |
+| `bachelorarbeit/kapitel_04_systemkonzept.md` | Kap. 4: Systemkonzept und Entwurf (kombiniert, ~8.500 Woerter) |
+| `bachelorarbeit/kapitel/04_1_*.md` bis `04_5_*.md` | Einzelabschnitte Kap. 4 |
+
+### Geplante Kapitel (noch nicht geschrieben)
+
+Gemaess Expose (`suche/amr_expose_literaturstrategie.md`, VDI 2206 V-Modell):
+
+- **Kap. 5**: Implementierung (Hardwareaufbau, ESP32-Firmware, ROS2-Integration, Kalibrierung/SLAM, Navigation/Docking)
+- **Kap. 6**: Validierung und Testergebnisse (Testkonzept, Subsystem-Verifikation, Navigations-/Docking-Validierung, Soll-Ist-Vergleich)
+- **Kap. 7**: Fazit und Ausblick (Beantwortung der Forschungsfragen FF1-FF3)
 
 ### Schreibkonventionen
 
