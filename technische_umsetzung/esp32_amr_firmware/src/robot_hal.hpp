@@ -1,73 +1,70 @@
 #pragma once
 #include <Arduino.h>
-
-// --- PIN DEFINITIONEN (Anpassen an deine Verdrahtung!) ---
-#define ENC_LEFT_A 18
-#define ENC_LEFT_B 19
-#define ENC_RIGHT_A 22
-#define ENC_RIGHT_B 23
-
-#define MOT_LEFT_IN1 25
-#define MOT_LEFT_IN2 26
-#define MOT_RIGHT_IN1 32
-#define MOT_RIGHT_IN2 33
-
-#define PWM_FREQ 20000 // 20 kHz (Lautlos)
-#define PWM_RES 8
-#define PWM_CH_L 0
-#define PWM_CH_R 1
+#include "config.h"
 
 volatile long encoder_left_count = 0;
 volatile long encoder_right_count = 0;
 
+// Drehrichtung wird aus der PWM-Ansteuerung abgeleitet,
+// nicht aus dem Encoder-Signal (A-only, kein Phase B).
+volatile int8_t enc_left_dir = 1;
+volatile int8_t enc_right_dir = 1;
+
 void IRAM_ATTR isr_enc_left() {
-    if (digitalRead(ENC_LEFT_B) == digitalRead(ENC_LEFT_A))
-        encoder_left_count++;
-    else
-        encoder_left_count--;
+    encoder_left_count += enc_left_dir;
 }
 
 void IRAM_ATTR isr_enc_right() {
-    if (digitalRead(ENC_RIGHT_B) == digitalRead(ENC_RIGHT_A))
-        encoder_right_count++;
-    else
-        encoder_right_count--;
+    encoder_right_count += enc_right_dir;
 }
 
 class RobotHAL {
   private:
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-    void driveMotor(int ch_in1, int ch_in2, float speed) {
-        int duty = constrain(abs(speed) * 255, 0, 255);
+    void driveMotor(int ch_a, int ch_b, float speed, volatile int8_t &dir) {
+        int duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
+        // Deadzone-Kompensation: Werte unter PWM_DEADZONE erzeugen keine Bewegung
+        if (duty > 0 && duty < PWM_DEADZONE) {
+            duty = PWM_DEADZONE;
+        }
         if (speed > 0) {
-            ledcWrite(ch_in1, duty);
-            ledcWrite(ch_in2, 0);
+            dir = 1;
+            ledcWrite(ch_a, duty);
+            ledcWrite(ch_b, 0);
+        } else if (speed < 0) {
+            dir = -1;
+            ledcWrite(ch_a, 0);
+            ledcWrite(ch_b, duty);
         } else {
-            ledcWrite(ch_in1, 0);
-            ledcWrite(ch_in2, duty);
+            ledcWrite(ch_a, 0);
+            ledcWrite(ch_b, 0);
         }
     }
 
   public:
     void init() {
-        pinMode(ENC_LEFT_A, INPUT_PULLUP);
-        pinMode(ENC_LEFT_B, INPUT_PULLUP);
-        pinMode(ENC_RIGHT_A, INPUT_PULLUP);
-        pinMode(ENC_RIGHT_B, INPUT_PULLUP);
-        attachInterrupt(digitalPinToInterrupt(ENC_LEFT_A), isr_enc_left,
-                        CHANGE);
-        attachInterrupt(digitalPinToInterrupt(ENC_RIGHT_A), isr_enc_right,
-                        CHANGE);
+        // Encoder: nur Phase A, Pins aus config.h
+        pinMode(PIN_ENC_LEFT_A, INPUT_PULLUP);
+        pinMode(PIN_ENC_RIGHT_A, INPUT_PULLUP);
+        attachInterrupt(digitalPinToInterrupt(PIN_ENC_LEFT_A), isr_enc_left,
+                        RISING);
+        attachInterrupt(digitalPinToInterrupt(PIN_ENC_RIGHT_A), isr_enc_right,
+                        RISING);
 
-        ledcSetup(0, PWM_FREQ, PWM_RES);
-        ledcSetup(1, PWM_FREQ, PWM_RES);
-        ledcSetup(2, PWM_FREQ, PWM_RES);
-        ledcSetup(3, PWM_FREQ, PWM_RES);
-        ledcAttachPin(MOT_LEFT_IN1, 0);
-        ledcAttachPin(MOT_LEFT_IN2, 1);
-        ledcAttachPin(MOT_RIGHT_IN1, 2);
-        ledcAttachPin(MOT_RIGHT_IN2, 3);
+        // Motor-PWM: 4 Kanaele mit Zuordnung aus config.h
+        ledcSetup(PWM_CH_LEFT_A, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+        ledcSetup(PWM_CH_LEFT_B, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+        ledcSetup(PWM_CH_RIGHT_A, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+        ledcSetup(PWM_CH_RIGHT_B, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+        ledcAttachPin(PIN_MOTOR_LEFT_A, PWM_CH_LEFT_A);
+        ledcAttachPin(PIN_MOTOR_LEFT_B, PWM_CH_LEFT_B);
+        ledcAttachPin(PIN_MOTOR_RIGHT_A, PWM_CH_RIGHT_A);
+        ledcAttachPin(PIN_MOTOR_RIGHT_B, PWM_CH_RIGHT_B);
+
+        // LED-PWM: Kanal 4 auf D10
+        ledcSetup(LED_PWM_CHANNEL, LED_PWM_FREQ, LED_PWM_BITS);
+        ledcAttachPin(PIN_LED_MOSFET, LED_PWM_CHANNEL);
     }
 
     void readEncoders(long &left, long &right) {
@@ -78,7 +75,7 @@ class RobotHAL {
     }
 
     void setMotors(float pwm_l, float pwm_r) {
-        driveMotor(0, 1, pwm_l);
-        driveMotor(2, 3, pwm_r);
+        driveMotor(PWM_CH_LEFT_A, PWM_CH_LEFT_B, pwm_l, enc_left_dir);
+        driveMotor(PWM_CH_RIGHT_A, PWM_CH_RIGHT_B, pwm_r, enc_right_dir);
     }
 };

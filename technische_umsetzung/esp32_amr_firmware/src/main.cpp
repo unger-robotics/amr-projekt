@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "config.h"
 #include <geometry_msgs/msg/twist.h>
 #include <micro_ros_platformio.h>
 #include <nav_msgs/msg/odometry.h>
@@ -14,8 +15,7 @@
 // --- SETUP ---
 const float MAX_ACCEL = 5.0; // rad/s^2 Rampe
 RobotHAL hal;
-DiffDriveKinematics kinematics(0.032,
-                               0.145); // <-- HIER DEINE WERTE (Radius, Spur)
+DiffDriveKinematics kinematics(WHEEL_RADIUS, WHEEL_BASE);
 PidController pid_l(1.5, 0.5, 0.0, -1.0, 1.0);
 PidController pid_r(1.5, 0.5, 0.0, -1.0, 1.0);
 
@@ -42,8 +42,9 @@ void controlTask(void *p) {
         hal.readEncoders(tl, tr);
         static long ptl = 0, ptr = 0;
         float ml =
-            ((tl - ptl) / 1440.0) * 2 * PI / 0.02; // 1440 Ticks/Rev anpassen!
-        float mr = ((tr - ptr) / 1440.0) * 2 * PI / 0.02;
+            ((tl - ptl) / TICKS_PER_REV_LEFT) * 2 * PI / 0.02;
+        float mr =
+            ((tr - ptr) / TICKS_PER_REV_RIGHT) * 2 * PI / 0.02;
         ptl = tl;
         ptr = tr;
 
@@ -80,8 +81,8 @@ void controlTask(void *p) {
             shared.ox = s.x;
             shared.oy = s.y;
             shared.oth = s.theta;
-            shared.ov = (ml + mr) * 0.032 / 2;
-            shared.ow = (mr - ml) * 0.032 / 0.145;
+            shared.ov = (ml + mr) * WHEEL_RADIUS / 2;
+            shared.ow = (mr - ml) * WHEEL_RADIUS / WHEEL_BASE;
             xSemaphoreGive(mutex);
         }
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20));
