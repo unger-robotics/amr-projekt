@@ -52,12 +52,18 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 
 | Datei | Funktion |
 |---|---|
-| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Subscriber/Publisher |
+| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Subscriber/Publisher, Safety-Mechanismen |
 | `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (A-only), PWM-Steuerung, Deadzone |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwärts-/Inverskinematik (Parameter aus `config.h`) |
 
-Alle Hardware-Parameter werden zentral über `hardware/config.h` definiert (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag.
+Alle Hardware-Parameter werden zentral über `hardware/config.h` definiert (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag. Die config.h enthält auch Safety-Timing-Defines (`FAILSAFE_TIMEOUT_MS`, `CONTROL_LOOP_HZ`, `ODOM_PUBLISH_HZ`) und MISRA-inspirierte `static_assert`-Compile-Time-Validierungen.
+
+### Safety-Mechanismen (Firmware)
+
+- **Failsafe-Timeout**: 500 ms ohne `cmd_vel` → Motoren stopp (`FAILSAFE_TIMEOUT_MS` in config.h)
+- **Inter-Core-Watchdog**: `core1_heartbeat`-Zähler auf Core 1, von `loop()` auf Core 0 überwacht → Notfall-Stopp bei Ausbleiben
+- **RCL-Error-Handling**: Alle `rclc_*`-Initialisierungen mit `rcl_ret_t` geprüft → LED-Blinksignal bei Fehler (PIN_LED_MOSFET)
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
@@ -88,12 +94,32 @@ XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, USB-CDC,
 - Kartenauflösung: 5 cm
 - Materialkosten: 482,48 EUR (beschafft) + ~31 EUR (vorhanden)
 
+## Firmware-Constraints
+
+- **C++11**: ESP32-Arduino-Toolchain kompiliert mit C++11. Kein `std::clamp` (C++17) verwenden – stattdessen `std::max(min, std::min(val, max))`.
+- **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long` (MISRA-inspiriert). Encoder-Zähler sind `volatile int32_t`.
+- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren (Flash-Cache-Problematik).
+- **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup). rclc-Executor allokiert einmalig.
+
 ## Validierung
 
 - Odometrie-Kalibrierung: UMBmark-Test
 - Testparcours: 10 m × 10 m mit statischen/dynamischen Hindernissen
 - Datenaufzeichnung: rosbag2 für Sensor-Replay und Analyse
 - Keine automatisierten Tests vorhanden – Validierung erfolgt experimentell
+
+## Hardware-Dokumentation
+
+Detaillierte Hardware-Docs in `hardware/docs/`:
+
+| Datei | Inhalt |
+|---|---|
+| `01_mikrocontroller_sensorik.md` | MCU-Specs, GPIO-Pinout, Sensorschnittstellen |
+| `02_antriebsstrang_leistungselektronik.md` | Motortreiber, Leistungselektronik, Cytron MDD3A |
+| `03_stromversorgung_akkusystem.md` | 4S LiFePO4, Spannungsverteilung, DC/DC-Converter |
+| `04_systemintegration_stueckliste.md` | BOM mit Lieferanten, Interconnect-Diagramm |
+| `07_hardware_firmware_mapping.md` | Traceability-Matrix Pins ↔ Firmware-Defines |
+| `08_validierungsplan.md` | Testprotokoll mit Akzeptanzkriterien |
 
 ## Bachelorarbeit (Markdown-Dokument)
 
@@ -137,6 +163,7 @@ Die Bachelorarbeit ist vollstaendig (7 Kapitel, ~42.800 Woerter). Jedes Kapitel 
 - Gleichungen als Code-Blöcke mit erklärenden Variablendefinitionen
 - Keine Bullet-Point-Listen im Fließtext – vollständige Sätze und Absätze
 - Jeder Abschnitt beginnt mit einem kontextualisierenden Einleitungssatz
+- **Dual-File-Regel**: Jede Änderung muss in BEIDEN Dateien erfolgen – der Einzelabschnitt-Datei (`kapitel/XX_Y_*.md`) UND der kombinierten Kapiteldatei (`kapitel_XX_*.md`)
 
 ### Workflow: Kapitel generieren
 
