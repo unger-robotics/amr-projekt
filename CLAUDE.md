@@ -116,12 +116,8 @@ Fertige Kapitel liegen als kombinierte Dateien und als Einzelabschnitte vor:
 | `bachelorarbeit/kapitel/05_1_*.md` bis `05_6_*.md` | Einzelabschnitte Kap. 5 |
 | `bachelorarbeit/kapitel_06_validierung.md` | Kap. 6: Validierung und Testergebnisse (kombiniert, ~8.600 Woerter) |
 | `bachelorarbeit/kapitel/06_1_*.md` bis `06_6_*.md` | Einzelabschnitte Kap. 6 |
-
-### Geplante Kapitel (noch nicht geschrieben)
-
-Gemaess Expose (`suche/amr_expose_literaturstrategie.md`, VDI 2206 V-Modell):
-
-- **Kap. 7**: Fazit und Ausblick (Beantwortung der Forschungsfragen FF1-FF3)
+| `bachelorarbeit/kapitel_07_fazit.md` | Kap. 7: Fazit und Ausblick (kombiniert, ~4.200 Woerter) |
+| `bachelorarbeit/kapitel/07_1_*.md` bis `07_3_*.md` | Einzelabschnitte Kap. 7 |
 
 ### Schreibkonventionen
 
