@@ -2,9 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Projektübersicht
+## Projektuebersicht
 
-Bachelorarbeit: Autonomer Mobiler Roboter (AMR) für Intralogistik (KLT-Transport). Differentialantrieb-Roboter mit XIAO ESP32-S3 (Low-Level-Steuerung) und Raspberry Pi 5 (Navigation/SLAM) über micro-ROS/UART verbunden. Sprache: Deutsch (wissenschaftlicher Stil, keine Umlaute in Markdown-Dateien).
+Bachelorarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik (KLT-Transport). Differentialantrieb-Roboter mit XIAO ESP32-S3 (Low-Level-Steuerung) und Raspberry Pi 5 (Navigation/SLAM) ueber micro-ROS/UART verbunden. Sprache: Deutsch (wissenschaftlicher Stil, keine UTF-8-Umlaute in Markdown-Dateien – ae/oe/ue/ss verwenden).
 
 ## Build & Deployment
 
@@ -12,9 +12,10 @@ Bachelorarbeit: Autonomer Mobiler Roboter (AMR) für Intralogistik (KLT-Transpor
 
 ```bash
 # Im Verzeichnis: technische_umsetzung/esp32_amr_firmware/
-pio run                    # Firmware kompilieren
-pio run -t upload          # Auf ESP32 flashen (921600 Baud)
-pio run -t monitor         # Seriellen Monitor starten (115200 Baud)
+# PlatformIO-Env: seeed_xiao_esp32s3
+pio run                       # Firmware kompilieren
+pio run -t upload             # Auf ESP32 flashen (921600 Baud)
+pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
 pio run -t upload -t monitor  # Upload + Monitor kombiniert
 ```
 
@@ -24,8 +25,11 @@ pio run -t upload -t monitor  # Upload + Monitor kombiniert
 # Im Verzeichnis: technische_umsetzung/pi5/ros2_ws/
 colcon build
 source install/setup.bash
-ros2 launch my_bot full_stack.launch.py               # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
-ros2 launch my_bot full_stack.launch.py use_nav:=false # Nur SLAM (ohne Navigation)
+ros2 launch my_bot full_stack.launch.py                # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
+ros2 launch my_bot full_stack.launch.py use_nav:=false  # Nur SLAM (ohne Navigation)
+ros2 launch my_bot full_stack.launch.py use_rviz:=False # Ohne RViz2
+ros2 launch my_bot full_stack.launch.py use_slam:=False # Nur Navigation mit bestehender Karte
+ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternativer Serial-Port
 ```
 
 ### Validierungsskripte (Raspberry Pi)
@@ -56,13 +60,13 @@ python suche/download_sources.py   # Literatur-PDFs herunterladen
 
 ### Dual-Core XIAO ESP32-S3 Firmware (`technische_umsetzung/esp32_amr_firmware/src/`)
 
-Die Firmware läuft auf einem Seeed Studio XIAO ESP32-S3 (Xtensa LX7 Dual-Core) und partitioniert die Kerne für Echtzeit-Garantien:
+Die Firmware partitioniert die Kerne fuer Echtzeit-Garantien:
 
-- **Core 0**: micro-ROS Agent – empfängt `cmd_vel` (Twist), publiziert `Odometry` (20 Hz)
-- **Core 1**: Regelschleife – PID-Motorregelung bei 50 Hz (20 ms Takt)
-- **Thread-Safety**: FreeRTOS-Mutex schützt geteilte Daten zwischen den Cores
+- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist), publiziert `Odometry` (20 Hz), Watchdog-Ueberwachung
+- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`)
+- **Thread-Safety**: FreeRTOS-Mutex (`SharedData`) schuetzt geteilte Daten zwischen den Cores
 
-Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, A-only) → Vorwärtskinematik → Odometrie-Publish
+Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, A-only) → Vorwaertskinematik → Odometrie-Publish
 
 ### Firmware-Module (Header-only Pattern)
 
@@ -71,192 +75,100 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 | `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Subscriber/Publisher, Safety-Mechanismen |
 | `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (A-only), PWM-Steuerung, Deadzone |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
-| `diff_drive_kinematics.hpp` | Vorwärts-/Inverskinematik (Parameter aus `config.h`) |
+| `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
 
-Alle Hardware-Parameter werden zentral über `hardware/config.h` definiert (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag. Die config.h enthält auch Safety-Timing-Defines (`FAILSAFE_TIMEOUT_MS`, `CONTROL_LOOP_HZ`, `ODOM_PUBLISH_HZ`) und MISRA-inspirierte `static_assert`-Compile-Time-Validierungen.
+Alle Hardware-Parameter in `hardware/config.h` (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag. PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0).
 
 ### Safety-Mechanismen (Firmware)
 
 - **Failsafe-Timeout**: 500 ms ohne `cmd_vel` → Motoren stopp (`FAILSAFE_TIMEOUT_MS` in config.h)
-- **Inter-Core-Watchdog**: `core1_heartbeat`-Zähler auf Core 1, von `loop()` auf Core 0 überwacht → Notfall-Stopp bei Ausbleiben
-- **RCL-Error-Handling**: Alle `rclc_*`-Initialisierungen mit `rcl_ret_t` geprüft → LED-Blinksignal bei Fehler (PIN_LED_MOSFET)
+- **Inter-Core-Watchdog**: `core1_heartbeat`-Zaehler auf Core 1, von `loop()` auf Core 0 ueberwacht
+- **RCL-Error-Handling**: Alle `rclc_*`-Initialisierungen mit `rcl_ret_t` geprueft → LED-Blinksignal bei Fehler
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
 Konfiguration in `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/`:
 
-- **nav2_params.yaml**: Vollständiger Nav2-Stack – AMCL-Lokalisierung, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
-- **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Auflösung, Loop Closure aktiv
-- **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern für Ladestation-Andockung (OpenCV, moderne `cv2.aruco.ArucoDetector`-API >= 4.7)
-- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File für micro-ROS Agent + SLAM Toolbox + Nav2 + RViz2
+- **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
+- **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
+- **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
+- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2
 
 ### Kommunikationsschicht
 
-XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS über UART (Serial Transport, USB-CDC, Humble-Distribution). Gewählt wegen deterministischem Timing gegenüber WiFi/Ethernet.
+XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
 ## Roboter-Parameter
 
-- MCU: Seeed Studio XIAO ESP32-S3 (Xtensa LX7 Dual-Core)
-- Motortreiber: Cytron MDD3A (Dual-PWM-Modus, 3,3 V Logik, keine Pegelanpassung)
-- Encoder: JGA25-370 Hall-Encoder, A-only (~374 Ticks/Rev), Richtung aus PWM abgeleitet
-- Raddurchmesser: 65 mm (Radradius 32,5 mm)
-- Spurbreite (Wheelbase): 178 mm
-- Konversionsfaktor: 0,546 mm/Tick
-- PWM-Deadzone: 35
-- LiDAR: RPLIDAR A1 (SLAMTEC, 12 m Reichweite)
-- Kamera: Raspberry Pi Global Shutter Camera (Sony IMX296) mit 6 mm CS-Mount über CSI
+Zentral in `hardware/config.h` definiert. Wichtigste Werte:
+
+- Raddurchmesser: 65 mm, Spurbreite: 178 mm
+- Encoder: ~374 Ticks/Rev (A-only), PWM-Deadzone: 35
+- LiDAR: RPLIDAR A1, Kamera: RPi Global Shutter (Sony IMX296, 6 mm CS-Mount)
 - Akku: 4S LiFePO4 (12,8 V nominal)
-- Zielgeschwindigkeit: 0.4 m/s
-- Positionstoleranz: 10 cm (xy), 8° (Gier)
-- Kartenauflösung: 5 cm
-- Materialkosten: 482,48 EUR (beschafft) + ~31 EUR (vorhanden)
+- Zielgeschwindigkeit: 0.4 m/s, Positionstoleranz: 10 cm (xy) / 8° (Gier)
 
 ## Firmware-Constraints
 
-- **C++11**: ESP32-Arduino-Toolchain kompiliert mit C++11. Kein `std::clamp` (C++17) verwenden – stattdessen `std::max(min, std::min(val, max))`.
-- **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long` (MISRA-inspiriert). Encoder-Zähler sind `volatile int32_t`.
-- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren (Flash-Cache-Problematik).
-- **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup). rclc-Executor allokiert einmalig.
+- **C++11**: ESP32-Arduino-Toolchain kompiliert mit C++11. Kein `std::clamp` (C++17) – stattdessen `std::max(min, std::min(val, max))`.
+- **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long` (MISRA-inspiriert). Encoder-Zaehler sind `volatile int32_t`.
+- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren.
+- **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup).
 
 ## Validierung
 
-- Odometrie-Kalibrierung: UMBmark-Test (Borenstein 1996, `umbmark_analysis.py`)
-- PID-Tuning: Sprungantwort-Analyse (`pid_tuning.py`)
-- Testparcours: 10 m × 10 m mit statischen/dynamischen Hindernissen
-- Datenaufzeichnung: rosbag2 für Sensor-Replay und Analyse
-- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell über V-Modell-Phasenplan (`08_validierungsplan.md`)
-- Validierungsskripte in `technische_umsetzung/scripts/` (10 Skripte, alle `py_compile`-validiert)
+- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (`hardware/docs/08_validierungsplan.md`)
+- 10 Validierungsskripte in `technische_umsetzung/scripts/` (alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
-
-## Hardware-Dokumentation
-
-Detaillierte Hardware-Docs in `hardware/docs/`:
-
-| Datei | Inhalt |
-|---|---|
-| `01_mikrocontroller_sensorik.md` | MCU-Specs, GPIO-Pinout, Sensorschnittstellen |
-| `02_antriebsstrang_leistungselektronik.md` | Motortreiber, Leistungselektronik, Cytron MDD3A |
-| `03_stromversorgung_akkusystem.md` | 4S LiFePO4, Spannungsverteilung, DC/DC-Converter |
-| `04_systemintegration_stueckliste.md` | BOM mit Lieferanten, Interconnect-Diagramm |
-| `05_firmware_migrationsplan.md` | Migration robot_hal.hpp → config.h Defines |
-| `06_thesis_aenderungsliste.md` | Aenderungshistorie der Bachelorarbeit |
-| `07_hardware_firmware_mapping.md` | Traceability-Matrix Pins ↔ Firmware-Defines |
-| `08_validierungsplan.md` | Testprotokoll mit Akzeptanzkriterien (V-Modell Phasen 1-9) |
-
-Weitere Hardware-Dateien im `hardware/`-Verzeichnis: `hardware-setup.md` (Aufbauanleitung), `kosten.md` (Kostenkalkulation), `schaltplan.pdf`, `datasheet/` (Datenblätter), `media/` (Aufbaufotos).
+- Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
 ## Bachelorarbeit (Markdown-Dokument)
 
-### Gliederung nach VDI 2206
+### Gliederung
 
-Das Exposé und die vollständige Gliederung befinden sich in `suche/amr_expose_literaturstrategie.md`. Die Arbeit folgt dem V-Modell nach VDI 2206 für mechatronische Systeme.
+Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. Vollstaendig: 7 Kapitel, ~42.800 Woerter.
 
 ### Forschungsfragen
 
-Die drei Forschungsfragen strukturieren die gesamte Arbeit und werden in Kapitel 7 beantwortet:
+- **FF1 (Architektur):** Echtzeitfaehige Regelung auf ESP32 mit micro-ROS ohne WLAN-Latenzen?
+- **FF2 (Praezision):** Einfluss systematischer Odometrie-Kalibrierung (UMBmark) auf Navigationsgenauigkeit?
+- **FF3 (Funktionalitaet):** Monokulares ArUco-Docking hinreichend robust fuer mechanischen Ladekontakt?
 
-- **FF1 (Architektur):** Wie laesst sich auf einem ESP32 eine echtzeitfaehige Regelung unter Nutzung von micro-ROS realisieren, ohne dass WLAN-Latenzen die Motorsteuerung destabilisieren?
-- **FF2 (Praezision):** Welchen Einfluss hat eine systematische Odometrie-Kalibrierung (UMBmark) auf die absolute Navigationsgenauigkeit eines Low-Cost-Differentialantriebs?
-- **FF3 (Funktionalitaet):** Ist ein monokulares Kamerasystem mit ArUco-Markern hinreichend robust, um einen mechanischen Ladekontakt autonom zu treffen?
+### Dateistruktur
 
-### Kapitelstruktur
-
-Die Bachelorarbeit ist vollstaendig (7 Kapitel, ~42.800 Woerter). Jedes Kapitel liegt als kombinierte Datei und als Einzelabschnitte vor:
-
-| Datei | Inhalt |
-|---|---|
-| `bachelorarbeit/kapitel_01_einleitung.md` | Kap. 1: Einleitung (~2.900 Woerter) |
-| `bachelorarbeit/kapitel_02_grundlagen.md` | Kap. 2: Grundlagen und Stand der Technik (~4.400 Woerter) |
-| `bachelorarbeit/kapitel_03_anforderungsanalyse.md` | Kap. 3: Anforderungsanalyse (~4.500 Woerter) |
-| `bachelorarbeit/kapitel/01_1_*.md` bis `01_4_*.md` | Einzelabschnitte Kap. 1 |
-| `bachelorarbeit/kapitel/02_1_*.md` bis `02_6_*.md` | Einzelabschnitte Kap. 2 |
-| `bachelorarbeit/kapitel/03_1_*.md` bis `03_5_*.md` | Einzelabschnitte Kap. 3 |
-| `bachelorarbeit/kapitel_04_systemkonzept.md` | Kap. 4: Systemkonzept und Entwurf (~8.300 Woerter) |
-| `bachelorarbeit/kapitel/04_1_*.md` bis `04_5_*.md` | Einzelabschnitte Kap. 4 |
-| `bachelorarbeit/kapitel_05_implementierung.md` | Kap. 5: Implementierung (~10.000 Woerter) |
-| `bachelorarbeit/kapitel/05_1_*.md` bis `05_6_*.md` | Einzelabschnitte Kap. 5 |
-| `bachelorarbeit/kapitel_06_validierung.md` | Kap. 6: Validierung und Testergebnisse (~9.600 Woerter) |
-| `bachelorarbeit/kapitel/06_1_*.md` bis `06_6_*.md` | Einzelabschnitte Kap. 6 |
-| `bachelorarbeit/kapitel_07_fazit.md` | Kap. 7: Fazit und Ausblick (~3.000 Woerter) |
-| `bachelorarbeit/kapitel/07_1_*.md` bis `07_3_*.md` | Einzelabschnitte Kap. 7 |
+Jedes Kapitel existiert in zwei Formen:
+- **Kombinierte Datei**: `bachelorarbeit/kapitel_XX_name.md` (z.B. `kapitel_04_systemkonzept.md`)
+- **Einzelabschnitte**: `bachelorarbeit/kapitel/XX_Y_name.md` (z.B. `04_2_gesamtsystemarchitektur.md`)
 
 ### Schreibkonventionen
 
-- Umlaute werden als ae, oe, ue, ss geschrieben (kein UTF-8-Umlaut in Kapitel-Dateien)
-- Zitationen im Format: `(vgl. Nachname et al. Jahr, S. X)`
-- Gleichungen als Code-Blöcke mit erklärenden Variablendefinitionen
-- Keine Bullet-Point-Listen im Fließtext – vollständige Sätze und Absätze
+- Umlaute als ae, oe, ue, ss (kein UTF-8-Umlaut in Kapitel-Dateien)
+- Zitationen: `(vgl. Nachname et al. Jahr, S. X)`
+- Gleichungen als Code-Bloecke mit erklaerenden Variablendefinitionen
+- Keine Bullet-Point-Listen im Fliesstext – vollstaendige Saetze und Absaetze
 - Jeder Abschnitt beginnt mit einem kontextualisierenden Einleitungssatz
-- **Dual-File-Regel**: Jede Änderung muss in BEIDEN Dateien erfolgen – der Einzelabschnitt-Datei (`kapitel/XX_Y_*.md`) UND der kombinierten Kapiteldatei (`kapitel_XX_*.md`)
+- **Dual-File-Regel**: Jede Aenderung muss in BEIDEN Dateien erfolgen – der Einzelabschnitt-Datei UND der kombinierten Kapiteldatei
 
 ### Workflow: Kapitel generieren
 
 Kapitel werden mit parallelen Agent-Teams erstellt:
 1. Team erstellen (`TeamCreate`) mit N Agents (1 pro Unterabschnitt)
-2. Tasks erstellen mit Exposé-Vorgaben + zugewiesenen Kernaussagen-Dateien
+2. Tasks erstellen mit Expose-Vorgaben + zugewiesenen Kernaussagen-Dateien
 3. Agents parallel spawnen, jeder schreibt seinen Abschnitt
-4. Outputs prüfen und zu kombinierter Kapiteldatei zusammenführen
-5. Team herunterfahren und aufräumen
+4. Outputs pruefen und zu kombinierter Kapiteldatei zusammenfuehren
+5. Team herunterfahren und aufraeumen
 
 ## Literaturverwaltung
 
-### Quellen (17 PDFs)
+- 17 PDFs in `sources/` (Macenski, Siegwart, Borenstein, etc.)
+- Extrahierte Kernaussagen in `sources/kernaussagen/` (15 Einzeldateien + Querverweismatrix in `00_Uebersicht_Querverweise.md`)
 
-Wissenschaftliche Literatur liegt in `sources/` als PDF:
+## Wichtige Verzeichnisse
 
-| Nr. | Kurzname | Thema |
-|---|---|---|
-| 01 | Macenski 2022 | ROS 2 Architektur |
-| 02 | Macenski 2023 | Nav2 Survey |
-| 04 | Siegwart 2004 | Mobile Roboter (Lehrbuch) |
-| 05 | Macenski SLAM Toolbox | SLAM Toolbox |
-| 06 | Hess 2016 | Google Cartographer |
-| 07 | Moore 2014 | robot_localization / EKF |
-| 09 | Borenstein 1996 | Odometrie / UMBmark |
-| 10 | Abaza 2025 | ESP32 AMR Stack |
-| 11 | Albarran 2023 | ESP32 Differentialantrieb |
-| 12 | Yordanov 2025 | ESP32 Dual-Core Partitionierung |
-| 13 | Ince 2025 | SLAM Toolbox vs. Cartographer |
-| 14 | Staschulat 2020 | rclc Executor |
-| 15 | Oh/Kim 2025 | ArUco Docking |
-| 16 | Zhang 2024 | 2DLIW-SLAM |
-| 18 | De Giorgi 2024 | Odometrie-Kalibrierung |
-| 19 | Nguyen 2022 | micro-ROS Thesis |
-| 20 | Wang 2024 | PoDS Scheduling |
-
-### Kernaussagen
-
-Für jede Quelle existiert eine extrahierte Kernaussagen-Datei in `sources/kernaussagen/`:
-- 15 Einzeldateien (`01_*` bis `15_*`) mit strukturierten Kernaussagen, Zitaten und Seitenzahlen
-- `00_Uebersicht_Querverweise.md`: Querverweismatrix zwischen allen Kernaussagen, thematische Cluster, Zitationshäufigkeiten und Kapitelzuordnung
-
-## Projektstruktur
-
-```
-hardware/
-  config.h                   # Zentrale Hardware-Konfiguration (Single Source of Truth)
-  docs/                      # Hardware-Dokumentation (01-08), Migrationsplan, Aenderungsliste
-  datasheet/                 # Komponenten-Datenblaetter
-  media/                     # Aufbaufotos
-  schaltplan.pdf             # Schaltplan
-  hardware-setup.md          # Aufbauanleitung
-  kosten.md                  # Kostenkalkulation
-technische_umsetzung/
-  esp32_amr_firmware/        # PlatformIO-Projekt (XIAO ESP32-S3 Firmware)
-    src/                     # main.cpp, robot_hal.hpp, pid_controller.hpp, diff_drive_kinematics.hpp
-  pi5/ros2_ws/               # ROS2 Colcon-Workspace (Raspberry Pi 5)
-    src/my_bot/config/       # nav2_params.yaml, mapper_params_online_async.yaml
-    src/my_bot/scripts/      # aruco_docking.py
-    src/my_bot/launch/       # full_stack.launch.py
-  scripts/                   # Validierungsskripte (10 Python-Dateien, V-Modell Phasen 1-5)
-bachelorarbeit/              # Bachelorarbeit als Markdown (vollstaendig, 7 Kapitel)
-  kapitel_01_einleitung.md   # Kombinierte Kapiteldateien (01-07)
-  ...
-  kapitel_07_fazit.md
-  kapitel/                   # Einzelne Unterabschnitte (01_1_* bis 07_3_*, 35 Dateien)
-sources/                     # Wissenschaftliche Literatur (17 PDFs)
-  kernaussagen/              # Extrahierte Kernaussagen (15 Dateien + Uebersicht)
-suche/                       # Literaturrecherche-Skripte und Strategiedokumente
-  amr_expose_literaturstrategie.md  # Master-Expose mit Gliederung
-  download_sources.py        # PDF-Download-Skript
-```
+- `hardware/config.h` – Zentrale Hardware-Konfiguration (Single Source of Truth)
+- `hardware/docs/` – 8 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan)
+- `technische_umsetzung/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
+- `technische_umsetzung/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (config/, launch/, scripts/)
+- `technische_umsetzung/scripts/` – 10 Validierungsskripte
+- `bachelorarbeit/` – Vollstaendige Bachelorarbeit (7 kombinierte + 35 Einzelabschnitt-Dateien)
+- `sources/kernaussagen/` – Kernaussagen mit Seitenzahlen fuer Zitationen
