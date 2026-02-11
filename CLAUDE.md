@@ -92,7 +92,7 @@ Das Exposé und die vollständige Gliederung befinden sich in `suche/amr_expose_
 
 ### Forschungsfragen
 
-Die drei Forschungsfragen strukturieren die gesamte Arbeit und muessen in Kapitel 7 beantwortet werden:
+Die drei Forschungsfragen strukturieren die gesamte Arbeit und werden in Kapitel 7 beantwortet:
 
 - **FF1 (Architektur):** Wie laesst sich auf einem ESP32 eine echtzeitfaehige Regelung unter Nutzung von micro-ROS realisieren, ohne dass WLAN-Latenzen die Motorsteuerung destabilisieren?
 - **FF2 (Praezision):** Welchen Einfluss hat eine systematische Odometrie-Kalibrierung (UMBmark) auf die absolute Navigationsgenauigkeit eines Low-Cost-Differentialantriebs?
@@ -100,23 +100,23 @@ Die drei Forschungsfragen strukturieren die gesamte Arbeit und muessen in Kapite
 
 ### Kapitelstruktur
 
-Fertige Kapitel liegen als kombinierte Dateien und als Einzelabschnitte vor:
+Die Bachelorarbeit ist vollstaendig (7 Kapitel, ~42.800 Woerter). Jedes Kapitel liegt als kombinierte Datei und als Einzelabschnitte vor:
 
 | Datei | Inhalt |
 |---|---|
-| `bachelorarbeit/kapitel_01_einleitung.md` | Kap. 1: Einleitung (kombiniert, ~2.900 Woerter) |
-| `bachelorarbeit/kapitel_02_grundlagen.md` | Kap. 2: Grundlagen und Stand der Technik (kombiniert, ~4.400 Woerter) |
-| `bachelorarbeit/kapitel_03_anforderungsanalyse.md` | Kap. 3: Anforderungsanalyse (kombiniert) |
+| `bachelorarbeit/kapitel_01_einleitung.md` | Kap. 1: Einleitung (~2.900 Woerter) |
+| `bachelorarbeit/kapitel_02_grundlagen.md` | Kap. 2: Grundlagen und Stand der Technik (~4.400 Woerter) |
+| `bachelorarbeit/kapitel_03_anforderungsanalyse.md` | Kap. 3: Anforderungsanalyse (~4.500 Woerter) |
 | `bachelorarbeit/kapitel/01_1_*.md` bis `01_4_*.md` | Einzelabschnitte Kap. 1 |
 | `bachelorarbeit/kapitel/02_1_*.md` bis `02_6_*.md` | Einzelabschnitte Kap. 2 |
 | `bachelorarbeit/kapitel/03_1_*.md` bis `03_5_*.md` | Einzelabschnitte Kap. 3 |
-| `bachelorarbeit/kapitel_04_systemkonzept.md` | Kap. 4: Systemkonzept und Entwurf (kombiniert, ~8.500 Woerter) |
+| `bachelorarbeit/kapitel_04_systemkonzept.md` | Kap. 4: Systemkonzept und Entwurf (~8.300 Woerter) |
 | `bachelorarbeit/kapitel/04_1_*.md` bis `04_5_*.md` | Einzelabschnitte Kap. 4 |
-| `bachelorarbeit/kapitel_05_implementierung.md` | Kap. 5: Implementierung (kombiniert, ~8.800 Woerter) |
+| `bachelorarbeit/kapitel_05_implementierung.md` | Kap. 5: Implementierung (~10.000 Woerter) |
 | `bachelorarbeit/kapitel/05_1_*.md` bis `05_6_*.md` | Einzelabschnitte Kap. 5 |
-| `bachelorarbeit/kapitel_06_validierung.md` | Kap. 6: Validierung und Testergebnisse (kombiniert, ~8.600 Woerter) |
+| `bachelorarbeit/kapitel_06_validierung.md` | Kap. 6: Validierung und Testergebnisse (~9.600 Woerter) |
 | `bachelorarbeit/kapitel/06_1_*.md` bis `06_6_*.md` | Einzelabschnitte Kap. 6 |
-| `bachelorarbeit/kapitel_07_fazit.md` | Kap. 7: Fazit und Ausblick (kombiniert, ~4.200 Woerter) |
+| `bachelorarbeit/kapitel_07_fazit.md` | Kap. 7: Fazit und Ausblick (~3.000 Woerter) |
 | `bachelorarbeit/kapitel/07_1_*.md` bis `07_3_*.md` | Einzelabschnitte Kap. 7 |
 
 ### Schreibkonventionen
@@ -177,13 +177,14 @@ technische_umsetzung/
   pi5/ros2_ws/               # ROS2 Colcon-Workspace (Raspberry Pi 5)
     src/my_bot/config/       # nav2_params.yaml, mapper_params_online_async.yaml
     src/my_bot/scripts/      # aruco_docking.py
-bachelorarbeit/              # Bachelorarbeit als Markdown
-  kapitel_01_einleitung.md   # Kombiniertes Kapitel 1
-  kapitel_02_grundlagen.md   # Kombiniertes Kapitel 2
-  kapitel/                   # Einzelne Unterabschnitte (01_1_* bis 02_6_*)
+bachelorarbeit/              # Bachelorarbeit als Markdown (vollstaendig, 7 Kapitel)
+  kapitel_01_einleitung.md   # Kombinierte Kapiteldateien (01-07)
+  ...
+  kapitel_07_fazit.md
+  kapitel/                   # Einzelne Unterabschnitte (01_1_* bis 07_3_*, 35 Dateien)
 sources/                     # Wissenschaftliche Literatur (17 PDFs)
-  kernaussagen/              # Extrahierte Kernaussagen (15 Dateien + Übersicht)
+  kernaussagen/              # Extrahierte Kernaussagen (15 Dateien + Uebersicht)
 suche/                       # Literaturrecherche-Skripte und Strategiedokumente
-  amr_expose_literaturstrategie.md  # Master-Exposé mit Gliederung
+  amr_expose_literaturstrategie.md  # Master-Expose mit Gliederung
   download_sources.py        # PDF-Download-Skript
 ```
