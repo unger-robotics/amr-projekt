@@ -114,12 +114,13 @@ Fertige Kapitel liegen als kombinierte Dateien und als Einzelabschnitte vor:
 | `bachelorarbeit/kapitel/04_1_*.md` bis `04_5_*.md` | Einzelabschnitte Kap. 4 |
 | `bachelorarbeit/kapitel_05_implementierung.md` | Kap. 5: Implementierung (kombiniert, ~8.800 Woerter) |
 | `bachelorarbeit/kapitel/05_1_*.md` bis `05_6_*.md` | Einzelabschnitte Kap. 5 |
+| `bachelorarbeit/kapitel_06_validierung.md` | Kap. 6: Validierung und Testergebnisse (kombiniert, ~8.600 Woerter) |
+| `bachelorarbeit/kapitel/06_1_*.md` bis `06_6_*.md` | Einzelabschnitte Kap. 6 |
 
 ### Geplante Kapitel (noch nicht geschrieben)
 
 Gemaess Expose (`suche/amr_expose_literaturstrategie.md`, VDI 2206 V-Modell):
 
-- **Kap. 6**: Validierung und Testergebnisse (Testkonzept, Subsystem-Verifikation, Navigations-/Docking-Validierung, Soll-Ist-Vergleich)
 - **Kap. 7**: Fazit und Ausblick (Beantwortung der Forschungsfragen FF1-FF3)
 
 ### Schreibkonventionen
