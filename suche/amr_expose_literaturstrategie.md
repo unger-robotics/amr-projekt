@@ -1,4 +1,4 @@
-# Exposé-Gliederung und Literaturstrategie für eine AMR-Bachelorarbeit mit ROS 2
+ # Exposé-Gliederung und Literaturstrategie für eine AMR-Bachelorarbeit mit ROS 2
 
 ## Zusammenfassung
 
