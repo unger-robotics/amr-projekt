@@ -23,7 +23,7 @@ pio run -t upload -t monitor  # Upload + Monitor kombiniert
 
 ```bash
 # Im Verzeichnis: technische_umsetzung/pi5/ros2_ws/
-colcon build
+colcon build --packages-select my_bot --symlink-install
 source install/setup.bash
 ros2 launch my_bot full_stack.launch.py                # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
 ros2 launch my_bot full_stack.launch.py use_nav:=false  # Nur SLAM (ohne Navigation)
@@ -35,18 +35,22 @@ ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternative
 ### Validierungsskripte (Raspberry Pi)
 
 ```bash
-# Im Verzeichnis: technische_umsetzung/scripts/
-python3 pre_flight_check.py          # Interaktive Hardware-Checkliste (kein ROS2 noetig)
-ros2 run my_bot encoder_test.py      # Encoder-Kalibrierung (10-Umdrehungen-Test)
-ros2 run my_bot motor_test.py        # Motor-Deadzone und Richtungstest
-python3 umbmark_analysis.py          # UMBmark-Auswertung (Standalone, nur numpy/matplotlib)
-ros2 run my_bot pid_tuning.py        # PID-Sprungantwort-Analyse
-ros2 run my_bot kinematic_test.py    # Geradeaus-/Dreh-/Kreisfahrt-Verifikation
-ros2 run my_bot slam_validation.py   # ATE-Berechnung und TF-Ketten-Check
-ros2 run my_bot nav_test.py          # Waypoint-Navigation mit Positionsfehler-Messung
-ros2 run my_bot docking_test.py      # 10-Versuch ArUco-Docking-Test
-python3 validation_report.py         # Gesamt-Report aus JSON-Ergebnissen (Standalone)
+# Standalone-Skripte (kein ROS2 noetig):
+python3 technische_umsetzung/scripts/pre_flight_check.py    # Interaktive Hardware-Checkliste
+python3 technische_umsetzung/scripts/umbmark_analysis.py     # UMBmark-Auswertung (numpy/matplotlib)
+python3 technische_umsetzung/scripts/validation_report.py    # Gesamt-Report aus JSON-Ergebnissen
+
+# ROS2-Nodes (micro-ROS Agent muss laufen):
+ros2 run my_bot encoder_test      # Encoder-Kalibrierung (10-Umdrehungen-Test)
+ros2 run my_bot motor_test        # Motor-Deadzone und Richtungstest
+ros2 run my_bot pid_tuning        # PID-Sprungantwort-Analyse
+ros2 run my_bot kinematic_test    # Geradeaus-/Dreh-/Kreisfahrt-Verifikation
+ros2 run my_bot slam_validation   # ATE-Berechnung und TF-Ketten-Check
+ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Messung
+ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ```
+
+**Hinweis:** Die ROS2-Nodes erfordern, dass die Skripte aus `technische_umsetzung/scripts/` als Symlinks oder Kopien im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5).
 
 ### Python-Hilfsskripte
 
@@ -93,6 +97,7 @@ Konfiguration in `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 8 entry_points (console_scripts)
 
 ### Kommunikationsschicht
 
@@ -161,14 +166,14 @@ Kapitel werden mit parallelen Agent-Teams erstellt:
 ## Literaturverwaltung
 
 - 17 PDFs in `sources/` (Macenski, Siegwart, Borenstein, etc.)
-- Extrahierte Kernaussagen in `sources/kernaussagen/` (15 Einzeldateien + Querverweismatrix in `00_Uebersicht_Querverweise.md`)
+- Extrahierte Kernaussagen in `sources/kernaussagen/` (16 Einzeldateien + Querverweismatrix in `00_Uebersicht_Querverweise.md`)
 
 ## Wichtige Verzeichnisse
 
 - `hardware/config.h` – Zentrale Hardware-Konfiguration (Single Source of Truth)
-- `hardware/docs/` – 8 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan)
+- `hardware/docs/` – 9 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan, Umsetzungsanleitung)
 - `technische_umsetzung/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
-- `technische_umsetzung/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (config/, launch/, scripts/)
+- `technische_umsetzung/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (package.xml, setup.py, config/, launch/, scripts/)
 - `technische_umsetzung/scripts/` – 10 Validierungsskripte
 - `bachelorarbeit/` – Vollstaendige Bachelorarbeit (7 kombinierte + 35 Einzelabschnitt-Dateien)
 - `sources/kernaussagen/` – Kernaussagen mit Seitenzahlen fuer Zitationen
