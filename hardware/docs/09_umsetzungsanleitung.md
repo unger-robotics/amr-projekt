@@ -2,12 +2,12 @@
 
 ## Dokumentinformationen
 
-| Eigenschaft | Wert |
-|---|---|
-| Projekt | Autonomer Mobiler Roboter (AMR) fuer Intralogistik |
-| Version | 1.0 |
-| Datum | 2026-02 |
-| Bezug | V-Modell Validierungsplan (`hardware/docs/08_validierungsplan.md`) |
+| Eigenschaft | Wert                                                               |
+|-------------|--------------------------------------------------------------------|
+| Projekt     | Autonomer Mobiler Roboter (AMR) fuer Intralogistik                 |
+| Version     | 1.0                                                                |
+| Datum       | 2026-02                                                            |
+| Bezug       | V-Modell Validierungsplan (`hardware/docs/08_validierungsplan.md`) |
 
 Diese Anleitung beschreibt die schrittweise Inbetriebnahme des AMR-Prototyps vom ersten Firmware-Upload bis zur vollstaendigen Navigationsvalidierung. Der Aufbau folgt dem V-Modell-Phasenplan und gliedert sich in vier Teile: Teil 1 behandelt die ESP32-S3 Firmware (Phasen 1-3, Kompilierung, Encoder- und Motor-Validierung), Teil 2 die ROS2-Umgebung auf dem Raspberry Pi 5, Teil 3 die Integration beider Subsysteme ueber micro-ROS, und Teil 4 die Kalibrierung und Systemvalidierung. Jede Phase baut auf der vorhergehenden auf -- ein Ueberspringen einzelner Schritte ist nicht vorgesehen, da spaetere Phasen auf korrekt validierte Vorstufen angewiesen sind.
 
@@ -38,7 +38,7 @@ Die folgende Hardware muss vor dem ersten Firmware-Upload physisch aufgebaut und
 - **Seeed Studio XIAO ESP32-S3**: Der Mikrocontroller bildet die Low-Level-Steuerungseinheit. Er muss ueber ein USB-C-Datenkabel (nicht nur Ladekabel) mit dem Entwicklungsrechner oder dem Raspberry Pi verbunden sein.
 - **Cytron MDD3A Motortreiber**: Der Dual-Motor-Treiber arbeitet im Dual-PWM-Modus. Er benoetigt eine 12-V-Versorgung ueber die Schraubklemmen VB+/VB- und muss mit vier Signalleitungen (D0-D3) an den XIAO angeschlossen sein.
 - **JGA25-370 Motoren mit Hall-Encoder (2x)**: Die Motoren verfuegen jeweils ueber einen Hall-Encoder mit Phase A und Phase B. Im aktuellen Design wird nur Phase A verwendet (A-only-Betrieb), Phase B bleibt isoliert. Die Encoder-Signalleitungen (gelb) muessen an D6 (links) und D7 (rechts) angeschlossen sein.
-- **4S LiFePO4 Akkupack**: Der Akku liefert 12,8 V nominal (Bereich 12,8-14,6 V) und versorgt ueber einen Buck-Converter den Raspberry Pi mit 5 V sowie den Motortreiber direkt mit 12 V.
+- **3S1P Lithium-Ionen Samsung INR18650-35E 3500 mAh 8A Akkupack**: Akku Ladeschlussspannung 12,6 V und Entladeschlussspannung 7,95 V (Bereich 10,8 - 11,1 V) und versorgt ueber einen Buck-Converter den Raspberry Pi mit 5 V sowie den Motortreiber direkt mit 12 V.
 - **USB-C-Datenkabel**: Wichtig ist, dass das Kabel Datenleitungen besitzt. Reine Ladekabel (2-adrig) koennen den ESP32 zwar mit Strom versorgen, erlauben aber keinen Firmware-Upload und keine serielle Kommunikation.
 
 **Hardware-Checkliste (Kurzfassung):**
@@ -52,12 +52,12 @@ Vor dem Fortfahren sollte die interaktive Hardware-Checkliste `pre_flight_check.
 
 ### 1.2 PlatformIO-Projekt konfigurieren
 
-Das PlatformIO-Projekt befindet sich im Verzeichnis `technische_umsetzung/esp32_amr_firmware/`. Die zentrale Konfigurationsdatei `platformio.ini` definiert Board, Framework, Build-Flags und Abhaengigkeiten.
+Das PlatformIO-Projekt befindet sich im Verzeichnis `amr/esp32_amr_firmware/`. Die zentrale Konfigurationsdatei `platformio.ini` definiert Board, Framework, Build-Flags und Abhaengigkeiten.
 
 **Verzeichnisstruktur:**
 
 ```text
-technische_umsetzung/esp32_amr_firmware/
+amr/esp32_amr_firmware/
   platformio.ini              # Build-Konfiguration
   src/
     main.cpp                  # FreeRTOS-Tasks, micro-ROS, Safety
@@ -110,7 +110,7 @@ Der erste Schritt der Inbetriebnahme ist die erfolgreiche Kompilierung und der U
 **Firmware kompilieren:**
 
 ```bash
-cd technische_umsetzung/esp32_amr_firmware/
+cd amr/esp32_amr_firmware/
 pio run
 ```
 
@@ -201,14 +201,14 @@ Vor der Encoder-Validierung sollte die interaktive Hardware-Checkliste durchgefu
 
 ```bash
 # Auf dem Raspberry Pi ausfuehren (kein ROS2 erforderlich)
-cd technische_umsetzung/scripts/
+cd amr/scripts/
 python3 pre_flight_check.py
 ```
 
 Das Skript fuehrt durch sechs Pruefkategorien:
 
 1. USB-Enumeration (`/dev/ttyACM*` automatisch gesucht)
-2. Spannungsversorgung (interaktive Messwert-Eingabe fuer 4S LiFePO4, Buck-Converter, MDD3A, ESP32 3,3 V)
+2. Spannungsversorgung (interaktive Messwert-Eingabe fuer 3S1P Lithium-Ionen Samsung INR18650-35E 3500 mAh 8A, Buck-Converter, MDD3A, ESP32 3,3 V)
 3. Pin-Belegung (visuelle Inspektion gegen `config.h`)
 4. Firmware-Upload und Boot-Meldung
 5. micro-ROS-Verbindung (optional, falls Agent laeuft)
@@ -252,7 +252,7 @@ Nach der Kalibrierung muessen die gemessenen Werte in `hardware/config.h` einget
 Nach der Aenderung muss die Firmware neu kompiliert und geflasht werden:
 
 ```bash
-cd technische_umsetzung/esp32_amr_firmware/
+cd amr/esp32_amr_firmware/
 pio run -t upload
 ```
 
@@ -379,7 +379,7 @@ rosdep update
 
 ### 2.2 ROS2-Paket my_bot vervollstaendigen
 
-Das ROS2-Paket `my_bot` liegt unter `technische_umsetzung/pi5/ros2_ws/src/my_bot/`. Im Repository befinden sich bereits die funktionalen Dateien (Launch-File, YAML-Konfigurationen, Python-Skripte), jedoch fehlen die fuer `colcon build` zwingend erforderlichen Paket-Metadateien. Ohne diese Dateien erkennt `colcon` das Verzeichnis nicht als gueltiges ROS2-Paket.
+Das ROS2-Paket `my_bot` liegt unter `amr/pi5/ros2_ws/src/my_bot/`. Im Repository befinden sich bereits die funktionalen Dateien (Launch-File, YAML-Konfigurationen, Python-Skripte), jedoch fehlen die fuer `colcon build` zwingend erforderlichen Paket-Metadateien. Ohne diese Dateien erkennt `colcon` das Verzeichnis nicht als gueltiges ROS2-Paket.
 
 Die folgenden vier Dateien muessen erstellt werden.
 
@@ -499,15 +499,15 @@ Zwei weitere Dateien werden benoetigt:
 Die Datei `resource/my_bot` ist eine leere Marker-Datei fuer den ament Resource Index. Ohne diese Datei kann `ros2 pkg list` das Paket nicht finden:
 
 ```bash
-mkdir -p technische_umsetzung/pi5/ros2_ws/src/my_bot/resource
-touch technische_umsetzung/pi5/ros2_ws/src/my_bot/resource/my_bot
+mkdir -p amr/pi5/ros2_ws/src/my_bot/resource
+touch amr/pi5/ros2_ws/src/my_bot/resource/my_bot
 ```
 
 Die Datei `my_bot/__init__.py` macht das Verzeichnis zu einem Python-Paket. Auch diese Datei bleibt leer:
 
 ```bash
-mkdir -p technische_umsetzung/pi5/ros2_ws/src/my_bot/my_bot
-touch technische_umsetzung/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
+mkdir -p amr/pi5/ros2_ws/src/my_bot/my_bot
+touch amr/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
 ```
 
 #### 2.2.5 Skripte verlinken
@@ -515,7 +515,7 @@ touch technische_umsetzung/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
 Die Python-Skripte liegen im `scripts/`-Verzeichnis, muessen aber als Modul im `my_bot/`-Paketverzeichnis erreichbar sein. Dafuer werden symbolische Links erstellt:
 
 ```bash
-cd technische_umsetzung/pi5/ros2_ws/src/my_bot/my_bot/
+cd amr/pi5/ros2_ws/src/my_bot/my_bot/
 ln -s ../scripts/aruco_docking.py aruco_docking.py
 ln -s ../scripts/encoder_test.py encoder_test.py
 ln -s ../scripts/motor_test.py motor_test.py
@@ -531,7 +531,7 @@ Alternativ koennen die Skripte auch direkt in das `my_bot/`-Verzeichnis kopiert 
 Nach dem Erstellen aller Dateien sollte die Verzeichnisstruktur wie folgt aussehen:
 
 ```text
-technische_umsetzung/pi5/ros2_ws/src/my_bot/
+amr/pi5/ros2_ws/src/my_bot/
   package.xml
   setup.py
   setup.cfg
@@ -559,7 +559,7 @@ technische_umsetzung/pi5/ros2_ws/src/my_bot/
 Der ROS2-Workspace wird mit `colcon` gebaut. Es empfiehlt sich, nur das eigene Paket zu bauen, um Bauzeit zu sparen:
 
 ```bash
-cd technische_umsetzung/pi5/ros2_ws/
+cd amr/pi5/ros2_ws/
 colcon build --packages-select my_bot --symlink-install
 ```
 
@@ -856,11 +856,11 @@ Falls das Geraet weiterhin nicht erscheint, den ESP32 in den Bootloader-Modus ve
 **Loesung:** Sicherstellen, dass alle vier Paketdateien vorhanden sind (`package.xml`, `setup.py`, `setup.cfg`, `resource/my_bot`). Die Verzeichnisstruktur pruefen:
 
 ```bash
-ls technische_umsetzung/pi5/ros2_ws/src/my_bot/package.xml
-ls technische_umsetzung/pi5/ros2_ws/src/my_bot/setup.py
-ls technische_umsetzung/pi5/ros2_ws/src/my_bot/setup.cfg
-ls technische_umsetzung/pi5/ros2_ws/src/my_bot/resource/my_bot
-ls technische_umsetzung/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
+ls amr/pi5/ros2_ws/src/my_bot/package.xml
+ls amr/pi5/ros2_ws/src/my_bot/setup.py
+ls amr/pi5/ros2_ws/src/my_bot/setup.cfg
+ls amr/pi5/ros2_ws/src/my_bot/resource/my_bot
+ls amr/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
 ```
 
 Falls `SetuptoolsDeprecationWarning` erscheint, eine kompatible Version installieren:
@@ -1088,7 +1088,7 @@ Zusaetzlich zum cmd_vel-Failsafe ueberwacht Core 0 in `loop()` (Zeilen 163-174) 
 
 ### 3.5 Full-Stack Launch
 
-Das kombinierte Launch-File `full_stack.launch.py` startet alle Komponenten des ROS2-Stacks in einem einzigen Befehl. Es befindet sich unter `technische_umsetzung/pi5/ros2_ws/src/my_bot/launch/` und startet vier Subsysteme: micro-ROS Agent, SLAM Toolbox, Nav2 Navigation Stack und RViz2.
+Das kombinierte Launch-File `full_stack.launch.py` startet alle Komponenten des ROS2-Stacks in einem einzigen Befehl. Es befindet sich unter `amr/pi5/ros2_ws/src/my_bot/launch/` und startet vier Subsysteme: micro-ROS Agent, SLAM Toolbox, Nav2 Navigation Stack und RViz2.
 
 Der Standard-Start mit allen Komponenten:
 
@@ -1285,7 +1285,7 @@ Der Roboter faehrt einen vollstaendigen Kreis mit v = 0,2 m/s und omega = 0,5 ra
 
 #### JSON-Ausgabe
 
-Die Ergebnisse werden automatisch in `technische_umsetzung/scripts/kinematik_ergebnis.json` gespeichert. Beispiel fuer eine erfolgreiche Messung:
+Die Ergebnisse werden automatisch in `amr/scripts/kinematik_ergebnis.json` gespeichert. Beispiel fuer eine erfolgreiche Messung:
 
 ```text
 Kinematik-Verifikationstest
@@ -1349,13 +1349,13 @@ Dabei sind die Werte (x, y) in Millimetern angegeben -- positive x-Werte bedeute
 Das Auswertungsskript berechnet die Korrekturfaktoren:
 
 ```bash
-python3 technische_umsetzung/scripts/umbmark_analysis.py daten.json
+python3 amr/scripts/umbmark_analysis.py daten.json
 ```
 
 Oder interaktiv (die Werte werden manuell eingegeben):
 
 ```bash
-python3 technische_umsetzung/scripts/umbmark_analysis.py
+python3 amr/scripts/umbmark_analysis.py
 ```
 
 Das Skript fuehrt folgende Berechnungen durch (nach Borenstein 1996, Gl. 5.9-5.15):
@@ -1380,7 +1380,7 @@ Das Skript gibt fertige config.h-Definitionen aus:
 Diese Werte muessen in `hardware/config.h` eingetragen werden. Danach die Firmware neu kompilieren und flashen:
 
 ```bash
-cd technische_umsetzung/esp32_amr_firmware
+cd amr/esp32_amr_firmware
 pio run -t upload
 ```
 
@@ -1392,7 +1392,7 @@ Das Skript erzeugt zusaetzlich einen Scatterplot (`umbmark_ergebnis.png`) und ei
 
 ### 4.3 PID-Re-Tuning (Phase 6)
 
-Die PID-Regelung steuert die Radgeschwindigkeiten des Roboters. Nach der UMBmark-Kalibrierung oder bei Aenderungen an der Mechanik (Untergrund, Zuladung) kann ein Re-Tuning erforderlich sein. Die aktuellen PID-Werte sind in `technische_umsetzung/esp32_amr_firmware/src/main.cpp` hardcoded:
+Die PID-Regelung steuert die Radgeschwindigkeiten des Roboters. Nach der UMBmark-Kalibrierung oder bei Aenderungen an der Mechanik (Untergrund, Zuladung) kann ein Re-Tuning erforderlich sein. Die aktuellen PID-Werte sind in `amr/esp32_amr_firmware/src/main.cpp` hardcoded:
 
 - Kp = 1,5 (Proportionalanteil)
 - Ki = 0,5 (Integralanteil)
@@ -1416,12 +1416,12 @@ ros2 run my_bot pid_tuning.py bag /pfad/zur/rosbag
 
 Das Skript berechnet vier Kenngroessen und bewertet sie gegen die Akzeptanzkriterien:
 
-| Kenngroesse | Akzeptanzgrenze | Bedeutung |
-|---|---|---|
-| Anstiegszeit (10%-90%) | < 500 ms | Zeit bis der Ist-Wert 90% des Sollwerts erreicht |
-| Ueberschwingen | < 15 % | Maximale Abweichung ueber den Sollwert |
-| Einschwingzeit (+/- 5%) | < 1,0 s | Zeit bis der Ist-Wert dauerhaft innerhalb 5% des Sollwerts bleibt |
-| Stationaerer Regelfehler | < 5 % | Verbleibende Abweichung im eingeschwungenen Zustand |
+| Kenngroesse              | Akzeptanzgrenze | Bedeutung                                                         |
+|--------------------------|-----------------|-------------------------------------------------------------------|
+| Anstiegszeit (10%-90%)   | < 500 ms        | Zeit bis der Ist-Wert 90% des Sollwerts erreicht                  |
+| Ueberschwingen           | < 15 %          | Maximale Abweichung ueber den Sollwert                            |
+| Einschwingzeit (+/- 5%)  | < 1,0 s         | Zeit bis der Ist-Wert dauerhaft innerhalb 5% des Sollwerts bleibt |
+| Stationaerer Regelfehler | < 5 %           | Verbleibende Abweichung im eingeschwungenen Zustand               |
 
 Zusaetzlich erkennt das Skript Oszillationen (mehr als 6 Nulldurchgaenge um den Sollwert) und gibt gezielte Tuning-Empfehlungen aus.
 
@@ -1434,12 +1434,12 @@ PID-Sprungantwort-Analyse
 
 ### Kenngroessen der Sprungantwort
 
-| Kenngroesse               | Wert          | Akzeptanz     | Bewertung |
-|:-------------------------|:--------------|:--------------|:----------|
-| Anstiegszeit (10%-90%)   | 0.312 s       | < 0.5 s       | OK        |
-| Ueberschwingen           | 8.3 %         | < 15 %        | OK        |
-| Einschwingzeit (+/-5%)   | 0.743 s       | < 1.0 s       | OK        |
-| Stationaerer Fehler      | 2.1 %         | < 5 %         | OK        |
+| Kenngroesse            | Wert    | Akzeptanz | Bewertung |
+|:-----------------------|:--------|:----------|:----------|
+| Anstiegszeit (10%-90%) | 0.312 s | < 0.5 s   | OK        |
+| Ueberschwingen         | 8.3 %   | < 15 %    | OK        |
+| Einschwingzeit (+/-5%) | 0.743 s | < 1.0 s   | OK        |
+| Stationaerer Fehler    | 2.1 %   | < 5 %     | OK        |
 
 ### Tuning-Empfehlungen
 
@@ -1451,7 +1451,7 @@ Aktuelle PID-Werte: Kp = 1.5, Ki = 0.5, Kd = 0.0
 
 #### PID-Werte anpassen
 
-Falls die Kenngroessen ausserhalb der Akzeptanzgrenzen liegen, muessen die PID-Werte in `technische_umsetzung/esp32_amr_firmware/src/main.cpp` angepasst werden. Die Datei enthaelt die Zeilen:
+Falls die Kenngroessen ausserhalb der Akzeptanzgrenzen liegen, muessen die PID-Werte in `amr/esp32_amr_firmware/src/main.cpp` angepasst werden. Die Datei enthaelt die Zeilen:
 
 ```cpp
 PIDController pid_left(1.5, 0.5, 0.0);   // Kp, Ki, Kd
@@ -1612,15 +1612,15 @@ DOCKING-VALIDIERUNG: ERGEBNISSE
 
 | Versuch | Erfolg | Dauer [s] | Lat. Versatz [px] | Orient. [deg] |
 |---------|--------|-----------|-------------------|---------------|
-|       1 |     Ja |      12.3 |              -3.2 |          -1.4 |
-|       2 |     Ja |      10.8 |               2.1 |           0.8 |
-|     ... |    ... |       ... |               ... |           ... |
+| 1       | Ja     | 12.3      | -3.2              | -1.4          |
+| 2       | Ja     | 10.8      | 2.1               | 0.8           |
+| ...     | ...    | ...       | ...               | ...           |
 
 Erfolgsquote: 9/10 (90%)
 Erfolgsquote >= 80%: PASS
 ```
 
-Die Ergebnisse werden in `technische_umsetzung/scripts/docking_results.json` gespeichert.
+Die Ergebnisse werden in `amr/scripts/docking_results.json` gespeichert.
 
 ---
 
@@ -1629,36 +1629,36 @@ Die Ergebnisse werden in `technische_umsetzung/scripts/docking_results.json` ges
 Nach Abschluss aller Validierungsphasen aggregiert das Report-Skript alle JSON-Ergebnisse zu einem Gesamt-Validierungsbericht. Das Skript ist ein Standalone-Python-Programm ohne ROS2-Abhaengigkeit.
 
 ```bash
-python3 technische_umsetzung/scripts/validation_report.py
+python3 amr/scripts/validation_report.py
 ```
 
 Optional kann ein anderes Verzeichnis fuer die JSON-Dateien angegeben werden:
 
 ```bash
-python3 technische_umsetzung/scripts/validation_report.py /pfad/zu/ergebnissen/
+python3 amr/scripts/validation_report.py /pfad/zu/ergebnissen/
 ```
 
 #### Erwartete JSON-Dateien
 
 Das Skript sucht nach folgenden Dateien im angegebenen Verzeichnis:
 
-| Datei | Testbereich |
-|---|---|
-| `encoder_results.json` | Encoder-Ticks/Rev, Odom-Rate, Paketverlust |
-| `motor_results.json` | Deadzone, Failsafe |
-| `umbmark_results.json` | UMBmark-Fehlerreduktion |
-| `pid_results.json` | Anstiegszeit, Ueberschwingen |
-| `kinematic_results.json` | Kinematik-Verifikation |
-| `slam_results.json` | ATE |
-| `nav_results.json` | xy-Genauigkeit, Gier-Genauigkeit, CPU-Auslastung |
-| `docking_results.json` | Erfolgsquote, lateraler Versatz |
+| Datei                    | Testbereich                                      |
+|--------------------------|--------------------------------------------------|
+| `encoder_results.json`   | Encoder-Ticks/Rev, Odom-Rate, Paketverlust       |
+| `motor_results.json`     | Deadzone, Failsafe                               |
+| `umbmark_results.json`   | UMBmark-Fehlerreduktion                          |
+| `pid_results.json`       | Anstiegszeit, Ueberschwingen                     |
+| `kinematic_results.json` | Kinematik-Verifikation                           |
+| `slam_results.json`      | ATE                                              |
+| `nav_results.json`       | xy-Genauigkeit, Gier-Genauigkeit, CPU-Auslastung |
+| `docking_results.json`   | Erfolgsquote, lateraler Versatz                  |
 
 Fehlende Dateien werden als "AUSSTEHEND" markiert, nicht als Fehler gewertet.
 
 #### Beispielausgabe
 
 ```text
-Ergebnis-Verzeichnis: technische_umsetzung/scripts
+Ergebnis-Verzeichnis: amr/scripts
 Suche JSON-Dateien...
 
   encoder_results.json               gefunden
@@ -1684,12 +1684,12 @@ Ausstehend: 1
 
 ## Detailergebnisse
 
-| Testbereich | Kriterium | Anforderung | Ergebnis | Status |
-|-------------|-----------|-------------|----------|--------|
-| Encoder     | Ticks/Rev | 370-380     | 374.3    | PASS   |
-| Motor       | Deadzone  | 30-40       | 35       | PASS   |
-| PID         | Anstiegszeit | < 500 ms | 312      | PASS   |
-| ...         | ...       | ...         | ...      | ...    |
+| Testbereich | Kriterium    | Anforderung | Ergebnis | Status |
+|-------------|--------------|-------------|----------|--------|
+| Encoder     | Ticks/Rev    | 370-380     | 374.3    | PASS   |
+| Motor       | Deadzone     | 30-40       | 35       | PASS   |
+| PID         | Anstiegszeit | < 500 ms    | 312      | PASS   |
+| ...         | ...          | ...         | ...      | ...    |
 
 ## Forschungsfragen-Zuordnung
 
@@ -1737,7 +1737,7 @@ Der Report wird als `validation_report_YYYYMMDD.md` im Skript-Verzeichnis gespei
 **Loesung:** (1) Kamera-Topic pruefen: `ros2 topic echo /camera/image_raw --once` -- kommt ein Bild? (2) Beleuchtung: ArUco-Marker braucht gleichmaessige Beleuchtung, kein Gegenlicht. (3) Marker-ID pruefen: Das Skript sucht nach ID 42 aus dem 4x4_50-Dictionary. (4) OpenCV-Version: `python3 -c "import cv2; print(cv2.__version__)"` muss >= 4.7 sein fuer die `ArucoDetector`-API.
 
 **Problem:** `validation_report.py` zeigt alle Kriterien als "AUSSTEHEND".
-**Loesung:** Die JSON-Ergebnisdateien liegen nicht im erwarteten Verzeichnis. Standardmaessig sucht das Skript im eigenen Verzeichnis (`technische_umsetzung/scripts/`). Pruefen ob die Dateinamen exakt uebereinstimmen (z.B. `docking_results.json`, nicht `docking_ergebnis.json`).
+**Loesung:** Die JSON-Ergebnisdateien liegen nicht im erwarteten Verzeichnis. Standardmaessig sucht das Skript im eigenen Verzeichnis (`amr/scripts/`). Pruefen ob die Dateinamen exakt uebereinstimmen (z.B. `docking_results.json`, nicht `docking_ergebnis.json`).
 
 ---
 
@@ -1745,46 +1745,46 @@ Der Report wird als `validation_report_YYYYMMDD.md` im Skript-Verzeichnis gespei
 
 Die folgende Tabelle fasst alle Akzeptanzkriterien des Validierungsplans zusammen. Die Kriterien basieren auf dem V-Modell-Phasenplan (siehe `hardware/docs/08_validierungsplan.md`) und den Anforderungen der Bachelorarbeit.
 
-| Nr. | Phase | Testbereich | Kriterium | Schwellwert | Messmethode |
-|---|---|---|---|---|---|
-| AK-01 | 2 | Encoder | Wiederholgenauigkeit Ticks/Rev | Abweichung zwischen Durchgaengen < 2 Ticks/Rev | 10-Umdrehungen-Test (encoder_test.py), 3x wiederholen |
-| AK-02 | 2 | Encoder | Ticks/Rev im Sollbereich | 370-380 Ticks/Rev (A-only Hall) | 10-Umdrehungen-Test, Mittelwert aus 3 Durchgaengen |
-| AK-03 | 2 | Encoder | Links/Rechts-Asymmetrie | < 5 % | Identischer PWM-Wert, 10 s Laufzeit, Tick-Vergleich |
-| AK-04 | 3 | Motor | PWM-Deadzone | Anlauf-PWM im Bereich 30-40 | motor_test.py, schrittweise PWM-Erhoehung |
-| AK-05 | 3 | Motor | Failsafe-Timeout | Motoren stoppen innerhalb 500 ms ohne cmd_vel | cmd_vel unterbrechen, Stoppzeit messen |
-| AK-06 | 4 | Kinematik | Geradeausfahrt Streckenabweichung | < 5 % auf 1 m | kinematic_test.py, Geradeausfahrt-Test |
-| AK-07 | 4 | Kinematik | Geradeausfahrt laterale Drift | < 5 cm auf 1 m | kinematic_test.py, Geradeausfahrt-Test |
-| AK-08 | 4 | Kinematik | 90-Grad-Drehung Winkelabweichung | < 5 Grad | kinematic_test.py, 5x CW + 5x CCW |
-| AK-09 | 5 | UMBmark | Fehlerreduktion nach Kalibrierung | Faktor >= 10 | umbmark_analysis.py, Vergleich vor/nach |
-| AK-10 | 6 | PID | Anstiegszeit (10%-90%) | < 500 ms | pid_tuning.py, Sprungantwort 0 -> 0,4 m/s |
-| AK-11 | 6 | PID | Ueberschwingen | < 15 % | pid_tuning.py, Sprungantwort-Analyse |
-| AK-12 | 6 | PID | Einschwingzeit (+/- 5%) | < 1,0 s | pid_tuning.py, Sprungantwort-Analyse |
-| AK-13 | 6 | PID | Stationaerer Regelfehler | < 5 % | pid_tuning.py, letzte 20% der Messdaten |
-| AK-14 | 7 | micro-ROS | Odometrie-Publikationsrate | 20 Hz +/- 2 Hz | ros2 topic hz /odom, 5 min Messung |
-| AK-15 | 7 | micro-ROS | Paketverlust | < 0,1 % | ros2 topic hz /odom -w 1000, 60 s Messung |
-| AK-16 | 8 | SLAM | Absolute Trajectory Error (ATE) | < 0,20 m (RMSE) | slam_validation.py, Live-Modus 120 s |
-| AK-17 | 8 | Navigation | Positionsfehler xy | < 10 cm | nav_test.py, 4-Waypoint-Parcours |
-| AK-18 | 8 | Navigation | Orientierungsfehler Gier | < 8 Grad (0,15 rad) | nav_test.py, 4-Waypoint-Parcours |
-| AK-19 | 9 | Docking | Erfolgsquote | >= 80 % (8/10 Versuche) | docking_test.py, 10 Versuche |
+| Nr.   | Phase | Testbereich | Kriterium                         | Schwellwert                                    | Messmethode                                           |
+|-------|-------|-------------|-----------------------------------|------------------------------------------------|-------------------------------------------------------|
+| AK-01 | 2     | Encoder     | Wiederholgenauigkeit Ticks/Rev    | Abweichung zwischen Durchgaengen < 2 Ticks/Rev | 10-Umdrehungen-Test (encoder_test.py), 3x wiederholen |
+| AK-02 | 2     | Encoder     | Ticks/Rev im Sollbereich          | 370-380 Ticks/Rev (A-only Hall)                | 10-Umdrehungen-Test, Mittelwert aus 3 Durchgaengen    |
+| AK-03 | 2     | Encoder     | Links/Rechts-Asymmetrie           | < 5 %                                          | Identischer PWM-Wert, 10 s Laufzeit, Tick-Vergleich   |
+| AK-04 | 3     | Motor       | PWM-Deadzone                      | Anlauf-PWM im Bereich 30-40                    | motor_test.py, schrittweise PWM-Erhoehung             |
+| AK-05 | 3     | Motor       | Failsafe-Timeout                  | Motoren stoppen innerhalb 500 ms ohne cmd_vel  | cmd_vel unterbrechen, Stoppzeit messen                |
+| AK-06 | 4     | Kinematik   | Geradeausfahrt Streckenabweichung | < 5 % auf 1 m                                  | kinematic_test.py, Geradeausfahrt-Test                |
+| AK-07 | 4     | Kinematik   | Geradeausfahrt laterale Drift     | < 5 cm auf 1 m                                 | kinematic_test.py, Geradeausfahrt-Test                |
+| AK-08 | 4     | Kinematik   | 90-Grad-Drehung Winkelabweichung  | < 5 Grad                                       | kinematic_test.py, 5x CW + 5x CCW                     |
+| AK-09 | 5     | UMBmark     | Fehlerreduktion nach Kalibrierung | Faktor >= 10                                   | umbmark_analysis.py, Vergleich vor/nach               |
+| AK-10 | 6     | PID         | Anstiegszeit (10%-90%)            | < 500 ms                                       | pid_tuning.py, Sprungantwort 0 -> 0,4 m/s             |
+| AK-11 | 6     | PID         | Ueberschwingen                    | < 15 %                                         | pid_tuning.py, Sprungantwort-Analyse                  |
+| AK-12 | 6     | PID         | Einschwingzeit (+/- 5%)           | < 1,0 s                                        | pid_tuning.py, Sprungantwort-Analyse                  |
+| AK-13 | 6     | PID         | Stationaerer Regelfehler          | < 5 %                                          | pid_tuning.py, letzte 20% der Messdaten               |
+| AK-14 | 7     | micro-ROS   | Odometrie-Publikationsrate        | 20 Hz +/- 2 Hz                                 | ros2 topic hz /odom, 5 min Messung                    |
+| AK-15 | 7     | micro-ROS   | Paketverlust                      | < 0,1 %                                        | ros2 topic hz /odom -w 1000, 60 s Messung             |
+| AK-16 | 8     | SLAM        | Absolute Trajectory Error (ATE)   | < 0,20 m (RMSE)                                | slam_validation.py, Live-Modus 120 s                  |
+| AK-17 | 8     | Navigation  | Positionsfehler xy                | < 10 cm                                        | nav_test.py, 4-Waypoint-Parcours                      |
+| AK-18 | 8     | Navigation  | Orientierungsfehler Gier          | < 8 Grad (0,15 rad)                            | nav_test.py, 4-Waypoint-Parcours                      |
+| AK-19 | 9     | Docking     | Erfolgsquote                      | >= 80 % (8/10 Versuche)                        | docking_test.py, 10 Versuche                          |
 
 ---
 
 ## Anhang B: Referenztabelle Validierungsskripte
 
-Die folgende Tabelle listet alle 10 Validierungsskripte des Projekts mit ihren zugehoerigen Validierungsphasen, Abhaengigkeiten und Akzeptanzkriterien. Die Skripte befinden sich im Verzeichnis `technische_umsetzung/scripts/` und sind im V-Modell-Validierungsplan (`hardware/docs/08_validierungsplan.md`) dokumentiert. Die Phasen muessen sequentiell abgearbeitet werden, da jeder Testbereich auf den vorherigen aufbaut.
+Die folgende Tabelle listet alle 10 Validierungsskripte des Projekts mit ihren zugehoerigen Validierungsphasen, Abhaengigkeiten und Akzeptanzkriterien. Die Skripte befinden sich im Verzeichnis `amr/scripts/` und sind im V-Modell-Validierungsplan (`hardware/docs/08_validierungsplan.md`) dokumentiert. Die Phasen muessen sequentiell abgearbeitet werden, da jeder Testbereich auf den vorherigen aufbaut.
 
-| Skript | Phase | ROS2 noetig | Aufruf | Beschreibung | Akzeptanzkriterium |
-|---|---|---|---|---|---|
-| `pre_flight_check.py` | 1 (Pre-Flash) | Nein | `python3 pre_flight_check.py` | Interaktive Hardware-Checkliste: USB-Enumeration, Spannungsversorgung (4S LiFePO4, Buck-Converter 5.1 V), Pin-Belegung gegen config.h, Firmware-Upload, Sensor-Erkennung (RPLIDAR, Kamera). Erzeugt Markdown-Protokoll mit PASS/FAIL/SKIP pro Pruefpunkt. | Alle Checks bestanden (0 FAIL) |
-| `encoder_test.py` | 2 (Encoder) | Ja | `ros2 run my_bot encoder_test.py` | ROS2-Node mit 4 Modi: (1) 10-Umdrehungen-Test zur TICKS_PER_REV-Bestimmung (3 Durchgaenge pro Rad), (2) Richtungstest (Vorzeichenkonvention), (3) Asymmetrie-Test (Links vs. Rechts), (4) Live-Anzeige. Subscribt /odom und rechnet Encoder-Ticks zurueck. Gibt empfohlene config.h-Werte und JSON-Protokoll aus. | Ticks/Rev: 370-380, Reproduzierbarkeit < 2 Ticks zwischen Durchgaengen, Asymmetrie < 5 % |
-| `motor_test.py` | 3 (Motoren) | Ja | `ros2 run my_bot motor_test.py` | ROS2-Node mit 4 Modi: (a) Deadzone-Test (cmd_vel 0.0-0.2 in 0.01-Schritten), (b) Richtungstest (Einzelrad-Ansteuerung ueber Differentialkinematik), (c) Failsafe-Test (misst Timeout nach cmd_vel-Stopp, erwartet ~500 ms), (d) Rampen-Test (0 auf 0.4 m/s in 5 s). Publiziert /cmd_vel, subscribt /odom. Notaus per Ctrl+C. JSON- und Markdown-Export. | Deadzone 30-40, Failsafe 500 ms +/- 200 ms, Tracking-Error < 50 mm/s bei Zielgeschwindigkeit |
-| `pid_tuning.py` | 4 (PID) | Ja (Live) / Nein (Rosbag) | `ros2 run my_bot pid_tuning.py live` oder `python3 pid_tuning.py bag /pfad/rosbag` | PID-Sprungantwort-Analyse: Sendet Sprung von 0 auf 0.4 m/s, zeichnet /odom 10 s auf. Berechnet Anstiegszeit (10%-90%), Ueberschwingen, Einschwingzeit (+/- 5%), stationaeren Regelfehler. Gibt Tuning-Empfehlungen und Matplotlib-Plot (pid_sprungantwort.png) aus. Erkennt Oszillationen ueber Nulldurchgangs-Analyse. | Anstiegszeit < 500 ms, Ueberschwingen < 15 %, Einschwingzeit < 1 s, Regelfehler < 5 % |
-| `kinematic_test.py` | 4 (Kinematik) | Ja | `ros2 run my_bot kinematic_test.py` | ROS2-Node mit 3 Tests: (a) Geradeausfahrt 1 m (v=0.2 m/s, 5 s), (b) 90-Grad-Drehung (5x CW, 5x CCW, omega=pi/2 rad/s), (c) Kreisfahrt (v=0.2 m/s, omega=0.5 rad/s, R=0.4 m). Berechnet Strecken- und Winkelabweichungen in lokalen Koordinaten. JSON- und Markdown-Export. Einzelne Tests per Argument auswaehlbar (gerade/drehung/kreis). | Streckenabweichung < 5 %, laterale Drift < 5 cm, Winkelabweichung < 5 Grad, CW/CCW-Asymmetrie < 3 Grad |
-| `umbmark_analysis.py` | 5 (UMBmark) | Nein | `python3 umbmark_analysis.py` oder `python3 umbmark_analysis.py data.json` | Standalone UMBmark-Auswertung nach Borenstein & Feng 1996 (Gl. 5.9-5.15): Eingabe von 5x CW und 5x CCW Endpositionen (x,y in mm) nach 4x4 m Quadratfahrt. Berechnet Schwerpunkte, Fehlerwinkel alpha/beta, Korrekturfaktoren E_d (Raddurchmesser-Verhaeltnis) und E_b (Spurbreite-Korrektor), korrigierte WHEEL_BASE/WHEEL_RADIUS. Gibt Copy-Paste config.h-Werte und Scatterplot aus. | E_max,syst-Reduktion >= Faktor 10 nach Kalibrierung |
-| `slam_validation.py` | 6 (SLAM) | Ja | `ros2 run my_bot slam_validation.py --live --duration 120` oder `--bag /pfad/rosbag` | ATE-Berechnung (Absolute Trajectory Error) zwischen SLAM-korrigierter Pose (map->base_link via TF) und reiner Odometrie (/odom). TF-Ketten-Verifikation (map->odom->base_link->laser). Live-Modus: Subscribt /odom und TF fuer konfigurierbare Dauer. Erzeugt Markdown-Report, Trajektorien-Vergleichsplot und ATE-ueber-Zeit-Plot. | ATE (RMSE) < 0.20 m |
-| `nav_test.py` | 6 (Navigation) | Ja | `ros2 run my_bot nav_test.py` | Automatisierter Waypoint-Navigationstest: Sendet 4 Waypoints (2x2 m Rechteck) ueber Nav2 NavigateToPose Action-Server. Misst Positionsfehler (xy) und Orientierungsfehler (yaw) pro Waypoint. Configurable Timeout pro Waypoint (Standard: 60 s). Erzeugt Markdown-Report und JSON-Export mit Soll/Ist-Vergleich. | xy-Fehler < 10 cm, Gier-Fehler < 0.15 rad (~8.6 Grad) pro Waypoint |
-| `docking_test.py` | 6 (Docking) | Ja | `ros2 run my_bot docking_test.py` | 10-Versuch ArUco-Docking-Test: Interaktiver Ablauf -- Benutzer positioniert Roboter ~1.5 m vor Marker (ID 42, DICT_4X4_50), Skript steuert Suche/Annaeherung/Docking. Zustandsmaschine (SEARCHING->APPROACHING->DOCKED/TIMEOUT). Visual Servoing mit Kp-Regelung auf Marker-Zentrierung. 3 s Rueckwaertsfahrt nach jedem Versuch. Timeout 60 s pro Versuch. | Erfolgsquote >= 80 % (8/10 Versuche) |
-| `validation_report.py` | 9 (Report) | Nein | `python3 validation_report.py` oder `python3 validation_report.py /pfad/zu/ergebnissen/` | Gesamt-Validierungsbericht-Generator: Liest JSON-Ergebnisdateien aller vorherigen Tests, bewertet 14 Einzelkriterien gegen definierte Akzeptanzgrenzen, ordnet Ergebnisse den drei Forschungsfragen (FF1: Echtzeit, FF2: Praezision, FF3: Docking) zu. Gibt Markdown-Report mit PASS/FAIL/AUSSTEHEND-Status pro Kriterium und Gesamtbewertung aus. | Alle 14 Kriterien PASS, keine AUSSTEHEND |
+| Skript                 | Phase          | ROS2 noetig               | Aufruf                                                                                   | Beschreibung                                                                                                                                                                                                                                                                                                                                                                           | Akzeptanzkriterium                                                                                     |
+|------------------------|----------------|---------------------------|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `pre_flight_check.py`  | 1 (Pre-Flash)  | Nein                      | `python3 pre_flight_check.py`                                                            | Interaktive Hardware-Checkliste: USB-Enumeration, Spannungsversorgung (3S1P Lithium-Ionen Samsung INR18650-35E 3500 mAh 8A, Buck-Converter 5.1 V), Pin-Belegung gegen config.h, Firmware-Upload, Sensor-Erkennung (RPLIDAR, Kamera). Erzeugt Markdown-Protokoll mit PASS/FAIL/SKIP pro Pruefpunkt.                                                                                     | Alle Checks bestanden (0 FAIL)                                                                         |
+| `encoder_test.py`      | 2 (Encoder)    | Ja                        | `ros2 run my_bot encoder_test.py`                                                        | ROS2-Node mit 4 Modi: (1) 10-Umdrehungen-Test zur TICKS_PER_REV-Bestimmung (3 Durchgaenge pro Rad), (2) Richtungstest (Vorzeichenkonvention), (3) Asymmetrie-Test (Links vs. Rechts), (4) Live-Anzeige. Subscribt /odom und rechnet Encoder-Ticks zurueck. Gibt empfohlene config.h-Werte und JSON-Protokoll aus.                                                                      | Ticks/Rev: 370-380, Reproduzierbarkeit < 2 Ticks zwischen Durchgaengen, Asymmetrie < 5 %               |
+| `motor_test.py`        | 3 (Motoren)    | Ja                        | `ros2 run my_bot motor_test.py`                                                          | ROS2-Node mit 4 Modi: (a) Deadzone-Test (cmd_vel 0.0-0.2 in 0.01-Schritten), (b) Richtungstest (Einzelrad-Ansteuerung ueber Differentialkinematik), (c) Failsafe-Test (misst Timeout nach cmd_vel-Stopp, erwartet ~500 ms), (d) Rampen-Test (0 auf 0.4 m/s in 5 s). Publiziert /cmd_vel, subscribt /odom. Notaus per Ctrl+C. JSON- und Markdown-Export.                                | Deadzone 30-40, Failsafe 500 ms +/- 200 ms, Tracking-Error < 50 mm/s bei Zielgeschwindigkeit           |
+| `pid_tuning.py`        | 4 (PID)        | Ja (Live) / Nein (Rosbag) | `ros2 run my_bot pid_tuning.py live` oder `python3 pid_tuning.py bag /pfad/rosbag`       | PID-Sprungantwort-Analyse: Sendet Sprung von 0 auf 0.4 m/s, zeichnet /odom 10 s auf. Berechnet Anstiegszeit (10%-90%), Ueberschwingen, Einschwingzeit (+/- 5%), stationaeren Regelfehler. Gibt Tuning-Empfehlungen und Matplotlib-Plot (pid_sprungantwort.png) aus. Erkennt Oszillationen ueber Nulldurchgangs-Analyse.                                                                | Anstiegszeit < 500 ms, Ueberschwingen < 15 %, Einschwingzeit < 1 s, Regelfehler < 5 %                  |
+| `kinematic_test.py`    | 4 (Kinematik)  | Ja                        | `ros2 run my_bot kinematic_test.py`                                                      | ROS2-Node mit 3 Tests: (a) Geradeausfahrt 1 m (v=0.2 m/s, 5 s), (b) 90-Grad-Drehung (5x CW, 5x CCW, omega=pi/2 rad/s), (c) Kreisfahrt (v=0.2 m/s, omega=0.5 rad/s, R=0.4 m). Berechnet Strecken- und Winkelabweichungen in lokalen Koordinaten. JSON- und Markdown-Export. Einzelne Tests per Argument auswaehlbar (gerade/drehung/kreis).                                             | Streckenabweichung < 5 %, laterale Drift < 5 cm, Winkelabweichung < 5 Grad, CW/CCW-Asymmetrie < 3 Grad |
+| `umbmark_analysis.py`  | 5 (UMBmark)    | Nein                      | `python3 umbmark_analysis.py` oder `python3 umbmark_analysis.py data.json`               | Standalone UMBmark-Auswertung nach Borenstein & Feng 1996 (Gl. 5.9-5.15): Eingabe von 5x CW und 5x CCW Endpositionen (x,y in mm) nach 4x4 m Quadratfahrt. Berechnet Schwerpunkte, Fehlerwinkel alpha/beta, Korrekturfaktoren E_d (Raddurchmesser-Verhaeltnis) und E_b (Spurbreite-Korrektor), korrigierte WHEEL_BASE/WHEEL_RADIUS. Gibt Copy-Paste config.h-Werte und Scatterplot aus. | E_max,syst-Reduktion >= Faktor 10 nach Kalibrierung                                                    |
+| `slam_validation.py`   | 6 (SLAM)       | Ja                        | `ros2 run my_bot slam_validation.py --live --duration 120` oder `--bag /pfad/rosbag`     | ATE-Berechnung (Absolute Trajectory Error) zwischen SLAM-korrigierter Pose (map->base_link via TF) und reiner Odometrie (/odom). TF-Ketten-Verifikation (map->odom->base_link->laser). Live-Modus: Subscribt /odom und TF fuer konfigurierbare Dauer. Erzeugt Markdown-Report, Trajektorien-Vergleichsplot und ATE-ueber-Zeit-Plot.                                                    | ATE (RMSE) < 0.20 m                                                                                    |
+| `nav_test.py`          | 6 (Navigation) | Ja                        | `ros2 run my_bot nav_test.py`                                                            | Automatisierter Waypoint-Navigationstest: Sendet 4 Waypoints (2x2 m Rechteck) ueber Nav2 NavigateToPose Action-Server. Misst Positionsfehler (xy) und Orientierungsfehler (yaw) pro Waypoint. Configurable Timeout pro Waypoint (Standard: 60 s). Erzeugt Markdown-Report und JSON-Export mit Soll/Ist-Vergleich.                                                                      | xy-Fehler < 10 cm, Gier-Fehler < 0.15 rad (~8.6 Grad) pro Waypoint                                     |
+| `docking_test.py`      | 6 (Docking)    | Ja                        | `ros2 run my_bot docking_test.py`                                                        | 10-Versuch ArUco-Docking-Test: Interaktiver Ablauf -- Benutzer positioniert Roboter ~1.5 m vor Marker (ID 42, DICT_4X4_50), Skript steuert Suche/Annaeherung/Docking. Zustandsmaschine (SEARCHING->APPROACHING->DOCKED/TIMEOUT). Visual Servoing mit Kp-Regelung auf Marker-Zentrierung. 3 s Rueckwaertsfahrt nach jedem Versuch. Timeout 60 s pro Versuch.                            | Erfolgsquote >= 80 % (8/10 Versuche)                                                                   |
+| `validation_report.py` | 9 (Report)     | Nein                      | `python3 validation_report.py` oder `python3 validation_report.py /pfad/zu/ergebnissen/` | Gesamt-Validierungsbericht-Generator: Liest JSON-Ergebnisdateien aller vorherigen Tests, bewertet 14 Einzelkriterien gegen definierte Akzeptanzgrenzen, ordnet Ergebnisse den drei Forschungsfragen (FF1: Echtzeit, FF2: Praezision, FF3: Docking) zu. Gibt Markdown-Report mit PASS/FAIL/AUSSTEHEND-Status pro Kriterium und Gesamtbewertung aus.                                     | Alle 14 Kriterien PASS, keine AUSSTEHEND                                                               |
 
 ---
 
@@ -1794,47 +1794,47 @@ Die folgende Tabelle listet alle relevanten Dateien des AMR-Projekts mit ihren P
 
 ### C.1 ESP32 Firmware
 
-| Datei | Pfad | Beschreibung |
-|---|---|---|
-| main.cpp | `technische_umsetzung/esp32_amr_firmware/src/main.cpp` | FreeRTOS-Tasks (Core 0: micro-ROS, Core 1: PID 50 Hz), Subscriber/Publisher, Safety-Mechanismen (Failsafe, Watchdog) |
-| robot_hal.hpp | `technische_umsetzung/esp32_amr_firmware/src/robot_hal.hpp` | Hardware-Abstraktion: GPIO-Init, Encoder-ISR (A-only, IRAM_ATTR), PWM-Steuerung (Dual-PWM), Deadzone-Kompensation |
-| pid_controller.hpp | `technische_umsetzung/esp32_amr_firmware/src/pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang begrenzt auf [-1.0, 1.0] |
-| diff_drive_kinematics.hpp | `technische_umsetzung/esp32_amr_firmware/src/diff_drive_kinematics.hpp` | Vorwaerts- und Inverskinematik fuer Differentialantrieb, Odometrie-Update mit Winkel-Normalisierung |
-| platformio.ini | `technische_umsetzung/esp32_amr_firmware/platformio.ini` | Build-Konfiguration: Board, Framework, Build-Flags, micro-ROS-Bibliothek |
+| Datei                     | Pfad                                                   | Beschreibung                                                                                                         |
+|---------------------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| main.cpp                  | `amr/esp32_amr_firmware/src/main.cpp`                  | FreeRTOS-Tasks (Core 0: micro-ROS, Core 1: PID 50 Hz), Subscriber/Publisher, Safety-Mechanismen (Failsafe, Watchdog) |
+| robot_hal.hpp             | `amr/esp32_amr_firmware/src/robot_hal.hpp`             | Hardware-Abstraktion: GPIO-Init, Encoder-ISR (A-only, IRAM_ATTR), PWM-Steuerung (Dual-PWM), Deadzone-Kompensation    |
+| pid_controller.hpp        | `amr/esp32_amr_firmware/src/pid_controller.hpp`        | PID-Regler mit Anti-Windup, Ausgang begrenzt auf [-1.0, 1.0]                                                         |
+| diff_drive_kinematics.hpp | `amr/esp32_amr_firmware/src/diff_drive_kinematics.hpp` | Vorwaerts- und Inverskinematik fuer Differentialantrieb, Odometrie-Update mit Winkel-Normalisierung                  |
+| platformio.ini            | `amr/esp32_amr_firmware/platformio.ini`                | Build-Konfiguration: Board, Framework, Build-Flags, micro-ROS-Bibliothek                                             |
 
 ### C.2 Zentrale Konfiguration
 
-| Datei | Pfad | Beschreibung |
-|---|---|---|
+| Datei    | Pfad                | Beschreibung                                                                                                                                                                                                                              |
+|----------|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | config.h | `hardware/config.h` | Single Source of Truth: Pin-Mapping, kinematische Parameter (Raddurchmesser 65 mm, Spurbreite 178 mm), Encoder-Kalibrierung, PWM-Konfiguration (20 kHz, 8-bit), Safety-Timing (Failsafe 500 ms), Compile-Time-Validierung (static_assert) |
 
 ### C.3 Hardware-Dokumentation
 
-| Datei | Pfad | Beschreibung |
-|---|---|---|
-| hardware-setup.md | `hardware/hardware-setup.md` | Physischer Aufbau: Stromversorgung, Verkabelung, Pin-Mapping, Inbetriebnahme-Messpunkte |
+| Datei                  | Pfad                                   | Beschreibung                                                                                                                     |
+|------------------------|----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| hardware-setup.md      | `hardware/hardware-setup.md`           | Physischer Aufbau: Stromversorgung, Verkabelung, Pin-Mapping, Inbetriebnahme-Messpunkte                                          |
 | 08_validierungsplan.md | `hardware/docs/08_validierungsplan.md` | V-Modell Validierungsplan: Pre-Flash-Checkliste, Encoder-, Motor-, Kinematik-, UMBmark-, PID-, micro-ROS-Tests, Abnahmekriterien |
 
 ### C.4 ROS2-Paket (Raspberry Pi)
 
-| Datei | Pfad | Beschreibung |
-|---|---|---|
-| nav2_params.yaml | `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/nav2_params.yaml` | Nav2-Stack-Konfiguration: AMCL, Regulated Pure Pursuit Controller (0,4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors |
-| mapper_params_online_async.yaml | `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/mapper_params_online_async.yaml` | SLAM Toolbox: Ceres-Solver, 5 cm Aufloesung, Loop Closure |
-| full_stack.launch.py | `technische_umsetzung/pi5/ros2_ws/src/my_bot/launch/full_stack.launch.py` | Kombiniertes Launch-File: micro-ROS Agent + SLAM Toolbox + Nav2 + RViz2, konfigurierbar ueber Launch-Parameter (use_nav, use_rviz, use_slam, serial_port) |
-| aruco_docking.py | `technische_umsetzung/pi5/ros2_ws/src/my_bot/scripts/aruco_docking.py` | Visual Servoing mit ArUco-Markern (OpenCV cv2.aruco.ArucoDetector API >= 4.7) fuer mechanischen Ladekontakt |
+| Datei                           | Pfad                                                                | Beschreibung                                                                                                                                              |
+|---------------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| nav2_params.yaml                | `amr/pi5/ros2_ws/src/my_bot/config/nav2_params.yaml`                | Nav2-Stack-Konfiguration: AMCL, Regulated Pure Pursuit Controller (0,4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors                                   |
+| mapper_params_online_async.yaml | `amr/pi5/ros2_ws/src/my_bot/config/mapper_params_online_async.yaml` | SLAM Toolbox: Ceres-Solver, 5 cm Aufloesung, Loop Closure                                                                                                 |
+| full_stack.launch.py            | `amr/pi5/ros2_ws/src/my_bot/launch/full_stack.launch.py`            | Kombiniertes Launch-File: micro-ROS Agent + SLAM Toolbox + Nav2 + RViz2, konfigurierbar ueber Launch-Parameter (use_nav, use_rviz, use_slam, serial_port) |
+| aruco_docking.py                | `amr/pi5/ros2_ws/src/my_bot/scripts/aruco_docking.py`               | Visual Servoing mit ArUco-Markern (OpenCV cv2.aruco.ArucoDetector API >= 4.7) fuer mechanischen Ladekontakt                                               |
 
 ### C.5 Validierungsskripte
 
-| Datei | Pfad | ROS2 erforderlich | Beschreibung |
-|---|---|---|---|
-| pre_flight_check.py | `technische_umsetzung/scripts/pre_flight_check.py` | Nein | Interaktive Hardware-Checkliste: USB, Spannung, Pins, Firmware. Erzeugt Markdown-Protokoll |
-| encoder_test.py | `technische_umsetzung/scripts/encoder_test.py` | Ja | 10-Umdrehungen-Test, Richtungstest, Asymmetrie-Test, Live-Anzeige. Erzeugt JSON-Protokoll |
-| motor_test.py | `technische_umsetzung/scripts/motor_test.py` | Ja | Deadzone-, Richtungs-, Failsafe- und Rampen-Test. Erzeugt JSON + Markdown |
-| pid_tuning.py | `technische_umsetzung/scripts/pid_tuning.py` | Ja | PID-Sprungantwort-Analyse: Anstiegszeit, Ueberschwingen, Einschwingzeit |
-| kinematic_test.py | `technische_umsetzung/scripts/kinematic_test.py` | Ja | Geradeaus-, Dreh- und Kreisfahrt-Verifikation |
-| umbmark_analysis.py | `technische_umsetzung/scripts/umbmark_analysis.py` | Nein | UMBmark-Auswertung nach Borenstein (1996): Korrekturfaktoren E_d und E_b berechnen (Standalone, numpy/matplotlib) |
-| slam_validation.py | `technische_umsetzung/scripts/slam_validation.py` | Ja | Absolute Trajectory Error (ATE) und TF-Ketten-Pruefung |
-| nav_test.py | `technische_umsetzung/scripts/nav_test.py` | Ja | Waypoint-Navigation mit Positionsfehler-Messung (xy und Gier) |
-| docking_test.py | `technische_umsetzung/scripts/docking_test.py` | Ja | 10-Versuch ArUco-Docking-Test: Erfolgsquote, lateraler Versatz, Orientierungsfehler |
-| validation_report.py | `technische_umsetzung/scripts/validation_report.py` | Nein | Gesamt-Report aus JSON-Ergebnissen aller Validierungsskripte (Standalone) |
+| Datei                | Pfad                               | ROS2 erforderlich | Beschreibung                                                                                                      |
+|----------------------|------------------------------------|-------------------|-------------------------------------------------------------------------------------------------------------------|
+| pre_flight_check.py  | `amr/scripts/pre_flight_check.py`  | Nein              | Interaktive Hardware-Checkliste: USB, Spannung, Pins, Firmware. Erzeugt Markdown-Protokoll                        |
+| encoder_test.py      | `amr/scripts/encoder_test.py`      | Ja                | 10-Umdrehungen-Test, Richtungstest, Asymmetrie-Test, Live-Anzeige. Erzeugt JSON-Protokoll                         |
+| motor_test.py        | `amr/scripts/motor_test.py`        | Ja                | Deadzone-, Richtungs-, Failsafe- und Rampen-Test. Erzeugt JSON + Markdown                                         |
+| pid_tuning.py        | `amr/scripts/pid_tuning.py`        | Ja                | PID-Sprungantwort-Analyse: Anstiegszeit, Ueberschwingen, Einschwingzeit                                           |
+| kinematic_test.py    | `amr/scripts/kinematic_test.py`    | Ja                | Geradeaus-, Dreh- und Kreisfahrt-Verifikation                                                                     |
+| umbmark_analysis.py  | `amr/scripts/umbmark_analysis.py`  | Nein              | UMBmark-Auswertung nach Borenstein (1996): Korrekturfaktoren E_d und E_b berechnen (Standalone, numpy/matplotlib) |
+| slam_validation.py   | `amr/scripts/slam_validation.py`   | Ja                | Absolute Trajectory Error (ATE) und TF-Ketten-Pruefung                                                            |
+| nav_test.py          | `amr/scripts/nav_test.py`          | Ja                | Waypoint-Navigation mit Positionsfehler-Messung (xy und Gier)                                                     |
+| docking_test.py      | `amr/scripts/docking_test.py`      | Ja                | 10-Versuch ArUco-Docking-Test: Erfolgsquote, lateraler Versatz, Orientierungsfehler                               |
+| validation_report.py | `amr/scripts/validation_report.py` | Nein              | Gesamt-Report aus JSON-Ergebnissen aller Validierungsskripte (Standalone)                                         |

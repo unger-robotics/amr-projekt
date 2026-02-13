@@ -13,7 +13,10 @@
       "Bash(git -C /Users/jan/daten/IoT/projekt_beamer/AMR-Bachelorarbeit log --oneline -5)",
       "Bash(wc:*)",
       "Bash(git status:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pio run:*)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)"
     ]
   }
 }
