@@ -11,7 +11,7 @@ Bachelorarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik (KLT-Transpor
 ### ESP32 Firmware (PlatformIO)
 
 ```bash
-# Im Verzeichnis: technische_umsetzung/esp32_amr_firmware/
+# Im Verzeichnis: amr/esp32_amr_firmware/
 # PlatformIO-Env: seeed_xiao_esp32s3
 pio run                       # Firmware kompilieren
 pio run -t upload             # Auf ESP32 flashen (921600 Baud)
@@ -22,7 +22,7 @@ pio run -t upload -t monitor  # Upload + Monitor kombiniert
 ### ROS2 Workspace (Raspberry Pi)
 
 ```bash
-# Im Verzeichnis: technische_umsetzung/pi5/ros2_ws/
+# Im Verzeichnis: amr/pi5/ros2_ws/
 colcon build --packages-select my_bot --symlink-install
 source install/setup.bash
 ros2 launch my_bot full_stack.launch.py                # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
@@ -36,9 +36,9 @@ ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternative
 
 ```bash
 # Standalone-Skripte (kein ROS2 noetig):
-python3 technische_umsetzung/scripts/pre_flight_check.py    # Interaktive Hardware-Checkliste
-python3 technische_umsetzung/scripts/umbmark_analysis.py     # UMBmark-Auswertung (numpy/matplotlib)
-python3 technische_umsetzung/scripts/validation_report.py    # Gesamt-Report aus JSON-Ergebnissen
+python3 amr/scripts/pre_flight_check.py    # Interaktive Hardware-Checkliste
+python3 amr/scripts/umbmark_analysis.py     # UMBmark-Auswertung (numpy/matplotlib)
+python3 amr/scripts/validation_report.py    # Gesamt-Report aus JSON-Ergebnissen
 
 # ROS2-Nodes (micro-ROS Agent muss laufen):
 ros2 run my_bot encoder_test      # Encoder-Kalibrierung (10-Umdrehungen-Test)
@@ -50,7 +50,14 @@ ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Mess
 ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ```
 
-**Hinweis:** Die ROS2-Nodes erfordern, dass die Skripte aus `technische_umsetzung/scripts/` als Symlinks oder Kopien im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5).
+**Hinweis:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks oder Kopien im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5).
+
+### Deployment auf Raspberry Pi
+
+```bash
+# Vom Mac auf den Pi5 synchronisieren:
+rsync -avz --delete --exclude='__pycache__/' --exclude='*.pyc' --exclude='.git/' amr/ pi@rover:~/amr
+```
 
 ### Python-Hilfsskripte
 
@@ -62,7 +69,7 @@ python suche/download_sources.py   # Literatur-PDFs herunterladen
 
 ## Architektur
 
-### Dual-Core XIAO ESP32-S3 Firmware (`technische_umsetzung/esp32_amr_firmware/src/`)
+### Dual-Core XIAO ESP32-S3 Firmware (`amr/esp32_amr_firmware/src/`)
 
 Die Firmware partitioniert die Kerne fuer Echtzeit-Garantien:
 
@@ -91,7 +98,7 @@ Alle Hardware-Parameter in `hardware/config.h` (Single Source of Truth), eingebu
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
-Konfiguration in `technische_umsetzung/pi5/ros2_ws/src/my_bot/config/`:
+Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
 - **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
@@ -123,7 +130,7 @@ Zentral in `hardware/config.h` definiert. Wichtigste Werte:
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (`hardware/docs/08_validierungsplan.md`)
-- 10 Validierungsskripte in `technische_umsetzung/scripts/` (alle `py_compile`-validiert)
+- 10 Validierungsskripte in `amr/scripts/` (alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -172,8 +179,8 @@ Kapitel werden mit parallelen Agent-Teams erstellt:
 
 - `hardware/config.h` – Zentrale Hardware-Konfiguration (Single Source of Truth)
 - `hardware/docs/` – 9 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan, Umsetzungsanleitung)
-- `technische_umsetzung/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
-- `technische_umsetzung/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (package.xml, setup.py, config/, launch/, scripts/)
-- `technische_umsetzung/scripts/` – 10 Validierungsskripte
+- `amr/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
+- `amr/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (package.xml, setup.py, config/, launch/, scripts/)
+- `amr/scripts/` – 10 Validierungsskripte
 - `bachelorarbeit/` – Vollstaendige Bachelorarbeit (7 kombinierte + 35 Einzelabschnitt-Dateien)
 - `sources/kernaussagen/` – Kernaussagen mit Seitenzahlen fuer Zitationen
