@@ -31,6 +31,7 @@ docker compose build               # Image bauen (~15-20 Min, danach gecached)
 ./run.sh colcon build --packages-select my_bot --symlink-install  # Workspace bauen
 ./run.sh ros2 launch my_bot full_stack.launch.py                  # Full-Stack starten
 ./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false   # Nur SLAM
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True # Mit Kamera (ArUco-Docking)
 ./run.sh exec bash                 # Zweites Terminal im laufenden Container
 ./verify.sh                        # Automatischer Gesamttest (11 Checks)
 ```
@@ -49,6 +50,7 @@ ros2 launch my_bot full_stack.launch.py                # Gesamtsystem (micro-ROS
 ros2 launch my_bot full_stack.launch.py use_nav:=false  # Nur SLAM (ohne Navigation)
 ros2 launch my_bot full_stack.launch.py use_rviz:=False # Ohne RViz2
 ros2 launch my_bot full_stack.launch.py use_slam:=False # Nur Navigation mit bestehender Karte
+ros2 launch my_bot full_stack.launch.py use_camera:=True  # Mit Kamera (ArUco-Docking)
 ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternativer Serial-Port
 ```
 
@@ -128,7 +130,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
-- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2
+- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
 - **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 8 entry_points (console_scripts)
 
 ### Kommunikationsschicht
@@ -148,9 +150,29 @@ XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS ueber UART (Serial Transport, USB-CDC,
 ```
 odom → base_footprint → base_link → laser
         (dynamisch)      (statisch)   (statisch, 180° Yaw)
+                                    → camera_link (statisch, optional bei use_camera:=True)
 ```
 
-Statische TFs via URDF + `robot_state_publisher`. Dynamische TF `odom → base_footprint` aus Odometrie.
+Statische TFs via URDF + `robot_state_publisher`. Dynamische TF `odom → base_footprint` aus Odometrie. `camera_link` wird nur bei `use_camera:=True` publiziert (via `static_transform_publisher` im Launch-File).
+
+### Kamera-Pipeline (IMX296 Global Shutter)
+
+Die Sony IMX296 CSI-Kamera wird ueber eine v4l2loopback-Bridge in den Docker-Container gebracht:
+
+```
+IMX296 (CSI) → rpicam-vid (Host) → ffmpeg → /dev/video10 (v4l2loopback) → v4l2_camera_node (Docker/ROS2)
+```
+
+- **Host-seitig**: `camera-v4l2-bridge.service` (systemd) startet die Pipeline (`rpicam-vid --codec mjpeg | ffmpeg -f v4l2 -pix_fmt yuyv422 /dev/video10`). Aufloesung: 1456x1088 @ 15fps.
+- **Container-seitig**: `v4l2_camera_node` liest `/dev/video10` (YUYV) und publiziert auf `/camera/image_raw`.
+- **Setup**: `host_setup.sh` installiert v4l2loopback-dkms, modprobe-Config und den systemd-Service. `run.sh` prueft automatisch ob die Bridge aktiv ist bei `use_camera:=True`.
+
+```bash
+# Kamera-Bridge starten/pruefen (Host):
+sudo systemctl start camera-v4l2-bridge.service
+sudo systemctl status camera-v4l2-bridge.service
+v4l2-ctl -d /dev/video10 --all   # Pruefen ob Frames ankommen
+```
 
 ### Serial-Port-Management (3 Projekte teilen ESP32)
 
@@ -233,3 +255,5 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - **Kamera nicht erkannt (IMX296)**: `camera_auto_detect=1` erkennt IMX296 nicht automatisch. Explizit `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen. Reboot erforderlich. Bei I2C-Fehler -121: CSI-Kabel pruefen (Standard-auf-Mini, Kontakte fest).
 - **rpicam-hello statt libcamera-hello**: Debian Trixie / Pi OS Bookworm verwendet `rpicam-hello --list-cameras` statt `libcamera-hello`.
 - **ESP32 USB-CDC haengt**: `Serial.setTxTimeoutMs(50)` in `setup()` setzen und `delay(1)` nach `rclc_executor_spin_some()` fuer Buffer-Flush einfuegen.
+- **Kamera-Bridge: /dev/video10 fehlt**: `sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1`. Falls Modul mit falschen Optionen geladen: `sudo modprobe -r v4l2loopback` zuerst.
+- **Kamera-Bridge-Service haengt**: `journalctl -u camera-v4l2-bridge.service -f` pruefen. Haeufige Ursache: rpicam-vid verliert CSI-Verbindung nach Suspend. Fix: `sudo systemctl restart camera-v4l2-bridge.service`.
