@@ -112,13 +112,27 @@ void vel_cb(const void *m) {
 
 void setup() {
     Serial.begin(115200);
+    Serial.setTxTimeoutMs(50);  // USB CDC Write-Timeout begrenzen
     set_microros_serial_transports(Serial);
     hal.init();
     mutex = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(controlTask, "Ctrl", 10000, NULL, 1, NULL, 1);
     delay(2000);
 
+    // Odom-Nachricht komplett nullen (Kovarianz-Arrays etc.)
+    memset(&msg_odom, 0, sizeof(msg_odom));
+
     allocator = rcl_get_default_allocator();
+
+    // Warten bis Agent erreichbar ist (blockiert bis Verbindung steht)
+    while (rmw_uros_ping_agent(1000, 1) != RMW_RET_OK) {
+        // LED kurz blinken waehrend Warten auf Agent
+        ledcWrite(LED_PWM_CHANNEL, 128);
+        delay(100);
+        ledcWrite(LED_PWM_CHANNEL, 0);
+        delay(900);
+    }
+
     rcl_ret_t rc;
     bool init_ok = true;
 
@@ -140,10 +154,9 @@ void setup() {
                                         ON_NEW_DATA);
     if (rc != RCL_RET_OK) init_ok = false;
 
-    rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
-    rc = rclc_publisher_init(&pub_odom, &node,
+    rc = rclc_publisher_init_default(&pub_odom, &node,
                              ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-                             "odom", &qos);
+                             "odom");
     if (rc != RCL_RET_OK) init_ok = false;
 
     if (!init_ok) {
@@ -157,6 +170,9 @@ void setup() {
     }
 
     rmw_uros_sync_session(1000);
+
+    // LED an = Setup erfolgreich
+    ledcWrite(LED_PWM_CHANNEL, 64);
 }
 
 void loop() {
@@ -173,10 +189,23 @@ void loop() {
     }
     last_hb = hb;
 
+    // LED-Heartbeat: loop() laeuft (toggle alle ~1s)
+    static uint32_t led_counter = 0;
+    if (++led_counter > 20) {
+        led_counter = 0;
+        static bool led_on = false;
+        led_on = !led_on;
+        ledcWrite(LED_PWM_CHANNEL, led_on ? 32 : 0);
+    }
+
+    // Executor mit genuegend Zeit fuer Buffer-Flush
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+    delay(1);  // USB-CDC-Flush und Watchdog-Feed ermoeglichen
+
     static unsigned long last = 0;
-    if (millis() - last > ODOM_PUBLISH_PERIOD_MS) {
-        float x, y, th, v, w;
+    if (millis() - last >= ODOM_PUBLISH_PERIOD_MS) {
+        last = millis();
+        float x = 0, y = 0, th = 0, v = 0, w = 0;
         if (xSemaphoreTake(mutex, 10)) {
             x = shared.ox;
             y = shared.oy;
@@ -187,19 +216,27 @@ void loop() {
         }
 
         int64_t t = rmw_uros_epoch_nanos();
-        msg_odom.header.stamp.sec = t / 1e9;
-        msg_odom.header.stamp.nanosec = t % 1000000000;
+        msg_odom.header.stamp.sec = (int32_t)(t / 1000000000LL);
+        msg_odom.header.stamp.nanosec = (uint32_t)(t % 1000000000LL);
         msg_odom.header.frame_id.data = (char *)"odom";
         msg_odom.header.frame_id.size = 4;
+        msg_odom.header.frame_id.capacity = 5;
         msg_odom.child_frame_id.data = (char *)"base_link";
         msg_odom.child_frame_id.size = 9;
+        msg_odom.child_frame_id.capacity = 10;
         msg_odom.pose.pose.position.x = x;
         msg_odom.pose.pose.position.y = y;
         msg_odom.pose.pose.orientation.z = sin(th / 2);
         msg_odom.pose.pose.orientation.w = cos(th / 2);
         msg_odom.twist.twist.linear.x = v;
         msg_odom.twist.twist.angular.z = w;
-        (void)rcl_publish(&pub_odom, &msg_odom, NULL);
-        last = millis();
+        rcl_ret_t pub_rc = rcl_publish(&pub_odom, &msg_odom, NULL);
+        if (pub_rc != RCL_RET_OK) {
+            // LED schnell blinken bei Publish-Fehler
+            ledcWrite(LED_PWM_CHANNEL, 255);
+        }
+
+        // Buffer nach Publish flushen
+        rclc_executor_spin_some(&executor, RCL_MS_TO_NS(5));
     }
 }
