@@ -1,0 +1,61 @@
+# =============================================================================
+# Docker Compose fuer ROS2 Humble auf Raspberry Pi 5
+#
+# Verwendung:
+#   docker compose build          # Image bauen (~15-20 Min auf Pi 5)
+#   docker compose run --rm amr   # Interaktive Shell
+#   docker compose run --rm amr ros2 launch my_bot full_stack.launch.py
+# =============================================================================
+
+services:
+  amr:
+    build:
+      context: ../..
+      dockerfile: amr/docker/Dockerfile
+    image: amr-ros2-humble:latest
+    container_name: amr_ros2
+
+    # Host-Netzwerk fuer ROS2 DDS Multicast Discovery
+    network_mode: host
+
+    # Hardware-Zugriff (Serial, Kamera, GPIO)
+    privileged: true
+
+    # Dynamisch eingesteckte USB-Geraete erlauben
+    device_cgroup_rules:
+      - 'c 166:* rmw'   # ttyACM (USB-CDC, ESP32)
+      - 'c 188:* rmw'   # ttyUSB (CP2102, RPLIDAR)
+      - 'c 81:* rmw'    # video4linux (Kamera)
+
+    volumes:
+      # ROS2 Workspace (read-write fuer colcon build)
+      - ../pi5/ros2_ws/src/my_bot:/ros2_ws/src/my_bot:rw
+
+      # Validierungsskripte (read-only)
+      - ../scripts:/amr_scripts:ro
+
+      # Hardware-Konfiguration (read-only)
+      - ../../hardware:/hardware:ro
+
+      # X11-Socket fuer RViz2
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+      # Persistenter Build-Cache (colcon build/install/log)
+      - ros2_build:/ros2_ws/build
+      - ros2_install:/ros2_ws/install
+      - ros2_log:/ros2_ws/log
+
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+      - ROS_DOMAIN_ID=0
+      - TERM=xterm-256color
+
+    # Container bleibt interaktiv
+    stdin_open: true
+    tty: true
+
+volumes:
+  ros2_build:
+  ros2_install:
+  ros2_log:

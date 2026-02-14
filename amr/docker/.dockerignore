@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# PlatformIO Build-Artefakte
+.pio
+
+# Python Virtual Environment
+.venv
+
+# Claude Code
+.claude
+
+# Literaturquellen (PDFs, ~1 GB)
+sources/
+
+# Bachelorarbeit-Text
+bachelorarbeit/
+suche/
+
+# Hardware-Medien und Datenblaetter
+hardware/media/
+hardware/datasheet/
+
+# OS-spezifisch
+.DS_Store
+__pycache__
+*.pyc
