@@ -119,13 +119,7 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
 
-Alle Hardware-Parameter in `hardware/config.h` (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag. PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0).
-
-### Safety-Mechanismen (Firmware)
-
-- **Failsafe-Timeout**: 500 ms ohne `cmd_vel` → Motoren stopp (`FAILSAFE_TIMEOUT_MS` in config.h)
-- **Inter-Core-Watchdog**: `core1_heartbeat`-Zaehler auf Core 1, von `loop()` auf Core 0 ueberwacht
-- **RCL-Error-Handling**: Alle `rclc_*`-Initialisierungen mit `rcl_ret_t` geprueft → LED-Blinksignal bei Fehler
+PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0).
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
@@ -160,7 +154,7 @@ Statische TFs via URDF + `robot_state_publisher`. Dynamische TF `odom → base_f
 
 ### Serial-Port-Management (3 Projekte teilen ESP32)
 
-Der ESP32-Port `/dev/ttyACM0` wird von 3 Projekten geteilt. Lockfile-basierte Koordination:
+Der ESP32-Port `/dev/ttyACM0` wird von 3 Projekten geteilt (`selection-panel.service`, `embedded-bridge.service`, AMR Docker). Lockfile: `/var/lock/esp32-serial.lock` (flock-basiert).
 
 ```bash
 # Vor micro-ROS Agent Start sicherstellen, dass kein anderer Prozess den Port haelt:
@@ -169,21 +163,12 @@ sudo fuser -v /dev/ttyACM0                    # Pruefen ob Port frei
 sudo lslocks | grep esp32-serial              # Lock-Status pruefen
 ```
 
-| Projekt | Prozess | Serial-Lock | HTTP |
-|---|---|---|---|
-| Selection Panel | `selection-panel.service` | `flock -n /var/lock/esp32-serial.lock` | 8080 |
-| embedded_projekt | `embedded-bridge.service` | `flock -n /var/lock/esp32-serial.lock` | 8081 |
-| AMR micro-ROS | Docker Compose | `flock` (blockierend) | -- |
-
 ## Roboter-Parameter
 
-Zentral in `hardware/config.h` definiert. Wichtigste Werte:
+Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevante Werte:
 
-- Raddurchmesser: 65 mm, Spurbreite: 178 mm
-- Encoder: ~374 Ticks/Rev (A-only), PWM-Deadzone: 35
-- LiDAR: RPLIDAR A1, Kamera: RPi Global Shutter (Sony IMX296, 6 mm CS-Mount)
-- Akku: 4S LiFePO4 (12,8 V nominal)
-- Zielgeschwindigkeit: 0.4 m/s, Positionstoleranz: 10 cm (xy) / 8° (Gier)
+- Raddurchmesser: 65 mm, Spurbreite: 178 mm, Encoder: ~374 Ticks/Rev (A-only), PWM-Deadzone: 35
+- Zielgeschwindigkeit: 0.4 m/s, Positionstoleranz: 10 cm (xy) / 8° (Gier), Failsafe-Timeout: 500 ms
 
 ## Firmware-Constraints
 
@@ -201,15 +186,7 @@ Zentral in `hardware/config.h` definiert. Wichtigste Werte:
 
 ## Bachelorarbeit (Markdown-Dokument)
 
-### Gliederung
-
-Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. Vollstaendig: 7 Kapitel, ~42.800 Woerter.
-
-### Forschungsfragen
-
-- **FF1 (Architektur):** Echtzeitfaehige Regelung auf ESP32 mit micro-ROS ohne WLAN-Latenzen?
-- **FF2 (Praezision):** Einfluss systematischer Odometrie-Kalibrierung (UMBmark) auf Navigationsgenauigkeit?
-- **FF3 (Funktionalitaet):** Monokulares ArUco-Docking hinreichend robust fuer mechanischen Ladekontakt?
+Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. 7 Kapitel, ~42.800 Woerter.
 
 ### Dateistruktur
 
@@ -237,20 +214,13 @@ Kapitel werden mit parallelen Agent-Teams erstellt:
 
 ## Literaturverwaltung
 
-- 17 PDFs in `sources/` (Macenski, Siegwart, Borenstein, etc.)
-- Extrahierte Kernaussagen in `sources/kernaussagen/` (16 Einzeldateien + Querverweismatrix in `00_Uebersicht_Querverweise.md`)
+Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dateien + Querverweismatrix `00_Uebersicht_Querverweise.md`). PDFs in `sources/`.
 
-## Wichtige Verzeichnisse
+## Wichtige Pfade (nicht offensichtlich)
 
-- `hardware/config.h` – Zentrale Hardware-Konfiguration (Single Source of Truth)
-- `hardware/docs/` – 9 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan, Umsetzungsanleitung)
-- `amr/docker/` – Docker-Setup fuer ROS2 Humble auf Pi 5 (Dockerfile, docker-compose.yml, run.sh, verify.sh, host_setup.sh)
-- `amr/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
-- `amr/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (package.xml, setup.py, config/, launch/, scripts/)
-- `amr/scripts/` – 10 Validierungsskripte
-- `amr/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert), 4 Teile: ESP32 Firmware → ROS2 Docker → Integration → Validierung
-- `bachelorarbeit/` – Vollstaendige Bachelorarbeit (7 kombinierte + 35 Einzelabschnitt-Dateien)
-- `sources/kernaussagen/` – Kernaussagen mit Seitenzahlen fuer Zitationen
+- `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag
+- `amr/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
+- `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 
 ## Troubleshooting
 
