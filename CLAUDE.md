@@ -141,6 +141,40 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
 XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
+### micro-ROS / XRCE-DDS Constraints
+
+- **MTU-Limit**: `UXR_CONFIG_CUSTOM_TRANSPORT_MTU = 512` Bytes (Standard in micro_ros_platformio). Konfiguration in `.pio/libdeps/seeed_xiao_esp32s3/micro_ros_platformio/libmicroros/include/uxr/client/config.h`.
+- **Best-Effort Streams haben KEINE Fragmentierung**. Nachrichten > 512 Bytes schlagen still fehl. `nav_msgs/Odometry` serialisiert ~725 Bytes (2x36 doubles Kovarianz = 576 Bytes).
+- **Loesung**: `rclc_publisher_init_default()` (Reliable QoS) statt `rmw_qos_profile_sensor_data` (Best-Effort). Reliable Streams unterstuetzen Fragmentierung (max `MTU * STREAM_HISTORY_OUTPUT` = 512 * 4 = 2048 Bytes).
+- **Output-Buffer**: `RMW_UXRCE_MAX_OUTPUT_BUFFER_SIZE = MTU * STREAM_HISTORY_OUTPUT` (2048 Bytes). Konfiguriert in `rmw_microxrcedds_c/config.h`.
+- MTU aendern erfordert Neuaufbau der micro-ROS-Libraries (`board_microros_user_meta` in platformio.ini).
+
+### TF-Baum
+
+```
+odom → base_footprint → base_link → laser
+        (dynamisch)      (statisch)   (statisch, 180° Yaw)
+```
+
+Statische TFs via URDF + `robot_state_publisher`. Dynamische TF `odom → base_footprint` aus Odometrie.
+
+### Serial-Port-Management (3 Projekte teilen ESP32)
+
+Der ESP32-Port `/dev/ttyACM0` wird von 3 Projekten geteilt. Lockfile-basierte Koordination:
+
+```bash
+# Vor micro-ROS Agent Start sicherstellen, dass kein anderer Prozess den Port haelt:
+sudo systemctl stop embedded-bridge.service   # Falls aktiv
+sudo fuser -v /dev/ttyACM0                    # Pruefen ob Port frei
+sudo lslocks | grep esp32-serial              # Lock-Status pruefen
+```
+
+| Projekt | Prozess | Serial-Lock | HTTP |
+|---|---|---|---|
+| Selection Panel | `selection-panel.service` | `flock -n /var/lock/esp32-serial.lock` | 8080 |
+| embedded_projekt | `embedded-bridge.service` | `flock -n /var/lock/esp32-serial.lock` | 8081 |
+| AMR micro-ROS | Docker Compose | `flock` (blockierend) | -- |
+
 ## Roboter-Parameter
 
 Zentral in `hardware/config.h` definiert. Wichtigste Werte:
@@ -223,3 +257,9 @@ Kapitel werden mit parallelen Agent-Teams erstellt:
 - **Permission denied auf /dev/ttyACM0**: `sudo usermod -aG dialout $USER` (ab- und wieder anmelden)
 - **Docker-Image ohne Cache neu bauen**: `docker compose build --no-cache` (in `amr/docker/`)
 - **Docker-Build-Cache loeschen**: `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log`
+- **Odom-Topic leer trotz Session**: Ursache ist meist die XRCE-DDS MTU-Grenze (512 Bytes). `nav_msgs/Odometry` (~725 Bytes) erfordert Reliable QoS fuer Fragmentierung. `rclc_publisher_init_default()` verwenden, nicht `rmw_qos_profile_sensor_data`.
+- **PlatformIO flasht falschen Port**: Auto-Erkennung waehlt `/dev/ttyUSB0` (RPLIDAR) statt ESP32. Fix: `upload_port = /dev/ttyACM0` in `platformio.ini`.
+- **Serial-Port belegt**: Pruefen mit `sudo fuser -v /dev/ttyACM0` und `sudo lslocks | grep esp32-serial`. Ggf. `sudo systemctl stop embedded-bridge.service`.
+- **Kamera nicht erkannt (IMX296)**: `camera_auto_detect=1` erkennt IMX296 nicht automatisch. Explizit `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen. Reboot erforderlich. Bei I2C-Fehler -121: CSI-Kabel pruefen (Standard-auf-Mini, Kontakte fest).
+- **rpicam-hello statt libcamera-hello**: Debian Trixie / Pi OS Bookworm verwendet `rpicam-hello --list-cameras` statt `libcamera-hello`.
+- **ESP32 USB-CDC haengt**: `Serial.setTxTimeoutMs(50)` in `setup()` setzen und `delay(1)` nach `rclc_executor_spin_some()` fuer Buffer-Flush einfuegen.
