@@ -11,7 +11,7 @@ Bachelorarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik (KLT-Transpor
 ### ESP32 Firmware (PlatformIO)
 
 ```bash
-# Im Verzeichnis: amr/esp32_amr_firmware/
+# Im Verzeichnis: amr/esp32_amr_firmware/ (platformio.ini liegt dort)
 # PlatformIO-Env: seeed_xiao_esp32s3
 pio run                       # Firmware kompilieren
 pio run -t upload             # Auf ESP32 flashen (921600 Baud)
@@ -19,7 +19,27 @@ pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
 pio run -t upload -t monitor  # Upload + Monitor kombiniert
 ```
 
-### ROS2 Workspace (Raspberry Pi)
+### ROS2 via Docker (Raspberry Pi 5)
+
+Der Pi 5 laeuft auf Debian Trixie – ROS2 Humble ist nur via Docker (Ubuntu 22.04) verfuegbar. Basis-Image: `ros:humble-ros-base` (arm64). `osrf/ros:humble-desktop` ist amd64-only. micro-ROS Agent wird aus Source gebaut (kein apt-Paket fuer arm64).
+
+```bash
+# Im Verzeichnis: amr/docker/
+sudo bash host_setup.sh           # Einmalig: udev-Regeln, Gruppen, X11
+docker compose build               # Image bauen (~15-20 Min, danach gecached)
+./run.sh                           # Interaktive Container-Shell
+./run.sh colcon build --packages-select my_bot --symlink-install  # Workspace bauen
+./run.sh ros2 launch my_bot full_stack.launch.py                  # Full-Stack starten
+./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false   # Nur SLAM
+./run.sh exec bash                 # Zweites Terminal im laufenden Container
+./verify.sh                        # Automatischer Gesamttest (11 Checks)
+```
+
+Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`).
+
+RViz2 benoetigt X11 auf dem Host: `export DISPLAY=:0 && xhost +local:docker`. Alternativ RViz2 auf separatem PC ausfuehren und per ROS2 DDS verbinden (`ROS_DOMAIN_ID=0`).
+
+### ROS2 Workspace (nativ, falls Ubuntu 22.04)
 
 ```bash
 # Im Verzeichnis: amr/pi5/ros2_ws/
@@ -55,8 +75,19 @@ ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ### Deployment auf Raspberry Pi
 
 ```bash
-# Vom Mac auf den Pi5 synchronisieren:
-rsync -avz --delete --exclude='__pycache__/' --exclude='*.pyc' --exclude='.git/' amr/ pi@rover:~/amr
+# Gesamtes Projekt auf den Pi5 synchronisieren (~2-3 MB statt 1.2 GB):
+rsync -avz --delete \
+  --exclude='.git/' \
+  --exclude='.pio/' \
+  --exclude='.venv/' \
+  --exclude='.DS_Store' \
+  --exclude='.claude/' \
+  --exclude='__pycache__/' \
+  --exclude='*.pyc' \
+  --exclude='sources/' \
+  --exclude='hardware/media/' \
+  --exclude='hardware/datasheet/' \
+  /Users/jan/daten/IoT/projekt_beamer/AMR-Bachelorarbeit/ pi@rover:~/AMR-Bachelorarbeit
 ```
 
 ### Python-Hilfsskripte
@@ -179,8 +210,16 @@ Kapitel werden mit parallelen Agent-Teams erstellt:
 
 - `hardware/config.h` – Zentrale Hardware-Konfiguration (Single Source of Truth)
 - `hardware/docs/` – 9 Hardware-Dokumente (Pinout, Antrieb, Stromversorgung, BOM, Migrationsplan, Validierungsplan, Umsetzungsanleitung)
+- `amr/docker/` – Docker-Setup fuer ROS2 Humble auf Pi 5 (Dockerfile, docker-compose.yml, run.sh, verify.sh, host_setup.sh)
 - `amr/esp32_amr_firmware/src/` – 4 Firmware-Dateien (main.cpp + 3 Header)
 - `amr/pi5/ros2_ws/src/my_bot/` – ROS2-Paket (package.xml, setup.py, config/, launch/, scripts/)
 - `amr/scripts/` – 10 Validierungsskripte
+- `amr/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert), 4 Teile: ESP32 Firmware → ROS2 Docker → Integration → Validierung
 - `bachelorarbeit/` – Vollstaendige Bachelorarbeit (7 kombinierte + 35 Einzelabschnitt-Dateien)
 - `sources/kernaussagen/` – Kernaussagen mit Seitenzahlen fuer Zitationen
+
+## Troubleshooting
+
+- **Permission denied auf /dev/ttyACM0**: `sudo usermod -aG dialout $USER` (ab- und wieder anmelden)
+- **Docker-Image ohne Cache neu bauen**: `docker compose build --no-cache` (in `amr/docker/`)
+- **Docker-Build-Cache loeschen**: `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log`
