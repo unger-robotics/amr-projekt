@@ -25,7 +25,7 @@ services:
     device_cgroup_rules:
       - 'c 166:* rmw'   # ttyACM (USB-CDC, ESP32)
       - 'c 188:* rmw'   # ttyUSB (CP2102, RPLIDAR)
-      - 'c 81:* rmw'    # video4linux (Kamera)
+      - 'c 81:* rmw'    # video4linux (Kamera: /dev/video10 via v4l2loopback)
 
     volumes:
       # ROS2 Workspace (read-write fuer colcon build)

@@ -25,6 +25,7 @@
   <!-- Hardware-Treiber -->
   <exec_depend>micro_ros_agent</exec_depend>
   <exec_depend>rplidar_ros</exec_depend>
+  <exec_depend>v4l2_camera</exec_depend>
 
   <!-- Launch -->
   <exec_depend>launch</exec_depend>

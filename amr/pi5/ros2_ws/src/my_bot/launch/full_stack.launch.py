@@ -75,6 +75,16 @@ def generate_launch_description():
         default_value=default_slam_params,
         description='Pfad zur SLAM Toolbox Parameter-YAML-Datei',
     )
+    declare_use_camera = DeclareLaunchArgument(
+        'use_camera',
+        default_value='False',
+        description='Kamera-Node starten (v4l2_camera_node fuer ArUco-Docking)',
+    )
+    declare_camera_device = DeclareLaunchArgument(
+        'camera_device',
+        default_value='/dev/video10',
+        description='Video-Device fuer die Kamera (v4l2loopback-Bridge)',
+    )
 
     # --- 1. micro-ROS Agent (Serial Transport) ---
     # Verbindet XIAO ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
@@ -126,6 +136,37 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_rviz')),
     )
 
+    # --- 5. Kamera (v4l2_camera_node, optional) ---
+    camera_node = Node(
+        package='v4l2_camera',
+        executable='v4l2_camera_node',
+        name='v4l2_camera_node',
+        output='screen',
+        parameters=[{
+            'video_device': LaunchConfiguration('camera_device'),
+            'image_size': [1456, 1088],
+            'pixel_format': 'YUYV',
+            'camera_frame_id': 'camera_link',
+        }],
+        remappings=[
+            ('image_raw', '/camera/image_raw'),
+            ('camera_info', '/camera/camera_info'),
+        ],
+        condition=IfCondition(LaunchConfiguration('use_camera')),
+    )
+
+    # --- 6. Statischer TF: base_link → camera_link ---
+    camera_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='camera_tf_publisher',
+        arguments=[
+            '0.10', '0.0', '0.08', '0.0', '0.0', '0.0',
+            'base_link', 'camera_link',
+        ],
+        condition=IfCondition(LaunchConfiguration('use_camera')),
+    )
+
     return LaunchDescription([
         # Launch Arguments
         declare_use_slam,
@@ -134,9 +175,13 @@ def generate_launch_description():
         declare_serial_port,
         declare_params_file,
         declare_slam_params_file,
+        declare_use_camera,
+        declare_camera_device,
         # Nodes / Prozesse
         micro_ros_agent,
         slam_toolbox_node,
         nav2_launch,
         rviz_node,
+        camera_node,
+        camera_tf,
     ])

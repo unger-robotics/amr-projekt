@@ -23,6 +23,25 @@ if [ -n "$DISPLAY" ]; then
     xhost +local:docker 2>/dev/null || true
 fi
 
+# Kamera-Bridge pruefen wenn use_camera:=True in den Argumenten
+if echo "$*" | grep -qi 'use_camera:=true'; then
+    if ! systemctl is-active --quiet camera-v4l2-bridge.service 2>/dev/null; then
+        echo "WARNUNG: camera-v4l2-bridge.service laeuft nicht."
+        echo "  Starte mit: sudo systemctl start camera-v4l2-bridge.service"
+        if [ ! -e /dev/video10 ]; then
+            echo "  /dev/video10 fehlt — Kamera-Node wird fehlschlagen."
+            read -p "  Trotzdem fortfahren? [y/N] " -n 1 -r
+            echo
+            [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+        fi
+    elif [ ! -e /dev/video10 ]; then
+        echo "WARNUNG: camera-v4l2-bridge.service aktiv, aber /dev/video10 fehlt."
+        echo "  Pruefen: journalctl -u camera-v4l2-bridge.service -f"
+    else
+        echo "Kamera-Bridge aktiv (/dev/video10 bereit)"
+    fi
+fi
+
 # Sonderfall: "exec" oeffnet eine Shell im bereits laufenden Container
 if [ "$1" = "exec" ]; then
     shift

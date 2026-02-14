@@ -85,6 +85,60 @@ xhost +local:docker
 Alternativ RViz2 auf einem separaten PC ausfuehren und per ROS2 DDS verbinden
 (`ROS_DOMAIN_ID=0`).
 
+## Kamera-Setup (IMX296 Global Shutter)
+
+Die Sony IMX296 CSI-Kamera wird ueber eine v4l2loopback-Bridge in den Container gebracht:
+`rpicam-vid (Host) → ffmpeg → /dev/video10 (v4l2loopback) → v4l2_camera_node (Docker)`.
+
+### Erstmalige Einrichtung
+
+```bash
+# host_setup.sh installiert v4l2loopback, erstellt modprobe-Config und den systemd-Service:
+sudo bash host_setup.sh
+
+# Kamera-Erkennung pruefen (IMX296 muss gelistet sein):
+rpicam-hello --list-cameras
+
+# Bridge-Service starten:
+sudo systemctl start camera-v4l2-bridge.service
+
+# Pruefen ob /dev/video10 Frames liefert:
+v4l2-ctl -d /dev/video10 --all
+```
+
+### ROS2-Stack mit Kamera starten
+
+```bash
+# Full-Stack mit Kamera (fuer ArUco-Docking):
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True
+
+# Nur Kamera (ohne SLAM/Navigation):
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_nav:=False use_slam:=False use_rviz:=False
+
+# Kamera-Topic pruefen (in zweitem Terminal):
+./run.sh exec bash
+ros2 topic echo /camera/image_raw --once
+ros2 run tf2_ros tf2_echo base_link camera_link
+```
+
+### Kamera-Troubleshooting
+
+**IMX296 nicht erkannt (I2C Error -121):**
+- CSI-Kabel pruefen (Pi 5 hat 22-pin Mini-CSI, aeltere Kameras brauchen Adapter)
+- `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen
+- `sudo reboot`
+
+**Bridge-Service laeuft nicht:**
+```bash
+sudo systemctl status camera-v4l2-bridge.service
+journalctl -u camera-v4l2-bridge.service -f
+```
+
+**/dev/video10 fehlt:**
+```bash
+sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
+```
+
 ## Troubleshooting
 
 **Permission denied auf /dev/ttyACM0:**

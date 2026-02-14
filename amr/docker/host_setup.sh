@@ -89,19 +89,114 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# 4. Kamera-Modul laden
+# 4. Kamera-Setup (v4l2loopback-Bridge fuer IMX296 Global Shutter)
 # ---------------------------------------------------------------------------
-echo "--- Kamera-Setup ---"
+echo "--- Kamera-Setup (v4l2loopback-Bridge) ---"
 
-# bcm2835-v4l2 wird auf neueren Pi-Kernels nicht mehr benoetigt,
-# libcamera/v4l2 ist direkt verfuegbar. Trotzdem pruefen.
-if ls /dev/video* &> /dev/null; then
-    echo "[OK] Kamera-Devices vorhanden:"
-    ls -la /dev/video*
+# 4a. v4l2loopback-dkms installieren
+if dpkg -l v4l2loopback-dkms 2>/dev/null | grep -q '^ii'; then
+    echo "[OK] v4l2loopback-dkms bereits installiert"
 else
-    echo "[INFO] Keine /dev/video* Devices gefunden."
-    echo "  Pruefen: 'rpicam-hello' oder 'libcamera-hello'"
-    echo "  Falls noetig: sudo modprobe bcm2835-v4l2"
+    echo "Installiere v4l2loopback-dkms..."
+    sudo apt-get update
+    sudo apt-get install -y v4l2loopback-dkms
+    echo "[OK] v4l2loopback-dkms installiert"
+fi
+
+# 4b. ffmpeg installieren (fuer die Bridge-Pipeline)
+if command -v ffmpeg &> /dev/null; then
+    echo "[OK] ffmpeg bereits vorhanden"
+else
+    echo "Installiere ffmpeg..."
+    sudo apt-get install -y ffmpeg
+    echo "[OK] ffmpeg installiert"
+fi
+
+# 4c. Modprobe-Konfiguration (video_nr=10 vermeidet Kollision mit rp1-cfe 19-35)
+MODPROBE_CONF="/etc/modprobe.d/v4l2loopback.conf"
+if [ -f "$MODPROBE_CONF" ]; then
+    echo "[OK] modprobe-Config existiert: $MODPROBE_CONF"
+else
+    echo "Erstelle $MODPROBE_CONF ..."
+    sudo tee "$MODPROBE_CONF" > /dev/null << 'MODPROBE_EOF'
+options v4l2loopback video_nr=10 card_label="AMR_Camera" exclusive_caps=1
+MODPROBE_EOF
+    echo "[OK] modprobe-Config erstellt"
+fi
+
+# 4d. Boot-Laden sicherstellen
+MODULES_CONF="/etc/modules-load.d/v4l2loopback.conf"
+if [ -f "$MODULES_CONF" ]; then
+    echo "[OK] Boot-Laden konfiguriert: $MODULES_CONF"
+else
+    echo "Erstelle $MODULES_CONF ..."
+    echo "v4l2loopback" | sudo tee "$MODULES_CONF" > /dev/null
+    echo "[OK] v4l2loopback wird beim Boot geladen"
+fi
+
+# 4e. Modul sofort laden falls nicht geladen
+if lsmod | grep -q v4l2loopback; then
+    echo "[OK] v4l2loopback-Modul geladen"
+else
+    echo "Lade v4l2loopback-Modul..."
+    sudo modprobe v4l2loopback video_nr=10 card_label="AMR_Camera" exclusive_caps=1
+    echo "[OK] v4l2loopback-Modul geladen"
+fi
+
+# 4f. /dev/video10 pruefen
+if [ -e /dev/video10 ]; then
+    echo "[OK] /dev/video10 vorhanden"
+else
+    echo "[WARNUNG] /dev/video10 nicht vorhanden — Modul evtl. mit anderen Optionen geladen."
+    echo "  Fix: sudo modprobe -r v4l2loopback && sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1"
+fi
+
+# 4g. IMX296 Kamera-Erkennung pruefen
+echo ""
+echo "--- IMX296 Kamera-Erkennung ---"
+RPICAM_CMD=""
+if command -v rpicam-hello &> /dev/null; then
+    RPICAM_CMD="rpicam-hello"
+elif command -v libcamera-hello &> /dev/null; then
+    RPICAM_CMD="libcamera-hello"
+fi
+
+if [ -n "$RPICAM_CMD" ]; then
+    if $RPICAM_CMD --list-cameras 2>&1 | grep -qi "imx296"; then
+        echo "[OK] IMX296 Kamera erkannt"
+    else
+        echo "[WARNUNG] IMX296 Kamera NICHT erkannt."
+        echo "  Troubleshooting:"
+        echo "    1. CSI-Kabel pruefen (22-pin Mini → 15-pin Adapter, fest eingesteckt)"
+        echo "    2. dtoverlay=imx296 in /boot/firmware/config.txt unter [all] eintragen"
+        echo "    3. sudo reboot"
+        echo "    4. I2C-Error -121 = Kabel-/Kontaktproblem"
+    fi
+else
+    echo "[INFO] Weder rpicam-hello noch libcamera-hello gefunden."
+fi
+
+# 4h. systemd-Service fuer die Kamera-Bridge installieren
+echo ""
+echo "--- Kamera-Bridge Service ---"
+SERVICE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/camera-v4l2-bridge.service"
+SERVICE_DST="/etc/systemd/system/camera-v4l2-bridge.service"
+
+if [ -f "$SERVICE_SRC" ]; then
+    if [ -f "$SERVICE_DST" ] && cmp -s "$SERVICE_SRC" "$SERVICE_DST"; then
+        echo "[OK] Service-Datei bereits installiert und aktuell"
+    else
+        sudo cp "$SERVICE_SRC" "$SERVICE_DST"
+        sudo systemctl daemon-reload
+        echo "[OK] Service-Datei installiert: $SERVICE_DST"
+    fi
+    sudo systemctl enable camera-v4l2-bridge.service 2>/dev/null
+    echo "[OK] camera-v4l2-bridge.service aktiviert (Start beim Boot)"
+    echo "[INFO] Service manuell starten: sudo systemctl start camera-v4l2-bridge.service"
+    echo "[INFO] Service-Status: sudo systemctl status camera-v4l2-bridge.service"
+else
+    echo "[WARNUNG] Service-Datei nicht gefunden: $SERVICE_SRC"
+    echo "  Erwartet im selben Verzeichnis wie host_setup.sh"
 fi
 echo ""
 

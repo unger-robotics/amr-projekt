@@ -94,6 +94,37 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
+# 4b. Kamera-Bridge (optional)
+# ---------------------------------------------------------------------------
+echo "--- 4b. Kamera-Bridge ---"
+if lsmod | grep -q v4l2loopback; then
+    pass "v4l2loopback-Modul geladen"
+else
+    warn "v4l2loopback-Modul nicht geladen (Kamera-Bridge inaktiv)"
+fi
+
+if [ -e /dev/video10 ]; then
+    pass "/dev/video10 vorhanden"
+else
+    warn "/dev/video10 nicht vorhanden (v4l2loopback nicht konfiguriert oder Modul nicht geladen)"
+fi
+
+if systemctl is-active --quiet camera-v4l2-bridge.service 2>/dev/null; then
+    pass "camera-v4l2-bridge.service aktiv"
+else
+    warn "camera-v4l2-bridge.service nicht aktiv (Kamera-Stream laeuft nicht)"
+fi
+
+if [ -e /dev/video10 ]; then
+    if run_in_container test -r /dev/video10 2>/dev/null; then
+        pass "/dev/video10 im Container lesbar"
+    else
+        warn "/dev/video10 im Container nicht lesbar"
+    fi
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
 # 5. Workspace bauen
 # ---------------------------------------------------------------------------
 echo "--- 5. Workspace Build ---"

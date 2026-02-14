@@ -1,0 +1,26 @@
+[Unit]
+Description=Kamera v4l2loopback-Bridge (rpicam-vid → ffmpeg → /dev/video10)
+After=multi-user.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+
+# v4l2loopback laden und auf /dev/video10 warten
+ExecStartPre=/sbin/modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do [ -e /dev/video10 ] && exit 0; sleep 0.2; done; echo "/dev/video10 nicht verfuegbar"; exit 1'
+
+# rpicam-vid (MJPEG) → ffmpeg → v4l2loopback (YUYV422)
+# IMX296: 1456x1088 @ 15fps (volle Aufloesung fuer maximale ArUco-Reichweite)
+ExecStart=/bin/bash -c 'rpicam-vid --camera 0 --width 1456 --height 1088 --framerate 15 --codec mjpeg --timeout 0 --nopreview -o - | ffmpeg -hide_banner -loglevel warning -f mjpeg -i - -f v4l2 -pix_fmt yuyv422 /dev/video10'
+
+Restart=on-failure
+RestartSec=5
+
+# Ressourcen-Limits
+Nice=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
