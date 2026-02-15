@@ -27,13 +27,13 @@
 #define PWM_CH_RIGHT_A 3 // war 2
 #define PWM_CH_RIGHT_B 2 // war 3
 
-// --- Odometrie (Hall-Encoder JGA25-370) ---
+// --- Encoder Phase A (Hall-Encoder JGA25-370) ---
 #define PIN_ENC_LEFT_A D6  // Phase A (Interrupt-fähig)
 #define PIN_ENC_RIGHT_A D7 // Phase A (Interrupt-fähig)
 
-// --- Richtung (Hall-Encoder JGA25-370) ---
-#define PIN_ENC_LEFT_B D8  // Phase B (belegt PIN_SERVO_PAN)
-#define PIN_ENC_RIGHT_B D9 // Phase B (belegt PIN_SERVO_TILT)
+// --- Encoder Phase B (Quadratur-Richtungserkennung) ---
+#define PIN_ENC_LEFT_B D8  // Phase B (Quadratur-Richtung)
+#define PIN_ENC_RIGHT_B D9 // Phase B (Quadratur-Richtung)
 
 // --- Peripherie & Status ---
 #define PIN_LED_MOSFET D10 // IRLZ24N Low-Side Switch
@@ -59,11 +59,11 @@
 // ==========================================================================
 // 2.1 ENCODER-KALIBRIERUNG (2025-12-12)
 // ==========================================================================
-// Methode: 10-Umdrehungen-Test
-// Ergebnis: Links 374.3 Ticks, Rechts 373.6 Ticks
+// Methode: 10-Umdrehungen-Test (A-only: 374.3/373.6, 2x-Quadratur: 748.6/747.2)
+// Rekalibrierung mit Quadratur empfohlen
 
-#define TICKS_PER_REV_LEFT 374.3f  // kalibriert (10-Umdrehungen-Test)
-#define TICKS_PER_REV_RIGHT 373.6f // kalibriert (10-Umdrehungen-Test)
+#define TICKS_PER_REV_LEFT 748.6f  // kalibriert (10-Umdrehungen-Test, 2x Quadratur-Zaehlung)
+#define TICKS_PER_REV_RIGHT 747.2f // kalibriert (10-Umdrehungen-Test, 2x Quadratur-Zaehlung)
 #define TICKS_PER_REV ((TICKS_PER_REV_LEFT + TICKS_PER_REV_RIGHT) / 2.0f)
 
 #define METERS_PER_TICK_LEFT (WHEEL_CIRCUMFERENCE / TICKS_PER_REV_LEFT)
@@ -107,5 +107,7 @@ static_assert(TICKS_PER_REV_RIGHT > 0, "TICKS_PER_REV_RIGHT must be positive");
 static_assert(PWM_DEADZONE >= 0 && PWM_DEADZONE < MOTOR_PWM_MAX,
               "PWM_DEADZONE out of range");
 static_assert(MOTOR_PWM_FREQ > 0, "MOTOR_PWM_FREQ must be positive");
+static_assert(PIN_ENC_LEFT_B != PIN_ENC_LEFT_A, "Encoder L: Phase A und B muessen unterschiedliche Pins sein");
+static_assert(PIN_ENC_RIGHT_B != PIN_ENC_RIGHT_A, "Encoder R: Phase A und B muessen unterschiedliche Pins sein");
 
 #endif // CONFIG_H

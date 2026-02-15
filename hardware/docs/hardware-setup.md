@@ -2,7 +2,7 @@
 title: "Hardware Setup - AMR Platform"
 file: "hardware/docs/hardware-setup.md"
 status: "active"
-updated: "2025-12-19"
+updated: "2026-02-15"
 scope: "Projekt-Nachschlagewerk (Master-grade Design)"
 ---
 
@@ -14,8 +14,10 @@ Dieses Dokument beschreibt den **physischen Aufbau** (Stromversorgung, Verkabelu
 - **Seeed XIAO ESP32-S3** (Motor/Encoder/Realtime, micro-ROS Client)
 - **Cytron MDD3A** (Dual-Motor-Treiber, Dual-PWM)
 - **JGA25-370 12 V + Hall-Encoder** (2x)
-- **RPLIDAR A1** (USB, `/scan`)
-- Optional: **Hailo-8L AI Kit (PCIe)**, **Global Shutter Camera (CSI)**, **Pan/Tilt (2x Servo)**
+- **RPLIDAR A1** (USB CP210x, `/dev/ttyUSB0`, `/scan`)
+- **IMX296 Global Shutter Camera** (CSI, v4l2loopback-Bridge nach `/dev/video10`)
+- **Hailo-8L AI Kit** (PCIe, HailoRT 4.23.0)
+- ~~Pan/Tilt (2x Servo)~~: D8/D9 durch Encoder Phase B belegt
 
 > Schaltplaene: `hardware/schaltplan.pdf` (Power-Topologie + XIAO/MDD3A Pinout + MOSFET Low-Side).
 
@@ -38,13 +40,13 @@ flowchart LR
   RAIL12 --> BUCKPI[DC/DC USB-C\n5 V / 5 A (25 W)]
   BUCKPI --> PI[Raspberry Pi 5]
 
-  RAIL12 --> BUCKSERVO[DC/DC (z.B. LM2596)\n5 V fuer Servos]
-  BUCKSERVO --> SERVO[Pan/Tilt Servos (optional)]
+  RAIL12 --> BUCKSERVO[DC/DC LM2596\n5 V Peripherie]
+  BUCKSERVO --> SERVO[Servos (nicht aktiv)]
 
   PI -->|USB| ESP[XIAO ESP32-S3]
   PI -->|USB| LIDAR[RPLIDAR A1]
-  PI -->|CSI| CAM[Global Shutter Camera (optional)]
-  PI -->|PCIe| HAILO[Hailo-8L (optional)]
+  PI -->|CSI| CAM[IMX296 Global Shutter\nCamera]
+  PI -->|PCIe| HAILO[Hailo-8L AI Kit]
 ```
 
 ### 1.2 Design-Regel (robust)
@@ -107,10 +109,10 @@ Aus `config.h`:
 | Motor Right B   |       D3 | MDD3A M2B (Rueckwaerts-PWM)         |
 | I2C SDA         |       D4 | IMU optional (3.3 V)                |
 | I2C SCL         |       D5 | IMU optional (3.3 V)                |
-| Encoder Left A  |       D6 | Interrupt-faehig (A-only)           |
-| Encoder Right A |       D7 | Interrupt-faehig (A-only)           |
-| Servo Pan       |       D8 | nur Signal (Servo-Power extern 5 V) |
-| Servo Tilt      |       D9 | nur Signal (Servo-Power extern 5 V) |
+| Encoder Left A  |       D6 | Interrupt (CHANGE)                  |
+| Encoder Right A |       D7 | Interrupt (CHANGE)                  |
+| Encoder Left B  |       D8 | Quadratur-Richtung                  |
+| Encoder Right B |       D9 | Quadratur-Richtung                  |
 | LED/MOSFET Gate |      D10 | IRLZ24N Low-Side Switch             |
 
 ---
@@ -139,7 +141,7 @@ Damit brauchst du **keine DIR-Pins**, aber **2x PWM pro Motor** (D0-D3).
 
 ---
 
-## 5) Encoder (A-only) - robust & einfach
+## 5) Encoder (Quadratur A+B) - Richtungserkennung aus Phasenversatz
 
 ### 5.1 Encoder-Wiring (6-adrig Motor+Encoder typisch)
 
@@ -148,16 +150,18 @@ Bei JGA25-370 mit Hall-Encoder sind typischerweise:
 - 2 Leitungen Motor
 - 4 Leitungen Encoder (VCC, GND, A, B)
 
-**A-only-Konzept (dein Phase-1/4-Design):**
+**Quadratur-Konzept (A+B, 2x-Zaehlung):**
 
-- Verbinde **nur Phase A** zu D6/D7.
-- **Phase B** bleibt ungenutzt (isolieren).
+- Verbinde **Phase A** (Interrupt, CHANGE) und **Phase B** (Richtungserkennung) zu den jeweiligen Pins.
+- Die Richtung wird aus dem Phasenversatz zwischen A und B bestimmt (nicht aus der PWM-Ansteuerung).
 
 Aus Schaltplan-Tabelle:
 
 - Encoder Phase A (Links): **D6**, **Gelb**
+- Encoder Phase B (Links): **D8**, **Gruen**
 - Encoder Phase A (Rechts): **D7**, **Gelb**
-- Hinweis: "Nur Gelb anschliessen! Gruen isolieren."
+- Encoder Phase B (Rechts): **D9**, **Gruen**
+- Hinweis: "Beide Phasen (Gelb=A, Gruen=B) anschliessen."
 
 ### 5.2 Encoder-Versorgung (entscheidend)
 
@@ -166,8 +170,9 @@ Aus Schaltplan-Tabelle:
 
 **Empfehlung:**
 
-- Wenn Encoder mit **3.3 V** stabil funktioniert: VCC = 3.3 V.
-- Falls Encoder **5 V** benoetigt: VCC = 5 V, dann **Pegelanpassung** fuers A-Signal (Level Shifter oder Spannungsteiler), um ESP32-Pins zu schuetzen.
+- Wenn Encoder mit **3.3 V** stabil funktioniert: VCC = 3.3 V (aktueller Betriebsmodus).
+- Falls Encoder **5 V** benoetigt: VCC = 5 V, dann **Pegelanpassung** fuer A- und B-Signal (Level Shifter oder Spannungsteiler), um ESP32-Pins zu schuetzen.
+- Bei Quadratur muessen **beide Phasen** saubere Pegel liefern — Twisted-Pair-Fuehrung fuer Encoder-Leitungen empfohlen.
 
 ---
 
@@ -179,11 +184,9 @@ Aus Schaltplan-Tabelle:
 
 ---
 
-## 7) Servos (Pan/Tilt)
+## 7) Servos (Pan/Tilt) — nicht aktiv
 
-- **Signal**: D8 (Pan), D9 (Tilt)
-- **Power**: externes **5 V** (eigener Buck), **nicht** aus ESP32 oder Pi-5V ziehen.
-- Masse muss gemeinsam sein: Servo-GND an Sternpunkt-GND, Signal-GND referenziert.
+> **Status:** D8/D9 werden fuer Encoder Phase B (Quadratur) genutzt. Servos sind nicht anschliessbar, solange Quadratur-Encoder aktiv sind. Fuer Servo-Betrieb muessten die Encoder auf A-only zurueckgestellt und die Firmware angepasst werden.
 
 ---
 
@@ -203,20 +206,43 @@ Aus Schaltplan-Tabelle:
 
 ## 9) Raspberry Pi 5: Peripherie & USB-Topologie
 
-### 9.1 USB (empfohlen)
+### 9.1 Pi-5-Spezifikation (verifiziert 2026-02-15)
 
-- ESP32-S3 per USB (CDC): `/dev/ttyACM*`
-- RPLIDAR A1 per USB: haeufig `/dev/ttyUSB*` oder `/dev/ttyACM*` (adapterabhaengig)
+| Parameter | Wert |
+|---|---|
+| Modell | Raspberry Pi 5 Model B Rev 1.1 |
+| CPU | 4 Kerne @ 2400 MHz (BCM2712) |
+| RAM | 8 GB |
+| OS | Debian GNU/Linux 13 (Trixie), Kernel 6.12 |
+| Disk | 128 GB microSD |
+
+### 9.2 USB-Geraete (verifiziert)
+
+| Geraet | VID:PID | Device-Node | Hinweis |
+|---|---|---|---|
+| XIAO ESP32-S3 | `303a:1001` | `/dev/ttyACM0` | USB-CDC JTAG/Serial |
+| RPLIDAR A1 (CP210x) | `10c4:ea60` | `/dev/ttyUSB0` | USB-Serial Adapter |
 
 **Regel:** Fuer Stabilitaet ueber Reboots:
 
 - udev-Regeln verwenden (serielle Geraete per VID/PID/Serial auf Alias verlinken), z.B. `/dev/amr_esp32`, `/dev/amr_lidar`.
+- Stabiler Pfad fuer ESP32: `/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_...-if00`
 
-### 9.2 Optionale Module
+**Achtung Serial-Port-Konflikt:** `embedded-bridge.service` (Port 8081) belegt `/dev/ttyACM0`. Vor micro-ROS-Agent-Start stoppen: `sudo systemctl stop embedded-bridge.service`.
 
-- **Hailo-8L** via PCIe (AI Kit)
-- **Global Shutter Camera** via CSI
-- Achte auf mechanische Entlastung der Flachbandkabel (CSI) und ausreichende Kuehlung.
+### 9.3 Kamera (IMX296 Global Shutter, CSI)
+
+- Erkannt via `rpicam-hello` (Debian Trixie: `rpicam-hello`, nicht `libcamera-hello`)
+- v4l2loopback-Bridge: `camera-v4l2-bridge.service` (systemd, active) → `/dev/video10`
+- Aufloesung: 1456x1088 @ 15fps (MJPEG → YUYV)
+- CSI-Anschluss: 22-pin Mini-CSI (Pi 5), ggf. 22-auf-15-pin Adapter fuer aeltere Kameras
+- `dtoverlay=imx296` in `/boot/firmware/config.txt` erforderlich (`camera_auto_detect=1` erkennt IMX296 nicht)
+
+### 9.4 Hailo-8L (PCIe AI Accelerator)
+
+- Erkannt via PCIe
+- HailoRT: v4.23.0
+- Aktuell nicht in der AMR-Pipeline genutzt (Potenzial fuer Objekterkennung/Hindernisvermeidung)
 
 ---
 
@@ -240,6 +266,8 @@ Aus Schaltplan-Tabelle:
 
 - [ ] Encoder-VCC/GND vorhanden
 - [ ] Phase A am richtigen Pin (D6/D7)
+- [ ] Phase B am richtigen Pin (D8/D9)
+- [ ] Richtungserkennung korrekt (Vorwaerts = positive Ticks bei beiden Raedern)
 - [ ] Zaehlen stabil bei langsamer Drehung (keine "Spikes" bei Stillstand)
 
 ### 10.4 Lidar-Checks
@@ -258,10 +286,10 @@ Diese Werte definieren indirekt Hardware-Annahmen (Tuning/Mechanik).
 
 - Wheel Diameter: `WHEEL_DIAMETER = 0.065` [m]
 - Wheel Base: `WHEEL_BASE = 0.178` [m]
-- Ticks/Rev (kalibriert, 10-Umdrehungen-Test):
+- Ticks/Rev (kalibriert, 10-Umdrehungen-Test, 2x Quadratur-Zaehlung):
 
-  - `TICKS_PER_REV_LEFT = 374.3`
-  - `TICKS_PER_REV_RIGHT = 373.6`
+  - `TICKS_PER_REV_LEFT = 748.6`
+  - `TICKS_PER_REV_RIGHT = 747.2`
 
 ### 11.2 PWM-Konfiguration (Motor)
 
@@ -319,7 +347,35 @@ Die A/B-Kanaele sind bewusst getauscht, damit die Drehrichtung korrekt ist:
 
 ---
 
-## 12) Ablage im Repo (PR-freundlich)
+## 12) Software-Stack (verifiziert 2026-02-15)
+
+Quelle: `amr/scripts/hardware_info.py` → `hardware_info_20260215_180556.md`
+
+### 12.1 Toolchain & Laufzeit
+
+| Komponente | Version | Hinweis |
+|---|---|---|
+| PlatformIO Core | 6.1.19 | Platform `espressif32` (6.12.0) |
+| ESP32-S3 Toolchain | xtensa-esp32s3-elf-gcc **8.4.0** | crosstool-NG esp-2021r2-patch5 |
+| C++-Standard | C++11 (`-std=gnu++11`) | Siehe `hardware/docs/toolchain_analyse.md` |
+| Docker | 29.2.1 | `docker compose` v5.0.2 |
+| System-GCC (Host) | 14.2.0 | Debian Trixie, nur fuer Host-Tools |
+| Python (Host) | 3.13.5 | Fuer Validierungsskripte |
+
+### 12.2 Relevante Host-Pakete
+
+| Paket | Version | Verwendung |
+|---|---|---|
+| python3-opencv | 4.10.0 | ArUco-Docking (via Docker/cv_bridge) |
+| python3-numpy | 2.2.4 | UMBmark-Analyse, Validierung |
+| python3-serial | 3.5 | ESP32-Reset-Skripte |
+| python3-hailort | 4.23.0 | Hailo-8L AI Accelerator |
+| v4l2loopback-dkms | 0.15.0 | Kamera-Bridge (`/dev/video10`) |
+| rpicam-apps | 1.10.1 | `rpicam-vid` fuer Kamera-Bridge |
+
+---
+
+## 13) Ablage im Repo (PR-freundlich)
 
 Empfohlen:
 
@@ -330,11 +386,8 @@ Empfohlen:
 
 ---
 
-## Anhang A: Quick-Entscheidungen (fuer Zukunftssicherheit)
+## Anhang A: Entscheidungen (fuer Zukunftssicherheit)
 
 - **12 V Motor-Rail** (3S) beibehalten -> kompatibel zu vielen DC-Motoren/Peripherie.
 - **Pi separat** ueber eigenen 5-V-Regler (USB-C, 5 A) -> stabiler ROS-Host.
-- **A-only Encoder** ist ok zum Start; wenn spaeter Drift zu gross:
-
-  - Phase B nachziehen (Quadratur) oder
-  - bessere Odometrie (Radencoder hoeherer Aufloesung / mechanische Verbesserung).
+- **Quadratur-Encoder (A+B)** aktiv: Phase B wurde nachgezogen, Richtungserkennung erfolgt aus Phasenversatz statt PWM-Ansteuerung. 2x-Zaehlung (~748 Ticks/Rev) verdoppelt die Aufloesung gegenueber dem urspruenglichen A-only-Design.

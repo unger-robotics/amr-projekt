@@ -6,38 +6,43 @@ volatile int32_t encoder_left_count = 0;
 volatile int32_t encoder_right_count = 0;
 
 // Overflow-Analyse: int32_t max ~2.147 Mrd Ticks
-// Bei 0,546 mm/Tick entspricht dies ~1.172 km Gesamtfahrstrecke
+// Bei 2x-Quadratur (0,273 mm/Tick) entspricht dies ~586 km Gesamtfahrstrecke
 // Fuer Indoor-AMR praktisch kein Overflow-Risiko
 
-// Drehrichtung wird aus der PWM-Ansteuerung abgeleitet,
-// nicht aus dem Encoder-Signal (A-only, kein Phase B).
-volatile int8_t enc_left_dir = 1;
-volatile int8_t enc_right_dir = 1;
+// Drehrichtung wird aus Quadratur-Dekodierung (Phase A + B) bestimmt.
 
 void IRAM_ATTR isr_enc_left() {
-    encoder_left_count += enc_left_dir;
+    // Quadratur: Richtung aus XOR von Phase A und Phase B
+    if (digitalRead(PIN_ENC_LEFT_A) ^ digitalRead(PIN_ENC_LEFT_B)) {
+        encoder_left_count++;
+    } else {
+        encoder_left_count--;
+    }
 }
 
 void IRAM_ATTR isr_enc_right() {
-    encoder_right_count += enc_right_dir;
+    // Rechter Motor: invertiert (gegenueberliegende Montage)
+    if (digitalRead(PIN_ENC_RIGHT_A) ^ digitalRead(PIN_ENC_RIGHT_B)) {
+        encoder_right_count--;
+    } else {
+        encoder_right_count++;
+    }
 }
 
 class RobotHAL {
   private:
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-    void driveMotor(uint8_t ch_a, uint8_t ch_b, float speed, volatile int8_t &dir) {
+    void driveMotor(uint8_t ch_a, uint8_t ch_b, float speed) {
         int16_t duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
         // Deadzone-Kompensation: Werte unter PWM_DEADZONE erzeugen keine Bewegung
         if (duty > 0 && duty < PWM_DEADZONE) {
             duty = PWM_DEADZONE;
         }
         if (speed > 0) {
-            dir = 1;
             ledcWrite(ch_a, duty);
             ledcWrite(ch_b, 0);
         } else if (speed < 0) {
-            dir = -1;
             ledcWrite(ch_a, 0);
             ledcWrite(ch_b, duty);
         } else {
@@ -48,13 +53,15 @@ class RobotHAL {
 
   public:
     void init() {
-        // Encoder: nur Phase A, Pins aus config.h
+        // Encoder: Phase A (Interrupt) + Phase B (Richtung), Pins aus config.h
         pinMode(PIN_ENC_LEFT_A, INPUT_PULLUP);
         pinMode(PIN_ENC_RIGHT_A, INPUT_PULLUP);
+        pinMode(PIN_ENC_LEFT_B, INPUT_PULLUP);
+        pinMode(PIN_ENC_RIGHT_B, INPUT_PULLUP);
         attachInterrupt(digitalPinToInterrupt(PIN_ENC_LEFT_A), isr_enc_left,
-                        RISING);
+                        CHANGE);
         attachInterrupt(digitalPinToInterrupt(PIN_ENC_RIGHT_A), isr_enc_right,
-                        RISING);
+                        CHANGE);
 
         // Motor-PWM: 4 Kanaele mit Zuordnung aus config.h
         ledcSetup(PWM_CH_LEFT_A, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
@@ -79,7 +86,7 @@ class RobotHAL {
     }
 
     void setMotors(float pwm_l, float pwm_r) {
-        driveMotor(PWM_CH_LEFT_A, PWM_CH_LEFT_B, pwm_l, enc_left_dir);
-        driveMotor(PWM_CH_RIGHT_A, PWM_CH_RIGHT_B, pwm_r, enc_right_dir);
+        driveMotor(PWM_CH_LEFT_A, PWM_CH_LEFT_B, pwm_l);
+        driveMotor(PWM_CH_RIGHT_A, PWM_CH_RIGHT_B, pwm_r);
     }
 };

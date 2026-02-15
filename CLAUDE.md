@@ -105,14 +105,14 @@ Die Firmware partitioniert die Kerne fuer Echtzeit-Garantien:
 - **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`)
 - **Thread-Safety**: FreeRTOS-Mutex (`SharedData`) schuetzt geteilte Daten zwischen den Cores
 
-Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, A-only) → Vorwaertskinematik → Odometrie-Publish
+Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish
 
 ### Firmware-Module (Header-only Pattern)
 
 | Datei | Funktion |
 |---|---|
 | `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Subscriber/Publisher, Safety-Mechanismen |
-| `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (A-only, Richtung aus PWM), PWM-Steuerung, Deadzone, LED-MOSFET-PWM |
+| `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (Quadratur A+B, Richtung aus Phasenversatz), PWM-Steuerung, Deadzone, LED-MOSFET-PWM |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
 
@@ -120,7 +120,7 @@ PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0). Kommunikation m
 
 **LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler.
 
-**Encoder-Hinweis**: `config.h` definiert Phase-B-Pins (D8, D9), aber die Firmware nutzt aktuell nur Phase A. Richtungserkennung erfolgt aus der PWM-Ansteuerung (`enc_left_dir`/`enc_right_dir` in `robot_hal.hpp`), nicht aus Quadratur-Dekodierung.
+**Encoder-Hinweis**: Firmware nutzt Quadratur-Dekodierung (Phase A + B). Phase A (D6/D7) als CHANGE-Interrupt, Phase B (D8/D9) fuer Richtungserkennung. 2x-Zaehlung (~748 Ticks/Rev). D8/D9 sind nicht fuer Servos verfuegbar.
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
@@ -197,7 +197,7 @@ sudo lslocks | grep esp32-serial              # Lock-Status pruefen
 
 Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevante Werte:
 
-- Raddurchmesser: 65 mm, Spurbreite: 178 mm, Encoder: ~374 Ticks/Rev (A-only), PWM-Deadzone: 35
+- Raddurchmesser: 65 mm, Spurbreite: 178 mm, Encoder: ~748 Ticks/Rev (2x Quadratur), PWM-Deadzone: 35
 - Zielgeschwindigkeit: 0.4 m/s, Positionstoleranz: 10 cm (xy) / 8° (Gier), Failsafe-Timeout: 500 ms
 - LED-Streifen: D10 ueber IRLZ24N MOSFET (PWM-Kanal 4, 5 kHz, 8-bit)
 
