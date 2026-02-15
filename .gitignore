@@ -24,3 +24,9 @@ log/
 # rosbag recordings
 *.db3
 metadata.yaml
+
+# SLAM test maps (lokal generiert)
+*_map.pgm
+*_map.yaml
+*_map_img.pgm
+*_map_img.yaml
