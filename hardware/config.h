@@ -28,8 +28,12 @@
 #define PWM_CH_RIGHT_B 2 // war 3
 
 // --- Odometrie (Hall-Encoder JGA25-370) ---
-#define PIN_ENC_LEFT_A D6  // Interrupt-fähig
-#define PIN_ENC_RIGHT_A D7 // Interrupt-fähig
+#define PIN_ENC_LEFT_A D6  // Phase A (Interrupt-fähig)
+#define PIN_ENC_RIGHT_A D7 // Phase A (Interrupt-fähig)
+
+// --- Richtung (Hall-Encoder JGA25-370) ---
+#define PIN_ENC_LEFT_B D8  // Phase B (belegt PIN_SERVO_PAN)
+#define PIN_ENC_RIGHT_B D9 // Phase B (belegt PIN_SERVO_TILT)
 
 // --- Peripherie & Status ---
 #define PIN_LED_MOSFET D10 // IRLZ24N Low-Side Switch
@@ -39,9 +43,9 @@
 #define PIN_I2C_SCL D5
 #define IMU_I2C_ADDR 0x68
 
-// --- Servos (Pan/Tilt - Optional) ---
-#define PIN_SERVO_PAN D8
-#define PIN_SERVO_TILT D9
+// --- Servos (Pan/Tilt - Optional - Status: nicht angeschlossen) ---
+// #define PIN_SERVO_PAN D8
+// #define PIN_SERVO_TILT D9
 
 // ==========================================================================
 // 2. KINEMATISCHE PARAMETER (SI-Einheiten / REP-103)
@@ -77,7 +81,7 @@
 // --- Motor Deadzone ---
 #define PWM_DEADZONE 35 // PWM unter dem Motor nicht anläuft
 
-// --- LED PWM ---
+// --- LED-Streifen PWM ---
 #define LED_PWM_FREQ 5000
 #define LED_PWM_BITS 8
 #define LED_PWM_CHANNEL 4
@@ -86,10 +90,10 @@
 // 4. SAFETY & TIMING
 // ==========================================================================
 
-#define FAILSAFE_TIMEOUT_MS 500   // Motoren stopp nach 500ms ohne cmd_vel
-#define CONTROL_LOOP_HZ 50       // Regelfrequenz [Hz]
+#define FAILSAFE_TIMEOUT_MS 500 // Motoren stopp nach 500ms ohne cmd_vel
+#define CONTROL_LOOP_HZ 50      // Regelfrequenz [Hz]
 #define CONTROL_LOOP_PERIOD_MS (1000 / CONTROL_LOOP_HZ)
-#define ODOM_PUBLISH_HZ 20       // Odometrie-Publikationsrate [Hz]
+#define ODOM_PUBLISH_HZ 20 // Odometrie-Publikationsrate [Hz]
 #define ODOM_PUBLISH_PERIOD_MS (1000 / ODOM_PUBLISH_HZ)
 
 // ==========================================================================
@@ -100,7 +104,8 @@ static_assert(WHEEL_RADIUS > 0, "WHEEL_RADIUS must be positive");
 static_assert(WHEEL_BASE > 0, "WHEEL_BASE must be positive");
 static_assert(TICKS_PER_REV_LEFT > 0, "TICKS_PER_REV_LEFT must be positive");
 static_assert(TICKS_PER_REV_RIGHT > 0, "TICKS_PER_REV_RIGHT must be positive");
-static_assert(PWM_DEADZONE >= 0 && PWM_DEADZONE < MOTOR_PWM_MAX, "PWM_DEADZONE out of range");
+static_assert(PWM_DEADZONE >= 0 && PWM_DEADZONE < MOTOR_PWM_MAX,
+              "PWM_DEADZONE out of range");
 static_assert(MOTOR_PWM_FREQ > 0, "MOTOR_PWM_FREQ must be positive");
 
 #endif // CONFIG_H

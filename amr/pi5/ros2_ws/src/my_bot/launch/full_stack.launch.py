@@ -87,12 +87,18 @@ def generate_launch_description():
     )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
-    rplidar_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare('rplidar_ros'), 'launch', 'rplidar_a1_launch.py']
-            )
-        ),
+    rplidar_node = Node(
+        package='rplidar_ros',
+        executable='rplidar_node',
+        name='rplidar_node',
+        output='screen',
+        parameters=[{
+            'serial_port': '/dev/ttyUSB0',
+            'serial_baudrate': 115200,
+            'frame_id': 'laser',
+            'inverted': False,
+            'angle_compensate': True,
+        }],
     )
 
     # --- 0b. Statischer TF: base_link → laser (180° Yaw) ---
