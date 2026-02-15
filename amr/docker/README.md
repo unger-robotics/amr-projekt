@@ -1,158 +1,128 @@
-# ROS2 Humble Docker-Setup fuer AMR
+# ROS2 Humble Docker-Setup fuer AMR auf Raspberry Pi 5
 
-ROS2 Humble laeuft in einem Docker-Container (Ubuntu 22.04), da der Raspberry Pi 5
-auf Debian Trixie laeuft und keine offiziellen ROS2-Humble-apt-Pakete verfuegbar sind.
+Docker-basierte ROS2 Humble Umgebung fuer den Autonomen Mobilen Roboter (Differentialantrieb, SLAM, Nav2, micro-ROS). Erforderlich, weil der Pi 5 auf Debian Trixie laeuft und ROS2 Humble nur unter Ubuntu 22.04 unterstuetzt wird.
 
 ## Voraussetzungen
 
-- Docker >= 29.x mit Compose Plugin
-- User in Gruppen `docker`, `dialout`, `video`
-- Einmaliges Host-Setup:
+- Raspberry Pi 5 (aarch64, Debian Trixie oder Bookworm)
+- Docker >= 20.10 mit Compose V2 (`docker compose`)
+- Benutzer in den Gruppen `docker`, `dialout`, `video`
+- Optional: X11-Display fuer RViz2
+
+## Ersteinrichtung
+
+Einmalig auf dem Host ausfuehren (erfordert `sudo`):
 
 ```bash
 sudo bash host_setup.sh
 ```
 
-## Image bauen
+Das Skript erledigt: Gruppenzugehoerigkeit pruefen und korrigieren, udev-Regeln fuer ESP32 und RPLIDAR anlegen, X11-Zugriff konfigurieren, v4l2loopback fuer die Kamera-Bridge installieren und den systemd-Service registrieren. Nach Aenderungen an den Gruppen ist ein Re-Login noetig.
+
+## Build & Run
 
 ```bash
-cd amr/docker/
-docker compose build    # ~15-20 Min auf Pi 5, danach gecached
-```
+# Image bauen (~15-20 Min beim ersten Mal, danach gecached)
+docker compose build
 
-## Container starten
-
-```bash
-# Interaktive Shell
+# Interaktive Shell im Container
 ./run.sh
 
-# Einzelbefehl ausfuehren
-./run.sh ros2 topic list
-
-# Workspace bauen (einmalig nach Aenderungen)
+# ROS2-Workspace bauen (im Container)
 ./run.sh colcon build --packages-select my_bot --symlink-install
 
-# Full-Stack starten (micro-ROS + SLAM + Nav2)
+# Full-Stack starten (micro-ROS Agent + SLAM + Nav2 + RViz2)
 ./run.sh ros2 launch my_bot full_stack.launch.py
 
-# Nur SLAM (ohne Navigation)
+# Nur SLAM ohne Navigation
 ./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false
-```
 
-## Zweites Terminal
-
-Waehrend der Container laeuft:
-
-```bash
-./run.sh exec bash
-```
-
-Dann z.B.:
-
-```bash
-ros2 topic list
-ros2 topic echo /odom --once
-```
-
-## Verifikation
-
-```bash
-./verify.sh
-```
-
-Prueft: ROS2-Distribution, installierte Pakete, Device-Zugriff, Workspace-Build,
-und listet alle 9 my_bot Nodes.
-
-## Volume-Mounts
-
-| Host-Pfad | Container-Pfad | Modus |
-|---|---|---|
-| `amr/pi5/ros2_ws/src/my_bot/` | `/ros2_ws/src/my_bot/` | rw |
-| `amr/scripts/` | `/amr_scripts/` | ro |
-| `hardware/` | `/hardware/` | ro |
-
-Build-Artefakte (`build/`, `install/`, `log/`) werden in Docker-Volumes persistiert.
-
-## RViz2 (GUI)
-
-RViz2 benoetigt X11 auf dem Host. Falls kein Desktop laeuft:
-
-```bash
-export DISPLAY=:0
-xhost +local:docker
-```
-
-Alternativ RViz2 auf einem separaten PC ausfuehren und per ROS2 DDS verbinden
-(`ROS_DOMAIN_ID=0`).
-
-## Kamera-Setup (IMX296 Global Shutter)
-
-Die Sony IMX296 CSI-Kamera wird ueber eine v4l2loopback-Bridge in den Container gebracht:
-`rpicam-vid (Host) → ffmpeg → /dev/video10 (v4l2loopback) → v4l2_camera_node (Docker)`.
-
-### Erstmalige Einrichtung
-
-```bash
-# host_setup.sh installiert v4l2loopback, erstellt modprobe-Config und den systemd-Service:
-sudo bash host_setup.sh
-
-# Kamera-Erkennung pruefen (IMX296 muss gelistet sein):
-rpicam-hello --list-cameras
-
-# Bridge-Service starten:
-sudo systemctl start camera-v4l2-bridge.service
-
-# Pruefen ob /dev/video10 Frames liefert:
-v4l2-ctl -d /dev/video10 --all
-```
-
-### ROS2-Stack mit Kamera starten
-
-```bash
-# Full-Stack mit Kamera (fuer ArUco-Docking):
+# Mit Kamera (ArUco-Docking)
 ./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True
 
-# Nur Kamera (ohne SLAM/Navigation):
-./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_nav:=False use_slam:=False use_rviz:=False
-
-# Kamera-Topic pruefen (in zweitem Terminal):
+# Zweites Terminal in laufendem Container oeffnen
 ./run.sh exec bash
-ros2 topic echo /camera/image_raw --once
-ros2 run tf2_ros tf2_echo base_link camera_link
 ```
 
-### Kamera-Troubleshooting
+## Container-Architektur
 
-**IMX296 nicht erkannt (I2C Error -121):**
-- CSI-Kabel pruefen (Pi 5 hat 22-pin Mini-CSI, aeltere Kameras brauchen Adapter)
-- `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen
-- `sudo reboot`
+**Basis-Image:** `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). `osrf/ros:humble-desktop` ist nicht fuer arm64 verfuegbar -- stattdessen werden RViz2, Nav2, SLAM Toolbox und micro-ROS Agent einzeln installiert. Der micro-ROS Agent wird aus Source gebaut, da kein arm64-apt-Paket existiert.
 
-**Bridge-Service laeuft nicht:**
+**Netzwerk:** `network_mode: host` -- noetig fuer ROS2 DDS Multicast Discovery. Alle ROS2-Topics sind direkt auf dem Host sichtbar.
+
+**Privilegien:** `privileged: true` fuer Zugriff auf Serial-Devices (ESP32, RPLIDAR), Kamera (`/dev/video10`) und GPIO.
+
+**Volumes:**
+
+| Mount (Host) | Ziel im Container | Modus | Zweck |
+|---|---|---|---|
+| `ros2_ws/src/my_bot` | `/ros2_ws/src/my_bot` | rw | ROS2-Paket (Quellcode) |
+| `amr/scripts` | `/amr_scripts` | ro | Validierungsskripte |
+| `hardware/` | `/hardware` | ro | `config.h` (Hardware-Parameter) |
+| `/tmp/.X11-unix` | `/tmp/.X11-unix` | rw | X11-Socket fuer RViz2 |
+| Docker Volumes | `/ros2_ws/build,install,log` | rw | Persistenter Build-Cache |
+
+**Entrypoint:** `entrypoint.sh` sourced automatisch alle Workspaces (ROS2 Humble, micro-ROS Agent, Projekt-Workspace). Kein manuelles `source setup.bash` noetig.
+
+## Hilfs-Skripte
+
+**run.sh** -- Convenience-Wrapper fuer `docker compose run`. Setzt automatisch X11-Zugriff (`xhost +local:docker`), prueft bei `use_camera:=True` ob die Kamera-Bridge aktiv ist, und bietet mit `./run.sh exec bash` Zugang zu einem bereits laufenden Container.
+
+**verify.sh** -- Automatischer Verifikationstest (11 Checks): Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
+
+**host_setup.sh** -- Einmalige Host-Konfiguration: Gruppen, udev-Regeln (`/dev/amr_esp32`, `/dev/amr_lidar`), X11-Pakete, v4l2loopback-Installation mit modprobe-Config, IMX296-Kamera-Erkennung, und Installation des systemd-Services fuer die Kamera-Bridge.
+
+## Kamera-Bridge (IMX296 Global Shutter)
+
+Die Sony IMX296 CSI-Kamera ist nicht direkt im Docker-Container nutzbar. Stattdessen laeuft eine v4l2loopback-Bridge auf dem Host:
+
+```
+IMX296 (CSI) -> rpicam-vid (MJPEG) -> ffmpeg -> /dev/video10 (YUYV422) -> v4l2_camera_node (Container)
+```
+
+Der systemd-Service `camera-v4l2-bridge.service` wird durch `host_setup.sh` installiert und beim Boot aktiviert. Aufloesung: 1456x1088 bei 15 fps.
+
 ```bash
+# Service starten/pruefen
+sudo systemctl start camera-v4l2-bridge.service
 sudo systemctl status camera-v4l2-bridge.service
-journalctl -u camera-v4l2-bridge.service -f
-```
 
-**/dev/video10 fehlt:**
-```bash
-sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
+# Pruefen ob Frames ankommen
+v4l2-ctl -d /dev/video10 --all
+
+# ROS2-Stack mit Kamera starten (ArUco-Docking)
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True
 ```
 
 ## Troubleshooting
 
 **Permission denied auf /dev/ttyACM0:**
+`sudo usermod -aG dialout $USER` und anschliessend ab- und wieder anmelden.
+
+**Serial-Port durch anderen Service belegt:**
+Der ESP32-Port wird von mehreren Projekten geteilt. Vor dem Start pruefen:
+
 ```bash
-sudo usermod -aG dialout $USER
-# Ab- und wieder anmelden
+sudo fuser -v /dev/ttyACM0
+sudo systemctl stop embedded-bridge.service   # Falls aktiv
 ```
 
-**Image neu bauen (ohne Cache):**
+**Docker-Image ohne Cache neu bauen oder Build-Cache zuruecksetzen:**
+
 ```bash
 docker compose build --no-cache
-```
-
-**Build-Cache loeschen:**
-```bash
+# Build-Cache komplett zuruecksetzen:
 docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log
 ```
+
+**/dev/video10 fehlt (Kamera-Bridge):**
+
+```bash
+sudo modprobe -r v4l2loopback
+sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
+sudo systemctl restart camera-v4l2-bridge.service
+```
+
+## Lizenz
+
+Siehe [../LICENSE](../LICENSE).
