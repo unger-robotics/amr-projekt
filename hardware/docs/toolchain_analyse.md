@@ -296,3 +296,105 @@ Fuer eine zukuenftige Migration nach Abschluss der Bachelorarbeit:
    - `[[nodiscard]]` fuer Berechnungsfunktionen (4 Stellen)
    - Structured Bindings fuer Encoder-Lesung (3 Stellen)
    - `inline` Variablen fuer volatile Globals (4 Stellen)
+
+## 7. Alternative: `framework = espidf`
+
+### 7.1 Ausgangslage
+
+PlatformIO unterstuetzt fuer den ESP32-S3 zwei Frameworks: `arduino` und `espidf`.
+Die bisherige Analyse (Abschnitte 2-6) betrachtet ausschliesslich Upgrade-Pfade innerhalb
+des Arduino-Frameworks. Dieser Abschnitt bewertet den Wechsel zu `framework = espidf`.
+
+Zentrale Beobachtung aus Abschnitt 2.2: Bei `framework = arduino` bestimmt der Arduino-ESP32
+Core die Toolchain (immer GCC 8.4.0). Bei `framework = espidf` gilt die ESP-IDF-Version
+der PlatformIO-Platform direkt -- mit `espressif32@6.12.0` waere das ESP-IDF 5.x mit GCC 14.2.
+
+### 7.2 API-Migration: Arduino vs. ESP-IDF
+
+Ein Wechsel zu `framework = espidf` entfernt saemtliche Arduino-APIs. Alle Firmware-Module
+sind davon betroffen:
+
+| Funktion | Arduino-API (aktuell) | ESP-IDF Aequivalent |
+|---|---|---|
+| GPIO-Konfiguration | `pinMode(pin, mode)` | `gpio_config(&config)` |
+| GPIO lesen/schreiben | `digitalRead()` / `digitalWrite()` | `gpio_get_level()` / `gpio_set_level()` |
+| PWM-Setup | `ledcSetup()` / `ledcAttachPin()` | `ledc_timer_config()` / `ledc_channel_config()` |
+| PWM-Duty setzen | `ledcWrite(channel, duty)` | `ledc_set_duty()` + `ledc_update_duty()` |
+| Interrupts | `attachInterrupt(pin, isr, mode)` | `gpio_install_isr_service()` + `gpio_isr_handler_add()` |
+| Serielle Komm. | `Serial.begin()` / `Serial.print()` | `uart_driver_install()` / `uart_write_bytes()` |
+| Zeitfunktionen | `millis()` / `delay()` | `esp_timer_get_time() / 1000` / `vTaskDelay()` |
+| Pin-Definitionen | `D0`, `D1`, etc. (Board-Macros) | Rohe GPIO-Nummern (z.B. `GPIO_NUM_1`) |
+
+### 7.3 Betroffene Firmware-Module
+
+| Modul | Betroffene Arduino-APIs | Geschaetzter Aenderungsumfang |
+|---|---|---|
+| `robot_hal.hpp` | `pinMode`, `digitalRead`, `attachInterrupt`, `ledcSetup`, `ledcAttachPin`, `ledcWrite` | ~80-100 Zeilen |
+| `main.cpp` | `Serial`, `millis()`, `set_microros_serial_transports()`, `delay()` | ~60-80 Zeilen |
+| `config.h` | Pin-Macros (`D0`-`D10`), PWM-Kanal-Defines | ~30 Zeilen |
+| `pid_controller.hpp` | Keine direkte Arduino-Abhaengigkeit | Keine Aenderung |
+| `diff_drive_kinematics.hpp` | Keine direkte Arduino-Abhaengigkeit | Keine Aenderung |
+
+**Gesamtumfang: ~200-300 Zeilen Aenderungen** -- ein kompletter Rewrite der HAL-Schicht.
+
+### 7.4 micro-ROS Transport unter ESP-IDF
+
+Der micro-ROS Serial-Transport unterscheidet sich grundlegend zwischen den Frameworks:
+
+```cpp
+// Arduino (aktuell):
+Serial.begin(115200);
+set_microros_serial_transports(Serial);
+
+// ESP-IDF:
+uart_config_t uart_config = { .baud_rate = 115200, ... };
+uart_driver_install(UART_NUM_0, ...);
+rmw_uros_set_custom_transport(
+    true,
+    (void*)&uart_port,
+    platformio_transport_open,
+    platformio_transport_close,
+    platformio_transport_write,
+    platformio_transport_read
+);
+```
+
+Die Arduino-Variante nutzt eine vorgefertigte Abstraktion (`set_microros_serial_transports`),
+waehrend ESP-IDF einen Custom Transport mit vier Callback-Funktionen erfordert.
+Die `micro_ros_platformio`-Library stellt zwar ESP-IDF-Beispiele bereit, die Community-Doku
+und Testabdeckung ist jedoch deutlich geringer als fuer den Arduino-Pfad.
+
+### 7.5 Vergleich der Upgrade-Pfade
+
+| Kriterium | pioarduino (Arduino v3) | `framework = espidf` |
+|---|---|---|
+| Toolchain | GCC 14.2, C++23 | GCC 14.2, C++23 |
+| API-Migrationsaufwand | ~30 Zeilen (LEDC-API) | ~200-300 Zeilen (kompletter HAL-Rewrite) |
+| micro-ROS Transport | Gleich (Arduino Serial) | Custom Transport (4 Callbacks) |
+| FreeRTOS-Nutzung | Unveraendert | Unveraendert (ESP-IDF nutzt FreeRTOS nativ) |
+| Pin-Definitionen | `D0`-`D10` weiterhin verfuegbar | Rohe GPIO-Nummern erforderlich |
+| ABI-Risiko (libmicroros) | Ja (GCC 8→14) | Ja (GCC 8→14) |
+| Community-Support | pioarduino-Fork (aktiv) | Offiziell von Espressif |
+| Zusaetzlicher Nutzen | Keiner gegenueber espidf | Direkter Zugriff auf ESP-IDF-APIs |
+
+### 7.6 Bewertung
+
+Der Wechsel zu `framework = espidf` bietet **keinen funktionalen Vorteil** fuer dieses Projekt:
+
+1. **Gleiche Toolchain, mehr Aufwand:** Beide Pfade fuehren zu GCC 14.2 / C++23. Der
+   ESP-IDF-Pfad erfordert jedoch 7-10x mehr Code-Aenderungen als der pioarduino-Pfad.
+
+2. **Kernrisiken identisch:** Die ABI-Inkompatibilitaet der `libmicroros.a` (Risiko #2)
+   und der Rebuild-Aufwand (Abschnitt 4.4) gelten fuer beide Pfade gleichermassen.
+
+3. **Kein Bedarf an nativen ESP-IDF-Features:** Die Firmware nutzt keine fortgeschrittenen
+   ESP-IDF-Funktionen (WiFi, Bluetooth, USB-Host, NVS). Alle benoetigten Peripherie-Zugriffe
+   (GPIO, PWM, UART, ISR) sind ueber die Arduino-Abstraktion ausreichend abgedeckt.
+
+4. **Weniger Community-Referenzen:** micro-ROS + PlatformIO + ESP-IDF ist eine seltenere
+   Kombination als micro-ROS + PlatformIO + Arduino. Debugging wird erschwert.
+
+**Ergebnis:** Selbst wenn ein Toolchain-Upgrade angestrebt wuerde, waere der pioarduino-Pfad
+(Abschnitt 6.3) dem ESP-IDF-Wechsel vorzuziehen. Die Entscheidung aus Abschnitt 6 --
+bei `framework = arduino` mit GCC 8.4.0 / C++11 bleiben -- wird durch diese Analyse
+zusaetzlich bekraeftigt.
