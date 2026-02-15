@@ -206,7 +206,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 
 ## Validierung
 
-- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (`hardware/docs/08_validierungsplan.md`)
+- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/09_umsetzungsanleitung.md`, Anhang A)
 - 10 Validierungsskripte in `amr/scripts/` (alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung

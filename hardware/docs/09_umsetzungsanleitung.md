@@ -7,7 +7,7 @@
 | Projekt     | Autonomer Mobiler Roboter (AMR) fuer Intralogistik                 |
 | Version     | 3.0 (vereinfacht)                                                  |
 | Datum       | 2026-02-15                                                         |
-| Bezug       | V-Modell Validierungsplan (`hardware/docs/08_validierungsplan.md`) |
+| Bezug       | V-Modell Validierungsplan (Akzeptanzkriterien siehe Anhang A)      |
 
 Diese Anleitung beschreibt die schrittweise Inbetriebnahme des AMR-Prototyps vom ersten Firmware-Upload bis zur vollstaendigen Navigationsvalidierung. Der Aufbau folgt dem V-Modell-Phasenplan und gliedert sich in vier Teile: Teil 1 behandelt die ESP32-S3 Firmware (Phasen 1-3), Teil 2 die ROS2-Umgebung auf dem Raspberry Pi 5, Teil 3 die Integration beider Subsysteme ueber micro-ROS, und Teil 4 verweist auf die separate Kalibrierungsanleitung. Jede Phase baut auf der vorhergehenden auf -- ein Ueberspringen einzelner Schritte ist nicht vorgesehen.
 
@@ -533,7 +533,7 @@ Diese Anleitung deckt ab:
 
 ## Anhang A: Akzeptanzkriterien
 
-Die folgende Tabelle fasst alle Akzeptanzkriterien des Validierungsplans zusammen (siehe `hardware/docs/08_validierungsplan.md`).
+Die folgende Tabelle fasst alle Akzeptanzkriterien des V-Modell-Validierungsplans zusammen.
 
 | Nr.   | Phase | Testbereich | Kriterium                         | Schwellwert                                    | Messmethode                                           |
 |-------|-------|-------------|-----------------------------------|------------------------------------------------|-------------------------------------------------------|
@@ -561,7 +561,7 @@ Die folgende Tabelle fasst alle Akzeptanzkriterien des Validierungsplans zusamme
 
 ## Anhang B: Referenztabelle Validierungsskripte
 
-Alle Validierungsskripte liegen in `amr/scripts/` und sind im V-Modell-Validierungsplan (`hardware/docs/08_validierungsplan.md`) dokumentiert. Die detaillierte Kalibrierungsanleitung mit Schritt-fuer-Schritt-Ablauf findet sich in `hardware/docs/kalibrierung_anleitung.md`.
+Alle Validierungsskripte liegen in `amr/scripts/`. Die detaillierte Kalibrierungsanleitung mit Schritt-fuer-Schritt-Ablauf findet sich in `hardware/docs/kalibrierung_anleitung.md`.
 
 **Hinweis:** Alle ROS2-Befehle (`ros2 run my_bot ...`) werden im Docker-Container ausgefuehrt. Vom Host: `cd amr/docker/ && ./run.sh exec ros2 run my_bot <node>`. Die Entry-Points werden ohne `.py`-Suffix aufgerufen.
 
@@ -612,7 +612,6 @@ Alle Pfade relativ zum Projekt-Root (`AMR-Bachelorarbeit/`).
 | Datei                       | Pfad                                        | Beschreibung                                                     |
 |-----------------------------|---------------------------------------------|------------------------------------------------------------------|
 | hardware-setup.md           | `hardware/docs/hardware-setup.md`           | Physischer Aufbau: Stromversorgung, Verkabelung, Pin-Mapping     |
-| 08_validierungsplan.md      | `hardware/docs/08_validierungsplan.md`      | V-Modell Validierungsplan mit Abnahmekriterien                   |
 | kalibrierung_anleitung.md   | `hardware/docs/kalibrierung_anleitung.md`   | Schritt-fuer-Schritt Kalibrierungsanleitung (UMBmark, PID etc.) |
 | kosten.md                   | `hardware/docs/kosten.md`                   | Stueckliste mit Kostenaufstellung                                |
 
