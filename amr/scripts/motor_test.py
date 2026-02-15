@@ -187,15 +187,15 @@ def run_direction_test(node):
     print("  ACHTUNG: Roboter bewegt sich!\n")
 
     # Fuer Einzelrad-Ansteuerung via Differentialkinematik:
-    # Nur links vorwaerts:  linear.x = v/2, angular.z = v/WHEEL_BASE
-    # Nur rechts vorwaerts: linear.x = v/2, angular.z = -v/WHEEL_BASE
+    # Nur rechts vorwaerts: linear.x = v/2, angular.z = v/WHEEL_BASE
+    # Nur links vorwaerts:  linear.x = v/2, angular.z = -v/WHEEL_BASE
     v_test = 0.15  # [m/s] Testgeschwindigkeit pro Rad
 
     tests = [
-        ("Links vorwaerts",    v_test / 2.0,  v_test / WHEEL_BASE),
-        ("Links rueckwaerts", -v_test / 2.0, -v_test / WHEEL_BASE),
-        ("Rechts vorwaerts",   v_test / 2.0, -v_test / WHEEL_BASE),
-        ("Rechts rueckwaerts",-v_test / 2.0,  v_test / WHEEL_BASE),
+        ("Rechts vorwaerts",   v_test / 2.0,  v_test / WHEEL_BASE),
+        ("Rechts rueckwaerts",-v_test / 2.0, -v_test / WHEEL_BASE),
+        ("Links vorwaerts",    v_test / 2.0, -v_test / WHEEL_BASE),
+        ("Links rueckwaerts", -v_test / 2.0,  v_test / WHEEL_BASE),
         ("Beide vorwaerts",    v_test,         0.0),
         ("Beide rueckwaerts", -v_test,         0.0),
     ]
@@ -331,6 +331,7 @@ def run_ramp_test(node):
 
     ramp_duration = 5.0  # [s]
     data_points = []
+    v_at_max = None
 
     try:
         start = time.time()
@@ -375,7 +376,7 @@ def run_ramp_test(node):
         node.spin_for(1.0)
 
     # Auswertung: Pruefe ob Endgeschwindigkeit nah am Ziel
-    if data_points:
+    if v_at_max is not None and data_points:
         tracking_error = abs(v_at_max - MAX_VELOCITY)
         print(f"  Tracking-Error: {tracking_error:.4f} m/s")
 

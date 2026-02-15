@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 L = 16.0                    # Gesamtpfadlaenge 4x4m Quadrat [m]
 B_NOMINAL = 0.178           # WHEEL_BASE [m]
 WHEEL_RADIUS = 0.0325       # [m]
-WHEEL_DIAMETER = 0.065      # [m]
+TICKS_PER_REV_NOMINAL = 374.0  # Nennwert JGA25-370
 
 
 def eingabe_interaktiv():
@@ -252,12 +252,22 @@ def ausgabe_markdown(erg):
     print()
 
     # config.h-Werte
+    # Die Firmware verwendet einen einzigen WHEEL_RADIUS (symmetrisch).
+    # Die Rad-Asymmetrie wird ueber TICKS_PER_REV_LEFT/RIGHT korrigiert:
+    #   ticks_corrected = ticks_nominal * (r_nominal / r_corrected)
+    r_nominal = WHEEL_RADIUS
+    ticks_left = TICKS_PER_REV_NOMINAL * (r_nominal / erg['r_left_m'])
+    ticks_right = TICKS_PER_REV_NOMINAL * (r_nominal / erg['r_right_m'])
+
     print("### Korrigierte config.h-Werte (Copy-Paste)")
     print()
     print("```c")
-    print(f"#define WHEEL_BASE          {erg['b_actual_m']:.6f}f  // [m] UMBmark-korrigiert")
-    print(f"#define WHEEL_RADIUS_LEFT   {erg['r_left_m']:.6f}f  // [m] UMBmark-korrigiert")
-    print(f"#define WHEEL_RADIUS_RIGHT  {erg['r_right_m']:.6f}f  // [m] UMBmark-korrigiert")
+    print(f"#define WHEEL_BASE            {erg['b_actual_m']:.6f}f  // [m] UMBmark-korrigiert")
+    print(f"#define TICKS_PER_REV_LEFT    {ticks_left:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})")
+    print(f"#define TICKS_PER_REV_RIGHT   {ticks_right:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})")
+    print(f"// Korrigierte Radradien (zur Referenz, nicht als Define verwendet):")
+    print(f"//   r_left  = {erg['r_left_m']:.6f} m  (Abweichung: {(erg['r_left_m'] - r_nominal) * 1000:+.3f} mm)")
+    print(f"//   r_right = {erg['r_right_m']:.6f} m  (Abweichung: {(erg['r_right_m'] - r_nominal) * 1000:+.3f} mm)")
     print("```")
     print()
 

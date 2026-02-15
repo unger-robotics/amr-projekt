@@ -26,6 +26,7 @@ Verwendung:
 import argparse
 import json
 import math
+import os
 import sys
 import time
 
@@ -37,7 +38,7 @@ try:
     from rclpy.node import Node
     from rclpy.time import Time
     from nav_msgs.msg import Odometry
-    from tf2_ros import Buffer, TransformListener, LookupException, ExtrapolationException
+    from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
     ROS2_AVAILABLE = True
 except ImportError:
     ROS2_AVAILABLE = False
@@ -135,7 +136,7 @@ def verify_tf_chain(tf_buffer, node):
             tf_buffer.lookup_transform(parent, child, Time())
             results[key] = 'OK'
             node.get_logger().info(f'TF {key}: verfuegbar')
-        except (LookupException, ExtrapolationException) as e:
+        except (LookupException, ConnectivityException, ExtrapolationException) as e:
             results[key] = f'FEHLT: {e}'
             node.get_logger().warn(f'TF {key}: {e}')
 
@@ -308,7 +309,7 @@ class SlamValidationNode(Node):
             ori = transform.transform.rotation
             yaw = quaternion_to_yaw([ori.x, ori.y, ori.z, ori.w])
             self.slam_poses.append((t, pos.x, pos.y, yaw))
-        except (LookupException, ExtrapolationException):
+        except (LookupException, ConnectivityException, ExtrapolationException):
             pass  # TF noch nicht verfuegbar, normal beim Start
 
     def get_tf_results(self):
@@ -358,6 +359,7 @@ def run_live_mode(duration, output_dir):
 # ---------------------------------------------------------------------------
 
 def run_bag_mode(bag_path, output_dir):
+    # TODO: Rosbag-Modus nicht implementiert – TF-Replay fuer SLAM-Posen fehlt.
     """Liest eine rosbag2-Aufzeichnung und berechnet ATE."""
     if not ROSBAG_AVAILABLE:
         print('FEHLER: rosbag2_py nicht verfuegbar. '
@@ -417,8 +419,6 @@ def run_bag_mode(bag_path, output_dir):
 # Hauptprogramm
 # ---------------------------------------------------------------------------
 
-import os
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -438,7 +438,7 @@ def main():
         help='Aufzeichnungsdauer im Live-Modus (Sekunden, Standard: 120)'
     )
     parser.add_argument(
-        '--output', type=str, default='.',
+        '--output', type=str, default=os.path.dirname(os.path.abspath(__file__)),
         help='Ausgabeverzeichnis fuer Report und Plots'
     )
 

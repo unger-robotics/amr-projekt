@@ -16,6 +16,7 @@ import sys
 import os
 import json
 import math
+import select
 import time
 import datetime
 
@@ -166,7 +167,6 @@ def run_10_rev_test(node):
                     sys.stdout.flush()
 
                     # Pruefen ob Enter gedrueckt (non-blocking)
-                    import select
                     if select.select([sys.stdin], [], [], 0.0)[0]:
                         sys.stdin.readline()
                         break
@@ -239,6 +239,10 @@ def run_direction_test(node):
     print("=" * 60)
     print("  Prueft ob Vorwaerts=positiv und Rueckwaerts=negativ.")
     print("  Drehe ein Rad manuell in die jeweilige Richtung.\n")
+    print("HINWEIS: A-only Encoder erkennen die Drehrichtung ueber die PWM-Ansteuerung,")
+    print("nicht ueber Quadratur-Signale. Manuelles Drehen wird immer als 'vorwaerts' gezaehlt.")
+    print("Dieser Test ist nur bei motorischer Ansteuerung aussagekraeftig.")
+    print()
 
     results = {}
 

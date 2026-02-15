@@ -42,7 +42,6 @@ except ImportError:
 # ===========================================================================
 WHEEL_RADIUS = 0.0325       # [m]
 WHEEL_BASE = 0.178           # [m]
-WHEEL_CIRCUMFERENCE = 0.20420  # [m]
 
 # Odom- und cmd_vel-Topics
 ODOM_TOPIC = "/odom"
@@ -368,9 +367,29 @@ def test_kreisfahrt(node):
     delta_yaw = normalisiere_winkel(pos_end[2] - pos_start[2])
     winkel_fehler = abs(math.degrees(delta_yaw))
 
+    # Kreisradius aus Trajektorie schaetzen
+    if len(node.odom_aufnahme) > 2:
+        xs = [m.pose.pose.position.x for m in node.odom_aufnahme]
+        ys = [m.pose.pose.position.y for m in node.odom_aufnahme]
+        cx = np.mean(xs)
+        cy = np.mean(ys)
+        radien = [math.sqrt((x - cx)**2 + (y - cy)**2) for x, y in zip(xs, ys)]
+        ist_radius = np.mean(radien)
+        radius_fehler_pct = abs(ist_radius - radius) / radius * 100.0
+    else:
+        ist_radius = float('nan')
+        radius_fehler_pct = float('nan')
+
+    # Akzeptanzkriterium: Kreisradius-Fehler < 20%
+    AKZEPTANZ_RADIUS_PCT = 20.0
+    passed = (not math.isnan(radius_fehler_pct)
+              and radius_fehler_pct < AKZEPTANZ_RADIUS_PCT)
+
     ergebnis = {
         "test": "Kreisfahrt",
         "radius_m": radius,
+        "ist_radius_m": float(ist_radius),
+        "radius_fehler_pct": float(radius_fehler_pct),
         "dauer_s": dauer,
         "positions_fehler_m": positions_fehler,
         "winkel_fehler_deg": winkel_fehler,
@@ -378,12 +397,18 @@ def test_kreisfahrt(node):
         "dy_m": dy,
         "start": list(pos_start),
         "ende": list(pos_end),
+        "passed": passed,
     }
 
     print()
     print(f"  Positionsfehler (dx,dy): ({dx:.4f}, {dy:.4f}) m")
     print(f"  Positionsfehler (abs):   {positions_fehler:.4f} m")
     print(f"  Winkelfehler:            {winkel_fehler:.2f} deg")
+    if not math.isnan(ist_radius):
+        print(f"  Kreisradius (soll):      {radius:.3f} m")
+        print(f"  Kreisradius (ist):       {ist_radius:.3f} m")
+        print(f"  Radius-Fehler:           {radius_fehler_pct:.1f}% (Akzeptanz: < {AKZEPTANZ_RADIUS_PCT}%)")
+    print(f"  Bewertung: {'OK' if passed else 'NICHT OK'}")
 
     return ergebnis
 
@@ -407,7 +432,7 @@ def ausgabe_protokoll(ergebnisse):
         if erg["test"] == "Geradeausfahrt":
             print("### Test A: Geradeausfahrt 1 m")
             print()
-            print("| Kenngrösse          | Wert          | Akzeptanz        | Bewertung |")
+            print("| Kenngroesse          | Wert          | Akzeptanz        | Bewertung |")
             print("|:--------------------|:--------------|:-----------------|:----------|")
             print(f"| Streckenabweichung  | {erg['strecke_fehler_pct']:.2f} %       | < {AKZEPTANZ_STRECKE_PCT} %           | {'OK' if erg['strecke_ok'] else 'NICHT OK':9s} |")
             print(f"| Laterale Drift      | {erg['laterale_drift_m']*1000:.1f} mm      | < {AKZEPTANZ_DRIFT_M*1000:.0f} mm          | {'OK' if erg['drift_ok'] else 'NICHT OK':9s} |")
@@ -432,7 +457,7 @@ def ausgabe_protokoll(ergebnisse):
         elif erg["test"] == "Kreisfahrt":
             print("### Test C: Kreisfahrt")
             print()
-            print("| Kenngrösse         | Wert        |")
+            print("| Kenngroesse         | Wert        |")
             print("|:-------------------|:------------|")
             print(f"| Radius (soll)      | {erg['radius_m']:.3f} m    |")
             print(f"| Positionsfehler    | {erg['positions_fehler_m']*1000:.1f} mm   |")

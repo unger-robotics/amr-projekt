@@ -37,7 +37,8 @@ KI = 0.5
 KD = 0.0
 
 # Akzeptanzkriterien
-AKZEPTANZ_ANSTIEGSZEIT = 0.5   # [s]
+# Firmware-Rampe (MAX_ACCEL=5.0 rad/s^2) dominiert: ~2.5s theoretisch
+AKZEPTANZ_ANSTIEGSZEIT = 3.0   # [s]
 AKZEPTANZ_UEBERSCHWINGEN = 15  # [%]
 AKZEPTANZ_EINSCHWINGZEIT = 1.0 # [s]
 AKZEPTANZ_REGELFEHLER = 5      # [%]
@@ -108,11 +109,13 @@ def live_aufnahme():
     # Aufzeichnung
     print(f"Zeichne {AUFNAHME_DAUER:.0f} s auf...")
     t_aufnahme = time.time()
+    letzte_pub = 0
     while time.time() - t_aufnahme < AUFNAHME_DAUER:
         rclpy.spin_once(node, timeout_sec=0.02)
         # cmd_vel regelmaessig wiederholen (Failsafe-Timeout = 500 ms)
-        if time.time() - t_aufnahme > 0 and node.sprung_gesendet:
+        if node.sprung_gesendet and (time.time() - letzte_pub > 0.2):
             node.publisher.publish(twist)
+            letzte_pub = time.time()
 
     # Stopp senden
     twist_stop = Twist()
@@ -235,7 +238,7 @@ def analysiere_sprungantwort(timestamps, velocities, soll=SOLL_GESCHWINDIGKEIT):
     for i in range(len(v) - 1, -1, -1):
         if abs(v[i] - soll) > toleranz:
             if i + 1 < len(t):
-                t_settle = t[i + 1] - t[0]
+                t_settle = t[i + 1]
             break
     else:
         # Nie ausserhalb der Toleranz
@@ -343,7 +346,7 @@ def ausgabe_markdown(erg):
 
     print("### Kenngroessen der Sprungantwort")
     print()
-    print(f"| Kenngrösse               | Wert          | Akzeptanz     | Bewertung |")
+    print(f"| Kenngroesse              | Wert          | Akzeptanz     | Bewertung |")
     print(f"|:-------------------------|:--------------|:--------------|:----------|")
 
     t_rise_str = f"{erg['t_rise_s']:.3f} s" if not math.isnan(erg['t_rise_s']) else "N/A"
@@ -452,6 +455,10 @@ def main():
         print(f"Fehler: Unbekannter Modus '{modus}'")
         print("Verfuegbare Modi: live, bag")
         sys.exit(1)
+
+    if len(timestamps) == 0:
+        print("Keine Daten aufgezeichnet!")
+        return
 
     print(f"Daten: {len(timestamps)} Samples, {timestamps[-1] - timestamps[0]:.1f} s")
 

@@ -24,16 +24,18 @@ PIN_MAPPING = {
     "PIN_MOTOR_RIGHT_B": ("D3", "GPIO4",  "MDD3A M2B (Rueckwaerts-PWM)"),
     "PIN_ENC_LEFT_A":    ("D6", "GPIO43", "Encoder Links (Hall, Interrupt)"),
     "PIN_ENC_RIGHT_A":   ("D7", "GPIO44", "Encoder Rechts (Hall, Interrupt)"),
+    "PIN_SERVO_PAN":     ("D8", "GPIO7",  "Servo Pan (Signal, Power extern 5V)"),
+    "PIN_SERVO_TILT":    ("D9", "GPIO8",  "Servo Tilt (Signal, Power extern 5V)"),
     "PIN_LED_MOSFET":    ("D10", "GPIO9", "IRLZ24N Low-Side MOSFET"),
     "PIN_I2C_SDA":       ("D4", "GPIO5",  "I2C SDA (MPU6050, optional)"),
     "PIN_I2C_SCL":       ("D5", "GPIO6",  "I2C SCL (MPU6050, optional)"),
 }
 
 VOLTAGE_SPECS = {
-    "4S LiFePO4 Akku":        ("12.8 - 14.6 V", "Messung am Akku-Connector"),
-    "Buck FZJ5V5A1S-C":       ("5.0 - 5.2 V",   "Ausgang Buck-Converter, RPi5-Versorgung"),
-    "MDD3A VM":               ("12.8 - 14.6 V",  "Direkt vom Akku, Motortreiber-Eingang"),
-    "ESP32-S3 3.3V Rail":     ("3.2 - 3.4 V",    "Onboard LDO, Logik-Versorgung"),
+    "3S Li-Ion Akku":             ("11.1 - 12.6 V", "Messung am Akku-Connector"),
+    "DC/DC USB-C 5V/5A (25W)":   ("5.0 - 5.2 V",   "Ausgang Buck-Converter, RPi5-Versorgung"),
+    "MDD3A VM":                   ("11.1 - 12.6 V",  "Direkt vom Akku, Motortreiber-Eingang"),
+    "ESP32-S3 3.3V Rail":         ("3.2 - 3.4 V",    "Onboard LDO, Logik-Versorgung"),
 }
 
 # ===========================================================================
@@ -168,6 +170,23 @@ def check_spannungsversorgung(result):
         result.add("Spannung", name, ok, kommentar)
         print()
 
+    # Zusaetzliche Pruefpunkte: Sicherung und Masse
+    print("  --- Hauptsicherung 15 A ---")
+    print("  Visuell pruefen: Sicherung nahe Akku vorhanden und korrekt dimensioniert (15 A).")
+    fuse_ok = ask_yes_no("Hauptsicherung 15 A vorhanden und korrekt?")
+    print_result_line(fuse_ok, "Hauptsicherung 15 A")
+    result.add("Spannung", "Hauptsicherung 15 A", fuse_ok,
+               "Visuelle Pruefung nahe Akku")
+    print()
+
+    print("  --- Gemeinsame Masse / Sternpunkt-GND ---")
+    print("  Pruefen: Pi-GND, Buck-GND, Motortreiber-GND, ESP32-GND an einem Punkt verbunden.")
+    gnd_ok = ask_yes_no("Sternpunkt-GND korrekt verdrahtet?")
+    print_result_line(gnd_ok, "Gemeinsame Masse / Sternpunkt-GND")
+    result.add("Spannung", "Gemeinsame Masse / Sternpunkt-GND", gnd_ok,
+               "Pi-GND, Buck-GND, MDD3A-GND, ESP32-GND verbunden")
+    print()
+
 
 def check_pin_belegung(result):
     """Interaktive Pruefung der Pin-Belegung gegen config.h."""
@@ -195,6 +214,16 @@ def check_pin_belegung(result):
     print_result_line(ok, "Pin-Belegung gesamt")
     result.add("Pins", "Pin-Belegung (alle Pins)", ok, kommentar)
 
+    # Encoder-Versorgung separat pruefen
+    print()
+    print("  --- Encoder VCC/GND Anschluss ---")
+    print("  Beide Hall-Encoder (Links + Rechts) benoetigen VCC und GND zusaetzlich")
+    print("  zur Signalleitung (Phase A). VCC = 3.3 V oder 5 V (mit Pegelanpassung).")
+    enc_pwr_ok = ask_yes_no("Encoder VCC und GND an beiden Motoren angeschlossen?")
+    print_result_line(enc_pwr_ok, "Encoder VCC/GND Anschluss")
+    result.add("Pins", "Encoder VCC/GND Anschluss", enc_pwr_ok,
+               "VCC + GND fuer Hall-Encoder Links und Rechts")
+
 
 def check_firmware(result):
     """Pruefung Firmware-Upload und Boot-Meldung."""
@@ -204,7 +233,7 @@ def check_firmware(result):
 
     # 4a: Firmware-Upload
     print("  4a) Firmware-Upload")
-    print("  Kommando: cd technische_umsetzung/esp32_amr_firmware/ && pio run -t upload")
+    print("  Kommando: cd amr/esp32_amr_firmware/ && pio run -t upload")
     upload_ok = ask_yes_no("Wurde die Firmware erfolgreich hochgeladen (SUCCESS)?")
     kommentar_upload = "pio run -t upload"
     if upload_ok is False:

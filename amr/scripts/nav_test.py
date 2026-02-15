@@ -32,8 +32,9 @@ try:
     from rclpy.action import ActionClient
     from action_msgs.msg import GoalStatus
     from geometry_msgs.msg import PoseStamped
-    from nav_msgs.msg import Odometry
     from nav2_msgs.action import NavigateToPose
+    from tf2_ros import Buffer, TransformListener
+    import tf2_ros
     ROS2_AVAILABLE = True
 except ImportError:
     ROS2_AVAILABLE = False
@@ -67,9 +68,14 @@ def yaw_to_quaternion(yaw):
 
 
 def quaternion_to_yaw(q):
-    """Quaternion (x, y, z, w) -> Yaw-Winkel (rad)."""
-    siny_cosp = 2.0 * (q[3] * q[2] + q[0] * q[1])
-    cosy_cosp = 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2])
+    """Quaternion -> Yaw-Winkel (rad). Akzeptiert Liste [x,y,z,w] oder ROS Quaternion-Msg."""
+    if hasattr(q, 'x'):
+        # ROS Quaternion-Nachricht (z.B. aus TF Transform)
+        x, y, z, w = q.x, q.y, q.z, q.w
+    else:
+        x, y, z, w = q[0], q[1], q[2], q[3]
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     return math.atan2(siny_cosp, cosy_cosp)
 
 
@@ -92,13 +98,11 @@ class NavTestNode(Node):
     def __init__(self, timeout):
         super().__init__('nav_test')
         self.timeout = timeout
-        self.current_odom = None
         self.results = []
 
-        # Odometrie-Subscriber fuer Ist-Position
-        self.odom_sub = self.create_subscription(
-            Odometry, '/odom', self.odom_callback, 10
-        )
+        # TF-Buffer fuer Ist-Position im map-Frame
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # NavigateToPose Action Client
         self.nav_client = ActionClient(
@@ -107,18 +111,21 @@ class NavTestNode(Node):
 
         self.get_logger().info('Navigationstest initialisiert. Warte auf Action-Server...')
 
-    def odom_callback(self, msg):
-        """Speichert aktuelle Odometrie-Pose."""
-        self.current_odom = msg
-
     def get_current_pose(self):
-        """Liest aktuelle Pose aus Odometrie."""
-        if self.current_odom is None:
+        """Liest aktuelle Pose via TF-Lookup map -> base_link."""
+        try:
+            t = self.tf_buffer.lookup_transform(
+                'map', 'base_link', rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=1.0))
+            x = t.transform.translation.x
+            y = t.transform.translation.y
+            yaw = quaternion_to_yaw(t.transform.rotation)
+            return (x, y, yaw)
+        except (tf2_ros.LookupException,
+                tf2_ros.ConnectivityException,
+                tf2_ros.ExtrapolationException) as e:
+            self.get_logger().warning(f'TF-Lookup fehlgeschlagen: {e}')
             return None
-        pos = self.current_odom.pose.pose.position
-        ori = self.current_odom.pose.pose.orientation
-        yaw = quaternion_to_yaw([ori.x, ori.y, ori.z, ori.w])
-        return (pos.x, pos.y, yaw)
 
     def create_goal_pose(self, waypoint):
         """Erstellt PoseStamped aus Waypoint-Dict."""
@@ -187,9 +194,10 @@ class NavTestNode(Node):
         duration = time.time() - t_start
 
         if not result_future.done():
-            self.get_logger().warn(f'Timeout ({self.timeout}s) fuer: {name}')
-            # Goal abbrechen
-            goal_handle.cancel_goal_async()
+            self.get_logger().warning(f'Timeout ({self.timeout}s) fuer: {name}')
+            # Goal abbrechen und auf Cancel-Bestaetigung warten
+            cancel_future = goal_handle.cancel_goal_async()
+            rclpy.spin_until_future_complete(self, cancel_future, timeout_sec=5.0)
             status_str = 'TIMEOUT'
         else:
             result = result_future.result()
@@ -207,7 +215,7 @@ class NavTestNode(Node):
         # Ist-Position auslesen
         current = self.get_current_pose()
         if current is None:
-            self.get_logger().warn('Keine Odometrie verfuegbar!')
+            self.get_logger().warning('Keine TF-Daten verfuegbar!')
             return {
                 'waypoint': name,
                 'status': status_str,
@@ -254,17 +262,17 @@ class NavTestNode(Node):
             f'Timeout={self.timeout}s pro Waypoint'
         )
 
-        # Warte auf erste Odometrie-Nachricht
-        self.get_logger().info('Warte auf Odometrie...')
+        # Warte auf TF map -> base_link
+        self.get_logger().info('Warte auf TF (map -> base_link)...')
+        start_pose = None
         for _ in range(50):
             rclpy.spin_once(self, timeout_sec=0.1)
-            if self.current_odom is not None:
+            start_pose = self.get_current_pose()
+            if start_pose is not None:
                 break
         else:
-            self.get_logger().error('Keine Odometrie empfangen nach 5s!')
+            self.get_logger().error('Kein TF map -> base_link nach 5s!')
             return []
-
-        start_pose = self.get_current_pose()
         self.get_logger().info(
             f'Startposition: x={start_pose[0]:.3f}, y={start_pose[1]:.3f}, '
             f'yaw={start_pose[2]:.3f}'
@@ -385,9 +393,10 @@ def main():
         '--timeout', type=int, default=60,
         help='Timeout pro Waypoint in Sekunden (Standard: 60)'
     )
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     parser.add_argument(
-        '--output', type=str, default='.',
-        help='Ausgabeverzeichnis fuer Report und JSON'
+        '--output', type=str, default=script_dir,
+        help='Ausgabeverzeichnis fuer Report und JSON (Standard: Skript-Verzeichnis)'
     )
 
     args = parser.parse_args()
