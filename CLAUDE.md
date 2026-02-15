@@ -89,15 +89,9 @@ rsync -avz --delete \
   --exclude='sources/' \
   --exclude='hardware/media/' \
   --exclude='hardware/datasheet/' \
-  /Users/jan/daten/IoT/projekt_beamer/AMR-Bachelorarbeit/ pi@rover:~/AMR-Bachelorarbeit
-```
-
-### Python-Hilfsskripte
-
-```bash
-# Virtuelle Umgebung im Projekt-Root: .venv/
-source .venv/bin/activate
-python suche/download_sources.py   # Literatur-PDFs herunterladen
+  <lokaler-projekt-pfad>/AMR-Bachelorarbeit/ pi@rover:~/AMR-Bachelorarbeit
+# Literatur-PDFs herunterladen (virtuelle Umgebung .venv/ im Projekt-Root):
+source .venv/bin/activate && python suche/download_sources.py
 ```
 
 ## Architektur
@@ -121,7 +115,7 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
 
-PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0).
+PID-Gains sind in `main.cpp` hardcoded (Kp=1.5, Ki=0.5, Kd=0.0). Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
 ### ROS2 Navigation Stack (Raspberry Pi)
 
@@ -131,11 +125,19 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 8 entry_points (console_scripts)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 9 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
-### Kommunikationsschicht
+### ROS2 Topics und Nodes
 
-XIAO ESP32-S3 ↔ Raspberry Pi: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
+| Topic | Typ | Quelle | Beschreibung |
+|---|---|---|---|
+| `/cmd_vel` | `geometry_msgs/Twist` | Nav2 / Teleop → ESP32 | Geschwindigkeitskommandos |
+| `/odom` | `nav_msgs/Odometry` | ESP32 (20 Hz) | Rad-Odometrie |
+| `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
+| `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
+| `/tf`, `/tf_static` | TF2 | odom_to_tf, robot_state_publisher | TF-Baum |
+
+Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
 
 ### micro-ROS / XRCE-DDS Constraints
 
@@ -153,7 +155,7 @@ odom → base_footprint → base_link → laser
                                     → camera_link (statisch, optional bei use_camera:=True)
 ```
 
-Statische TFs via URDF + `robot_state_publisher`. Dynamische TF `odom → base_footprint` aus Odometrie. `camera_link` wird nur bei `use_camera:=True` publiziert (via `static_transform_publisher` im Launch-File).
+Statische TFs via `static_transform_publisher` im Launch-File. Dynamische TF `odom → base_footprint` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert. `camera_link` wird nur bei `use_camera:=True` publiziert.
 
 ### Kamera-Pipeline (IMX296 Global Shutter)
 
@@ -249,9 +251,9 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - **Permission denied auf /dev/ttyACM0**: `sudo usermod -aG dialout $USER` (ab- und wieder anmelden)
 - **Docker-Image ohne Cache neu bauen**: `docker compose build --no-cache` (in `amr/docker/`)
 - **Docker-Build-Cache loeschen**: `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log`
-- **Odom-Topic leer trotz Session**: Ursache ist meist die XRCE-DDS MTU-Grenze (512 Bytes). `nav_msgs/Odometry` (~725 Bytes) erfordert Reliable QoS fuer Fragmentierung. `rclc_publisher_init_default()` verwenden, nicht `rmw_qos_profile_sensor_data`.
+- **Odom-Topic leer trotz Session**: XRCE-DDS MTU-Problem – siehe Abschnitt "micro-ROS / XRCE-DDS Constraints".
 - **PlatformIO flasht falschen Port**: Auto-Erkennung waehlt `/dev/ttyUSB0` (RPLIDAR) statt ESP32. Fix: `upload_port = /dev/ttyACM0` in `platformio.ini`.
-- **Serial-Port belegt**: Pruefen mit `sudo fuser -v /dev/ttyACM0` und `sudo lslocks | grep esp32-serial`. Ggf. `sudo systemctl stop embedded-bridge.service`.
+- **Serial-Port belegt**: Siehe Abschnitt "Serial-Port-Management". Kurzfassung: `sudo fuser -v /dev/ttyACM0` und ggf. `sudo systemctl stop embedded-bridge.service`.
 - **Kamera nicht erkannt (IMX296)**: `camera_auto_detect=1` erkennt IMX296 nicht automatisch. Explizit `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen. Reboot erforderlich. Bei I2C-Fehler -121: CSI-Kabel pruefen (Standard-auf-Mini, Kontakte fest).
 - **rpicam-hello statt libcamera-hello**: Debian Trixie / Pi OS Bookworm verwendet `rpicam-hello --list-cameras` statt `libcamera-hello`.
 - **ESP32 USB-CDC haengt**: `Serial.setTxTimeoutMs(50)` in `setup()` setzen und `delay(1)` nach `rclc_executor_spin_some()` fuer Buffer-Flush einfuegen.
