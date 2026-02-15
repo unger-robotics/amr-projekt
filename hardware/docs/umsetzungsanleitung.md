@@ -121,7 +121,7 @@ Das Skript bietet vier Modi:
 
 | Modus | Funktion | Akzeptanzkriterium |
 |-------|----------|--------------------|
-| 10-Umdrehungen-Test | Manuell 10 Umdrehungen drehen, Ticks zaehlen (3 Durchgaenge/Rad) | 370-380 Ticks/Rev, Abweichung < 2 Ticks |
+| 10-Umdrehungen-Test | Manuell 10 Umdrehungen drehen, Ticks zaehlen (3 Durchgaenge/Rad) | 740-760 Ticks/Rev (2x Quadratur), Abweichung < 2 Ticks |
 | Richtungstest | Vorzeichenkonvention pruefen (vorwaerts = positiv) | Korrekte Vorzeichen |
 | Asymmetrie-Test | Tick-Raten beider Raeder vergleichen | < 5 % gut, 5-10 % akzeptabel, > 10 % mechanisches Problem |
 | Live-Anzeige | Aktuelle Geschwindigkeiten und Tick-Raten | -- |
@@ -132,12 +132,12 @@ Nach der Kalibrierung die gemessenen Werte in `hardware/config.h` eintragen:
 
 ```c
 // Vor Kalibrierung (Platzhalter):
-#define TICKS_PER_REV_LEFT 374.3f  // kalibriert (10-Umdrehungen-Test)
-#define TICKS_PER_REV_RIGHT 373.6f // kalibriert (10-Umdrehungen-Test)
+#define TICKS_PER_REV_LEFT 748.6f  // kalibriert (10-Umdrehungen-Test, 2x Quadratur)
+#define TICKS_PER_REV_RIGHT 747.2f // kalibriert (10-Umdrehungen-Test, 2x Quadratur)
 
 // Nach Kalibrierung (Beispielwerte):
-#define TICKS_PER_REV_LEFT 375.2f  // Kalibriert am 2026-02-15
-#define TICKS_PER_REV_RIGHT 374.8f // Kalibriert am 2026-02-15
+#define TICKS_PER_REV_LEFT 750.4f  // Kalibriert (2x Quadratur)
+#define TICKS_PER_REV_RIGHT 749.6f // Kalibriert (2x Quadratur)
 ```
 
 Abgeleitete Konstanten (`METERS_PER_TICK_*`) werden automatisch ueber Praeprozessor-Makros neu berechnet. Firmware danach neu flashen:
@@ -175,7 +175,7 @@ Vier Test-Modi:
 | Kompilierungsfehler `ledcSetup`/`ledcAttachPin` | Arduino-ESP32 v3.x hat neue LEDC-API (`ledcAttach()`). Firmware nutzt aeltere API (espressif32 v6.x). Bei Plattform-Upgrade LEDC-Aufrufe in `robot_hal.hpp` anpassen. |
 | LED D10 blinkt schnell nach Start | micro-ROS-Init fehlgeschlagen. Agent auf Pi starten, ROS2-Distribution (Humble) pruefen. |
 | Sporadische Encoder-Ticks bei Stillstand | Encoder-VCC pruefen (stabil 3,3 V). EMI-Stoerungen: Encoder-Leitungen als Twisted Pair, ggf. 100 nF Kondensator an D6/D7 gegen GND. |
-| PID schwingt / Motoren brummen | Bei 374 Ticks/Rev ist Quantisierungsrauschen hoeher. PID-Gains (Kp=1,5, Ki=0,5, Kd=0,0 in `main.cpp`) nach Encoder-Kalibrierung anpassen (siehe Teil 4, PID-Tuning). |
+| PID schwingt / Motoren brummen | Bei 748 Ticks/Rev ist Quantisierungsrauschen hoeher. PID-Gains (Kp=0,4, Ki=0,1, Kd=0,0 in `main.cpp`) nach Encoder-Kalibrierung anpassen (siehe Teil 4, PID-Tuning). |
 
 ---
 
@@ -282,6 +282,7 @@ ln -s ../../../../../scripts/kinematic_test.py kinematic_test.py
 ln -s ../../../../../scripts/slam_validation.py slam_validation.py
 ln -s ../../../../../scripts/nav_test.py nav_test.py
 ln -s ../../../../../scripts/docking_test.py docking_test.py
+ln -s ../../../../../scripts/amr_utils.py amr_utils.py
 ```
 
 **Hinweis:** `odom_to_tf.py` ist eine eigenstaendige Datei (kein Symlink) und liegt bereits in `my_bot/my_bot/`.
@@ -544,7 +545,7 @@ Die folgende Tabelle fasst alle Akzeptanzkriterien des V-Modell-Validierungsplan
 | Nr.   | Phase | Testbereich | Kriterium                         | Schwellwert                                    | Messmethode                                           |
 |-------|-------|-------------|-----------------------------------|------------------------------------------------|-------------------------------------------------------|
 | AK-01 | 2     | Encoder     | Wiederholgenauigkeit Ticks/Rev    | Abweichung < 2 Ticks/Rev zwischen Durchgaengen | 10-Umdrehungen-Test (encoder_test), 3x wiederholen    |
-| AK-02 | 2     | Encoder     | Ticks/Rev im Sollbereich          | 370-380 Ticks/Rev (A-only Hall)                | 10-Umdrehungen-Test, Mittelwert aus 3 Durchgaengen    |
+| AK-02 | 2     | Encoder     | Ticks/Rev im Sollbereich          | 740-760 Ticks/Rev (2x Quadratur)               | 10-Umdrehungen-Test, Mittelwert aus 3 Durchgaengen    |
 | AK-03 | 2     | Encoder     | Links/Rechts-Asymmetrie           | < 5 %                                          | Identischer PWM-Wert, 10 s Laufzeit, Tick-Vergleich   |
 | AK-04 | 3     | Motor       | PWM-Deadzone                      | Anlauf-PWM im Bereich 30-40                    | motor_test, schrittweise PWM-Erhoehung                 |
 | AK-05 | 3     | Motor       | Failsafe-Timeout                  | Motoren stoppen innerhalb 500 ms ohne cmd_vel  | cmd_vel unterbrechen, Stoppzeit messen                 |

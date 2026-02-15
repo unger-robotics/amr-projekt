@@ -234,7 +234,7 @@ pio run -t upload
 **Vorbereitung:**
 - **Roboter aufbocken** (Raeder muessen frei drehen!)
 - Stack: `use_slam:=false use_nav:=false`
-- Aktuelle PID-Werte: Kp=1.5, Ki=0.5, Kd=0.0 (in `main.cpp`)
+- Aktuelle PID-Werte: Kp=0.4, Ki=0.1, Kd=0.0 (in `main.cpp`)
 
 **Durchfuehrung:**
 
@@ -566,5 +566,5 @@ ros2 run my_bot docking_test
 | Kamera "no frames" | Bridge nicht aktiv | `sudo systemctl restart camera-v4l2-bridge.service` |
 | ArUco-Marker nicht erkannt | Zu dunkel, zu weit, falsches Dictionary | ID 42 / DICT_4X4_50, Beleuchtung, < 2 m |
 | Container haengt | Alter Container blockiert Port | `docker ps -a`, stoppen, `docker rm` |
-| PID schwingt stark | Kp zu hoch | Kp um 30% reduzieren, Kd=0.1 testen |
+| PID schwingt stark | Kp zu hoch | Kp um 30% reduzieren (aktuell Kp=0.4, Ki=0.1), Kd=0.1 testen |
 | ESP32 LED blinkt schnell | Firmware-Init fehlgeschlagen | Agent muss VOR ESP32-Boot laufen |

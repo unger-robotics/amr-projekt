@@ -284,7 +284,7 @@ Diese Werte definieren indirekt Hardware-Annahmen (Tuning/Mechanik).
 
 ### 11.1 Kinematik & Odometrie
 
-- Wheel Diameter: `WHEEL_DIAMETER = 0.065` [m]
+- Wheel Diameter: `WHEEL_DIAMETER = 0.06567` [m] (kalibriert)
 - Wheel Base: `WHEEL_BASE = 0.178` [m]
 - Ticks/Rev (kalibriert, 10-Umdrehungen-Test, 2x Quadratur-Zaehlung):
 
@@ -315,27 +315,33 @@ Die A/B-Kanaele sind bewusst getauscht, damit die Drehrichtung korrekt ist:
 
 ### 11.5 PID-Gains (in `main.cpp` hardcoded)
 
-- Kp = 1.5
-- Ki = 0.5
+- Kp = 0.4
+- Ki = 0.1
 - Kd = 0.0
 - Ausgang begrenzt auf [-1.0, 1.0]
 
-### 11.6 Beschleunigungsrampe (in `main.cpp` hardcoded)
+### 11.6 Signalverarbeitung (in `main.cpp` hardcoded)
+
+- EMA-Filter (alpha=0.3) auf Encoder-Geschwindigkeit fuer PID-Eingang
+- Dead-Band (0.08) in `driveMotor()` unterdrueckt PID-Rauschen nahe Null
+- Stillstand-Bypass mit PID-Reset wenn beide Sollwerte < 0.01
+
+### 11.7 Beschleunigungsrampe (in `main.cpp` hardcoded)
 
 - `MAX_ACCEL = 5.0` [rad/s^2]
 - Maximale Aenderung pro Regelzyklus: `MAX_ACCEL * 0.02 = 0.1` rad/s
 
-### 11.7 Timing & Safety
+### 11.8 Timing & Safety
 
 - Failsafe Timeout: `FAILSAFE_TIMEOUT_MS = 500` (Motoren stoppen nach 500 ms ohne `cmd_vel`)
 - Control Loop: `CONTROL_LOOP_HZ = 50` (20 ms Takt, Core 1)
 - Odom Publish: `ODOM_PUBLISH_HZ = 20` (50 ms Takt, Core 0)
 
-### 11.8 I2C / IMU
+### 11.9 I2C / IMU
 
 - I2C-Adresse: `IMU_I2C_ADDR = 0x68` (MPU6050, optional)
 
-### 11.9 Firmware-Kommunikation (aus `platformio.ini`)
+### 11.10 Firmware-Kommunikation (aus `platformio.ini`)
 
 - Serial (Monitor): 115200 Baud
 - Upload: 921600 Baud
