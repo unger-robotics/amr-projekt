@@ -86,6 +86,26 @@ def generate_launch_description():
         description='Video-Device fuer die Kamera (v4l2loopback-Bridge)',
     )
 
+    # --- 0a. RPLIDAR A1 (immer aktiv) ---
+    rplidar_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [FindPackageShare('rplidar_ros'), 'launch', 'rplidar_a1_launch.py']
+            )
+        ),
+    )
+
+    # --- 0b. Statischer TF: base_link → laser (180° Yaw) ---
+    laser_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='laser_tf_publisher',
+        arguments=[
+            '0.10', '0.0', '0.05', '3.14159', '0.0', '0.0',
+            'base_link', 'laser',
+        ],
+    )
+
     # --- 1. micro-ROS Agent (Serial Transport) ---
     # Verbindet XIAO ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
     # Publiziert /odom, subscribt /cmd_vel.
@@ -97,6 +117,16 @@ def generate_launch_description():
             '-b', '115200',
         ],
         name='micro_ros_agent',
+        output='screen',
+    )
+
+    # --- 1b. Odom-zu-TF Bridge ---
+    # micro-ROS publiziert nur /odom (Odometry), aber keinen TF.
+    # Dieser Node erzeugt den dynamischen TF odom -> base_link.
+    odom_to_tf_node = Node(
+        package='my_bot',
+        executable='odom_to_tf',
+        name='odom_to_tf',
         output='screen',
     )
 
@@ -178,7 +208,10 @@ def generate_launch_description():
         declare_use_camera,
         declare_camera_device,
         # Nodes / Prozesse
+        rplidar_node,
+        laser_tf,
         micro_ros_agent,
+        odom_to_tf_node,
         slam_toolbox_node,
         nav2_launch,
         rviz_node,

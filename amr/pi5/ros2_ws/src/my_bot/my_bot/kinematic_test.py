@@ -1,0 +1,1 @@
+../../../../../scripts/kinematic_test.py

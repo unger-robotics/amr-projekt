@@ -1,0 +1,1 @@
+../scripts/aruco_docking.py

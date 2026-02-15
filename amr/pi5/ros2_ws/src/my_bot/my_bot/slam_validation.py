@@ -1,0 +1,1 @@
+../../../../../scripts/slam_validation.py

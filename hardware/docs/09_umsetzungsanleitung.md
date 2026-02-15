@@ -5,8 +5,8 @@
 | Eigenschaft | Wert                                                               |
 |-------------|--------------------------------------------------------------------|
 | Projekt     | Autonomer Mobiler Roboter (AMR) fuer Intralogistik                 |
-| Version     | 1.0                                                                |
-| Datum       | 2026-02                                                            |
+| Version     | 2.0 (Docker-Migration)                                            |
+| Datum       | 2026-02-14                                                         |
 | Bezug       | V-Modell Validierungsplan (`hardware/docs/08_validierungsplan.md`) |
 
 Diese Anleitung beschreibt die schrittweise Inbetriebnahme des AMR-Prototyps vom ersten Firmware-Upload bis zur vollstaendigen Navigationsvalidierung. Der Aufbau folgt dem V-Modell-Phasenplan und gliedert sich in vier Teile: Teil 1 behandelt die ESP32-S3 Firmware (Phasen 1-3, Kompilierung, Encoder- und Motor-Validierung), Teil 2 die ROS2-Umgebung auf dem Raspberry Pi 5, Teil 3 die Integration beider Subsysteme ueber micro-ROS, und Teil 4 die Kalibrierung und Systemvalidierung. Jede Phase baut auf der vorhergehenden auf -- ein Ueberspringen einzelner Schritte ist nicht vorgesehen, da spaetere Phasen auf korrekt validierte Vorstufen angewiesen sind.
@@ -221,11 +221,12 @@ Das Ergebnis wird als Markdown-Datei im Skript-Verzeichnis gespeichert (z.B. `pr
 Das Encoder-Kalibrierungs-Tool ist ein ROS2-Node, der `/odom`-Nachrichten subscribt und die Encoder-Ticks zurueckrechnet. Der micro-ROS Agent muss dafuer aktiv sein.
 
 ```bash
-# micro-ROS Agent starten (in einem separaten Terminal)
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
+# micro-ROS Agent im Docker-Container starten (in einem separaten Terminal)
+cd amr/docker/
+./run.sh ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
 
-# Encoder-Test starten
-ros2 run my_bot encoder_test.py
+# Encoder-Test in einem zweiten Container-Terminal starten
+./run.sh exec ros2 run my_bot encoder_test
 ```
 
 Das Skript bietet vier Modi ueber ein interaktives Menue:
@@ -263,8 +264,8 @@ Die abgeleiteten Konstanten `METERS_PER_TICK_LEFT` und `METERS_PER_TICK_RIGHT` w
 Die Motor-Validierung prueft die korrekte Ansteuerung, die Deadzone-Kompensation, das Failsafe-Verhalten und die Rampen-Beschleunigung. Das Test-Tool `motor_test.py` ist ein ROS2-Node, der `/cmd_vel` publiziert und `/odom` fuer Feedback subscribt.
 
 ```bash
-# Motor-Test starten (micro-ROS Agent muss laufen)
-ros2 run my_bot motor_test.py
+# Motor-Test starten (micro-ROS Agent muss im Container laufen)
+./run.sh exec ros2 run my_bot motor_test
 ```
 
 **Sicherheitshinweis:** Der Roboter muss waehrend der Motor-Tests entweder auf Bloecken stehen (Raeder frei drehend) oder sich in einer sicheren Umgebung befinden. Ein Druck auf Ctrl+C sendet sofort `cmd_vel = 0` (Stopp-Befehl, 5-fach wiederholt fuer Zuverlaessigkeit).
@@ -329,57 +330,99 @@ Die folgenden Probleme treten am haeufigsten bei der Erstinbetriebnahme des XIAO
 
 Dieses Kapitel beschreibt die Einrichtung des Raspberry Pi 5 als zentralen Navigationsrechner des AMR. Der Pi uebernimmt SLAM, Pfadplanung und die Kommunikation mit dem ESP32-S3 ueber micro-ROS.
 
-### 2.1 Voraussetzungen und ROS2-Installation
+### 2.1 Voraussetzungen und ROS2-Installation via Docker
 
-Der Raspberry Pi 5 muss mit Raspberry Pi OS (64-bit, Bookworm) betrieben werden. ROS2 Humble ist die Zieldistribution und wird ueber die offiziellen apt-Repositories installiert.
+Der Raspberry Pi 5 laeuft auf Debian Trixie (13), fuer das keine offiziellen ROS2-Pakete verfuegbar sind. ROS2 Humble wird daher ueber Docker bereitgestellt: Ein Container auf Basis von Ubuntu 22.04 (`ros:humble-ros-base`) stellt die vollstaendige ROS2-Umgebung inklusive aller benoetigten Pakete zur Verfuegung. Das Docker-Image (`osrf/ros:humble-desktop`) ist nur fuer amd64 verfuegbar -- daher wird `ros:humble-ros-base` (multi-arch, arm64) als Basis verwendet und die benoetigten Pakete einzeln installiert.
 
-Zunaechst werden die ROS2-apt-Quellen hinzugefuegt:
+**Host-Voraussetzungen:**
 
-```bash
-sudo apt update && sudo apt install -y curl gnupg lsb-release
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-  http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
-  | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-```
-
-Anschliessend wird ROS2 Humble Desktop installiert. Die Desktop-Variante enthaelt RViz2 fuer die Visualisierung:
+Auf dem Raspberry Pi muessen Docker und Docker Compose installiert sein. Der Benutzer muss den Gruppen `docker`, `dialout` und `video` angehoeren:
 
 ```bash
-sudo apt update
-sudo apt install -y ros-humble-desktop
+# Pruefen
+docker --version        # >= 20.x erwartet
+docker compose version  # >= 2.x erwartet
+id -nG                  # docker, dialout, video muessen enthalten sein
 ```
 
-Nach der Installation muss das ROS2-Setup in jeder neuen Shell geladen werden. Es empfiehlt sich, dies in die `.bashrc` einzutragen:
+**Einmalige Host-Einrichtung:**
+
+Das Skript `host_setup.sh` prueft die Gruppenzugehoerigkeiten, erstellt udev-Regeln fuer stabile Geraetepfade (`/dev/amr_esp32`, `/dev/amr_lidar`), konfiguriert X11-Zugriff fuer RViz2 und prueft Kamera- und Docker-Verfuegbarkeit:
 
 ```bash
-echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-source ~/.bashrc
+cd amr/docker/
+sudo bash host_setup.sh
 ```
 
-Folgende zusaetzliche ROS2-Pakete werden fuer den AMR-Stack benoetigt:
+Nach dem Ausfuehren ist ein Ab- und Wiederanmelden erforderlich, falls Gruppenaenderungen vorgenommen wurden.
+
+**Docker-Image bauen:**
 
 ```bash
-sudo apt install -y \
-  ros-humble-nav2-bringup \
-  ros-humble-slam-toolbox \
-  ros-humble-rplidar-ros \
-  ros-humble-cv-bridge \
-  python3-colcon-common-extensions \
-  python3-rosdep
+cd amr/docker/
+docker compose build
 ```
 
-Falls `rosdep` noch nicht initialisiert wurde:
+Der Build dauert auf dem Raspberry Pi 5 ca. 15-20 Minuten beim ersten Durchlauf. Nachfolgende Builds sind durch Docker-Layer-Caching deutlich schneller. Das Image basiert auf `ros:humble-ros-base` und installiert alle benoetigten ROS2-Pakete, den micro-ROS Agent (aus Source gebaut, da kein arm64-apt-Paket verfuegbar) sowie Python-Bibliotheken.
+
+**Im Docker-Image vorinstallierte ROS2-Pakete:**
+
+Die folgenden Pakete werden im Dockerfile installiert und stehen im Container sofort zur Verfuegung. Eine manuelle Installation via `apt` ist nicht erforderlich:
+
+- `ros-humble-rviz2`, `ros-humble-rqt`, `ros-humble-rqt-common-plugins` (GUI)
+- `ros-humble-nav2-bringup`, `ros-humble-slam-toolbox` (Navigation und SLAM)
+- `ros-humble-rplidar-ros` (LiDAR-Treiber)
+- `ros-humble-cv-bridge`, `ros-humble-v4l2-camera` (Vision)
+- `ros-humble-micro-ros-agent` (micro-ROS, aus Source gebaut)
+- `python3-colcon-common-extensions`, `python3-rosdep` (Build-Tools)
+- `python3-numpy`, `python3-matplotlib`, `python3-opencv` (Python-Bibliotheken)
+
+**Verifikation des Docker-Setups:**
 
 ```bash
-sudo rosdep init
-rosdep update
+cd amr/docker/
+./verify.sh
 ```
+
+Das Verifikationsskript fuehrt 11 Checks durch: Image vorhanden, ROS2-Distribution, Pakete installiert, Serial-Device-Zugriff, Workspace-Build und Paket-Executables. Bei 11/11 PASS ist das Setup vollstaendig.
+
+**Arbeiten mit dem Docker-Container:**
+
+Der Convenience-Wrapper `run.sh` vereinfacht den Container-Zugriff. Er kann auf drei Arten verwendet werden:
+
+```bash
+cd amr/docker/
+
+# 1. Interaktive Shell im Container
+./run.sh
+
+# 2. Einzelbefehl ausfuehren (Container startet, fuehrt aus, beendet sich)
+./run.sh ros2 topic list
+./run.sh colcon build --packages-select my_bot --symlink-install
+
+# 3. Zweites Terminal in einem bereits laufenden Container oeffnen
+./run.sh exec bash
+./run.sh exec ros2 topic list
+```
+
+Der Container verwendet `network_mode: host` (fuer DDS-Multicast-Discovery) und `privileged: true` (fuer Serial- und Kamera-Zugriff). Die `entrypoint.sh` sourced automatisch alle ROS2-Workspaces -- ein manuelles `source setup.bash` ist nicht erforderlich.
+
+**Container-Pfade und Volume-Mounts:**
+
+| Host-Pfad                          | Container-Pfad         | Modus | Beschreibung              |
+|------------------------------------|------------------------|-------|---------------------------|
+| `amr/pi5/ros2_ws/src/my_bot/`     | `/ros2_ws/src/my_bot/` | rw    | ROS2-Paket (editierbar)   |
+| `amr/scripts/`                     | `/amr_scripts/`        | ro    | Validierungsskripte       |
+| `hardware/`                        | `/hardware/`           | ro    | Hardware-Konfiguration    |
+| Docker-Volume `ros2_build`         | `/ros2_ws/build/`      | rw    | Build-Cache (persistent)  |
+| Docker-Volume `ros2_install`       | `/ros2_ws/install/`    | rw    | Install-Space (persistent)|
+| `/tmp/.X11-unix`                   | `/tmp/.X11-unix`       | rw    | X11-Socket fuer RViz2     |
 
 ### 2.2 ROS2-Paket my_bot vervollstaendigen
 
-Das ROS2-Paket `my_bot` liegt unter `amr/pi5/ros2_ws/src/my_bot/`. Im Repository befinden sich bereits die funktionalen Dateien (Launch-File, YAML-Konfigurationen, Python-Skripte), jedoch fehlen die fuer `colcon build` zwingend erforderlichen Paket-Metadateien. Ohne diese Dateien erkennt `colcon` das Verzeichnis nicht als gueltiges ROS2-Paket.
+Das ROS2-Paket `my_bot` liegt unter `amr/pi5/ros2_ws/src/my_bot/` auf dem Host-Dateisystem. Durch den Volume-Mount in `docker-compose.yml` ist dieses Verzeichnis im Container unter `/ros2_ws/src/my_bot/` verfuegbar (read-write). Aenderungen auf dem Host wirken sich sofort im Container aus und umgekehrt.
+
+Im Repository befinden sich bereits die funktionalen Dateien (Launch-File, YAML-Konfigurationen, Python-Skripte), jedoch fehlen die fuer `colcon build` zwingend erforderlichen Paket-Metadateien. Ohne diese Dateien erkennt `colcon` das Verzeichnis nicht als gueltiges ROS2-Paket.
 
 Die folgenden vier Dateien muessen erstellt werden.
 
@@ -512,7 +555,7 @@ touch amr/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
 
 #### 2.2.5 Skripte verlinken
 
-Die Python-Skripte liegen im `scripts/`-Verzeichnis, muessen aber als Modul im `my_bot/`-Paketverzeichnis erreichbar sein. Dafuer werden symbolische Links erstellt:
+Die Python-Skripte liegen im `scripts/`-Verzeichnis, muessen aber als Modul im `my_bot/`-Paketverzeichnis erreichbar sein. Dafuer werden symbolische Links auf dem Host-Dateisystem erstellt:
 
 ```bash
 cd amr/pi5/ros2_ws/src/my_bot/my_bot/
@@ -527,6 +570,8 @@ ln -s ../scripts/docking_test.py docking_test.py
 ```
 
 Alternativ koennen die Skripte auch direkt in das `my_bot/`-Verzeichnis kopiert werden. Die Symlink-Variante hat den Vorteil, dass Aenderungen an den Skripten automatisch auch im Paket wirksam werden.
+
+**Hinweis zum Docker-Kontext:** Da das Verzeichnis `amr/pi5/ros2_ws/src/my_bot/` als Volume (read-write) in den Container gemountet wird, bleiben die auf dem Host erstellten Symlinks im Container erhalten. Die relativen Pfade der Symlinks (`../scripts/...`) werden korrekt aufgeloest, da die Verzeichnisstruktur innerhalb des Mounts identisch ist.
 
 Nach dem Erstellen aller Dateien sollte die Verzeichnisstruktur wie folgt aussehen:
 
@@ -556,31 +601,21 @@ amr/pi5/ros2_ws/src/my_bot/
 
 ### 2.3 Workspace bauen
 
-Der ROS2-Workspace wird mit `colcon` gebaut. Es empfiehlt sich, nur das eigene Paket zu bauen, um Bauzeit zu sparen:
+Der ROS2-Workspace wird im Docker-Container mit `colcon` gebaut. Der Build-Befehl wird ueber den `run.sh`-Wrapper ausgefuehrt:
 
 ```bash
-cd amr/pi5/ros2_ws/
-colcon build --packages-select my_bot --symlink-install
+cd amr/docker/
+./run.sh colcon build --packages-select my_bot --symlink-install
 ```
 
-Das Flag `--symlink-install` erstellt symbolische Links statt Kopien. Dadurch werden Aenderungen an Python-Skripten und Konfigurationsdateien sofort wirksam, ohne erneut bauen zu muessen.
+Das Flag `--symlink-install` erstellt symbolische Links statt Kopien. Dadurch werden Aenderungen an Python-Skripten und Konfigurationsdateien sofort wirksam, ohne erneut bauen zu muessen. Die Build-Artefakte werden in Docker-Volumes (`ros2_build`, `ros2_install`) persistiert und ueberleben Container-Neustarts.
 
-Nach erfolgreichem Build muss das Workspace-Setup geladen werden:
-
-```bash
-source install/setup.bash
-```
-
-Fuer dauerhafte Verfuegbarkeit kann dies in die `.bashrc` eingetragen werden:
-
-```bash
-echo "source ~/ros2_ws/install/setup.bash" >> ~/.bashrc
-```
+Ein manuelles `source install/setup.bash` ist im Container nicht erforderlich -- die `entrypoint.sh` sourced automatisch alle Workspaces (ROS2 Humble, micro-ROS Agent und den Projekt-Workspace).
 
 Die Installation kann mit folgenden Befehlen verifiziert werden:
 
 ```bash
-ros2 pkg list | grep my_bot
+./run.sh ros2 pkg list | grep my_bot
 ```
 
 Erwartete Ausgabe:
@@ -592,7 +627,7 @@ my_bot
 Und die verfuegbaren Nodes pruefen:
 
 ```bash
-ros2 pkg executables my_bot
+./run.sh ros2 pkg executables my_bot
 ```
 
 Erwartete Ausgabe:
@@ -610,11 +645,12 @@ my_bot slam_validation
 
 ### 2.4 RPLIDAR A1 einrichten
 
-Der RPLIDAR A1 wird ueber USB an den Raspberry Pi angeschlossen. Der ROS2-Treiber wurde bereits in Abschnitt 2.1 installiert (`ros-humble-rplidar-ros`).
+Der RPLIDAR A1 wird ueber USB an den Raspberry Pi angeschlossen. Der ROS2-Treiber (`ros-humble-rplidar-ros`) ist im Docker-Image vorinstalliert.
 
-Zunaechst wird der LiDAR physisch angeschlossen und geprueft, ob er als serielles Geraet erkannt wird:
+Zunaechst wird der LiDAR physisch angeschlossen und auf dem Host geprueft, ob er als serielles Geraet erkannt wird:
 
 ```bash
+# Host-Befehl (kein Docker)
 ls /dev/ttyUSB*
 ```
 
@@ -624,26 +660,19 @@ Erwartete Ausgabe:
 /dev/ttyUSB0
 ```
 
-Der RPLIDAR A1 nutzt einen CP2102-USB-Seriell-Wandler. Falls das Geraet nicht erscheint, fehlt moeglicherweise der Treiber oder die USB-Verbindung ist fehlerhaft.
+Der RPLIDAR A1 nutzt einen CP2102-USB-Seriell-Wandler. Falls das Geraet nicht erscheint, fehlt moeglicherweise der Treiber oder die USB-Verbindung ist fehlerhaft. Die Berechtigungen werden durch die udev-Regeln aus `host_setup.sh` automatisch auf `MODE="0666"` gesetzt (siehe Abschnitt 2.6).
 
-Berechtigungen fuer den seriellen Port setzen:
+Test des LiDAR im Docker-Container:
 
 ```bash
-sudo chmod 666 /dev/ttyUSB0
+cd amr/docker/
+./run.sh ros2 launch rplidar_ros rplidar_a1_launch.py
 ```
 
-Fuer eine dauerhafte Loesung werden udev-Regeln in Abschnitt 2.6 eingerichtet.
-
-Test des LiDAR mit dem Standard-Launch-File:
+In einem zweiten Terminal (im laufenden Container) kann das `/scan`-Topic ueberprueft werden:
 
 ```bash
-ros2 launch rplidar_ros rplidar_a1_launch.py
-```
-
-In einem zweiten Terminal kann das `/scan`-Topic ueberprueft werden:
-
-```bash
-ros2 topic echo /scan --once
+./run.sh exec ros2 topic echo /scan --once
 ```
 
 Es sollte eine `sensor_msgs/LaserScan`-Nachricht mit Entfernungswerten erscheinen. Die Reichweite des RPLIDAR A1 betraegt bis zu 12 m.
@@ -652,9 +681,10 @@ Es sollte eine `sensor_msgs/LaserScan`-Nachricht mit Entfernungswerten erscheine
 
 Der AMR verwendet eine Raspberry Pi Global Shutter Camera (Sony IMX296, 1456x1088 Pixel) mit einem 6 mm CS-Mount-Objektiv. Die Kamera wird ueber das CSI-Flachbandkabel mit dem Raspberry Pi verbunden.
 
-Verbindung pruefen:
+Verbindung auf dem Host pruefen (kein Docker erforderlich):
 
 ```bash
+# Host-Befehl
 libcamera-hello --list-cameras
 ```
 
@@ -669,53 +699,36 @@ Available cameras
 Testbild aufnehmen:
 
 ```bash
+# Host-Befehl
 libcamera-hello -t 3000
 ```
 
 Fuer die Verwendung mit ROS2 und OpenCV muss die Kamera ueber das V4L2-Interface angesprochen werden. Falls noetig, das V4L2-Modul laden:
 
 ```bash
+# Host-Befehl
 sudo modprobe bcm2835-v4l2
 ```
 
 Pruefen, ob das Kamerageraet vorhanden ist:
 
 ```bash
+# Host-Befehl
 ls /dev/video*
 ```
 
-Die Kamera wird vom ArUco-Docking-Node ueber das Topic `/camera/image_raw` verwendet. Dafuer wird ein Kamera-Publisher-Node benoetigt, beispielsweise `v4l2_camera`:
+Die Kamera wird vom ArUco-Docking-Node ueber das Topic `/camera/image_raw` verwendet. Dafuer wird ein Kamera-Publisher-Node benoetigt. Das Paket `ros-humble-v4l2-camera` ist im Docker-Image vorinstalliert:
 
 ```bash
-sudo apt install -y ros-humble-v4l2-camera
-ros2 run v4l2_camera v4l2_camera_node --ros-args -p video_device:="/dev/video0"
+cd amr/docker/
+./run.sh ros2 run v4l2_camera v4l2_camera_node --ros-args -p video_device:="/dev/video0"
 ```
 
 ### 2.6 udev-Regeln
 
 Ohne udev-Regeln koennen sich die Geraetedateien (`/dev/ttyUSB0`, `/dev/ttyACM0`) bei jedem Neustart oder bei veraenderter USB-Reihenfolge aendern. Mit udev-Regeln werden stabile, symbolische Geraetepfade erstellt.
 
-Zunaechst die Vendor- und Product-IDs der USB-Geraete ermitteln:
-
-```bash
-# ESP32-S3 (USB-CDC)
-udevadm info -a -n /dev/ttyACM0 | grep -E "idVendor|idProduct|serial"
-
-# RPLIDAR A1 (CP2102)
-udevadm info -a -n /dev/ttyUSB0 | grep -E "idVendor|idProduct|serial"
-```
-
-Typische Werte:
-- XIAO ESP32-S3: `idVendor=303a`, `idProduct=1001`
-- RPLIDAR A1 (CP2102): `idVendor=10c4`, `idProduct=ea60`
-
-Die udev-Regeldatei erstellen:
-
-```bash
-sudo nano /etc/udev/rules.d/99-amr-devices.rules
-```
-
-Inhalt der Regeldatei:
+Die udev-Regeln werden automatisch durch `host_setup.sh` (siehe Abschnitt 2.1) eingerichtet. Das Skript erstellt die Datei `/etc/udev/rules.d/99-amr-devices.rules` mit folgenden Regeln:
 
 ```text
 # XIAO ESP32-S3 (micro-ROS, USB-CDC)
@@ -727,16 +740,18 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", \
   SYMLINK+="amr_lidar", MODE="0666"
 ```
 
-Regeln aktivieren (ohne Neustart):
+Falls die Regeln manuell geprueft oder nachtraeglich angepasst werden sollen, koennen die Vendor- und Product-IDs der USB-Geraete auf dem Host ermittelt werden:
 
 ```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger
+# Host-Befehle
+udevadm info -a -n /dev/ttyACM0 | grep -E "idVendor|idProduct|serial"
+udevadm info -a -n /dev/ttyUSB0 | grep -E "idVendor|idProduct|serial"
 ```
 
 Pruefen, ob die Symlinks erstellt wurden:
 
 ```bash
+# Host-Befehl
 ls -la /dev/amr_*
 ```
 
@@ -747,37 +762,22 @@ lrwxrwxrwx 1 root root 7 ... /dev/amr_esp32 -> ttyACM0
 lrwxrwxrwx 1 root root 7 ... /dev/amr_lidar -> ttyUSB0
 ```
 
-Ab sofort koennen die stabilen Pfade `/dev/amr_esp32` und `/dev/amr_lidar` in Launch-Files und Konfigurationen verwendet werden:
+Die stabilen Pfade `/dev/amr_esp32` und `/dev/amr_lidar` sind durch `privileged: true` im Docker-Container sichtbar und koennen in Launch-Files verwendet werden:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py serial_port:=/dev/amr_esp32
+cd amr/docker/
+./run.sh ros2 launch my_bot full_stack.launch.py serial_port:=/dev/amr_esp32
 ```
 
-### 2.7 micro-ROS Agent installieren
+### 2.7 micro-ROS Agent testen
 
-Der micro-ROS Agent ist die Bruecke zwischen dem XIAO ESP32-S3 (micro-ROS Client) und dem ROS2-Graphen auf dem Raspberry Pi. Er uebersetzt DDS-XRCE-Nachrichten vom seriellen Port in Standard-ROS2-Topics.
-
-Installation ueber apt (empfohlen):
-
-```bash
-sudo apt install -y ros-humble-micro-ros-agent
-```
-
-Falls das Paket nicht ueber apt verfuegbar ist, kann der Agent aus dem Quellcode gebaut werden:
-
-```bash
-mkdir -p ~/microros_ws/src
-cd ~/microros_ws
-git clone -b humble https://github.com/micro-ROS/micro-ROS-Agent.git src/micro-ROS-Agent
-rosdep install --from-paths src --ignore-src -y
-colcon build --packages-select micro_ros_agent
-source install/setup.bash
-```
+Der micro-ROS Agent ist die Bruecke zwischen dem XIAO ESP32-S3 (micro-ROS Client) und dem ROS2-Graphen auf dem Raspberry Pi. Er uebersetzt DDS-XRCE-Nachrichten vom seriellen Port in Standard-ROS2-Topics. Der Agent ist im Docker-Image vorinstalliert (aus Source gebaut, da kein arm64-apt-Paket verfuegbar) -- eine manuelle Installation ist nicht erforderlich.
 
 Test der Verbindung zum ESP32-S3:
 
 ```bash
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/amr_esp32 -b 115200
+cd amr/docker/
+./run.sh ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/amr_esp32 -b 115200
 ```
 
 Erwartete Ausgabe bei erfolgreicher Verbindung:
@@ -787,10 +787,10 @@ Erwartete Ausgabe bei erfolgreicher Verbindung:
 [info] [micro_ros_agent] Client connected
 ```
 
-In einem zweiten Terminal die Topics pruefen:
+In einem zweiten Terminal (im laufenden Container) die Topics pruefen:
 
 ```bash
-ros2 topic list
+./run.sh exec ros2 topic list
 ```
 
 Nach erfolgreicher Verbindung sollten mindestens diese Topics erscheinen:
@@ -805,45 +805,46 @@ Nach erfolgreicher Verbindung sollten mindestens diese Topics erscheinen:
 Die Odometrie-Daten vom ESP32 anzeigen:
 
 ```bash
-ros2 topic echo /odom --once
+./run.sh exec ros2 topic echo /odom --once
 ```
 
 Es sollte eine `nav_msgs/Odometry`-Nachricht mit Position und Geschwindigkeit erscheinen. Die Publikationsrate betraegt 20 Hz (konfiguriert in `config.h` als `ODOM_PUBLISH_HZ`).
 
-### 2.8 Troubleshooting Raspberry Pi
+### 2.8 Troubleshooting Raspberry Pi / Docker
 
 #### Serial-Port-Berechtigungen
 
-**Problem:** `ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0` schlaegt fehl mit `Permission denied`.
+**Problem:** Der micro-ROS Agent im Container meldet `Permission denied` beim Zugriff auf `/dev/ttyACM0`.
 
-**Loesung:** Den Benutzer zur `dialout`-Gruppe hinzufuegen und ab-/anmelden:
+**Loesung:** Die udev-Regeln aus `host_setup.sh` setzen `MODE="0666"` fuer alle AMR-Geraete. Falls die Regeln noch nicht angewendet wurden:
 
 ```bash
-sudo usermod -aG dialout $USER
-# Abmelden und neu anmelden, damit die Gruppenrechte wirksam werden
+# Host-Befehl
+sudo bash amr/docker/host_setup.sh
 ```
 
-Alternativ fuer sofortigen Test ohne Neuanmeldung:
+Nach dem Ausfuehren ab- und wieder anmelden. Alternativ fuer sofortigen Test:
 
 ```bash
+# Host-Befehl
 sudo chmod 666 /dev/ttyACM0
 ```
-
-Die dauerhafte Loesung sind die udev-Regeln aus Abschnitt 2.6, die `MODE="0666"` setzen.
 
 #### ESP32 wird nicht als serielles Geraet erkannt
 
 **Problem:** Nach dem Anschliessen des XIAO ESP32-S3 erscheint kein `/dev/ttyACM0`.
 
-**Loesung:** Pruefen, ob der USB-CDC-Treiber geladen ist:
+**Loesung:** Pruefen, ob der USB-CDC-Treiber geladen ist (Host-Befehl):
 
 ```bash
+# Host-Befehl
 dmesg | tail -20
 ```
 
 Der XIAO ESP32-S3 nutzt den nativen USB-CDC des ESP32-S3 (kein externer USB-Seriell-Wandler). Falls `cdc_acm` nicht geladen ist:
 
 ```bash
+# Host-Befehl
 sudo modprobe cdc_acm
 ```
 
@@ -851,9 +852,9 @@ Falls das Geraet weiterhin nicht erscheint, den ESP32 in den Bootloader-Modus ve
 
 #### colcon build schlaegt fehl
 
-**Problem:** `colcon build` meldet `package 'my_bot' not found` oder `SetuptoolsDeprecationWarning`.
+**Problem:** `./run.sh colcon build` meldet `package 'my_bot' not found` oder `SetuptoolsDeprecationWarning`.
 
-**Loesung:** Sicherstellen, dass alle vier Paketdateien vorhanden sind (`package.xml`, `setup.py`, `setup.cfg`, `resource/my_bot`). Die Verzeichnisstruktur pruefen:
+**Loesung:** Sicherstellen, dass alle vier Paketdateien vorhanden sind (`package.xml`, `setup.py`, `setup.cfg`, `resource/my_bot`). Die Verzeichnisstruktur auf dem Host pruefen:
 
 ```bash
 ls amr/pi5/ros2_ws/src/my_bot/package.xml
@@ -863,10 +864,11 @@ ls amr/pi5/ros2_ws/src/my_bot/resource/my_bot
 ls amr/pi5/ros2_ws/src/my_bot/my_bot/__init__.py
 ```
 
-Falls `SetuptoolsDeprecationWarning` erscheint, eine kompatible Version installieren:
+Die `SetuptoolsDeprecationWarning` ist im Docker-Image bereits durch eine kompatible Version behandelt. Falls der Build-Cache korrupt ist, kann er zurueckgesetzt werden:
 
 ```bash
-pip install setuptools==58.2.0
+docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log
+./run.sh colcon build --packages-select my_bot --symlink-install
 ```
 
 #### micro-ROS Agent verbindet sich nicht
@@ -877,15 +879,16 @@ pip install setuptools==58.2.0
 
 1. Baudrate stimmt (muss 115200 sein, passend zur Firmware).
 2. Der ESP32 ist korrekt geflasht und laeuft (LED-Status beachten).
-3. Der richtige Port wird verwendet. Pruefen mit:
+3. Der richtige Port ist im Container sichtbar:
 
 ```bash
-ls /dev/ttyACM* /dev/ttyUSB*
+./run.sh ls /dev/ttyACM* /dev/ttyUSB*
 ```
 
-4. Kein anderer Prozess belegt den Port:
+4. Kein anderer Prozess belegt den Port (Host-Befehl):
 
 ```bash
+# Host-Befehl
 sudo fuser /dev/ttyACM0
 ```
 
@@ -897,10 +900,10 @@ Falls ein Prozess den Port belegt, diesen beenden oder einen anderen Port verwen
 
 **Loesung:** Der RPLIDAR A1 benoetigt 5V-Versorgung ueber USB. Pruefen, ob der USB-Port genuegend Strom liefert. Bei Verwendung eines USB-Hubs muss dieser aktiv (mit eigenem Netzteil) sein. Alternativ den LiDAR direkt an den Raspberry Pi anschliessen.
 
-Falls der Motor dreht aber keine Daten kommen, den Topic-Status pruefen:
+Falls der Motor dreht aber keine Daten kommen, den Topic-Status im Container pruefen:
 
 ```bash
-ros2 topic hz /scan
+./run.sh exec ros2 topic hz /scan
 ```
 
 Die erwartete Rate liegt bei ca. 5-10 Hz (abhaengig von der Drehzahl).
@@ -912,49 +915,109 @@ Die erwartete Rate liegt bei ca. 5-10 Hz (abhaengig von der Drehzahl).
 **Loesung:** Das CSI-Flachbandkabel pruefen. Die Kontaktseite muss zur Platine zeigen (blaue Markierung nach aussen). Ausserdem in der `/boot/config.txt` sicherstellen, dass die Kamera aktiviert ist:
 
 ```bash
+# Host-Befehl
 sudo raspi-config
 # Interface Options -> Camera -> Enable
 ```
 
 Nach der Aenderung ist ein Neustart erforderlich.
 
-#### RViz2 zeigt kein Bild auf dem Pi
+#### RViz2 zeigt kein Bild im Container
 
-**Problem:** RViz2 startet, aber das Fenster bleibt schwarz oder stuerzt ab.
+**Problem:** RViz2 startet im Container, aber das Fenster bleibt schwarz oder stuerzt ab.
 
-**Loesung:** RViz2 auf dem Raspberry Pi 5 benoetigt OpenGL-Unterstuetzung. Falls Probleme auftreten, den Software-Renderer verwenden:
+**Loesung:** RViz2 benoetigt X11-Weiterleitung vom Container zum Host-Display. Sicherstellen, dass `host_setup.sh` ausgefuehrt wurde und X11-Zugriff erlaubt ist:
 
 ```bash
-export LIBGL_ALWAYS_SOFTWARE=1
-ros2 launch my_bot full_stack.launch.py
+# Host-Befehl (wird auch von run.sh automatisch aufgerufen)
+xhost +local:docker
 ```
 
-Alternativ kann RViz2 auf dem Entwicklungsrechner ausgefuehrt werden, waehrend der Navigation-Stack headless auf dem Pi laeuft:
+Falls OpenGL-Probleme auftreten, den Software-Renderer verwenden. Dazu in `docker-compose.yml` die Umgebungsvariable `LIBGL_ALWAYS_SOFTWARE=1` hinzufuegen oder im Container setzen:
 
 ```bash
-# Auf dem Pi (ohne RViz2):
-ros2 launch my_bot full_stack.launch.py use_rviz:=False
+./run.sh bash -c "export LIBGL_ALWAYS_SOFTWARE=1 && ros2 launch my_bot full_stack.launch.py"
+```
 
-# Auf dem Entwicklungsrechner (mit ROS2 und Netzwerkverbindung):
+Alternativ kann RViz2 auf dem Entwicklungsrechner ausgefuehrt werden, waehrend der Navigation-Stack headless im Container auf dem Pi laeuft:
+
+```bash
+# Auf dem Pi (Container, ohne RViz2):
+./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False
+
+# Auf dem Entwicklungsrechner (mit nativer ROS2-Installation und Netzwerkverbindung):
 ros2 launch nav2_bringup rviz_launch.py
 ```
 
-Dafuer muessen beide Rechner im selben ROS2-DDS-Domain sein (Standard: `ROS_DOMAIN_ID=0`) und Multicast-Netzwerkverkehr erlaubt sein.
+Dafuer muessen beide Rechner im selben ROS2-DDS-Domain sein (Standard: `ROS_DOMAIN_ID=0`, gesetzt in `docker-compose.yml`) und Multicast-Netzwerkverkehr erlaubt sein.
+
+#### Container startet nicht
+
+**Problem:** `./run.sh` meldet einen Fehler oder der Container beendet sich sofort.
+
+**Loesung:** Pruefen, ob das Docker-Image vorhanden ist:
+
+```bash
+docker images amr-ros2-humble:latest
+```
+
+Falls das Image fehlt, zuerst bauen:
+
+```bash
+cd amr/docker/
+docker compose build
+```
+
+Das Verifikationsskript `./verify.sh` prueft alle Voraussetzungen und gibt gezielte Fehlermeldungen aus.
+
+#### Geraet im Container nicht sichtbar
+
+**Problem:** `/dev/ttyACM0` oder `/dev/ttyUSB0` existiert auf dem Host, aber nicht im Container.
+
+**Loesung:** Der Container laeuft mit `privileged: true` und hat Zugriff auf alle Host-Devices. Falls ein Geraet erst nach dem Container-Start angeschlossen wird (Hot-Plug), muss der Container neu gestartet werden:
+
+```bash
+# Laufenden Container beenden (Ctrl+C)
+# Container neu starten
+cd amr/docker/
+./run.sh
+```
+
+Pruefen, ob das Geraet im Container sichtbar ist:
+
+```bash
+./run.sh ls /dev/ttyACM* /dev/ttyUSB* /dev/amr_*
+```
+
+#### Volume-Mount-Fehler
+
+**Problem:** Dateien im Container stimmen nicht mit dem Host-Dateisystem ueberein oder Aenderungen gehen verloren.
+
+**Loesung:** Die Docker-Volumes fuer Build-Artefakte (`ros2_build`, `ros2_install`, `ros2_log`) sind benannte Volumes und ueberleben Container-Neustarts. Falls der Workspace inkonsistent ist, die Volumes zuruecksetzen:
+
+```bash
+docker volume ls | grep ros2
+docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log
+./run.sh colcon build --packages-select my_bot --symlink-install
+```
+
+Das Quellverzeichnis `my_bot/` ist ein Bind-Mount (Host-Dateisystem) und wird nicht durch Volumes beeinflusst.
 
 ---
 
 ## Teil 3: Zusammenspiel ESP32 <-> Pi5 (Phase 7)
 
-Die Integration der ESP32-S3 Firmware mit dem ROS2-Stack auf dem Raspberry Pi 5 bildet die entscheidende Schnittstelle des Gesamtsystems. In Phase 7 wird die Kommunikation ueber micro-ROS verifiziert und das Full-Stack-Launch getestet. Alle folgenden Schritte setzen voraus, dass die Firmware erfolgreich geflasht wurde (Teil 1) und die ROS2-Umgebung funktionsfaehig ist (Teil 2).
+Die Integration der ESP32-S3 Firmware mit dem ROS2-Stack auf dem Raspberry Pi 5 bildet die entscheidende Schnittstelle des Gesamtsystems. In Phase 7 wird die Kommunikation ueber micro-ROS verifiziert und das Full-Stack-Launch getestet. Alle folgenden Schritte setzen voraus, dass die Firmware erfolgreich geflasht wurde (Teil 1) und die ROS2-Docker-Umgebung funktionsfaehig ist (Teil 2, `./verify.sh` bestanden). Alle `ros2`-Befehle werden im Docker-Container ausgefuehrt -- entweder ueber `./run.sh <befehl>` vom Host oder direkt in einer interaktiven Container-Shell (`./run.sh`). Ein manuelles `source setup.bash` ist nicht erforderlich.
 
 ### 3.1 micro-ROS UART-Verbindung
 
 Der micro-ROS Agent stellt die Bruecke zwischen dem ESP32-S3 und dem ROS2-Graphen auf dem Raspberry Pi her. Die Kommunikation erfolgt ueber USB-CDC (virtuelle serielle Schnittstelle) mit 115200 Baud. Der ESP32-S3 belegt den seriellen Port vollstaendig fuer micro-ROS -- ein gleichzeitiger Debug-Zugriff ueber den Serial Monitor ist daher nicht moeglich.
 
-Der Agent wird wie folgt gestartet:
+Der Agent wird im Docker-Container wie folgt gestartet:
 
 ```bash
-ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 115200
+cd amr/docker/
+./run.sh ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0 -b 115200
 ```
 
 Nach dem Start wartet der Agent auf eine Verbindungsanfrage vom ESP32-S3. Der Verbindungsaufbau (Session-Establishment) dauert typischerweise 2-5 Sekunden. Die Reihenfolge ist dabei unkritisch: Der ESP32 kann vor oder nach dem Agent gestartet werden. Falls der ESP32 zuerst laeuft, wartet er auf den Agent. Falls der Agent zuerst laeuft, wartet er auf den Client.
@@ -970,10 +1033,10 @@ Die Zeitsynchronisation zwischen ESP32-S3 und dem ROS2-Host erfolgt ueber `rmw_u
 
 ### 3.2 Topic-Verifikation
 
-Sobald die micro-ROS-Session aufgebaut ist, muessen zwei Topics im ROS2-Graphen sichtbar sein. Die Verifikation erfolgt ueber die Kommandozeile:
+Sobald die micro-ROS-Session aufgebaut ist, muessen zwei Topics im ROS2-Graphen sichtbar sein. Die Verifikation erfolgt in einem zweiten Terminal im laufenden Container:
 
 ```bash
-ros2 topic list
+./run.sh exec ros2 topic list
 ```
 
 Erwartete Ausgabe (mindestens):
@@ -990,7 +1053,7 @@ Die Topics `/cmd_vel` und `/odom` werden vom ESP32-S3 bereitgestellt. Der ESP32-
 Die Odometrie-Nachricht kann wie folgt inspiziert werden:
 
 ```bash
-ros2 topic echo /odom --once
+./run.sh exec ros2 topic echo /odom --once
 ```
 
 Erwartete Ausgabe (bei stehendem Roboter):
@@ -1029,10 +1092,10 @@ Bei manueller Raddrehung muessen sich die Odometrie-Werte (`pose.pose.position.x
 
 Die Odometrie-Publikationsrate ist in `config.h` als `ODOM_PUBLISH_PERIOD_MS = 50` definiert, was einer Soll-Rate von 20 Hz entspricht. Die Regelschleife auf Core 1 laeuft unabhaengig davon bei 50 Hz (`CONTROL_LOOP_PERIOD_MS = 20`).
 
-Die Rate wird wie folgt gemessen:
+Die Rate wird im Container wie folgt gemessen:
 
 ```bash
-ros2 topic hz /odom
+./run.sh exec ros2 topic hz /odom
 ```
 
 Erwartete Ausgabe (nach einigen Sekunden Mittelung):
@@ -1047,7 +1110,7 @@ Die Rate sollte im Bereich 18-22 Hz liegen. Eine stabile Rate zeigt an, dass die
 Fuer eine laengere Stabilitaetsmessung (5 Minuten) kann die Fenstergroesse vergroessert werden:
 
 ```bash
-ros2 topic hz /odom -w 6000
+./run.sh exec ros2 topic hz /odom -w 6000
 ```
 
 Das Akzeptanzkriterium fuer den Paketverlust liegt bei < 0.1 %. Bei 20 Hz ueber 60 Sekunden werden 1200 Nachrichten erwartet. Die Anzahl empfangener Nachrichten kann ueber die Fenstergroesse von `ros2 topic hz` abgeleitet werden.
@@ -1067,10 +1130,10 @@ if (millis() - last_cmd_time > FAILSAFE_TIMEOUT_MS) {
 
 Der Test erfolgt in zwei Schritten:
 
-Zuerst wird der Roboter auf Geschwindigkeit gebracht (Raeder angehoben oder Roboter in sicherer Umgebung):
+Zuerst wird der Roboter auf Geschwindigkeit gebracht (Raeder angehoben oder Roboter in sicherer Umgebung). In einem zweiten Container-Terminal:
 
 ```bash
-ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}" --rate 10
+./run.sh exec ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}" --rate 10
 ```
 
 Die Raeder drehen sich. Anschliessend wird der `ros2 topic pub`-Befehl mit Ctrl+C beendet. Die Motoren muessen innerhalb von 500 ms zum Stillstand kommen.
@@ -1078,8 +1141,8 @@ Die Raeder drehen sich. Anschliessend wird der `ros2 topic pub`-Befehl mit Ctrl+
 Alternativ kann der gesamte micro-ROS Agent gestoppt werden:
 
 ```bash
-# Agent-Prozess finden und beenden
-pkill -f micro_ros_agent
+# Agent-Prozess im Container finden und beenden
+./run.sh exec pkill -f micro_ros_agent
 ```
 
 Auch in diesem Fall muessen die Motoren innerhalb des Failsafe-Timeouts stoppen. Nach dem Neustart des Agents wird die Session automatisch wiederhergestellt und der ESP32-S3 reagiert erneut auf `cmd_vel`-Nachrichten.
@@ -1090,26 +1153,29 @@ Zusaetzlich zum cmd_vel-Failsafe ueberwacht Core 0 in `loop()` (Zeilen 163-174) 
 
 Das kombinierte Launch-File `full_stack.launch.py` startet alle Komponenten des ROS2-Stacks in einem einzigen Befehl. Es befindet sich unter `amr/pi5/ros2_ws/src/my_bot/launch/` und startet vier Subsysteme: micro-ROS Agent, SLAM Toolbox, Nav2 Navigation Stack und RViz2.
 
-Der Standard-Start mit allen Komponenten:
+Der Standard-Start mit allen Komponenten im Docker-Container:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py
+cd amr/docker/
+./run.sh ros2 launch my_bot full_stack.launch.py
 ```
+
+Ein manuelles `source setup.bash` ist nicht erforderlich -- die `entrypoint.sh` sourced automatisch alle Workspaces.
 
 Das Launch-File unterstuetzt sechs konfigurierbare Argumente, die verschiedene Betriebsmodi ermoeglichen:
 
 **Nur SLAM (ohne Navigation)** -- nuetzlich fuer die initiale Kartenerstellung:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_nav:=false
+./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false
 ```
 
-In diesem Modus wird nur die SLAM Toolbox gestartet. Der Roboter kann manuell (per `ros2 topic pub /cmd_vel ...` oder Teleop) gesteuert werden, waehrend die Karte aufgebaut wird.
+In diesem Modus wird nur die SLAM Toolbox gestartet. Der Roboter kann manuell gesteuert werden, waehrend die Karte aufgebaut wird. Dafuer in einem zweiten Container-Terminal: `./run.sh exec ros2 topic pub /cmd_vel ...`.
 
 **Headless-Betrieb (ohne RViz2)** -- fuer den Einsatz ohne angeschlossenen Monitor:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_rviz:=False
+./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False
 ```
 
 Dies spart CPU- und GPU-Ressourcen auf dem Raspberry Pi 5.
@@ -1117,7 +1183,7 @@ Dies spart CPU- und GPU-Ressourcen auf dem Raspberry Pi 5.
 **Nur Navigation mit bestehender Karte (ohne SLAM)** -- fuer den Produktivbetrieb:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_slam:=False
+./run.sh ros2 launch my_bot full_stack.launch.py use_slam:=False
 ```
 
 Voraussetzung: Eine zuvor mit SLAM Toolbox erstellte Karte muss in der Nav2-Konfiguration referenziert sein.
@@ -1125,7 +1191,7 @@ Voraussetzung: Eine zuvor mit SLAM Toolbox erstellte Karte muss in der Nav2-Konf
 **Alternativer serieller Port** -- falls der ESP32-S3 nicht unter `/dev/ttyACM0` enumeriert:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0
+./run.sh ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0
 ```
 
 Der Standard-Port ist `/dev/ttyACM0` (USB-CDC des XIAO ESP32-S3). Falls eine udev-Regel eingerichtet wurde (z.B. fuer `/dev/amr_esp32`), kann dieser Symlink verwendet werden.
@@ -1133,7 +1199,7 @@ Der Standard-Port ist `/dev/ttyACM0` (USB-CDC des XIAO ESP32-S3). Falls eine ude
 **Kombination mehrerer Argumente** -- alle Argumente koennen frei kombiniert werden:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_nav:=false use_rviz:=False serial_port:=/dev/ttyUSB0
+./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_rviz:=False serial_port:=/dev/ttyUSB0
 ```
 
 Die SLAM Toolbox verwendet die Konfiguration aus `config/mapper_params_online_async.yaml` (Ceres-Solver, 5 cm Aufloesung, Loop Closure aktiviert). Der Nav2-Stack wird mit `config/nav2_params.yaml` parametriert (AMCL-Lokalisierung, Regulated Pure Pursuit Controller mit 0.4 m/s Maximalgeschwindigkeit, Navfn-Planer, Recovery Behaviors).
@@ -1149,24 +1215,28 @@ map -> odom -> base_link -> laser
 
 Die Transformation `odom -> base_link` wird vom ESP32-S3 ueber die Odometrie-Nachricht bereitgestellt. Die Transformation `map -> odom` wird von der SLAM Toolbox (oder AMCL bei reiner Navigation) berechnet. Die statischen Transformationen `base_link -> laser` und `base_link -> camera_link` muessen im URDF oder ueber `static_transform_publisher`-Nodes definiert sein.
 
-Der TF-Baum kann als PDF-Datei exportiert werden:
+Der TF-Baum kann als PDF-Datei exportiert werden. Der Befehl wird im Container ausgefuehrt:
 
 ```bash
-ros2 run tf2_tools view_frames
+./run.sh exec ros2 run tf2_tools view_frames
 ```
 
-Dieser Befehl zeichnet 5 Sekunden lang TF-Daten auf und erstellt eine Datei `frames_YYYY-MM-DD_HH.MM.SS.pdf` im aktuellen Verzeichnis. Die PDF zeigt den vollstaendigen Baum mit allen Frame-Beziehungen und ihren Publikationsraten.
+Dieser Befehl zeichnet 5 Sekunden lang TF-Daten auf und erstellt eine Datei `frames_YYYY-MM-DD_HH.MM.SS.pdf` im Arbeitsverzeichnis des Containers (`/ros2_ws/`). Die PDF kann mit `docker cp` auf den Host kopiert werden:
+
+```bash
+docker cp amr_ros2:/ros2_ws/frames_*.pdf .
+```
 
 Einzelne Transformationen koennen auch ueber die Kommandozeile geprueft werden:
 
 ```bash
-ros2 topic echo /tf --once
+./run.sh exec ros2 topic echo /tf --once
 ```
 
 Fuer eine spezifische Transformation (z.B. `map -> base_link`):
 
 ```bash
-ros2 run tf2_ros tf2_echo map base_link
+./run.sh exec ros2 run tf2_ros tf2_echo map base_link
 ```
 
 Erwartete Ausgabe (bei stehendem Roboter an Position 0,0):
@@ -1183,25 +1253,35 @@ Falls eine Transformation fehlt (z.B. `map -> odom`), wurde die SLAM Toolbox noc
 
 **Problem:** Agent findet den ESP32-S3 nicht -- keine Session wird aufgebaut.
 
-**Loesung:** Das USB-CDC-Geraet muss als `/dev/ttyACM*` enumeriert sein. Mit `ls /dev/ttyACM*` pruefen. Falls kein Geraet erscheint: USB-C-Kabel pruefen (Datenkabel, nicht nur Ladekabel), ESP32-S3 neu starten (Reset-Taster), oder den ESP32-S3 in den Bootloader-Modus versetzen und Firmware erneut flashen. Falls `/dev/ttyUSB*` statt `/dev/ttyACM*` erscheint, wird ein externer USB-UART-Adapter verwendet -- der Parameter `serial_port` muss entsprechend angepasst werden.
+**Loesung:** Das USB-CDC-Geraet muss als `/dev/ttyACM*` enumeriert sein. Auf dem Host mit `ls /dev/ttyACM*` und im Container mit `./run.sh ls /dev/ttyACM*` pruefen. Falls kein Geraet erscheint: USB-C-Kabel pruefen (Datenkabel, nicht nur Ladekabel), ESP32-S3 neu starten (Reset-Taster), oder den ESP32-S3 in den Bootloader-Modus versetzen und Firmware erneut flashen. Falls `/dev/ttyUSB*` statt `/dev/ttyACM*` erscheint, wird ein externer USB-UART-Adapter verwendet -- der Parameter `serial_port` muss entsprechend angepasst werden.
 
-**Problem:** `ros2 topic list` zeigt `/cmd_vel` und `/odom` nicht an.
+**Problem:** `./run.sh exec ros2 topic list` zeigt `/cmd_vel` und `/odom` nicht an.
 
-**Loesung:** Die micro-ROS-Session ist nicht aufgebaut. Im Agent-Terminal auf Fehlerausgaben pruefen. Haeufige Ursache: Die ROS2-Domain-ID (`ROS_DOMAIN_ID`) stimmt zwischen Agent und ROS2-Shell nicht ueberein. Beide muessen denselben Wert verwenden (Standard: 0). Mit `echo $ROS_DOMAIN_ID` in beiden Terminals pruefen.
+**Loesung:** Die micro-ROS-Session ist nicht aufgebaut. Im Agent-Terminal auf Fehlerausgaben pruefen. Die `ROS_DOMAIN_ID` ist in `docker-compose.yml` auf 0 gesetzt und wird automatisch an alle Container-Prozesse vererbt. Falls ein zweiter ROS2-Rechner im Netzwerk beteiligt ist, muss dort dieselbe Domain-ID verwendet werden.
+
+**Problem:** Workspace nicht gebaut -- `ros2 run my_bot` meldet `Package 'my_bot' not found`.
+
+**Loesung:** Der Workspace muss nach dem ersten Container-Start einmalig gebaut werden:
+
+```bash
+cd amr/docker/
+./run.sh colcon build --packages-select my_bot --symlink-install
+```
 
 **Problem:** Falsche Baudrate -- Agent meldet Verbindungsfehler oder Zeichensalat.
 
 **Loesung:** Die Baudrate muss auf beiden Seiten 115200 betragen. In der Firmware ist dies in `setup()` ueber `Serial.begin(115200)` festgelegt. Der Agent muss mit `-b 115200` gestartet werden. Eine abweichende Baudrate fuehrt zu verstaendigungsunfaehiger Kommunikation und aeussert sich durch fehlende Topics.
 
-**Problem:** `Permission denied` beim Zugriff auf `/dev/ttyACM0`.
+**Problem:** `Permission denied` beim Zugriff auf `/dev/ttyACM0` im Container.
 
-**Loesung:** Der Benutzer muss Mitglied der Gruppe `dialout` sein:
+**Loesung:** Die udev-Regeln aus `host_setup.sh` setzen `MODE="0666"`. Falls noch nicht ausgefuehrt:
 
 ```bash
-sudo usermod -a -G dialout $USER
+# Host-Befehl
+sudo bash amr/docker/host_setup.sh
 ```
 
-Nach dem Hinzufuegen zur Gruppe ist ein Neuanmelden (Logout/Login) oder Neustart erforderlich. Alternativ kann der Zugriff temporaer mit `sudo chmod 666 /dev/ttyACM0` freigeschaltet werden. Fuer eine dauerhafte Loesung empfiehlt sich eine udev-Regel.
+Nach dem Hinzufuegen zur Gruppe `dialout` ist ein Neuanmelden (Logout/Login) erforderlich.
 
 **Problem:** LED blinkt schnell nach dem Booten des ESP32-S3.
 
@@ -1223,11 +1303,14 @@ Die vorherigen Teile haben die Firmware auf dem ESP32-S3, die ROS2-Umgebung auf 
 
 **Voraussetzungen fuer alle Validierungsschritte:**
 
-- ESP32-Firmware laeuft (LED blinkt, serieller Monitor zeigt Boot-Meldung)
-- micro-ROS Agent verbindet sich erfolgreich mit dem ESP32
-- `/odom`-Topic wird publiziert, `/cmd_vel` wird empfangen
+- Docker-Setup verifiziert (`./verify.sh` bestanden, siehe Teil 2)
+- ESP32-Firmware laeuft (LED blinkt nicht schnell)
+- micro-ROS Agent verbindet sich im Container erfolgreich mit dem ESP32
+- `/odom`-Topic wird publiziert, `/cmd_vel` wird empfangen (pruefbar mit `./run.sh exec ros2 topic list`)
 - Der Roboter steht auf ebenem, griffigem Untergrund
 - Massband (mindestens 5 m), Winkelmesser und Klebeband fuer Bodenmarkierungen liegen bereit
+
+Alle `ros2 run my_bot`-Befehle in diesem Teil werden im Docker-Container ausgefuehrt. Der Full-Stack wird im ersten Terminal gestartet (`./run.sh ros2 launch ...`), die Validierungsskripte in einem zweiten Container-Terminal (`./run.sh exec ros2 run my_bot ...`). Die Entry-Points werden ohne `.py`-Suffix aufgerufen.
 
 ---
 
@@ -1238,22 +1321,23 @@ Die Kinematik-Validierung prueft, ob die in `hardware/config.h` definierten Para
 **Voraussetzung:** Der Full-Stack muss laufen (micro-ROS Agent + Firmware). SLAM und Navigation sind fuer diesen Test nicht erforderlich, aber der micro-ROS Agent muss aktiv sein.
 
 ```bash
-# Full-Stack starten (auf dem Pi5)
-ros2 launch my_bot full_stack.launch.py use_slam:=false use_nav:=false
+# Full-Stack starten (im Docker-Container auf dem Pi5)
+cd amr/docker/
+./run.sh ros2 launch my_bot full_stack.launch.py use_slam:=false use_nav:=false
 ```
 
-**Alle drei Tests ausfuehren:**
+**Alle drei Tests ausfuehren (in einem zweiten Container-Terminal):**
 
 ```bash
-ros2 run my_bot kinematic_test.py
+./run.sh exec ros2 run my_bot kinematic_test
 ```
 
 Alternativ koennen einzelne Tests separat ausgefuehrt werden:
 
 ```bash
-ros2 run my_bot kinematic_test.py gerade     # Nur Geradeausfahrt
-ros2 run my_bot kinematic_test.py drehung    # Nur 90-Grad-Drehungen
-ros2 run my_bot kinematic_test.py kreis      # Nur Kreisfahrt
+./run.sh exec ros2 run my_bot kinematic_test gerade     # Nur Geradeausfahrt
+./run.sh exec ros2 run my_bot kinematic_test drehung    # Nur 90-Grad-Drehungen
+./run.sh exec ros2 run my_bot kinematic_test kreis      # Nur Kreisfahrt
 ```
 
 #### Test A: Geradeausfahrt (2 m)
@@ -1346,10 +1430,14 @@ Dabei sind die Werte (x, y) in Millimetern angegeben -- positive x-Werte bedeute
 
 #### Auswertung
 
-Das Auswertungsskript berechnet die Korrekturfaktoren:
+Das Auswertungsskript berechnet die Korrekturfaktoren. Es ist ein Standalone-Programm ohne ROS2-Abhaengigkeit und kann auf dem Host oder im Container ausgefuehrt werden:
 
 ```bash
+# Auf dem Host (numpy/matplotlib muessen installiert sein):
 python3 amr/scripts/umbmark_analysis.py daten.json
+
+# Oder im Docker-Container (Bibliotheken vorinstalliert):
+./run.sh python3 /amr_scripts/umbmark_analysis.py daten.json
 ```
 
 Oder interaktiv (die Werte werden manuell eingegeben):
@@ -1403,13 +1491,13 @@ Die PID-Regelung steuert die Radgeschwindigkeiten des Roboters. Nach der UMBmark
 Das PID-Tuning-Skript sendet einen Geschwindigkeitssprung von 0 auf 0,4 m/s und zeichnet die Ist-Geschwindigkeit ueber 10 Sekunden auf:
 
 ```bash
-ros2 run my_bot pid_tuning.py live
+./run.sh exec ros2 run my_bot pid_tuning live
 ```
 
 Alternativ kann eine bestehende rosbag2-Aufzeichnung ausgewertet werden:
 
 ```bash
-ros2 run my_bot pid_tuning.py bag /pfad/zur/rosbag
+./run.sh exec ros2 run my_bot pid_tuning bag /pfad/zur/rosbag
 ```
 
 #### Bewertungskriterien
@@ -1465,7 +1553,7 @@ PIDController pid_right(1.5, 0.5, 0.0);  // Kp, Ki, Kd
 3. Wenn der stationaere Fehler zu gross ist: Ki erhoehen (z.B. auf 0,8)
 4. Wenn Oszillationen auftreten: Kp deutlich reduzieren
 
-Nach jeder Aenderung: Firmware neu kompilieren und flashen (`pio run -t upload`), dann erneut `pid_tuning.py live` ausfuehren.
+Nach jeder Aenderung: Firmware neu kompilieren und flashen (`pio run -t upload`), dann erneut `./run.sh exec ros2 run my_bot pid_tuning live` ausfuehren.
 
 Das Skript speichert einen Sprungantwort-Plot als `pid_sprungantwort.png` im Skript-Verzeichnis.
 
@@ -1475,18 +1563,19 @@ Das Skript speichert einen Sprungantwort-Plot als `pid_sprungantwort.png` im Skr
 
 Die SLAM-Validierung prueft die Kartierungsqualitaet durch Berechnung des Absolute Trajectory Error (ATE). Da kein externes Motion-Capture-System vorhanden ist, wird der Drift zwischen der SLAM-korrigierten Position (map -> base_link) und der reinen Odometrie (odom -> base_link) als Qualitaetsmass verwendet.
 
-**Voraussetzung:** Der Full-Stack muss mit SLAM laufen:
+**Voraussetzung:** Der Full-Stack muss mit SLAM im Docker-Container laufen:
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_nav:=false
+cd amr/docker/
+./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false
 ```
 
-Der Roboter sollte waehrend der Messung manuell (z.B. per Teleop) durch die Umgebung gefahren werden, damit SLAM eine Karte aufbauen kann.
+Der Roboter sollte waehrend der Messung manuell (z.B. per Teleop in einem zweiten Container-Terminal) durch die Umgebung gefahren werden, damit SLAM eine Karte aufbauen kann.
 
 #### Test ausfuehren
 
 ```bash
-ros2 run my_bot slam_validation.py --live --duration 120
+./run.sh exec ros2 run my_bot slam_validation --live --duration 120
 ```
 
 Das Skript fuehrt drei Pruefungen durch:
@@ -1500,13 +1589,13 @@ Das Skript fuehrt drei Pruefungen durch:
 Alternativ kann eine existierende rosbag2-Aufzeichnung ausgewertet werden:
 
 ```bash
-ros2 run my_bot slam_validation.py --bag /pfad/zur/rosbag2_db
+./run.sh exec ros2 run my_bot slam_validation --bag /pfad/zur/rosbag2_db
 ```
 
 Fuer die rosbag2-Aufzeichnung waehrend einer Live-Session:
 
 ```bash
-ros2 bag record /odom /tf /tf_static /scan -o slam_session
+./run.sh exec ros2 bag record /odom /tf /tf_static /scan -o slam_session
 ```
 
 **Akzeptanzkriterium:** ATE (RMSE) < 0,20 m
@@ -1526,28 +1615,29 @@ SLAM-Validierung BESTANDEN (ATE < 0.20 m)
 
 Die Navigations-Validierung testet das Zusammenspiel von SLAM, Lokalisierung (AMCL) und dem Regulated Pure Pursuit Controller (RPP). Das Skript sendet Waypoints ueber den Nav2 NavigateToPose Action-Server und misst die Positionsgenauigkeit am Zielpunkt.
 
-**Voraussetzung:** Der Full-Stack muss vollstaendig laufen (inklusive Navigation):
+**Voraussetzung:** Der Full-Stack muss vollstaendig im Docker-Container laufen (inklusive Navigation):
 
 ```bash
-ros2 launch my_bot full_stack.launch.py
+cd amr/docker/
+./run.sh ros2 launch my_bot full_stack.launch.py
 ```
 
 Falls eine bestehende Karte verwendet wird (empfohlen fuer reproduzierbare Tests):
 
 ```bash
-ros2 launch my_bot full_stack.launch.py use_slam:=False
+./run.sh ros2 launch my_bot full_stack.launch.py use_slam:=False
 ```
 
 #### Test ausfuehren
 
 ```bash
-ros2 run my_bot nav_test.py
+./run.sh exec ros2 run my_bot nav_test
 ```
 
 Mit angepasstem Timeout und Ausgabeverzeichnis:
 
 ```bash
-ros2 run my_bot nav_test.py --timeout 90 --output /tmp/nav_results
+./run.sh exec ros2 run my_bot nav_test --timeout 90 --output /tmp/nav_results
 ```
 
 Das Skript navigiert den Roboter durch ein 2x2-Meter-Rechteck mit vier Waypoints:
@@ -1585,7 +1675,7 @@ Die Docking-Validierung prueft die ArUco-Marker-basierte Endanfahrt an die Lades
 #### Test ausfuehren
 
 ```bash
-ros2 run my_bot docking_test.py
+./run.sh exec ros2 run my_bot docking_test
 ```
 
 Der Test ist interaktiv: Der Benutzer positioniert den Roboter manuell ca. 1,5 m vor dem ArUco-Marker und startet jeden Versuch mit der Eingabe "s" + Enter. Insgesamt werden 10 Versuche durchgefuehrt.
@@ -1629,7 +1719,12 @@ Die Ergebnisse werden in `amr/scripts/docking_results.json` gespeichert.
 Nach Abschluss aller Validierungsphasen aggregiert das Report-Skript alle JSON-Ergebnisse zu einem Gesamt-Validierungsbericht. Das Skript ist ein Standalone-Python-Programm ohne ROS2-Abhaengigkeit.
 
 ```bash
+# Auf dem Host:
 python3 amr/scripts/validation_report.py
+
+# Oder im Docker-Container:
+cd amr/docker/
+./run.sh python3 /amr_scripts/validation_report.py
 ```
 
 Optional kann ein anderes Verzeichnis fuer die JSON-Dateien angegeben werden:
@@ -1712,8 +1807,8 @@ Der Report wird als `validation_report_YYYYMMDD.md` im Skript-Verzeichnis gespei
 
 ### 4.8 Troubleshooting Validierung
 
-**Problem:** `kinematic_test.py` meldet "Keine Odometrie empfangen".
-**Loesung:** Der micro-ROS Agent laeuft nicht oder hat keine Verbindung zum ESP32. Pruefen: `ros2 topic list | grep odom` -- fehlt `/odom` in der Liste, den Agent neu starten (siehe Teil 3). Seriellen Monitor pruefen, ob die Firmware gestartet ist.
+**Problem:** `kinematic_test` meldet "Keine Odometrie empfangen".
+**Loesung:** Der micro-ROS Agent laeuft nicht oder hat keine Verbindung zum ESP32. Im Container pruefen: `./run.sh exec ros2 topic list | grep odom` -- fehlt `/odom` in der Liste, den Agent neu starten (siehe Teil 3). Seriellen Monitor pruefen, ob die Firmware gestartet ist.
 
 **Problem:** Geradeausfahrt zeigt starke laterale Drift (> 10 cm auf 1 m).
 **Loesung:** Haeufigste Ursache: unterschiedliche Raddurchmesser links/rechts. Die UMBmark-Kalibrierung (Abschnitt 4.2) berechnet den exakten Korrekturfaktor E_d. Vorlaeufig: Pruefen ob beide Raeder frei drehen und der Boden gleichmaessig griffig ist.
@@ -1728,13 +1823,13 @@ Der Report wird als `validation_report_YYYYMMDD.md` im Skript-Verzeichnis gespei
 **Loesung:** Kp ist zu hoch fuer die reduzierte Encoder-Aufloesung (374 statt 1440 Ticks/Rev). Kp schrittweise reduzieren (z.B. auf 1,0, dann 0,8) bis die Schwingung verschwindet. Bei Bedarf Kd leicht erhoehen (z.B. 0,01) fuer zusaetzliche Daempfung.
 
 **Problem:** SLAM-Validierung zeigt ATE > 0,20 m.
-**Loesung:** Moegliche Ursachen: (1) Odometrie-Kalibrierung nicht durchgefuehrt -- UMBmark zuerst abschliessen. (2) LiDAR-Daten von schlechter Qualitaet -- `ros2 topic echo /scan --once` pruefen ob plausible Messwerte kommen. (3) Umgebung zu strukturarm (lange Gaenge ohne Landmarken) -- in strukturierter Umgebung testen. (4) SLAM-Toolbox-Parameter nicht optimal -- `loop_search_maximum_distance` in mapper_params erhoehen falls Loop Closure fehlt.
+**Loesung:** Moegliche Ursachen: (1) Odometrie-Kalibrierung nicht durchgefuehrt -- UMBmark zuerst abschliessen. (2) LiDAR-Daten von schlechter Qualitaet -- `./run.sh exec ros2 topic echo /scan --once` pruefen ob plausible Messwerte kommen. (3) Umgebung zu strukturarm (lange Gaenge ohne Landmarken) -- in strukturierter Umgebung testen. (4) SLAM-Toolbox-Parameter nicht optimal -- `loop_search_maximum_distance` in mapper_params erhoehen falls Loop Closure fehlt.
 
 **Problem:** Navigation erreicht Waypoints nicht (Timeout).
-**Loesung:** (1) Costmap pruefen: `ros2 topic echo /local_costmap/costmap_raw` -- ist der Pfad frei? (2) AMCL-Lokalisierung pruefen: In RViz2 die Partikelwolke visualisieren -- wenn sie divergiert, AMCL mit "2D Pose Estimate" manuell initialisieren. (3) Controller-Frequenz pruefen: `ros2 topic hz /cmd_vel` -- sollte 10 Hz sein.
+**Loesung:** (1) Costmap pruefen: `./run.sh exec ros2 topic echo /local_costmap/costmap_raw` -- ist der Pfad frei? (2) AMCL-Lokalisierung pruefen: In RViz2 die Partikelwolke visualisieren -- wenn sie divergiert, AMCL mit "2D Pose Estimate" manuell initialisieren. (3) Controller-Frequenz pruefen: `./run.sh exec ros2 topic hz /cmd_vel` -- sollte 10 Hz sein.
 
 **Problem:** Docking-Test erkennt den ArUco-Marker nicht.
-**Loesung:** (1) Kamera-Topic pruefen: `ros2 topic echo /camera/image_raw --once` -- kommt ein Bild? (2) Beleuchtung: ArUco-Marker braucht gleichmaessige Beleuchtung, kein Gegenlicht. (3) Marker-ID pruefen: Das Skript sucht nach ID 42 aus dem 4x4_50-Dictionary. (4) OpenCV-Version: `python3 -c "import cv2; print(cv2.__version__)"` muss >= 4.7 sein fuer die `ArucoDetector`-API.
+**Loesung:** (1) Kamera-Topic pruefen: `./run.sh exec ros2 topic echo /camera/image_raw --once` -- kommt ein Bild? (2) Beleuchtung: ArUco-Marker braucht gleichmaessige Beleuchtung, kein Gegenlicht. (3) Marker-ID pruefen: Das Skript sucht nach ID 42 aus dem 4x4_50-Dictionary. (4) OpenCV-Version im Container pruefen: `./run.sh python3 -c "import cv2; print(cv2.__version__)"` muss >= 4.7 sein fuer die `ArucoDetector`-API.
 
 **Problem:** `validation_report.py` zeigt alle Kriterien als "AUSSTEHEND".
 **Loesung:** Die JSON-Ergebnisdateien liegen nicht im erwarteten Verzeichnis. Standardmaessig sucht das Skript im eigenen Verzeichnis (`amr/scripts/`). Pruefen ob die Dateinamen exakt uebereinstimmen (z.B. `docking_results.json`, nicht `docking_ergebnis.json`).
@@ -1773,18 +1868,20 @@ Die folgende Tabelle fasst alle Akzeptanzkriterien des Validierungsplans zusamme
 
 Die folgende Tabelle listet alle 10 Validierungsskripte des Projekts mit ihren zugehoerigen Validierungsphasen, Abhaengigkeiten und Akzeptanzkriterien. Die Skripte befinden sich im Verzeichnis `amr/scripts/` und sind im V-Modell-Validierungsplan (`hardware/docs/08_validierungsplan.md`) dokumentiert. Die Phasen muessen sequentiell abgearbeitet werden, da jeder Testbereich auf den vorherigen aufbaut.
 
-| Skript                 | Phase          | ROS2 noetig               | Aufruf                                                                                   | Beschreibung                                                                                                                                                                                                                                                                                                                                                                           | Akzeptanzkriterium                                                                                     |
-|------------------------|----------------|---------------------------|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| `pre_flight_check.py`  | 1 (Pre-Flash)  | Nein                      | `python3 pre_flight_check.py`                                                            | Interaktive Hardware-Checkliste: USB-Enumeration, Spannungsversorgung (3S1P Lithium-Ionen Samsung INR18650-35E 3500 mAh 8A, Buck-Converter 5.1 V), Pin-Belegung gegen config.h, Firmware-Upload, Sensor-Erkennung (RPLIDAR, Kamera). Erzeugt Markdown-Protokoll mit PASS/FAIL/SKIP pro Pruefpunkt.                                                                                     | Alle Checks bestanden (0 FAIL)                                                                         |
-| `encoder_test.py`      | 2 (Encoder)    | Ja                        | `ros2 run my_bot encoder_test.py`                                                        | ROS2-Node mit 4 Modi: (1) 10-Umdrehungen-Test zur TICKS_PER_REV-Bestimmung (3 Durchgaenge pro Rad), (2) Richtungstest (Vorzeichenkonvention), (3) Asymmetrie-Test (Links vs. Rechts), (4) Live-Anzeige. Subscribt /odom und rechnet Encoder-Ticks zurueck. Gibt empfohlene config.h-Werte und JSON-Protokoll aus.                                                                      | Ticks/Rev: 370-380, Reproduzierbarkeit < 2 Ticks zwischen Durchgaengen, Asymmetrie < 5 %               |
-| `motor_test.py`        | 3 (Motoren)    | Ja                        | `ros2 run my_bot motor_test.py`                                                          | ROS2-Node mit 4 Modi: (a) Deadzone-Test (cmd_vel 0.0-0.2 in 0.01-Schritten), (b) Richtungstest (Einzelrad-Ansteuerung ueber Differentialkinematik), (c) Failsafe-Test (misst Timeout nach cmd_vel-Stopp, erwartet ~500 ms), (d) Rampen-Test (0 auf 0.4 m/s in 5 s). Publiziert /cmd_vel, subscribt /odom. Notaus per Ctrl+C. JSON- und Markdown-Export.                                | Deadzone 30-40, Failsafe 500 ms +/- 200 ms, Tracking-Error < 50 mm/s bei Zielgeschwindigkeit           |
-| `pid_tuning.py`        | 4 (PID)        | Ja (Live) / Nein (Rosbag) | `ros2 run my_bot pid_tuning.py live` oder `python3 pid_tuning.py bag /pfad/rosbag`       | PID-Sprungantwort-Analyse: Sendet Sprung von 0 auf 0.4 m/s, zeichnet /odom 10 s auf. Berechnet Anstiegszeit (10%-90%), Ueberschwingen, Einschwingzeit (+/- 5%), stationaeren Regelfehler. Gibt Tuning-Empfehlungen und Matplotlib-Plot (pid_sprungantwort.png) aus. Erkennt Oszillationen ueber Nulldurchgangs-Analyse.                                                                | Anstiegszeit < 500 ms, Ueberschwingen < 15 %, Einschwingzeit < 1 s, Regelfehler < 5 %                  |
-| `kinematic_test.py`    | 4 (Kinematik)  | Ja                        | `ros2 run my_bot kinematic_test.py`                                                      | ROS2-Node mit 3 Tests: (a) Geradeausfahrt 1 m (v=0.2 m/s, 5 s), (b) 90-Grad-Drehung (5x CW, 5x CCW, omega=pi/2 rad/s), (c) Kreisfahrt (v=0.2 m/s, omega=0.5 rad/s, R=0.4 m). Berechnet Strecken- und Winkelabweichungen in lokalen Koordinaten. JSON- und Markdown-Export. Einzelne Tests per Argument auswaehlbar (gerade/drehung/kreis).                                             | Streckenabweichung < 5 %, laterale Drift < 5 cm, Winkelabweichung < 5 Grad, CW/CCW-Asymmetrie < 3 Grad |
-| `umbmark_analysis.py`  | 5 (UMBmark)    | Nein                      | `python3 umbmark_analysis.py` oder `python3 umbmark_analysis.py data.json`               | Standalone UMBmark-Auswertung nach Borenstein & Feng 1996 (Gl. 5.9-5.15): Eingabe von 5x CW und 5x CCW Endpositionen (x,y in mm) nach 4x4 m Quadratfahrt. Berechnet Schwerpunkte, Fehlerwinkel alpha/beta, Korrekturfaktoren E_d (Raddurchmesser-Verhaeltnis) und E_b (Spurbreite-Korrektor), korrigierte WHEEL_BASE/WHEEL_RADIUS. Gibt Copy-Paste config.h-Werte und Scatterplot aus. | E_max,syst-Reduktion >= Faktor 10 nach Kalibrierung                                                    |
-| `slam_validation.py`   | 6 (SLAM)       | Ja                        | `ros2 run my_bot slam_validation.py --live --duration 120` oder `--bag /pfad/rosbag`     | ATE-Berechnung (Absolute Trajectory Error) zwischen SLAM-korrigierter Pose (map->base_link via TF) und reiner Odometrie (/odom). TF-Ketten-Verifikation (map->odom->base_link->laser). Live-Modus: Subscribt /odom und TF fuer konfigurierbare Dauer. Erzeugt Markdown-Report, Trajektorien-Vergleichsplot und ATE-ueber-Zeit-Plot.                                                    | ATE (RMSE) < 0.20 m                                                                                    |
-| `nav_test.py`          | 6 (Navigation) | Ja                        | `ros2 run my_bot nav_test.py`                                                            | Automatisierter Waypoint-Navigationstest: Sendet 4 Waypoints (2x2 m Rechteck) ueber Nav2 NavigateToPose Action-Server. Misst Positionsfehler (xy) und Orientierungsfehler (yaw) pro Waypoint. Configurable Timeout pro Waypoint (Standard: 60 s). Erzeugt Markdown-Report und JSON-Export mit Soll/Ist-Vergleich.                                                                      | xy-Fehler < 10 cm, Gier-Fehler < 0.15 rad (~8.6 Grad) pro Waypoint                                     |
-| `docking_test.py`      | 6 (Docking)    | Ja                        | `ros2 run my_bot docking_test.py`                                                        | 10-Versuch ArUco-Docking-Test: Interaktiver Ablauf -- Benutzer positioniert Roboter ~1.5 m vor Marker (ID 42, DICT_4X4_50), Skript steuert Suche/Annaeherung/Docking. Zustandsmaschine (SEARCHING->APPROACHING->DOCKED/TIMEOUT). Visual Servoing mit Kp-Regelung auf Marker-Zentrierung. 3 s Rueckwaertsfahrt nach jedem Versuch. Timeout 60 s pro Versuch.                            | Erfolgsquote >= 80 % (8/10 Versuche)                                                                   |
-| `validation_report.py` | 9 (Report)     | Nein                      | `python3 validation_report.py` oder `python3 validation_report.py /pfad/zu/ergebnissen/` | Gesamt-Validierungsbericht-Generator: Liest JSON-Ergebnisdateien aller vorherigen Tests, bewertet 14 Einzelkriterien gegen definierte Akzeptanzgrenzen, ordnet Ergebnisse den drei Forschungsfragen (FF1: Echtzeit, FF2: Praezision, FF3: Docking) zu. Gibt Markdown-Report mit PASS/FAIL/AUSSTEHEND-Status pro Kriterium und Gesamtbewertung aus.                                     | Alle 14 Kriterien PASS, keine AUSSTEHEND                                                               |
+**Hinweis:** Alle ROS2-Befehle (`ros2 run my_bot ...`) werden im Docker-Container ausgefuehrt. Vom Host: `cd amr/docker/ && ./run.sh exec ros2 run my_bot <node>`. Die Entry-Points werden ohne `.py`-Suffix aufgerufen.
+
+| Skript                 | Phase          | ROS2 noetig               | Aufruf                                                                                                | Beschreibung                                                                                                                                                                                                                                                                                                                                                                           | Akzeptanzkriterium                                                                                     |
+|------------------------|----------------|---------------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `pre_flight_check.py`  | 1 (Pre-Flash)  | Nein                      | `python3 pre_flight_check.py`                                                                         | Interaktive Hardware-Checkliste: USB-Enumeration, Spannungsversorgung (3S1P Lithium-Ionen Samsung INR18650-35E 3500 mAh 8A, Buck-Converter 5.1 V), Pin-Belegung gegen config.h, Firmware-Upload, Sensor-Erkennung (RPLIDAR, Kamera). Erzeugt Markdown-Protokoll mit PASS/FAIL/SKIP pro Pruefpunkt.                                                                                     | Alle Checks bestanden (0 FAIL)                                                                         |
+| `encoder_test.py`      | 2 (Encoder)    | Ja                        | `./run.sh exec ros2 run my_bot encoder_test`                                                          | ROS2-Node mit 4 Modi: (1) 10-Umdrehungen-Test zur TICKS_PER_REV-Bestimmung (3 Durchgaenge pro Rad), (2) Richtungstest (Vorzeichenkonvention), (3) Asymmetrie-Test (Links vs. Rechts), (4) Live-Anzeige. Subscribt /odom und rechnet Encoder-Ticks zurueck. Gibt empfohlene config.h-Werte und JSON-Protokoll aus.                                                                      | Ticks/Rev: 370-380, Reproduzierbarkeit < 2 Ticks zwischen Durchgaengen, Asymmetrie < 5 %               |
+| `motor_test.py`        | 3 (Motoren)    | Ja                        | `./run.sh exec ros2 run my_bot motor_test`                                                            | ROS2-Node mit 4 Modi: (a) Deadzone-Test (cmd_vel 0.0-0.2 in 0.01-Schritten), (b) Richtungstest (Einzelrad-Ansteuerung ueber Differentialkinematik), (c) Failsafe-Test (misst Timeout nach cmd_vel-Stopp, erwartet ~500 ms), (d) Rampen-Test (0 auf 0.4 m/s in 5 s). Publiziert /cmd_vel, subscribt /odom. Notaus per Ctrl+C. JSON- und Markdown-Export.                                | Deadzone 30-40, Failsafe 500 ms +/- 200 ms, Tracking-Error < 50 mm/s bei Zielgeschwindigkeit           |
+| `pid_tuning.py`        | 4 (PID)        | Ja (Live) / Nein (Rosbag) | `./run.sh exec ros2 run my_bot pid_tuning live` oder `python3 pid_tuning.py bag /pfad/rosbag`         | PID-Sprungantwort-Analyse: Sendet Sprung von 0 auf 0.4 m/s, zeichnet /odom 10 s auf. Berechnet Anstiegszeit (10%-90%), Ueberschwingen, Einschwingzeit (+/- 5%), stationaeren Regelfehler. Gibt Tuning-Empfehlungen und Matplotlib-Plot (pid_sprungantwort.png) aus. Erkennt Oszillationen ueber Nulldurchgangs-Analyse.                                                                | Anstiegszeit < 500 ms, Ueberschwingen < 15 %, Einschwingzeit < 1 s, Regelfehler < 5 %                  |
+| `kinematic_test.py`    | 4 (Kinematik)  | Ja                        | `./run.sh exec ros2 run my_bot kinematic_test`                                                        | ROS2-Node mit 3 Tests: (a) Geradeausfahrt 1 m (v=0.2 m/s, 5 s), (b) 90-Grad-Drehung (5x CW, 5x CCW, omega=pi/2 rad/s), (c) Kreisfahrt (v=0.2 m/s, omega=0.5 rad/s, R=0.4 m). Berechnet Strecken- und Winkelabweichungen in lokalen Koordinaten. JSON- und Markdown-Export. Einzelne Tests per Argument auswaehlbar (gerade/drehung/kreis).                                             | Streckenabweichung < 5 %, laterale Drift < 5 cm, Winkelabweichung < 5 Grad, CW/CCW-Asymmetrie < 3 Grad |
+| `umbmark_analysis.py`  | 5 (UMBmark)    | Nein                      | `python3 umbmark_analysis.py` oder `./run.sh python3 /amr_scripts/umbmark_analysis.py data.json`      | Standalone UMBmark-Auswertung nach Borenstein & Feng 1996 (Gl. 5.9-5.15): Eingabe von 5x CW und 5x CCW Endpositionen (x,y in mm) nach 4x4 m Quadratfahrt. Berechnet Schwerpunkte, Fehlerwinkel alpha/beta, Korrekturfaktoren E_d (Raddurchmesser-Verhaeltnis) und E_b (Spurbreite-Korrektor), korrigierte WHEEL_BASE/WHEEL_RADIUS. Gibt Copy-Paste config.h-Werte und Scatterplot aus. | E_max,syst-Reduktion >= Faktor 10 nach Kalibrierung                                                    |
+| `slam_validation.py`   | 6 (SLAM)       | Ja                        | `./run.sh exec ros2 run my_bot slam_validation --live --duration 120` oder `--bag /pfad/rosbag`       | ATE-Berechnung (Absolute Trajectory Error) zwischen SLAM-korrigierter Pose (map->base_link via TF) und reiner Odometrie (/odom). TF-Ketten-Verifikation (map->odom->base_link->laser). Live-Modus: Subscribt /odom und TF fuer konfigurierbare Dauer. Erzeugt Markdown-Report, Trajektorien-Vergleichsplot und ATE-ueber-Zeit-Plot.                                                    | ATE (RMSE) < 0.20 m                                                                                    |
+| `nav_test.py`          | 6 (Navigation) | Ja                        | `./run.sh exec ros2 run my_bot nav_test`                                                              | Automatisierter Waypoint-Navigationstest: Sendet 4 Waypoints (2x2 m Rechteck) ueber Nav2 NavigateToPose Action-Server. Misst Positionsfehler (xy) und Orientierungsfehler (yaw) pro Waypoint. Configurable Timeout pro Waypoint (Standard: 60 s). Erzeugt Markdown-Report und JSON-Export mit Soll/Ist-Vergleich.                                                                      | xy-Fehler < 10 cm, Gier-Fehler < 0.15 rad (~8.6 Grad) pro Waypoint                                     |
+| `docking_test.py`      | 6 (Docking)    | Ja                        | `./run.sh exec ros2 run my_bot docking_test`                                                          | 10-Versuch ArUco-Docking-Test: Interaktiver Ablauf -- Benutzer positioniert Roboter ~1.5 m vor Marker (ID 42, DICT_4X4_50), Skript steuert Suche/Annaeherung/Docking. Zustandsmaschine (SEARCHING->APPROACHING->DOCKED/TIMEOUT). Visual Servoing mit Kp-Regelung auf Marker-Zentrierung. 3 s Rueckwaertsfahrt nach jedem Versuch. Timeout 60 s pro Versuch.                            | Erfolgsquote >= 80 % (8/10 Versuche)                                                                   |
+| `validation_report.py` | 9 (Report)     | Nein                      | `python3 validation_report.py` oder `./run.sh python3 /amr_scripts/validation_report.py`              | Gesamt-Validierungsbericht-Generator: Liest JSON-Ergebnisdateien aller vorherigen Tests, bewertet 14 Einzelkriterien gegen definierte Akzeptanzgrenzen, ordnet Ergebnisse den drei Forschungsfragen (FF1: Echtzeit, FF2: Praezision, FF3: Docking) zu. Gibt Markdown-Report mit PASS/FAIL/AUSSTEHEND-Status pro Kriterium und Gesamtbewertung aus.                                     | Alle 14 Kriterien PASS, keine AUSSTEHEND                                                               |
 
 ---
 
@@ -1838,3 +1935,16 @@ Die folgende Tabelle listet alle relevanten Dateien des AMR-Projekts mit ihren P
 | nav_test.py          | `amr/scripts/nav_test.py`          | Ja                | Waypoint-Navigation mit Positionsfehler-Messung (xy und Gier)                                                     |
 | docking_test.py      | `amr/scripts/docking_test.py`      | Ja                | 10-Versuch ArUco-Docking-Test: Erfolgsquote, lateraler Versatz, Orientierungsfehler                               |
 | validation_report.py | `amr/scripts/validation_report.py` | Nein              | Gesamt-Report aus JSON-Ergebnissen aller Validierungsskripte (Standalone)                                         |
+
+### C.6 Docker-Konfiguration
+
+Alle Dateien befinden sich im Verzeichnis `amr/docker/`. Sie stellen die ROS2-Humble-Umgebung via Docker auf dem Raspberry Pi 5 (Debian Trixie) bereit.
+
+| Datei              | Pfad                            | Beschreibung                                                                                                                  |
+|--------------------|---------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| Dockerfile         | `amr/docker/Dockerfile`         | Multi-Stage-Image auf Basis `ros:humble-ros-base` (arm64). Installiert ROS2-Pakete, baut micro-ROS Agent aus Source           |
+| docker-compose.yml | `amr/docker/docker-compose.yml` | Service-Definition: network_mode host, privileged, Volume-Mounts (my_bot rw, scripts ro, hardware ro), Docker-Build-Volumes   |
+| entrypoint.sh      | `amr/docker/entrypoint.sh`      | Container-Entrypoint: Sourced ROS2 Humble, micro-ROS-Workspace und Projekt-Workspace automatisch                             |
+| run.sh             | `amr/docker/run.sh`             | Convenience-Wrapper: Interaktive Shell, Einzelbefehle (`./run.sh ros2 ...`), zweites Terminal (`./run.sh exec bash`)          |
+| verify.sh          | `amr/docker/verify.sh`          | Automatisierter Gesamttest (11 Checks): Image, Distribution, Pakete, Device-Zugriff, Build, Executables                      |
+| host_setup.sh      | `amr/docker/host_setup.sh`      | Einmalige Host-Einrichtung: Gruppen (docker, dialout, video), udev-Regeln, X11-Setup, Kamera-Check, Docker-Pruefung          |
