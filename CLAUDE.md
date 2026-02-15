@@ -246,7 +246,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 ## Wichtige Pfade (nicht offensichtlich)
 
 - `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag
-- `amr/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
+- `hardware/docs/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 
 ## Troubleshooting
