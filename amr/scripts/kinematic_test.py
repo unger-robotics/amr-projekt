@@ -40,8 +40,7 @@ except ImportError:
 # ===========================================================================
 # Roboter-Parameter (aus hardware/config.h)
 # ===========================================================================
-WHEEL_RADIUS = 0.0325       # [m]
-WHEEL_BASE = 0.178           # [m]
+from amr_utils import WHEEL_RADIUS, WHEEL_BASE, quaternion_zu_yaw, normalisiere_winkel
 
 # Odom- und cmd_vel-Topics
 ODOM_TOPIC = "/odom"
@@ -57,24 +56,6 @@ PAUSE_ZWISCHEN_TESTS = 3.0
 # Pause nach Stopp fuer Odometrie-Einschwingen [s]
 PAUSE_NACH_STOPP = 1.0
 
-
-def quaternion_zu_yaw(q):
-    """Berechnet Gier-Winkel (yaw) aus Quaternion (z, w Komponenten).
-
-    Fuer 2D-Roboter genuegt die vereinfachte Formel (nur z-Rotation).
-    """
-    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-    return math.atan2(siny_cosp, cosy_cosp)
-
-
-def normalisiere_winkel(winkel):
-    """Normalisiert Winkel auf [-pi, pi]."""
-    while winkel > math.pi:
-        winkel -= 2.0 * math.pi
-    while winkel < -math.pi:
-        winkel += 2.0 * math.pi
-    return winkel
 
 
 class KinematikTestNode(Node):

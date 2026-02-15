@@ -20,25 +20,23 @@ import select
 import time
 import datetime
 
+from amr_utils import (
+    WHEEL_DIAMETER, WHEEL_RADIUS, WHEEL_BASE, WHEEL_CIRCUMFERENCE,
+    TICKS_PER_REV, METERS_PER_TICK, TICKS_PER_REV_MIN, TICKS_PER_REV_MAX,
+)
+
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 
 
 # ===========================================================================
-# Konstanten aus config.h
+# Konstanten
 # ===========================================================================
 
-WHEEL_DIAMETER = 0.065          # [m]
-WHEEL_RADIUS = WHEEL_DIAMETER / 2.0
-WHEEL_BASE = 0.178              # [m] Spurbreite
-WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * math.pi  # ~0.20420 m
-TICKS_PER_REV_NOMINAL = 374.0   # Nennwert JGA25-370
-METERS_PER_TICK_NOMINAL = WHEEL_CIRCUMFERENCE / TICKS_PER_REV_NOMINAL
-
-# Akzeptanzkriterien
-TICKS_PER_REV_MIN = 370.0
-TICKS_PER_REV_MAX = 380.0
+# Lokale Aliase fuer Rueckwaertskompatibilitaet
+TICKS_PER_REV_NOMINAL = TICKS_PER_REV
+METERS_PER_TICK_NOMINAL = METERS_PER_TICK
 REPRODUCIBILITY_MAX_TICKS = 2.0  # Maximale Abweichung zwischen Durchgaengen
 
 

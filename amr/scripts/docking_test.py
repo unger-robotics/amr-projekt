@@ -32,6 +32,7 @@ import json
 import math
 import os
 from pathlib import Path
+from amr_utils import quaternion_to_yaw
 
 
 # Pixel-zu-cm Umrechnung (Naeherung).
@@ -105,10 +106,7 @@ class DockingTestNode(Node):
     def odom_callback(self, msg):
         """Speichert aktuelle Gier-Orientierung aus Odometrie."""
         q = msg.pose.pose.orientation
-        # Quaternion -> Gierwinkel (yaw)
-        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-        self.odom_yaw = math.atan2(siny_cosp, cosy_cosp)
+        self.odom_yaw = quaternion_to_yaw(q)
 
     def image_callback(self, msg):
         """Verarbeitet Kamerabild waehrend aktivem Docking-Versuch."""

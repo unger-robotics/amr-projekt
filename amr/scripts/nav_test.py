@@ -39,6 +39,8 @@ try:
 except ImportError:
     ROS2_AVAILABLE = False
 
+from amr_utils import quaternion_to_yaw, yaw_to_quaternion, normalize_angle
+
 
 # ---------------------------------------------------------------------------
 # Waypoints im map-Frame (2m x 2m Rechteck)
@@ -54,38 +56,6 @@ WAYPOINTS = [
 # Akzeptanzkriterien
 XY_TOLERANCE = 0.10    # 10 cm
 YAW_TOLERANCE = 0.15   # ~8.6 Grad
-
-
-# ---------------------------------------------------------------------------
-# Hilfsfunktionen
-# ---------------------------------------------------------------------------
-
-def yaw_to_quaternion(yaw):
-    """Yaw-Winkel (rad) -> Quaternion (x, y, z, w)."""
-    qz = math.sin(yaw / 2.0)
-    qw = math.cos(yaw / 2.0)
-    return (0.0, 0.0, qz, qw)
-
-
-def quaternion_to_yaw(q):
-    """Quaternion -> Yaw-Winkel (rad). Akzeptiert Liste [x,y,z,w] oder ROS Quaternion-Msg."""
-    if hasattr(q, 'x'):
-        # ROS Quaternion-Nachricht (z.B. aus TF Transform)
-        x, y, z, w = q.x, q.y, q.z, q.w
-    else:
-        x, y, z, w = q[0], q[1], q[2], q[3]
-    siny_cosp = 2.0 * (w * z + x * y)
-    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
-    return math.atan2(siny_cosp, cosy_cosp)
-
-
-def normalize_angle(angle):
-    """Winkel auf [-pi, pi] normalisieren."""
-    while angle > math.pi:
-        angle -= 2.0 * math.pi
-    while angle < -math.pi:
-        angle += 2.0 * math.pi
-    return angle
 
 
 # ---------------------------------------------------------------------------

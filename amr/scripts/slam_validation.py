@@ -51,6 +51,8 @@ try:
 except ImportError:
     ROSBAG_AVAILABLE = False
 
+from amr_utils import quaternion_to_yaw
+
 # Matplotlib fuer Plots
 try:
     import matplotlib
@@ -64,13 +66,6 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Hilfsfunktionen
 # ---------------------------------------------------------------------------
-
-def quaternion_to_yaw(q):
-    """Quaternion (x, y, z, w) -> Yaw-Winkel (rad)."""
-    siny_cosp = 2.0 * (q[3] * q[2] + q[0] * q[1])
-    cosy_cosp = 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2])
-    return math.atan2(siny_cosp, cosy_cosp)
-
 
 def compute_ate(odom_poses, slam_poses):
     """

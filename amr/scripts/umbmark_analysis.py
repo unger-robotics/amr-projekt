@@ -28,8 +28,8 @@ import matplotlib.pyplot as plt
 # ===========================================================================
 L = 16.0                    # Gesamtpfadlaenge 4x4m Quadrat [m]
 B_NOMINAL = 0.178           # WHEEL_BASE [m]
-WHEEL_RADIUS = 0.0325       # [m]
-TICKS_PER_REV_NOMINAL = 374.0  # Nennwert JGA25-370
+from amr_utils import WHEEL_RADIUS, TICKS_PER_REV
+TICKS_PER_REV_NOMINAL = TICKS_PER_REV
 
 
 def eingabe_interaktiv():

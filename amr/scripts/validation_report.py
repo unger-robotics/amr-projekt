@@ -46,7 +46,7 @@ KRITERIEN = [
     {
         'bereich': 'Encoder',
         'kriterium': 'Ticks/Rev',
-        'anforderung': '370-380',
+        'anforderung': '740-760',
         'datei': 'encoder',
         'pfad': None,  # Aggregation ueber pruef_fn
         'pruef_fn': lambda daten: _encoder_ticks_check(daten),
@@ -194,7 +194,7 @@ FF_ZUORDNUNG = {
 # ===========================================================================
 
 def _encoder_ticks_check(daten):
-    """Mittelwert aus recommended_ticks_per_rev_left/right, pruefe 370-380."""
+    """Mittelwert aus recommended_ticks_per_rev_left/right, pruefe 740-760."""
     if not isinstance(daten, dict):
         return (None, None)
     left = daten.get('recommended_ticks_per_rev_left')
@@ -202,7 +202,7 @@ def _encoder_ticks_check(daten):
     if left is None or right is None:
         return (None, None)
     mittel = (left + right) / 2.0
-    passed = 370 <= mittel <= 380
+    passed = 740 <= mittel <= 760
     return (round(mittel, 1), passed)
 
 

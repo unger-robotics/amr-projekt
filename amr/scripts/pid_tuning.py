@@ -31,10 +31,12 @@ SOLL_GESCHWINDIGKEIT = 0.4     # [m/s] Zielgeschwindigkeit
 AUFNAHME_DAUER = 10.0          # [s] Aufnahmedauer Live-Modus
 SPRUNG_VERZOEGERUNG = 2.0      # [s] Wartezeit vor Sprung
 
-# Aktuelle PID-Werte
-KP = 1.5
-KI = 0.5
-KD = 0.0
+from amr_utils import PID_KP, PID_KI, PID_KD
+
+# Aktuelle PID-Werte (aus amr_utils / hardware/config.h)
+KP = PID_KP
+KI = PID_KI
+KD = PID_KD
 
 # Akzeptanzkriterien
 # Firmware-Rampe (MAX_ACCEL=5.0 rad/s^2) dominiert: ~2.5s theoretisch

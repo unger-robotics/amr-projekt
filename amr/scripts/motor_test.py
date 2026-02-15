@@ -20,20 +20,12 @@ import math
 import time
 import datetime
 
+from amr_utils import WHEEL_BASE, FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE
+
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-
-
-# ===========================================================================
-# Konstanten aus config.h
-# ===========================================================================
-
-WHEEL_BASE = 0.178              # [m] Spurbreite
-FAILSAFE_TIMEOUT_MS = 500       # [ms]
-MAX_VELOCITY = 0.4              # [m/s] Zielgeschwindigkeit
-PWM_DEADZONE = 35               # PWM-Wert unter dem Motor nicht anlaeuft
 
 
 # ===========================================================================
