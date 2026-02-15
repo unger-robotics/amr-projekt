@@ -355,7 +355,7 @@ def main():
     erstelle_plot(ergebnisse, speicherpfad=plot_pfad)
 
     # JSON-Export
-    json_pfad = skript_verzeichnis / "umbmark_ergebnis.json"
+    json_pfad = skript_verzeichnis / "umbmark_results.json"
     export = {
         "parameter": {
             "L_m": L,

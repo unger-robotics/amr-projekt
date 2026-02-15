@@ -24,6 +24,7 @@ Verwendung:
 """
 
 import argparse
+import json
 import math
 import sys
 import time
@@ -179,6 +180,28 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
     with open(report_path, 'w') as f:
         f.write(report_text)
     print(f'Report gespeichert: {report_path}')
+
+    # --- JSON-Export fuer validation_report.py ---
+    max_err = max(e[1] for e in errors) if errors else None
+    mean_err = float(np.mean([e[1] for e in errors])) if errors else None
+    duration_s = None
+    if errors:
+        duration_s = round(errors[-1][0] - errors[0][0], 2)
+
+    json_export = {
+        "ate_m": round(ate_rmse, 4) if not math.isnan(ate_rmse) else None,
+        "max_error_m": round(max_err, 4) if max_err is not None else None,
+        "mean_error_m": round(mean_err, 4) if mean_err is not None else None,
+        "duration_s": duration_s,
+        "num_samples": len(errors),
+        "num_odom_poses": len(odom_poses),
+        "num_slam_poses": len(slam_poses),
+        "passed": passed,
+    }
+    json_path = os.path.join(output_dir, 'slam_results.json')
+    with open(json_path, 'w') as f:
+        json.dump(json_export, f, indent=2)
+    print(f'JSON gespeichert: {json_path}')
 
     # --- Plot ---
     if MATPLOTLIB_AVAILABLE and len(odom_poses) > 0 and len(slam_poses) > 0:

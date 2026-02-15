@@ -430,7 +430,7 @@ def save_results(rev_results, direction_results, asymmetry_results):
             data["recommended_ticks_per_rev_right"] = sum(right_vals) / len(right_vals)
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    filepath = os.path.join(script_dir, f"encoder_test_{ts}.json")
+    filepath = os.path.join(script_dir, "encoder_results.json")
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

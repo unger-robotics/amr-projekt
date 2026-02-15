@@ -522,7 +522,7 @@ def main():
 
     # JSON speichern
     skript_verzeichnis = Path(__file__).parent
-    json_pfad = skript_verzeichnis / "kinematik_ergebnis.json"
+    json_pfad = skript_verzeichnis / "kinematic_results.json"
     speichere_json(ergebnisse, json_pfad)
 
     node.destroy_node()

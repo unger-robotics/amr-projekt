@@ -140,7 +140,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
 
-Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_footprint`.
+Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
 
 ### micro-ROS / XRCE-DDS Constraints
 
@@ -153,12 +153,11 @@ Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom 
 ### TF-Baum
 
 ```
-odom → base_footprint → base_link → laser
-        (dynamisch)      (statisch)   (statisch, 180° Yaw)
-                                    → camera_link (statisch, optional bei use_camera:=True)
+odom → base_link → laser (statisch, 180° Yaw)
+  (dynamisch)    → camera_link (statisch, optional bei use_camera:=True)
 ```
 
-Statische TFs via `static_transform_publisher` im Launch-File. Dynamische TF `odom → base_footprint` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert. `camera_link` wird nur bei `use_camera:=True` publiziert.
+Statische TFs via `static_transform_publisher` im Launch-File. Dynamische TF `odom → base_link` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert. `camera_link` wird nur bei `use_camera:=True` publiziert.
 
 ### Kamera-Pipeline (IMX296 Global Shutter)
 

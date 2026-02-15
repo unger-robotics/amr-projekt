@@ -14,6 +14,7 @@ Verwendung:
     python3 pid_tuning.py bag /pfad/zur/rosbag  # Rosbag2-Analyse
 """
 
+import json
 import sys
 import time
 import math
@@ -464,6 +465,27 @@ def main():
     skript_verzeichnis = Path(__file__).parent
     plot_pfad = skript_verzeichnis / "pid_sprungantwort.png"
     erstelle_plot(ergebnisse, speicherpfad=plot_pfad)
+
+    # JSON-Export fuer validation_report.py
+    json_export = {
+        "soll_m_s": SOLL_GESCHWINDIGKEIT,
+        "rise_time_ms": round(ergebnisse["t_rise_s"] * 1000.0, 1) if not math.isnan(ergebnisse["t_rise_s"]) else None,
+        "overshoot_pct": round(ergebnisse["overshoot_pct"], 2),
+        "settle_time_ms": round(ergebnisse["t_settle_s"] * 1000.0, 1) if not math.isnan(ergebnisse["t_settle_s"]) else None,
+        "steady_state_error_pct": round(ergebnisse["e_ss_pct"], 2),
+        "v_max_m_s": round(float(ergebnisse["v_max_m_s"]), 4),
+        "v_steady_m_s": round(float(ergebnisse["v_steady_m_s"]), 4),
+        "pid": {
+            "Kp": KP,
+            "Ki": KI,
+            "Kd": KD,
+        },
+        "num_samples": len(ergebnisse["timestamps"]),
+    }
+    json_pfad = skript_verzeichnis / "pid_results.json"
+    with open(json_pfad, "w") as f:
+        json.dump(json_export, f, indent=2)
+    print(f"JSON-Export: {json_pfad}")
 
 
 if __name__ == "__main__":

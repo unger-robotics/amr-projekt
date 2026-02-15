@@ -52,6 +52,7 @@ board = seeed_xiao_esp32s3
 framework = arduino
 monitor_speed = 115200
 upload_speed = 921600
+upload_port = /dev/ttyACM0
 
 build_flags =
     -DARDUINO_USB_CDC_ON_BOOT=1
@@ -131,8 +132,8 @@ Nach der Kalibrierung die gemessenen Werte in `hardware/config.h` eintragen:
 
 ```c
 // Vor Kalibrierung (Platzhalter):
-#define TICKS_PER_REV_LEFT 374.3f  // noch nicht Kalibriert
-#define TICKS_PER_REV_RIGHT 373.6f // noch nicht Kalibriert
+#define TICKS_PER_REV_LEFT 374.3f  // kalibriert (10-Umdrehungen-Test)
+#define TICKS_PER_REV_RIGHT 373.6f // kalibriert (10-Umdrehungen-Test)
 
 // Nach Kalibrierung (Beispielwerte):
 #define TICKS_PER_REV_LEFT 375.2f  // Kalibriert am 2026-02-15
@@ -222,7 +223,7 @@ Das Image installiert alle benoetigten ROS2-Pakete (Nav2, SLAM Toolbox, RPLIDAR-
 ./verify.sh
 ```
 
-Das Skript fuehrt 11 Checks durch (Image, ROS2-Distribution, Pakete, Serial-Zugriff, Workspace-Build, Executables). Bei 11/11 PASS ist das Setup vollstaendig.
+Das Skript prueft Image, ROS2-Distribution, Pakete, Serial-Zugriff, Kamera-Bridge, Workspace-Build und Executables. Bei 0 FAIL und Ausgabe "Verifikation BESTANDEN" ist das Setup vollstaendig.
 
 **Arbeiten mit dem Docker-Container:**
 
@@ -269,18 +270,23 @@ Die Python-Skripte liegen im `scripts/`-Verzeichnis und muessen als Modul im `my
 
 ```bash
 cd amr/pi5/ros2_ws/src/my_bot/my_bot/
+
+# ArUco-Docking verlinkt auf das Skript im Paket-eigenen scripts/-Verzeichnis:
 ln -s ../scripts/aruco_docking.py aruco_docking.py
-ln -s ../scripts/encoder_test.py encoder_test.py
-ln -s ../scripts/motor_test.py motor_test.py
-ln -s ../scripts/pid_tuning.py pid_tuning.py
-ln -s ../scripts/kinematic_test.py kinematic_test.py
-ln -s ../scripts/slam_validation.py slam_validation.py
-ln -s ../scripts/nav_test.py nav_test.py
-ln -s ../scripts/docking_test.py docking_test.py
-ln -s ../scripts/odom_to_tf.py odom_to_tf.py
+
+# Validierungsskripte verlinken auf amr/scripts/ (5 Ebenen hoeher):
+ln -s ../../../../../scripts/encoder_test.py encoder_test.py
+ln -s ../../../../../scripts/motor_test.py motor_test.py
+ln -s ../../../../../scripts/pid_tuning.py pid_tuning.py
+ln -s ../../../../../scripts/kinematic_test.py kinematic_test.py
+ln -s ../../../../../scripts/slam_validation.py slam_validation.py
+ln -s ../../../../../scripts/nav_test.py nav_test.py
+ln -s ../../../../../scripts/docking_test.py docking_test.py
 ```
 
-Die relativen Symlink-Pfade (`../scripts/...`) bleiben im Docker-Container erhalten, da die Verzeichnisstruktur innerhalb des Volume-Mounts identisch ist.
+**Hinweis:** `odom_to_tf.py` ist eine eigenstaendige Datei (kein Symlink) und liegt bereits in `my_bot/my_bot/`.
+
+Die relativen Symlink-Pfade bleiben im Docker-Container erhalten, da die Verzeichnisstruktur innerhalb des Volume-Mounts identisch ist. Die Validierungsskripte in `amr/scripts/` erfordern den laengeren Pfad (`../../../../../scripts/`), da sie fuenf Verzeichnisebenen oberhalb des Paketverzeichnisses liegen.
 
 ### 2.3 Workspace bauen
 
@@ -481,8 +487,8 @@ SLAM-Konfiguration: `config/mapper_params_online_async.yaml` (Ceres-Solver, 5 cm
 Der Navigations-Stack benoetigt die vollstaendige TF-Kette:
 
 ```text
-map -> odom -> base_footprint -> base_link -> laser
-                                            -> camera_link (optional)
+map -> odom -> base_link -> laser
+                         -> camera_link (optional, bei use_camera:=True)
 ```
 
 Verifikation:
@@ -570,12 +576,12 @@ Alle Validierungsskripte liegen in `amr/scripts/`. Die detaillierte Kalibrierung
 | `pre_flight_check.py`  | 1 (Pre-Flash)  | Nein | `python3 pre_flight_check.py`                                | Interaktive Hardware-Checkliste mit Markdown-Protokoll           | Alle Checks bestanden (0 FAIL)                |
 | `encoder_test.py`      | 2 (Encoder)    | Ja   | `ros2 run my_bot encoder_test`                               | 10-Umdrehungen-Test, Richtungs- und Asymmetrie-Pruefung         | AK-01 bis AK-03                               |
 | `motor_test.py`        | 3 (Motoren)    | Ja   | `ros2 run my_bot motor_test`                                 | Deadzone-, Richtungs-, Failsafe- und Rampen-Test                | AK-04, AK-05                                  |
-| `pid_tuning.py`        | 4 (PID)        | Ja   | `ros2 run my_bot pid_tuning live`                            | PID-Sprungantwort: Anstiegszeit, Ueberschwingen, Einschwingzeit | AK-10 bis AK-13                               |
+| `pid_tuning.py`        | 6 (PID)        | Ja   | `ros2 run my_bot pid_tuning live`                            | PID-Sprungantwort: Anstiegszeit, Ueberschwingen, Einschwingzeit | AK-10 bis AK-13                               |
 | `kinematic_test.py`    | 4 (Kinematik)  | Ja   | `ros2 run my_bot kinematic_test`                             | Geradeaus-, Dreh- und Kreisfahrt-Verifikation                   | AK-06 bis AK-08                               |
 | `umbmark_analysis.py`  | 5 (UMBmark)    | Nein | `python3 umbmark_analysis.py`                                | UMBmark-Auswertung nach Borenstein (1996), Korrekturfaktoren    | AK-09                                         |
-| `slam_validation.py`   | 6 (SLAM)       | Ja   | `ros2 run my_bot slam_validation --live --duration 120`      | ATE-Berechnung und TF-Ketten-Pruefung                           | AK-16                                         |
-| `nav_test.py`          | 6 (Navigation) | Ja   | `ros2 run my_bot nav_test`                                   | 4-Waypoint-Navigationstest mit Positions-/Gierfehler            | AK-17, AK-18                                  |
-| `docking_test.py`      | 6 (Docking)    | Ja   | `ros2 run my_bot docking_test`                               | 10-Versuch ArUco-Docking mit Erfolgsquote                       | AK-19                                         |
+| `slam_validation.py`   | 8 (SLAM)       | Ja   | `ros2 run my_bot slam_validation --live --duration 120`      | ATE-Berechnung und TF-Ketten-Pruefung                           | AK-16                                         |
+| `nav_test.py`          | 8 (Navigation) | Ja   | `ros2 run my_bot nav_test`                                   | 4-Waypoint-Navigationstest mit Positions-/Gierfehler            | AK-17, AK-18                                  |
+| `docking_test.py`      | 9 (Docking)    | Ja   | `ros2 run my_bot docking_test`                               | 10-Versuch ArUco-Docking mit Erfolgsquote                       | AK-19                                         |
 | `validation_report.py` | 9 (Report)     | Nein | `python3 validation_report.py`                               | Gesamt-Report aus JSON-Ergebnissen aller Tests                  | Alle 14 Kriterien PASS                        |
 
 **Zusaetzliche Entry-Points** (keine Validierungsskripte):
@@ -583,7 +589,7 @@ Alle Validierungsskripte liegen in `amr/scripts/`. Die detaillierte Kalibrierung
 | Entry-Point       | Aufruf                           | Beschreibung                                              |
 |--------------------|----------------------------------|-----------------------------------------------------------|
 | `aruco_docking`    | `ros2 run my_bot aruco_docking`  | Visual-Servoing-Node fuer ArUco-Marker-Docking            |
-| `odom_to_tf`       | `ros2 run my_bot odom_to_tf`     | Publiziert odom->base_footprint TF aus /odom-Nachrichten  |
+| `odom_to_tf`       | `ros2 run my_bot odom_to_tf`     | Publiziert odom->base_link TF aus /odom-Nachrichten       |
 
 ---
 
@@ -650,5 +656,5 @@ Alle Dateien im Verzeichnis `amr/docker/`. Sie stellen die ROS2-Humble-Umgebung 
 | docker-compose.yml | `amr/docker/docker-compose.yml` | Service: network_mode host, privileged, Volume-Mounts               |
 | entrypoint.sh      | `amr/docker/entrypoint.sh`      | Sourced ROS2 Humble + micro-ROS + Projekt-Workspace automatisch     |
 | run.sh             | `amr/docker/run.sh`             | Convenience-Wrapper: Shell, Befehle, zweites Terminal               |
-| verify.sh          | `amr/docker/verify.sh`          | Automatisierter Gesamttest (11 Checks)                              |
+| verify.sh          | `amr/docker/verify.sh`          | Automatisierter Gesamttest (dynamische Check-Anzahl)                |
 | host_setup.sh      | `amr/docker/host_setup.sh`      | Einmalige Host-Einrichtung: Gruppen, udev, X11, Kamera             |

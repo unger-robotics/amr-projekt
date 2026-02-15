@@ -250,22 +250,72 @@ Aus Schaltplan-Tabelle:
 
 ---
 
-## 11) Firmware-relevante Hardware-Parameter (aus `config.h`)
+## 11) Firmware-relevante Hardware-Parameter (aus `config.h` und `main.cpp`)
 
-Diese Werte definieren indirekt Hardware-Annahmen (Tuning/Mechanik):
+Diese Werte definieren indirekt Hardware-Annahmen (Tuning/Mechanik).
 
-- Failsafe Timeout: `FAILSAFE_TIMEOUT_MS = 500`
-- Control Loop: `CONTROL_LOOP_HZ = 50`
-- Odom Publish: `ODOM_PUBLISH_HZ = 20`
-- PWM Deadzone: `PWM_DEADZONE = 35`
-- Wheel Diameter: `WHEEL_DIAMETER = 0.065`
-- Wheel Base: `WHEEL_BASE = 0.178`
-- Ticks/Rev (kalibriert):
+### 11.1 Kinematik & Odometrie
+
+- Wheel Diameter: `WHEEL_DIAMETER = 0.065` [m]
+- Wheel Base: `WHEEL_BASE = 0.178` [m]
+- Ticks/Rev (kalibriert, 10-Umdrehungen-Test):
 
   - `TICKS_PER_REV_LEFT = 374.3`
   - `TICKS_PER_REV_RIGHT = 373.6`
 
-**Regel:** Wenn du Raeder, Getriebe oder Encoder-Setup aenderst -> diese Parameter neu kalibrieren.
+### 11.2 PWM-Konfiguration (Motor)
+
+- Frequenz: `MOTOR_PWM_FREQ = 20000` (20 kHz, unhoerbar)
+- Aufloesung: `MOTOR_PWM_BITS = 8` (8-bit, 0-255)
+- Maximum: `MOTOR_PWM_MAX = 255`
+- Deadzone: `PWM_DEADZONE = 35` (PWM unter dem Motor nicht anlaeuft)
+
+### 11.3 PWM-Kanal-Zuordnung (ESP32 LEDC)
+
+Die A/B-Kanaele sind bewusst getauscht, damit die Drehrichtung korrekt ist:
+
+- Motor Links A: Kanal 1 (`PWM_CH_LEFT_A = 1`)
+- Motor Links B: Kanal 0 (`PWM_CH_LEFT_B = 0`)
+- Motor Rechts A: Kanal 3 (`PWM_CH_RIGHT_A = 3`)
+- Motor Rechts B: Kanal 2 (`PWM_CH_RIGHT_B = 2`)
+
+### 11.4 LED/MOSFET-PWM
+
+- Kanal: `LED_PWM_CHANNEL = 4`
+- Frequenz: `LED_PWM_FREQ = 5000` (5 kHz)
+- Aufloesung: `LED_PWM_BITS = 8`
+
+### 11.5 PID-Gains (in `main.cpp` hardcoded)
+
+- Kp = 1.5
+- Ki = 0.5
+- Kd = 0.0
+- Ausgang begrenzt auf [-1.0, 1.0]
+
+### 11.6 Beschleunigungsrampe (in `main.cpp` hardcoded)
+
+- `MAX_ACCEL = 5.0` [rad/s^2]
+- Maximale Aenderung pro Regelzyklus: `MAX_ACCEL * 0.02 = 0.1` rad/s
+
+### 11.7 Timing & Safety
+
+- Failsafe Timeout: `FAILSAFE_TIMEOUT_MS = 500` (Motoren stoppen nach 500 ms ohne `cmd_vel`)
+- Control Loop: `CONTROL_LOOP_HZ = 50` (20 ms Takt, Core 1)
+- Odom Publish: `ODOM_PUBLISH_HZ = 20` (50 ms Takt, Core 0)
+
+### 11.8 I2C / IMU
+
+- I2C-Adresse: `IMU_I2C_ADDR = 0x68` (MPU6050, optional)
+
+### 11.9 Firmware-Kommunikation (aus `platformio.ini`)
+
+- Serial (Monitor): 115200 Baud
+- Upload: 921600 Baud
+- Upload-Port: `/dev/ttyACM0` (USB-CDC)
+- micro-ROS Transport: `serial`
+- ROS-Distribution: `humble`
+
+**Regel:** Wenn du Raeder, Getriebe oder Encoder-Setup aenderst -> diese Parameter neu kalibrieren. PID-Gains und Beschleunigungsrampe erfordern nach Hardware-Aenderungen ebenfalls eine Neuabstimmung.
 
 ---
 

@@ -7,7 +7,7 @@ Die Software-Integration ist abgeschlossen:
 | Task | Status | Ergebnis |
 |------|--------|----------|
 | Launch-File (RPLIDAR + Laser-TF) | erledigt | `rplidar_node` + `base_link->laser` (180 deg Yaw) |
-| Script-Symlinks (8 entry_points) | erledigt | 9 Executables in `my_bot` |
+| Script-Symlinks (9 entry_points) | erledigt | 9 Executables in `my_bot` |
 | Services gestoppt | erledigt | `/dev/ttyACM0` frei |
 | Workspace gebaut + verify.sh | erledigt | 14 PASS, 0 FAIL |
 | micro-ROS UART-Verbindung | erledigt | ~19 Hz, Std < 1.3 ms |
@@ -138,7 +138,7 @@ cd ~/AMR-Bachelorarbeit/amr/docker
 | Laterale Drift | < 50 mm | Seitliche Abweichung bei Geradeausfahrt |
 | Winkelabweichung | < 5 deg | 90-Grad-Drehung: Mittelwert CW/CCW |
 
-**Ergebnis:** `amr/scripts/kinematik_ergebnis.json`
+**Ergebnis:** `amr/scripts/kinematic_results.json`
 
 **Falls NICHT BESTANDEN:**
 - Streckenabweichung > 5 %: Encoder-Kalibrierung pruefen (`ros2 run my_bot encoder_test`)
@@ -193,16 +193,18 @@ Alle Werte in **Millimeter** relativ zur Startposition.
 Das Skript berechnet:
 - **E_d** (Raddurchmesser-Verhaeltnis): Korrigiert unterschiedliche Radgroessen
 - **E_b** (Spurbreite-Korrektor): Korrigiert die effektive Spurbreite
-- Korrigierte Werte fuer `WHEEL_BASE`, `WHEEL_RADIUS_LEFT`, `WHEEL_RADIUS_RIGHT`
-- Scatterplot der Endpositionen (`umbmark_ergebnis.png`)
+- Korrigierte Werte fuer `WHEEL_BASE`, `TICKS_PER_REV_LEFT`, `TICKS_PER_REV_RIGHT`
+- Scatterplot der Endpositionen (`umbmark_results.png`)
 
 **Nach der Auswertung — config.h anpassen:**
 
+Die UMBmark-Korrekturfaktoren werden ueber angepasste `TICKS_PER_REV_LEFT` und `TICKS_PER_REV_RIGHT` in `config.h` umgesetzt. `WHEEL_DIAMETER` bleibt symmetrisch.
+
 ```bash
 # Ausgabe des Skripts enthaelt Copy-Paste-Werte:
-# #define WHEEL_BASE          0.XXXXXX  // [m] UMBmark-korrigiert
-# #define WHEEL_RADIUS_LEFT   0.XXXXXX  // [m] UMBmark-korrigiert
-# #define WHEEL_RADIUS_RIGHT  0.XXXXXX  // [m] UMBmark-korrigiert
+# #define WHEEL_BASE           0.XXXXXX  // [m] UMBmark-korrigiert
+# #define TICKS_PER_REV_LEFT   XXX.Xf    // UMBmark-korrigiert
+# #define TICKS_PER_REV_RIGHT  XXX.Xf    // UMBmark-korrigiert
 
 # Datei bearbeiten:
 nano ~/AMR-Bachelorarbeit/hardware/config.h
@@ -219,7 +221,7 @@ pio run -t upload
 | E_max,syst (vor Kalibrierung) | Wird gemessen (Referenzwert) |
 | Reduktionsfaktor (nach Kalibrierung) | >= 10x |
 
-**Ergebnis:** `amr/scripts/umbmark_ergebnis.json` + `umbmark_ergebnis.png`
+**Ergebnis:** `amr/scripts/umbmark_results.json` + `umbmark_results.png`
 
 **Hinweis:** Nach dem Flashen der neuen config.h-Werte sollte der Kinematik-Test (Task 11) wiederholt werden, um die Verbesserung zu verifizieren.
 
@@ -260,7 +262,7 @@ Das Skript:
 | Einschwingzeit (+/-5%) | < 1.0 s | Zeit bis dauerhaft im 5%-Band |
 | Stationaerer Regelfehler | < 5 % | Verbleibende Abweichung nach Einschwingen |
 
-**Ergebnis:** `amr/scripts/pid_sprungantwort.png` (Diagramm mit Markierungen)
+**Ergebnis:** `amr/scripts/pid_results.json` + `pid_sprungantwort.png` (Diagramm mit Markierungen)
 
 **Falls Tuning noetig:**
 
@@ -324,7 +326,7 @@ pio run -t upload
 | ATE (RMSE) | < 0.20 m |
 | TF-Kette map->odom->base_link->laser | Vollstaendig |
 
-**Ergebnis:** `slam_validation_report.md` + `slam_validation_plot.png`
+**Ergebnis:** `amr/scripts/slam_results.json` + `slam_validation_plot.png`
 
 **Falls NICHT BESTANDEN:**
 - ATE > 0.20 m: SLAM-Parameter pruefen (`mapper_params_online_async.yaml`)
@@ -382,7 +384,7 @@ WP4 (0,0) -------- WP1 (2,0)
 | Orientierungsfehler (yaw) | < 8 deg (~0.15 rad) |
 | Alle 4 Waypoints erreicht | Ja |
 
-**Ergebnis:** `nav_test_report.md` + `nav_test_results.json`
+**Ergebnis:** `amr/scripts/nav_results.json`
 
 **Falls NICHT BESTANDEN:**
 - Positionsfehler > 10 cm: Nav2-Parameter pruefen (`nav2_params.yaml`, RPP Controller Toleranzen)

@@ -477,7 +477,7 @@ def save_results(test_results):
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # JSON
-    json_path = os.path.join(script_dir, f"motor_test_{ts}.json")
+    json_path = os.path.join(script_dir, "motor_results.json")
 
     # Nicht-serialisierbare Daten filtern (ramp data_points koennen gross sein)
     json_data = {

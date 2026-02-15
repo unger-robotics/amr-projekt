@@ -349,7 +349,7 @@ def generate_report(results, output_dir):
         f.write(report_text)
     print(f'Report gespeichert: {report_path}')
 
-    json_path = os.path.join(output_dir, 'nav_test_results.json')
+    json_path = os.path.join(output_dir, 'nav_results.json')
     with open(json_path, 'w') as f:
         json.dump({
             'timestamp': time.strftime('%Y-%m-%dT%H:%M:%S'),
