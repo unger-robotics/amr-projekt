@@ -13,19 +13,21 @@ volatile int32_t encoder_right_count = 0;
 
 void IRAM_ATTR isr_enc_left() {
     // Quadratur: Richtung aus XOR von Phase A und Phase B
+    // Vorzeichen empirisch bestimmt: Vorwaerts-PWM = positive Ticks
     if (digitalRead(PIN_ENC_LEFT_A) ^ digitalRead(PIN_ENC_LEFT_B)) {
-        encoder_left_count++;
-    } else {
         encoder_left_count--;
+    } else {
+        encoder_left_count++;
     }
 }
 
 void IRAM_ATTR isr_enc_right() {
-    // Rechter Motor: invertiert (gegenueberliegende Montage)
+    // Rechter Motor: gegenueberliegende Montage
+    // Vorzeichen empirisch bestimmt: Vorwaerts-PWM = positive Ticks
     if (digitalRead(PIN_ENC_RIGHT_A) ^ digitalRead(PIN_ENC_RIGHT_B)) {
-        encoder_right_count--;
-    } else {
         encoder_right_count++;
+    } else {
+        encoder_right_count--;
     }
 }
 
@@ -34,9 +36,16 @@ class RobotHAL {
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
     void driveMotor(uint8_t ch_a, uint8_t ch_b, float speed) {
+        // Dead-Band: PID-Rauschen nahe Null ignorieren, verhindert
+        // Zittern durch Deadzone-Sprung (0 -> PWM_DEADZONE)
+        if (fabsf(speed) < 0.08f) {
+            ledcWrite(ch_a, 0);
+            ledcWrite(ch_b, 0);
+            return;
+        }
         int16_t duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
         // Deadzone-Kompensation: Werte unter PWM_DEADZONE erzeugen keine Bewegung
-        if (duty > 0 && duty < PWM_DEADZONE) {
+        if (duty < PWM_DEADZONE) {
             duty = PWM_DEADZONE;
         }
         if (speed > 0) {

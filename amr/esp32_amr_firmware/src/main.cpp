@@ -16,8 +16,8 @@
 const float MAX_ACCEL = 5.0; // rad/s^2 Rampe
 RobotHAL hal;
 DiffDriveKinematics kinematics(WHEEL_RADIUS, WHEEL_BASE);
-PidController pid_l(1.5, 0.5, 0.0, -1.0, 1.0);
-PidController pid_r(1.5, 0.5, 0.0, -1.0, 1.0);
+PidController pid_l(0.4, 0.1, 0.0, -1.0, 1.0);
+PidController pid_r(0.4, 0.1, 0.0, -1.0, 1.0);
 
 struct SharedData {
     float tv = 0, tw = 0, ox = 0, oy = 0, oth = 0, ov = 0, ow = 0;
@@ -40,16 +40,31 @@ rcl_node_t node;
 void controlTask(void *p) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     float last_sp_l = 0, last_sp_r = 0;
+    float ml_filt = 0, mr_filt = 0; // EMA-gefilterte Geschwindigkeit fuer PID
+    const float ema_alpha = 0.3f;   // Glaettungsfaktor (0.3 = moderate Filterung)
+    uint32_t last_us = micros();
     while (1) {
+        // Dynamische dt-Messung (statt hartcodierter 0.02s)
+        uint32_t now_us = micros();
+        float dt = (now_us - last_us) / 1000000.0f;
+        last_us = now_us;
+        // Sanity: dt zwischen 1ms und 100ms begrenzen
+        if (dt < 0.001f) dt = 0.001f;
+        if (dt > 0.1f) dt = 0.1f;
+
         int32_t tl, tr;
         hal.readEncoders(tl, tr);
         static int32_t ptl = 0, ptr = 0;
         float ml =
-            (static_cast<float>(tl - ptl) / TICKS_PER_REV_LEFT) * 2 * PI / 0.02;
+            (static_cast<float>(tl - ptl) / TICKS_PER_REV_LEFT) * 2 * PI / dt;
         float mr =
-            (static_cast<float>(tr - ptr) / TICKS_PER_REV_RIGHT) * 2 * PI / 0.02;
+            (static_cast<float>(tr - ptr) / TICKS_PER_REV_RIGHT) * 2 * PI / dt;
         ptl = tl;
         ptr = tr;
+
+        // EMA-Filter: Glaettet Quantisierungsrauschen fuer PID
+        ml_filt = ema_alpha * ml + (1.0f - ema_alpha) * ml_filt;
+        mr_filt = ema_alpha * mr + (1.0f - ema_alpha) * mr_filt;
 
         float tv, tw;
         if (xSemaphoreTake(mutex, 10)) {
@@ -66,8 +81,8 @@ void controlTask(void *p) {
 
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
 
-        // Rampe
-        float max_d = MAX_ACCEL * 0.02;
+        // Rampe (skaliert mit tatsaechlichem dt)
+        float max_d = MAX_ACCEL * dt;
         if (t.left_rad_s > last_sp_l + max_d)
             last_sp_l += max_d;
         else if (t.left_rad_s < last_sp_l - max_d)
@@ -82,9 +97,18 @@ void controlTask(void *p) {
         else
             last_sp_r = t.right_rad_s;
 
-        hal.setMotors(pid_l.compute(last_sp_l, ml, 0.02),
-                      pid_r.compute(last_sp_r, mr, 0.02));
-        RobotState s = kinematics.updateOdometry(ml, mr, 0.02);
+        // Bei Zielgeschwindigkeit ~0: PID umgehen, Motoren direkt stoppen
+        // Verhindert Integral-Windup-Zittern im Stillstand
+        if (fabsf(last_sp_l) < 0.01f && fabsf(last_sp_r) < 0.01f) {
+            hal.setMotors(0, 0);
+            pid_l.reset();
+            pid_r.reset();
+        } else {
+            // PID nutzt gefilterte Werte, Odometrie nutzt Rohdaten
+            hal.setMotors(pid_l.compute(last_sp_l, ml_filt, dt),
+                          pid_r.compute(last_sp_r, mr_filt, dt));
+        }
+        RobotState s = kinematics.updateOdometry(ml, mr, dt);
 
         if (xSemaphoreTake(mutex, 10)) {
             shared.ox = s.x;

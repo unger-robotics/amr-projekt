@@ -19,4 +19,9 @@ class PidController {
         prev_error = error;
         return std::max(min_out, std::min(output, max_out));
     }
+
+    void reset() {
+        integral = 0;
+        prev_error = 0;
+    }
 };
