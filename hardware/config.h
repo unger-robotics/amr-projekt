@@ -56,10 +56,10 @@
 // 2.1 ENCODER-KALIBRIERUNG (2025-12-12)
 // ==========================================================================
 // Methode: 10-Umdrehungen-Test
-// Ergebnis: Links ? Ticks, Rechts ? Ticks
+// Ergebnis: Links 374.3 Ticks, Rechts 373.6 Ticks
 
-#define TICKS_PER_REV_LEFT 374.3f  // noch nicht Kalibriert
-#define TICKS_PER_REV_RIGHT 373.6f // noch nicht Kalibriert
+#define TICKS_PER_REV_LEFT 374.3f  // kalibriert (10-Umdrehungen-Test)
+#define TICKS_PER_REV_RIGHT 373.6f // kalibriert (10-Umdrehungen-Test)
 #define TICKS_PER_REV ((TICKS_PER_REV_LEFT + TICKS_PER_REV_RIGHT) / 2.0f)
 
 #define METERS_PER_TICK_LEFT (WHEEL_CIRCUMFERENCE / TICKS_PER_REV_LEFT)
