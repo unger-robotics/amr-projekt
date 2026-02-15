@@ -197,7 +197,7 @@ sudo lslocks | grep esp32-serial              # Lock-Status pruefen
 
 Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevante Werte:
 
-- Raddurchmesser: 65 mm, Spurbreite: 178 mm, Encoder: ~748 Ticks/Rev (2x Quadratur), PWM-Deadzone: 35
+- Raddurchmesser: 65.67 mm (kalibriert), Spurbreite: 178 mm, Encoder: ~748 Ticks/Rev (2x Quadratur), PWM-Deadzone: 35
 - Zielgeschwindigkeit: 0.4 m/s, Positionstoleranz: 10 cm (xy) / 8° (Gier), Failsafe-Timeout: 500 ms
 - LED-Streifen: D10 ueber IRLZ24N MOSFET (PWM-Kanal 4, 5 kHz, 8-bit)
 

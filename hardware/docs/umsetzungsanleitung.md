@@ -630,7 +630,7 @@ Alle Pfade relativ zum Projekt-Root (`AMR-Bachelorarbeit/`).
 | mapper_params_online_async.yaml | `amr/pi5/ros2_ws/src/my_bot/config/mapper_params_online_async.yaml` | SLAM Toolbox: Ceres-Solver, 5 cm Aufloesung, Loop Closure             |
 | full_stack.launch.py            | `amr/pi5/ros2_ws/src/my_bot/launch/full_stack.launch.py`            | Launch-File: micro-ROS + SLAM + Nav2 + RViz2 + Kamera (optional)     |
 | aruco_docking.py                | `amr/pi5/ros2_ws/src/my_bot/scripts/aruco_docking.py`               | Visual Servoing mit ArUco-Markern (OpenCV >= 4.7)                     |
-| odom_to_tf.py                   | `amr/pi5/ros2_ws/src/my_bot/my_bot/odom_to_tf.py`                   | Odom-zu-TF-Bridge: publiziert odom->base_footprint                   |
+| odom_to_tf.py                   | `amr/pi5/ros2_ws/src/my_bot/my_bot/odom_to_tf.py`                   | Odom-zu-TF-Bridge: publiziert odom->base_link                   |
 
 ### C.5 Validierungsskripte
 
