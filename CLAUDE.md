@@ -140,7 +140,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/odom` | `nav_msgs/Odometry` | ESP32 (20 Hz) | Rad-Odometrie |
 | `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
 | `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
-| `/tf`, `/tf_static` | TF2 | odom_to_tf, robot_state_publisher | TF-Baum |
+| `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher | TF-Baum |
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
 
@@ -211,7 +211,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 12 Dateien in `amr/scripts/` (11 Skripte + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 12 Dateien in `amr/scripts/` (10 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -250,7 +250,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 ## Wichtige Pfade (nicht offensichtlich)
 
 - `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag
-- `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
+- `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v3.0, Docker-basiert)
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte (md_to_html_converter, pdf_splitter, image optimizer) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
