@@ -116,7 +116,7 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
 
-PID-Gains sind in `main.cpp` hardcoded (Kp=0.4, Ki=0.1, Kd=0.0). EMA-Filter (alpha=0.3) auf Encoder-Geschwindigkeit fuer PID, Rohdaten fuer Odometrie. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
+PID-Gains sind in `main.cpp` hardcoded (Kp=0.4, Ki=0.1, Kd=0.0). EMA-Filter (alpha=0.3) auf Encoder-Geschwindigkeit fuer PID, Rohdaten fuer Odometrie. Beschleunigungsrampe (MAX_ACCEL=5.0 rad/s²) begrenzt Sollwertaenderungen. Dead-Band (0.08) in `driveMotor()` unterdrueckt PID-Rauschen nahe Null, Stillstand-Bypass setzt PID zurueck wenn beide Sollwerte < 0.01. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
 **LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler.
 
@@ -210,8 +210,8 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 
 ## Validierung
 
-- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/09_umsetzungsanleitung.md`, Anhang A)
-- 10 Validierungsskripte in `amr/scripts/` (alle `py_compile`-validiert)
+- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
+- 11 Validierungsskripte in `amr/scripts/` (alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -250,7 +250,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 ## Wichtige Pfade (nicht offensichtlich)
 
 - `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth), eingebunden via `-I../../hardware` Build-Flag
-- `hardware/docs/09_umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
+- `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v2.0, Docker-basiert)
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte (md_to_html_converter, pdf_splitter, image optimizer) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
