@@ -66,9 +66,9 @@ docker compose build
 
 ## Hilfs-Skripte
 
-**run.sh** -- Convenience-Wrapper fuer `docker compose run`. Setzt automatisch X11-Zugriff (`xhost +local:docker`), prueft bei `use_camera:=True` ob die Kamera-Bridge aktiv ist, und bietet mit `./run.sh exec bash` Zugang zu einem bereits laufenden Container.
+**run.sh** -- Convenience-Wrapper fuer `docker compose run/exec`. Beliebige Befehle via `./run.sh <befehl>` ausfuehrbar (z.B. `./run.sh ros2 topic list`). Setzt automatisch X11-Zugriff (`xhost +local:docker`), prueft bei `use_camera:=True` ob die Kamera-Bridge aktiv ist, und bietet mit `./run.sh exec bash` Zugang zu einem bereits laufenden Container.
 
-**verify.sh** -- Automatischer Verifikationstest (11 Checks): Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
+**verify.sh** -- Automatischer Verifikationstest: Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
 
 **host_setup.sh** -- Einmalige Host-Konfiguration: Gruppen, udev-Regeln (`/dev/amr_esp32`, `/dev/amr_lidar`), X11-Pakete, v4l2loopback-Installation mit modprobe-Config, IMX296-Kamera-Erkennung, und Installation des systemd-Services fuer die Kamera-Bridge.
 
@@ -96,32 +96,29 @@ v4l2-ctl -d /dev/video10 --all
 
 ## Troubleshooting
 
-**Permission denied auf /dev/ttyACM0:**
-`sudo usermod -aG dialout $USER` und anschliessend ab- und wieder anmelden.
-
-**Serial-Port durch anderen Service belegt:**
-Der ESP32-Port wird von mehreren Projekten geteilt. Vor dem Start pruefen:
+**Serial-Port belegt:** Der ESP32-Port wird von mehreren Projekten geteilt. Vor dem Start pruefen:
 
 ```bash
 sudo fuser -v /dev/ttyACM0
 sudo systemctl stop embedded-bridge.service   # Falls aktiv
 ```
 
-**Docker-Image ohne Cache neu bauen oder Build-Cache zuruecksetzen:**
+**Docker-Image ohne Cache oder Build-Cache zuruecksetzen:**
 
 ```bash
 docker compose build --no-cache
-# Build-Cache komplett zuruecksetzen:
 docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log
 ```
 
-**/dev/video10 fehlt (Kamera-Bridge):**
+**Kamera-Bridge (/dev/video10 fehlt):**
 
 ```bash
 sudo modprobe -r v4l2loopback
 sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
 sudo systemctl restart camera-v4l2-bridge.service
 ```
+
+Weitere Hinweise: siehe `CLAUDE.md` (Abschnitt Troubleshooting).
 
 ## Lizenz
 

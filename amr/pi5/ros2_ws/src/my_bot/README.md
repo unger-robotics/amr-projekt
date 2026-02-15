@@ -78,6 +78,7 @@ my_bot/
     full_stack.launch.py               # Gesamtsystem (micro-ROS + RPLIDAR + SLAM + Nav2 + RViz2 + Kamera)
   my_bot/
     __init__.py
+    amr_utils.py                       # Shared Utility-Modul (Symlink -> amr/scripts/amr_utils.py) (*)
     odom_to_tf.py                      # Bruecke /odom -> TF (odom -> base_link)
     aruco_docking.py                   # ArUco-Marker Visual Servoing (*)
     encoder_test.py                    # Encoder-Kalibrierung (*)
@@ -94,7 +95,7 @@ my_bot/
   setup.cfg
 ```
 
-(*) Diese Dateien werden aus `amr/scripts/` als Symlinks oder Kopien eingebunden.
+(*) Symlinks nach `amr/scripts/`. Gemeinsame Konstanten in `amr_utils.py`.
 
 ### Nodes (entry_points)
 
@@ -122,10 +123,11 @@ ros2 run my_bot motor_test
 
 Zusaetzliche Standalone-Skripte (ohne ROS2) liegen in `amr/scripts/`:
 - `pre_flight_check.py` -- Interaktive Hardware-Checkliste
+- `hardware_info.py` -- Hardware-Info-Report (Systemdaten sammeln)
 - `umbmark_analysis.py` -- UMBmark-Auswertung (numpy/matplotlib)
 - `validation_report.py` -- Gesamt-Report aus JSON-Ergebnissen
 
-Details zum Validierungsablauf: siehe `hardware/docs/08_validierungsplan.md`.
+Details zum Validierungsablauf: siehe `hardware/docs/umsetzungsanleitung.md`, Anhang A.
 
 ## Lizenz
 
