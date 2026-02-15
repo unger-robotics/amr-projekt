@@ -32,8 +32,9 @@ docker compose build               # Image bauen (~15-20 Min, danach gecached)
 ./run.sh ros2 launch my_bot full_stack.launch.py                  # Full-Stack starten
 ./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false   # Nur SLAM
 ./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True # Mit Kamera (ArUco-Docking)
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_nav:=False use_slam:=False use_rviz:=False  # Nur Kamera
 ./run.sh exec bash                 # Zweites Terminal im laufenden Container
-./verify.sh                        # Automatischer Gesamttest (11 Checks)
+./verify.sh                        # Gesamttest: Image, ROS_DISTRO, Pakete (nav2, slam_toolbox, rplidar, cv_bridge, micro_ros_agent), colcon, Serial-Device, Kamera-Bridge, Workspace-Build, Node-Count
 ```
 
 Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`).
@@ -138,6 +139,8 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/tf`, `/tf_static` | TF2 | odom_to_tf, robot_state_publisher | TF-Baum |
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
+
+Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_footprint`.
 
 ### micro-ROS / XRCE-DDS Constraints
 

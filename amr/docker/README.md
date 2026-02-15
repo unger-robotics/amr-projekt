@@ -61,7 +61,7 @@ ros2 topic echo /odom --once
 ```
 
 Prueft: ROS2-Distribution, installierte Pakete, Device-Zugriff, Workspace-Build,
-und listet alle 8 my_bot Nodes.
+und listet alle 9 my_bot Nodes.
 
 ## Volume-Mounts
 

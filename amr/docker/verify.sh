@@ -143,11 +143,11 @@ echo "--- 6. Paket-Executables ---"
 NODES=$(run_in_container bash -c 'source /ros2_ws/install/setup.bash && ros2 pkg executables my_bot' 2>/dev/null)
 NODE_COUNT=$(echo "$NODES" | grep -c "my_bot" || true)
 
-if [ "$NODE_COUNT" -ge 8 ]; then
-    pass "my_bot hat $NODE_COUNT Executables (erwartet: >= 8)"
+if [ "$NODE_COUNT" -ge 9 ]; then
+    pass "my_bot hat $NODE_COUNT Executables (erwartet: >= 9)"
     echo "$NODES" | sed 's/^/    /'
 else
-    fail "my_bot hat nur $NODE_COUNT Executables (erwartet: >= 8)"
+    fail "my_bot hat nur $NODE_COUNT Executables (erwartet: >= 9)"
     if [ -n "$NODES" ]; then
         echo "$NODES" | sed 's/^/    /'
     fi
