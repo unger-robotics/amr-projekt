@@ -51,7 +51,7 @@
 // 2. KINEMATISCHE PARAMETER (SI-Einheiten / REP-103)
 // ==========================================================================
 
-#define WHEEL_DIAMETER 0.065f // [m] Raddurchmesser
+#define WHEEL_DIAMETER 0.06567f // [m] Raddurchmesser (kalibriert: 2x 1m-Bodentest, Faktor 98.5/97.55)
 #define WHEEL_RADIUS (WHEEL_DIAMETER / 2.0f)
 #define WHEEL_BASE 0.178f // [m] Spurbreite
 #define WHEEL_CIRCUMFERENCE (WHEEL_DIAMETER * 3.14159265359f)
