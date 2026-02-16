@@ -75,7 +75,7 @@ ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ros2 run my_bot imu_test         # Gyro-Drift und Accelerometer-Bias Test (60s statisch)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen lebt `odom_to_tf.py` nativ in `my_bot/my_bot/` (kein Symlink, da kein Validierungsskript).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen leben `odom_to_tf.py` und `aruco_docking.py` nativ in `my_bot/my_bot/` (keine Symlinks nach `amr/scripts/`).
 
 ### Deployment auf Raspberry Pi
 
@@ -133,7 +133,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 10 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 12 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
 ### ROS2 Topics und Nodes
 
@@ -215,7 +215,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 13 Dateien in `amr/scripts/` (11 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 15 Dateien in `amr/scripts/` (13 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -258,6 +258,12 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+
+## Projektdokumente (Projektroot)
+
+- `systemdokumentation.md` – Technische Systembeschreibung (~2 DIN-A4-Seiten, Architektur, Hardware, Software, Kommunikation, Navigation, Parameter)
+- `benutzerhandbuch.md` – Inbetriebnahme, Bedienung, Troubleshooting (~2 DIN-A4-Seiten, 7 Abschnitte)
+- `beamer.md` – Praesentationsfolien (~10 Folien, Pandoc/Beamer-kompatibel, Metropolis-Theme)
 
 ## Nicht-getrackte Dateien (.gitignore)
 
