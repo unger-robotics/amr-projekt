@@ -34,6 +34,8 @@ setup(
             'nav_test = my_bot.nav_test:main',
             'docking_test = my_bot.docking_test:main',
             'imu_test = my_bot.imu_test:main',
+            'rotation_test = my_bot.rotation_test:main',
+            'straight_drive_test = my_bot.straight_drive_test:main',
             'odom_to_tf = my_bot.odom_to_tf:main',
         ],
     },

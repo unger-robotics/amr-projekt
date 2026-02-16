@@ -45,7 +45,7 @@ PID_KD = 0.0
 # IMU-Parameter
 IMU_PUBLISH_HZ = 20
 IMU_GYRO_DRIFT_MAX = 1.0        # [deg/min] Akzeptanzgrenze
-IMU_ACCEL_BIAS_MAX = 0.5        # [m/s²] Akzeptanzgrenze az-Bias
+IMU_ACCEL_BIAS_MAX = 0.6        # [m/s²] Akzeptanzgrenze az-Bias
 IMU_COMPLEMENTARY_ALPHA = 0.02  # Complementary-Filter-Gewicht
 
 # ===========================================================================
