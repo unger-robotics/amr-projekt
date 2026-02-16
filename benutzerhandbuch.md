@@ -4,13 +4,13 @@
 
 ### Hardware
 
-- Raspberry Pi 5 (8 GB empfohlen) mit Debian Trixie oder Pi OS Bookworm
+- Raspberry Pi 5 (8 GB) mit Debian Trixie
 - XIAO ESP32-S3 (geflasht mit AMR-Firmware) ueber USB-C am Pi angeschlossen
 - Cytron MDD3A Motortreiber mit zwei JGA25-370 Motoren (Hall-Encoder)
 - RPLIDAR A1 (ueber USB am Pi angeschlossen)
 - 3S1P Li-Ion Akkupack (11.1-12.6 V) mit 15-A-Sicherung
-- Optional: Raspberry Pi Global Shutter Camera (IMX296) mit CSI-Adapter (22-pin Mini auf 15-pin)
-- Optional: MPU6050 IMU (I2C an D4/D5)
+- Raspberry Pi Global Shutter Camera (IMX296) mit CSI-Adapter (22-pin Mini auf 15-pin)
+- MPU6050 IMU (I2C an D4/D5)
 
 ### Software
 
@@ -203,16 +203,16 @@ Generiert einen Zeitstempel-Markdown-Report mit System- und Hardware-Information
 
 Alle Skripte werden im Docker-Container ausgefuehrt. Der micro-ROS Agent muss laufen.
 
-| Befehl | Funktion |
-|--------|----------|
-| `./run.sh exec ros2 run my_bot encoder_test` | Encoder-Kalibrierung (10-Umdrehungen-Test) |
-| `./run.sh exec ros2 run my_bot motor_test` | Motor-Deadzone, Richtung, Failsafe |
-| `./run.sh exec ros2 run my_bot pid_tuning` | PID-Sprungantwort-Analyse |
-| `./run.sh exec ros2 run my_bot kinematic_test` | Geradeaus-/Dreh-/Kreisfahrt |
-| `./run.sh exec ros2 run my_bot imu_test` | Gyro-Drift und Accelerometer-Bias (60s statisch) |
-| `./run.sh exec ros2 run my_bot slam_validation` | ATE-Berechnung und TF-Ketten-Check |
-| `./run.sh exec ros2 run my_bot nav_test` | 4-Waypoint-Navigation mit Fehler-Messung |
-| `./run.sh exec ros2 run my_bot docking_test` | 10-Versuch ArUco-Docking-Test |
+| Befehl                                          | Funktion                                         |
+|-------------------------------------------------|--------------------------------------------------|
+| `./run.sh exec ros2 run my_bot encoder_test`    | Encoder-Kalibrierung (10-Umdrehungen-Test)       |
+| `./run.sh exec ros2 run my_bot motor_test`      | Motor-Deadzone, Richtung, Failsafe               |
+| `./run.sh exec ros2 run my_bot pid_tuning`      | PID-Sprungantwort-Analyse                        |
+| `./run.sh exec ros2 run my_bot kinematic_test`  | Geradeaus-/Dreh-/Kreisfahrt                      |
+| `./run.sh exec ros2 run my_bot imu_test`        | Gyro-Drift und Accelerometer-Bias (60s statisch) |
+| `./run.sh exec ros2 run my_bot slam_validation` | ATE-Berechnung und TF-Ketten-Check               |
+| `./run.sh exec ros2 run my_bot nav_test`        | 4-Waypoint-Navigation mit Fehler-Messung         |
+| `./run.sh exec ros2 run my_bot docking_test`    | 10-Versuch ArUco-Docking-Test                    |
 
 Gesamt-Report aus allen JSON-Ergebnissen:
 
@@ -235,51 +235,6 @@ python3 amr/scripts/validation_report.py
 # TF-Baum als PDF exportieren:
 ./run.sh exec ros2 run tf2_tools view_frames
 ```
-
----
-
-## 6. Troubleshooting
-
-### Serial-Port
-
-| Problem | Loesung |
-|---------|---------|
-| Permission denied auf `/dev/ttyACM0` | `sudo usermod -aG dialout $USER`, ab- und wieder anmelden |
-| Port belegt | `sudo fuser -v /dev/ttyACM0` pruefen, `sudo systemctl stop embedded-bridge.service` |
-| ESP32 nicht erkannt | USB-Datenkabel verwenden (nicht Ladekabel), `ls /dev/ttyACM*` pruefen |
-
-### Docker
-
-| Problem | Loesung |
-|---------|---------|
-| Image fehlt | `cd amr/docker/ && docker compose build` |
-| Build-Cache korrupt | `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log`, dann neu bauen |
-| `Package 'my_bot' not found` | `./run.sh colcon build --packages-select my_bot --symlink-install` |
-
-### micro-ROS
-
-| Problem | Loesung |
-|---------|---------|
-| Agent verbindet nicht | Baudrate 115200 pruefen, ESP32 muss laufen (LED-Status), Port frei? |
-| Topics fehlen nach Agent-Neustart | ESP32 per Reset-Taster oder USB-Reconnect zuruecksetzen (keine Reconnection-Logik in Firmware) |
-| Odom-Werte aendern sich nicht | Encoder-Pins D6/D7 pruefen, `ros2 run my_bot encoder_test` zur Diagnose |
-
-### Kamera
-
-| Problem | Loesung |
-|---------|---------|
-| IMX296 nicht erkannt | `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen, Reboot |
-| `/dev/video10` fehlt | `sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1` |
-| Bridge-Service haengt | `sudo systemctl restart camera-v4l2-bridge.service`, Logs: `journalctl -u camera-v4l2-bridge.service -f` |
-| I2C Error -121 | CSI-Kabel pruefen (22-pin Mini auf 15-pin Adapter, fest eingesteckt) |
-
-### Navigation
-
-| Problem | Loesung |
-|---------|---------|
-| RViz2 zeigt kein Bild | `xhost +local:docker` auf dem Host ausfuehren |
-| `map -> odom` TF fehlt | SLAM Toolbox noch nicht gestartet oder keine Scan-Daten empfangen |
-| Motoren reagieren nicht auf `cmd_vel` | Mindestgeschwindigkeit 0.05 m/s (PWM-Deadzone), Failsafe erfordert kontinuierliches Senden |
 
 ---
 
