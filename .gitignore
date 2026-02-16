@@ -30,3 +30,10 @@ metadata.yaml
 *_map.yaml
 *_map_img.pgm
 *_map_img.yaml
+
+# Generierte Hardware-Reports (Zeitstempel-Artefakte)
+hardware_info_*.md
+
+# Grosse Mediendateien
+*.MOV
+*.mov
