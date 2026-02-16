@@ -3,7 +3,7 @@
 Hardware-Info-Skript fuer Raspberry Pi 5 und AMR-Peripherie.
 Erfasst den Hardware-Zustand aller Komponenten und gibt einen
 formatierten Report aus. Kein ROS2 erforderlich.
-
+pip3 install esptool
 Ausgabe: Terminal (farbkodiert), optional Markdown (--save) oder JSON (--json).
 """
 
@@ -14,6 +14,7 @@ import os
 import platform
 import subprocess
 import sys
+import re
 from glob import glob
 from pathlib import Path
 
@@ -78,6 +79,51 @@ def run_cmd(cmd, timeout=5):
 # ===========================================================================
 # Datensammlung
 # ===========================================================================
+
+def get_esp32_chip_data(port="/dev/ttyACM0", baudrate=115200):
+    """
+    Fragt hardwarenahe Daten des ESP32 ueber den ROM-Bootloader ab.
+    Gibt ein Dictionary mit den geparsten Parametern zurueck.
+    """
+    cmd = ["esptool.py", "--port", port, "--baud", str(baudrate), "flash_id"]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        output = result.stdout
+
+        if result.returncode != 0:
+            # Pruefung auf fehlende Berechtigungen oder blockierten Port
+            if "Permission denied" in result.stderr:
+                return {"error": f"Zugriff verweigert auf {port}. 'dialout' Gruppe pruefen."}
+            return {"error": "esptool fehlgeschlagen (Port blockiert oder Modul offline)."}
+
+        chip_info = {
+            "port": port,
+            "chip_type": None,
+            "mac_address": None,
+            "features": None,
+            "flash_size": None
+        }
+
+        patterns = {
+            "chip_type": r"Detecting chip type\.\.\.\s*(.+)",
+            "mac_address": r"MAC:\s*([0-9a-fA-F:]+)",
+            "features": r"Features:\s*(.+)",
+            "flash_size": r"Detected flash size:\s*(.+)"
+        }
+
+        for key, pattern in patterns.items():
+            match = re.search(pattern, output)
+            if match:
+                chip_info[key] = match.group(1).strip()
+
+        return chip_info
+
+    except FileNotFoundError:
+        return {"error": "esptool.py nicht gefunden. Installation via 'pip install esptool'."}
+    except subprocess.TimeoutExpired:
+        return {"error": f"Timeout an Port {port}. Chip antwortet nicht."}
+
 
 def collect_system_resources():
     """Sammelt Systemressourcen und thermischen Zustand."""
@@ -213,7 +259,6 @@ def collect_peripherals():
             usb_devices.append(entry)
     data["usb_devices"] = usb_devices
 
-    # Bekannte Geraete extrahieren
     data["esp32_found"] = any(d.get("vid_pid") == "303a:1001" for d in usb_devices)
     data["rplidar_found"] = any(d.get("vid_pid") == "10c4:ea60" for d in usb_devices)
 
@@ -222,6 +267,12 @@ def collect_peripherals():
     usb_serial = sorted(glob("/dev/ttyUSB*"))
     data["tty_acm"] = acm_devices
     data["tty_usb"] = usb_serial
+
+    # Hardwarenahe ESP32 Daten via esptool auslesen
+    data["esp32_chip_info"] = None
+    if data["esp32_found"] and acm_devices:
+        target_port = acm_devices[0] # Nutze ersten ACM-Port als Annahme
+        data["esp32_chip_info"] = get_esp32_chip_data(target_port)
 
     # udev-Symlinks (stabile Geraete-Pfade)
     serial_by_id = sorted(glob("/dev/serial/by-id/*"))
@@ -467,6 +518,14 @@ def print_peripherals(data):
     # ESP32
     if data.get("esp32_found"):
         print_info("ESP32-S3", "erkannt (303a:1001)")
+        chip_info = data.get("esp32_chip_info")
+        if chip_info:
+            if "error" in chip_info:
+                print_warn("ESP32 Chip-Daten", chip_info["error"])
+            else:
+                print_info("  MAC-Adresse", chip_info.get("mac_address", "?"))
+                print_info("  Flash-Speicher", chip_info.get("flash_size", "?"))
+                print_info("  Features", chip_info.get("features", "?"))
     else:
         print_fail("ESP32-S3", "NICHT erkannt (303a:1001)")
 
@@ -676,7 +735,16 @@ def generate_markdown(system, peripherals, software):
     lines.append("|---|---|---|")
 
     esp_status = "erkannt" if peripherals.get("esp32_found") else "NICHT erkannt"
-    lines.append(f"| ESP32-S3 (303a:1001) | {esp_status} | {', '.join(peripherals.get('tty_acm', ['-']))} |")
+
+    # Chip Info formatieren
+    chip_details = ""
+    chip_info = peripherals.get("esp32_chip_info")
+    if chip_info and not "error" in chip_info:
+        mac = chip_info.get("mac_address", "?")
+        flash = chip_info.get("flash_size", "?")
+        chip_details = f" (MAC: {mac}, Flash: {flash})"
+
+    lines.append(f"| ESP32-S3 (303a:1001) | {esp_status}{chip_details} | {', '.join(peripherals.get('tty_acm', ['-']))} |")
 
     rp_status = "erkannt" if peripherals.get("rplidar_found") else "nicht erkannt"
     lines.append(f"| RPLIDAR CP210x (10c4:ea60) | {rp_status} | {', '.join(peripherals.get('tty_usb', ['-']))} |")
