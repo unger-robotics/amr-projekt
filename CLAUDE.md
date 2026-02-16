@@ -60,6 +60,7 @@ ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternative
 ```bash
 # Standalone-Skripte (kein ROS2 noetig):
 python3 amr/scripts/pre_flight_check.py    # Interaktive Hardware-Checkliste
+python3 amr/scripts/hardware_info.py        # Hardware-Report generieren (Zeitstempel-Markdown, z.B. hardware_info_20260215_180556.md)
 python3 amr/scripts/umbmark_analysis.py     # UMBmark-Auswertung (numpy/matplotlib)
 python3 amr/scripts/validation_report.py    # Gesamt-Report aus JSON-Ergebnissen
 
@@ -73,7 +74,7 @@ ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Mess
 ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ```
 
-**Hinweis:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks oder Kopien im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen lebt `odom_to_tf.py` nativ in `my_bot/my_bot/` (kein Symlink, da kein Validierungsskript).
 
 ### Deployment auf Raspberry Pi
 
@@ -253,7 +254,11 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v3.0, Docker-basiert)
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
-- `scripts/` (Projekt-Root) – Thesis-Hilfsskripte (md_to_html_converter, pdf_splitter, image optimizer) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+- `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+
+## Nicht-getrackte Dateien (.gitignore)
+
+Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml` (lokal generierte SLAM-Karten), `.vscode/`, `.idea/`, `.DS_Store`.
 
 ## Troubleshooting
 
