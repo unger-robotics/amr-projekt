@@ -3,6 +3,7 @@
 #include <geometry_msgs/msg/twist.h>
 #include <micro_ros_platformio.h>
 #include <nav_msgs/msg/odometry.h>
+#include <sensor_msgs/msg/imu.h>
 #include <rcl/rcl.h>
 #include <rclc/executor.h>
 #include <rclc/rclc.h>
@@ -11,6 +12,7 @@
 #include "diff_drive_kinematics.hpp"
 #include "pid_controller.hpp"
 #include "robot_hal.hpp"
+#include "mpu6050.hpp"
 
 // --- SETUP ---
 const float MAX_ACCEL = 5.0; // rad/s^2 Rampe
@@ -18,9 +20,14 @@ RobotHAL hal;
 DiffDriveKinematics kinematics(WHEEL_RADIUS, WHEEL_BASE);
 PidController pid_l(0.4, 0.1, 0.0, -1.0, 1.0);
 PidController pid_r(0.4, 0.1, 0.0, -1.0, 1.0);
+MPU6050 imu;
+bool imu_ok = false;
 
 struct SharedData {
     float tv = 0, tw = 0, ox = 0, oy = 0, oth = 0, ov = 0, ow = 0;
+    float imu_ax = 0, imu_ay = 0, imu_az = 0;
+    float imu_gx = 0, imu_gy = 0, imu_gz = 0;
+    float imu_heading = 0;
 };
 SharedData shared;
 SemaphoreHandle_t mutex;
@@ -29,9 +36,11 @@ volatile uint32_t last_cmd_time = 0;
 volatile uint32_t core1_heartbeat = 0;
 
 rcl_publisher_t pub_odom;
+rcl_publisher_t pub_imu;
 rcl_subscription_t sub_vel;
 geometry_msgs__msg__Twist msg_vel;
 nav_msgs__msg__Odometry msg_odom;
+sensor_msgs__msg__Imu msg_imu;
 rclc_executor_t executor;
 rclc_support_t support;
 rcl_allocator_t allocator;
@@ -118,6 +127,19 @@ void controlTask(void *p) {
             shared.ow = (mr - ml) * WHEEL_RADIUS / WHEEL_BASE;
             xSemaphoreGive(mutex);
         }
+        // IMU lesen und Heading fusionieren
+        if (imu_ok) {
+            float ax, ay, az, gx, gy, gz;
+            if (imu.read(ax, ay, az, gx, gy, gz)) {
+                float fused_heading = imu.updateHeading(s.theta, gz, dt);
+                if (xSemaphoreTake(mutex, 10)) {
+                    shared.imu_ax = ax; shared.imu_ay = ay; shared.imu_az = az;
+                    shared.imu_gx = gx; shared.imu_gy = gy; shared.imu_gz = gz;
+                    shared.imu_heading = fused_heading;
+                    xSemaphoreGive(mutex);
+                }
+            }
+        }
         core1_heartbeat++;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_LOOP_PERIOD_MS));
     }
@@ -139,12 +161,17 @@ void setup() {
     Serial.setTxTimeoutMs(50);  // USB CDC Write-Timeout begrenzen
     set_microros_serial_transports(Serial);
     hal.init();
+    imu_ok = imu.init(PIN_I2C_SDA, PIN_I2C_SCL, IMU_I2C_ADDR);
+    if (imu_ok) {
+        imu.calibrateGyro(IMU_CALIBRATION_SAMPLES);
+    }
     mutex = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(controlTask, "Ctrl", 10000, NULL, 1, NULL, 1);
     delay(2000);
 
     // Odom-Nachricht komplett nullen (Kovarianz-Arrays etc.)
     memset(&msg_odom, 0, sizeof(msg_odom));
+    memset(&msg_imu, 0, sizeof(msg_imu));
 
     allocator = rcl_get_default_allocator();
 
@@ -182,6 +209,12 @@ void setup() {
                              ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
                              "odom");
     if (rc != RCL_RET_OK) init_ok = false;
+
+    if (imu_ok) {
+        rc = rclc_publisher_init_default(&pub_imu, &node,
+            ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "imu");
+        if (rc != RCL_RET_OK) init_ok = false;
+    }
 
     if (!init_ok) {
         // LED-Blinken als Fehlersignal
@@ -262,5 +295,47 @@ void loop() {
 
         // Buffer nach Publish flushen
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(5));
+    }
+
+    // IMU publish
+    if (imu_ok) {
+        static unsigned long last_imu = 0;
+        if (millis() - last_imu >= IMU_PUBLISH_PERIOD_MS) {
+            last_imu = millis();
+            float iax = 0, iay = 0, iaz = 0, igx = 0, igy = 0, igz = 0, ih = 0;
+            if (xSemaphoreTake(mutex, 10)) {
+                iax = shared.imu_ax; iay = shared.imu_ay; iaz = shared.imu_az;
+                igx = shared.imu_gx; igy = shared.imu_gy; igz = shared.imu_gz;
+                ih = shared.imu_heading;
+                xSemaphoreGive(mutex);
+            }
+            int64_t t_imu = rmw_uros_epoch_nanos();
+            msg_imu.header.stamp.sec = (int32_t)(t_imu / 1000000000LL);
+            msg_imu.header.stamp.nanosec = (uint32_t)(t_imu % 1000000000LL);
+            msg_imu.header.frame_id.data = (char *)"base_link";
+            msg_imu.header.frame_id.size = 9;
+            msg_imu.header.frame_id.capacity = 10;
+            msg_imu.linear_acceleration.x = iax;
+            msg_imu.linear_acceleration.y = iay;
+            msg_imu.linear_acceleration.z = iaz;
+            msg_imu.angular_velocity.x = igx;
+            msg_imu.angular_velocity.y = igy;
+            msg_imu.angular_velocity.z = igz;
+            msg_imu.orientation.z = sin(ih / 2);
+            msg_imu.orientation.w = cos(ih / 2);
+            msg_imu.orientation_covariance[0] = 0.01;
+            msg_imu.orientation_covariance[4] = 0.01;
+            msg_imu.orientation_covariance[8] = 0.01;
+            msg_imu.angular_velocity_covariance[0] = 0.001;
+            msg_imu.angular_velocity_covariance[4] = 0.001;
+            msg_imu.angular_velocity_covariance[8] = 0.001;
+            msg_imu.linear_acceleration_covariance[0] = 0.1;
+            msg_imu.linear_acceleration_covariance[4] = 0.1;
+            msg_imu.linear_acceleration_covariance[8] = 0.1;
+            rcl_ret_t imu_rc = rcl_publish(&pub_imu, &msg_imu, NULL);
+            if (imu_rc != RCL_RET_OK) {
+                ledcWrite(LED_PWM_CHANNEL, 255);
+            }
+        }
     }
 }

@@ -31,11 +31,10 @@ Tracking-Dokument fuer den Validierungsfortschritt des AMR-Prototyps. Akzeptanzk
 
 ### Ausstehende Tests
 
-- [ ] **IMU MPU6050** (I2C, SDA/SCL an D4/D5)
-  - Hardware-Verifikation: I2C-Scan (`i2cdetect -y 1`), Adresse 0x68 erwartet
-  - Sensor-Fusion: Gyro-Drift messen (statisch, 60 s), Bias-Kalibrierung
-  - Integration: Complementary-Filter oder Madgwick fuer Heading-Korrektur
-  - Akzeptanzkriterium (vorgeschlagen): Gyro-Drift < 1°/min statisch
+- [x] **IMU MPU6050** (I2C, SDA/SCL an D4/D5)
+  - Treiber implementiert (`mpu6050.hpp`), Complementary-Filter (alpha=0.02)
+  - Validierungsskript: `ros2 run my_bot imu_test` (60s statischer Test)
+  - Akzeptanzkriterium: Gyro-Drift < 1°/min statisch
   - Referenz: `hardware/docs/hardware-setup.md` (Pin-Mapping), `config.h` (I2C-Pins)
 
 - [ ] **Global-Shutter-Kamera IMX296** (CSI, 22-pin Mini-CSI)

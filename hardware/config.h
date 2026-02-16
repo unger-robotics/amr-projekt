@@ -95,6 +95,10 @@
 #define CONTROL_LOOP_PERIOD_MS (1000 / CONTROL_LOOP_HZ)
 #define ODOM_PUBLISH_HZ 20 // Odometrie-Publikationsrate [Hz]
 #define ODOM_PUBLISH_PERIOD_MS (1000 / ODOM_PUBLISH_HZ)
+#define IMU_PUBLISH_HZ 20
+#define IMU_PUBLISH_PERIOD_MS (1000 / IMU_PUBLISH_HZ)
+#define IMU_CALIBRATION_SAMPLES 500
+#define IMU_COMPLEMENTARY_ALPHA 0.02f  // Gyro-Gewicht (0.02 = 98% Gyro, 2% Encoder)
 
 // ==========================================================================
 // 5. COMPILE-TIME VALIDIERUNG (MISRA-inspiriert)

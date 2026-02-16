@@ -50,6 +50,7 @@ Core 0 (loop)                      Core 1 (controlTask)
 | `robot_hal.hpp` | GPIO-Init, Encoder-ISR (Quadratur A+B), PWM-Ansteuerung, Deadzone-Kompensation, LED-PWM |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgangsbereich [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik, Odometrie-Integration |
+| `mpu6050.hpp` | MPU6050 I2C-Treiber (±2g Accel, ±250°/s Gyro), Bias-Kalibrierung, Complementary-Filter |
 
 ### Safety-Mechanismen
 
@@ -79,6 +80,8 @@ Alle Hardware-Parameter sind zentral in `../../hardware/config.h` definiert (Sin
 | `CONTROL_LOOP_HZ` | 50 Hz | PID-Regelfrequenz |
 | `ODOM_PUBLISH_HZ` | 20 Hz | Odometrie-Publikationsrate |
 | `FAILSAFE_TIMEOUT_MS` | 500 ms | Timeout bis Motorstopp |
+| `IMU_PUBLISH_HZ` | 20 Hz | IMU-Publikationsrate |
+| `IMU_COMPLEMENTARY_ALPHA` | 0.02 | Complementary-Filter Gewichtung (Accelerometer-Anteil) |
 
 PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `main.cpp` hardcoded.
 

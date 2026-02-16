@@ -32,7 +32,9 @@ services:
       - ../pi5/ros2_ws/src/my_bot:/ros2_ws/src/my_bot:rw
 
       # Validierungsskripte (read-only)
+      # /amr_scripts: direkter Zugriff, /scripts: Symlink-Aufloesung aus my_bot/my_bot/
       - ../scripts:/amr_scripts:ro
+      - ../scripts:/scripts:ro
 
       # Hardware-Konfiguration (read-only)
       - ../../hardware:/hardware:ro

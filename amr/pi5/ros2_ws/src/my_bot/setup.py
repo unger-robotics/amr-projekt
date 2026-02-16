@@ -33,6 +33,7 @@ setup(
             'slam_validation = my_bot.slam_validation:main',
             'nav_test = my_bot.nav_test:main',
             'docking_test = my_bot.docking_test:main',
+            'imu_test = my_bot.imu_test:main',
             'odom_to_tf = my_bot.odom_to_tf:main',
         ],
     },

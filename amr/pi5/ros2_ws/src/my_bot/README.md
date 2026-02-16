@@ -88,6 +88,7 @@ my_bot/
     slam_validation.py                 # ATE und TF-Ketten-Check (*)
     nav_test.py                        # Waypoint-Navigation (*)
     docking_test.py                    # 10-Versuch Docking-Test (*)
+    imu_test.py                        # Gyro-Drift und Accelerometer-Bias Test (*)
   scripts/
     aruco_docking.py                   # Standalone-Version des Docking-Skripts
   package.xml
@@ -110,14 +111,16 @@ my_bot/
 | `slam_validation` | Absolute Trajectory Error (ATE) und TF-Ketten-Check |
 | `nav_test` | Waypoint-Navigation mit Positionsfehler-Messung |
 | `docking_test` | 10-Versuch ArUco-Docking-Test |
+| `imu_test` | Gyro-Drift- und Accelerometer-Bias-Test (60s statisch) |
 
 ## Validierungsskripte
 
-Die Validierungs-Nodes (`encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`) setzen einen laufenden micro-ROS Agent voraus. Ausfuehrung ueber:
+Die Validierungs-Nodes (`encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`) setzen einen laufenden micro-ROS Agent voraus. Ausfuehrung ueber:
 
 ```bash
 ros2 run my_bot encoder_test
 ros2 run my_bot motor_test
+ros2 run my_bot imu_test
 # usw.
 ```
 

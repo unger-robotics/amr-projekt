@@ -72,9 +72,10 @@ ros2 run my_bot kinematic_test    # Geradeaus-/Dreh-/Kreisfahrt-Verifikation
 ros2 run my_bot slam_validation   # ATE-Berechnung und TF-Ketten-Check
 ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Messung
 ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
+ros2 run my_bot imu_test         # Gyro-Drift und Accelerometer-Bias Test (60s statisch)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen lebt `odom_to_tf.py` nativ in `my_bot/my_bot/` (kein Symlink, da kein Validierungsskript).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen lebt `odom_to_tf.py` nativ in `my_bot/my_bot/` (kein Symlink, da kein Validierungsskript).
 
 ### Deployment auf Raspberry Pi
 
@@ -116,6 +117,7 @@ Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) 
 | `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (Quadratur A+B, Richtung aus Phasenversatz), PWM-Steuerung, Deadzone, LED-MOSFET-PWM |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter aus `config.h`) |
+| `mpu6050.hpp` | MPU6050 I2C-Treiber (±2g/±250°/s), Gyro-Bias-Kalibrierung, Complementary-Filter |
 
 PID-Gains sind in `main.cpp` hardcoded (Kp=0.4, Ki=0.1, Kd=0.0). EMA-Filter (alpha=0.3) auf Encoder-Geschwindigkeit fuer PID, Rohdaten fuer Odometrie. Beschleunigungsrampe (MAX_ACCEL=5.0 rad/s²) begrenzt Sollwertaenderungen. Dead-Band (0.08) in `driveMotor()` unterdrueckt PID-Rauschen nahe Null, Stillstand-Bypass setzt PID zurueck wenn beide Sollwerte < 0.01. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
@@ -131,7 +133,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 9 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 10 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
 ### ROS2 Topics und Nodes
 
@@ -141,6 +143,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/odom` | `nav_msgs/Odometry` | ESP32 (20 Hz) | Rad-Odometrie |
 | `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
 | `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
+| `/imu` | `sensor_msgs/Imu` | ESP32 (20 Hz) | IMU-Daten (Beschleunigung, Drehrate, fusionierte Orientierung) |
 | `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher | TF-Baum |
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
@@ -212,7 +215,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 12 Dateien in `amr/scripts/` (10 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 13 Dateien in `amr/scripts/` (11 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -273,3 +276,5 @@ Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.c
 - **ESP32 USB-CDC haengt**: `Serial.setTxTimeoutMs(50)` in `setup()` setzen und `delay(1)` nach `rclc_executor_spin_some()` fuer Buffer-Flush einfuegen.
 - **Kamera-Bridge: /dev/video10 fehlt**: `sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1`. Falls Modul mit falschen Optionen geladen: `sudo modprobe -r v4l2loopback` zuerst.
 - **Kamera-Bridge-Service haengt**: `journalctl -u camera-v4l2-bridge.service -f` pruefen. Haeufige Ursache: rpicam-vid verliert CSI-Verbindung nach Suspend. Fix: `sudo systemctl restart camera-v4l2-bridge.service`.
+- **IMU nicht erkannt (MPU6050)**: WHO_AM_I Register (0x75) gibt nicht 0x68 zurueck. I2C-Verbindung pruefen: SDA=D4, SCL=D5. Pullup-Widerstaende (4.7k Ohm) vorhanden? Wire.begin() erfolgreich?
+- **IMU Gyro-Drift hoch**: Kalibrierung laeuft 500 Samples beim Startup. Roboter muss waehrend der ersten ~5s nach Power-On still stehen.
