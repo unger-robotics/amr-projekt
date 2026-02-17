@@ -78,7 +78,7 @@ ros2 run my_bot rotation_test    # Closed-Loop 360°-Drehung mit IMU-Feedback
 ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen leben `odom_to_tf.py` und `aruco_docking.py` nativ in `my_bot/my_bot/` (keine Symlinks nach `amr/scripts/`).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
 
 ### Deployment auf Raspberry Pi
 
@@ -224,7 +224,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 
 ## Bachelorarbeit (Markdown-Dokument)
 
-Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. 7 Kapitel, ~42.800 Woerter.
+Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. 7 Kapitel, ~46.000 Woerter.
 
 ### Dateistruktur
 
@@ -260,7 +260,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v3.0, Docker-basiert)
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
-- `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+- `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
 
 ## Projektdokumente (Projektroot)
 
