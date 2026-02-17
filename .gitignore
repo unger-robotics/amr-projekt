@@ -34,6 +34,9 @@ metadata.yaml
 # Generierte Hardware-Reports (Zeitstempel-Artefakte)
 hardware_info_*.md
 
+# Validierungs-Ergebnisse (JSON-Artefakte)
+*_results.json
+
 # Grosse Mediendateien
 *.MOV
 *.mov
