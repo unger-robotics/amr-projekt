@@ -53,6 +53,7 @@ ros2 launch my_bot full_stack.launch.py use_rviz:=False # Ohne RViz2
 ros2 launch my_bot full_stack.launch.py use_slam:=False # Nur Navigation mit bestehender Karte
 ros2 launch my_bot full_stack.launch.py use_camera:=True  # Mit Kamera (ArUco-Docking)
 ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternativer Serial-Port
+ros2 launch my_bot full_stack.launch.py camera_device:=/dev/video10  # Alternatives Kamera-Device
 ```
 
 ### Validierungsskripte (Raspberry Pi)
@@ -73,6 +74,8 @@ ros2 run my_bot slam_validation   # ATE-Berechnung und TF-Ketten-Check
 ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Messung
 ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ros2 run my_bot imu_test         # Gyro-Drift und Accelerometer-Bias Test (60s statisch)
+ros2 run my_bot rotation_test    # Closed-Loop 360°-Drehung mit IMU-Feedback
+ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
 ```
 
 **Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. Dagegen leben `odom_to_tf.py` und `aruco_docking.py` nativ in `my_bot/my_bot/` (keine Symlinks nach `amr/scripts/`).
