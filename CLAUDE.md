@@ -76,9 +76,10 @@ ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
 ros2 run my_bot imu_test         # Gyro-Drift und Accelerometer-Bias Test (60s statisch)
 ros2 run my_bot rotation_test    # Closed-Loop 360°-Drehung mit IMU-Feedback
 ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
+ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Check (5 min)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
 
 ### Deployment auf Raspberry Pi
 
@@ -136,7 +137,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 12 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 13 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
 ### ROS2 Topics und Nodes
 
@@ -218,7 +219,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 15 Dateien in `amr/scripts/` (13 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 16 Dateien in `amr/scripts/` (14 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 

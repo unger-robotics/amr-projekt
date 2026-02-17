@@ -1,0 +1,1 @@
+../../../../../scripts/rplidar_test.py

@@ -35,6 +35,7 @@ ERGEBNIS_DATEIEN = {
     'slam':      'slam_results.json',
     'nav':       'nav_results.json',
     'docking':   'docking_results.json',
+    'rplidar':   'rplidar_results.json',
 }
 
 # ===========================================================================
@@ -170,6 +171,31 @@ KRITERIEN = [
         'pfad': None,
         'pruef_fn': lambda daten: _docking_versatz_check(daten),
     },
+    # --- RPLIDAR ---
+    {
+        'bereich': 'RPLIDAR',
+        'kriterium': 'Scan-Rate',
+        'anforderung': '>= 5 Hz (5 min)',
+        'datei': 'rplidar',
+        'pfad': 'scan_rate_stability.mean_rate_hz',
+        'pruef': lambda v: v >= 5.0 if v is not None else None,
+    },
+    {
+        'bereich': 'RPLIDAR',
+        'kriterium': 'Datenqualitaet',
+        'anforderung': 'Noise < 30 mm',
+        'datei': 'rplidar',
+        'pfad': 'data_quality.noise_stddev_m',
+        'pruef': lambda v: v < 0.03 if v is not None else None,
+    },
+    {
+        'bereich': 'RPLIDAR',
+        'kriterium': 'Static TF',
+        'anforderung': 'Yaw-Fehler < 3 deg',
+        'datei': 'rplidar',
+        'pfad': 'static_tf.yaw_error_deg',
+        'pruef': lambda v: v < 3.0 if v is not None else None,
+    },
 ]
 
 # Forschungsfragen-Zuordnung
@@ -180,7 +206,7 @@ FF_ZUORDNUNG = {
     },
     'FF2': {
         'titel': 'Praezision (Encoder + Kinematik + UMBmark + SLAM + Navigation)',
-        'bereiche': ['Encoder', 'Kinematik', 'UMBmark', 'SLAM', 'Navigation'],
+        'bereiche': ['Encoder', 'Kinematik', 'UMBmark', 'SLAM', 'Navigation', 'RPLIDAR'],
     },
     'FF3': {
         'titel': 'Docking (ArUco-Marker)',
