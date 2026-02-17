@@ -19,6 +19,8 @@ pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
 pio run -t upload -t monitor  # Upload + Monitor kombiniert
 ```
 
+Wichtige Build-Flags in `platformio.ini`: `-DARDUINO_USB_CDC_ON_BOOT=1` (USB-CDC als Serial), `-I../../hardware` (config.h Include-Pfad). micro-ROS-Konfiguration: `board_microros_transport = serial`, `board_microros_distro = humble`.
+
 ### ROS2 via Docker (Raspberry Pi 5)
 
 Der Pi 5 laeuft auf Debian Trixie – ROS2 Humble ist nur via Docker (Ubuntu 22.04) verfuegbar. Basis-Image: `ros:humble-ros-base` (arm64). `osrf/ros:humble-desktop` ist amd64-only. micro-ROS Agent wird aus Source gebaut (kein apt-Paket fuer arm64).
@@ -37,7 +39,7 @@ docker compose build               # Image bauen (~15-20 Min, danach gecached)
 ./verify.sh                        # Gesamttest: Image, ROS_DISTRO, Pakete (nav2, slam_toolbox, rplidar, cv_bridge, micro_ros_agent), colcon, Serial-Device, Kamera-Bridge, Workspace-Build, Node-Count
 ```
 
-Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`).
+Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro, Dual-Mount auf `/amr_scripts` und `/scripts` fuer Symlink-Kompatibilitaet), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`). Environment: `ROS_DOMAIN_ID=0`, `DISPLAY=${DISPLAY:-:0}`, `QT_X11_NO_MITSHM=1`.
 
 RViz2 benoetigt X11 auf dem Host: `export DISPLAY=:0 && xhost +local:docker`. Alternativ RViz2 auf separatem PC ausfuehren und per ROS2 DDS verbinden (`ROS_DOMAIN_ID=0`).
 
@@ -80,6 +82,8 @@ ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Chec
 ```
 
 **Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
+
+**Docker Dual-Mount-Pattern:** Die relativen Symlinks (`../../../../../amr/scripts/`) loesen im Container anders auf als auf dem Host. Daher mountet `docker-compose.yml` das Skript-Verzeichnis doppelt: `../scripts:/amr_scripts:ro` und `../scripts:/scripts:ro`. Beide Pfade sind noetig, damit die Symlinks sowohl im Host-Kontext als auch im Container korrekt aufloesen.
 
 ### Deployment auf Raspberry Pi
 
@@ -139,6 +143,19 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
 - **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 13 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
+**Launch-Parameter (vollstaendig):**
+
+| Parameter | Default | Beschreibung |
+|---|---|---|
+| `use_slam` | True | SLAM Toolbox starten |
+| `use_nav` | True | Nav2 Navigation Stack |
+| `use_rviz` | True | RViz2 Visualisierung |
+| `serial_port` | /dev/ttyACM0 | ESP32 Serial-Port |
+| `params_file` | nav2_params.yaml | Nav2 Parameterdatei (Pfad relativ zu config/) |
+| `slam_params_file` | mapper_params_online_async.yaml | SLAM Parameterdatei (Pfad relativ zu config/) |
+| `use_camera` | False | Kamera und ArUco-Docking aktivieren |
+| `camera_device` | /dev/video10 | v4l2loopback-Device fuer Kamera-Bridge |
+
 ### ROS2 Topics und Nodes
 
 | Topic | Typ | Quelle | Beschreibung |
@@ -169,7 +186,11 @@ odom → base_link → laser (statisch, 180° Yaw)
   (dynamisch)    → camera_link (statisch, optional bei use_camera:=True)
 ```
 
-Statische TFs via `static_transform_publisher` im Launch-File. Dynamische TF `odom → base_link` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert. `camera_link` wird nur bei `use_camera:=True` publiziert.
+Statische TFs via `static_transform_publisher` im Launch-File:
+- **laser**: x=0.10m, y=0.0, z=0.05m, roll=π, pitch=0, yaw=0 (Sensor 180° gedreht montiert)
+- **camera_link**: x=0.10m, y=0.0, z=0.08m, roll=0, pitch=0, yaw=0 (nur bei `use_camera:=True`)
+
+Dynamische TF `odom → base_link` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert.
 
 ### Kamera-Pipeline (IMX296 Global Shutter)
 
@@ -193,6 +214,10 @@ v4l2-ctl -d /dev/video10 --all   # Pruefen ob Frames ankommen
 ### Serial-Port-Management (3 Projekte teilen ESP32)
 
 Der ESP32-Port `/dev/ttyACM0` wird von 3 Projekten geteilt (`selection-panel.service`, `embedded-bridge.service`, AMR Docker). Lockfile: `/var/lock/esp32-serial.lock` (flock-basiert).
+
+**Stabile Device-Pfade (udev):** `host_setup.sh` erstellt udev-Symlinks, die unabhaengig von der USB-Enumerierungsreihenfolge stabil bleiben:
+- `/dev/amr_esp32` → XIAO ESP32-S3 (Vendor 303a, Product 1001)
+- `/dev/amr_lidar` → RPLIDAR A1 (Vendor 10c4, Product ea60)
 
 ```bash
 # Vor micro-ROS Agent Start sicherstellen, dass kein anderer Prozess den Port haelt:
