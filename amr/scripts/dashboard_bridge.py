@@ -1,0 +1,492 @@
+#!/usr/bin/env python3
+"""ROS2-Node: WebSocket- und MJPEG-Bridge fuer das AMR Web-Dashboard.
+
+Bruecke zwischen ROS2-Topics und Web-Clients:
+  - WebSocket-Server (Port 9090): Telemetrie-JSON (10 Hz), LiDAR-Scans (2 Hz),
+    cmd_vel-Empfang und Heartbeat
+  - MJPEG-HTTP-Server (Port 8082): Kamera-Livestream als MJPEG
+
+Sicherheitsmechanismen:
+  - Geschwindigkeitsbegrenzung (0.4 m/s linear, 1.0 rad/s angular)
+  - Deadman-Timer (300 ms ohne Heartbeat/cmd_vel -> Stopp)
+  - Single-Controller (nur ein Client darf cmd_vel senden)
+  - Client-Disconnect -> sofortiger Stopp
+
+Verwendung:
+  ros2 run my_bot dashboard_bridge
+  ros2 launch my_bot full_stack.launch.py use_dashboard:=True
+"""
+
+import json
+import math
+import threading
+import time
+from collections import deque
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu, LaserScan, Image
+
+try:
+    import asyncio
+    import websockets
+except ImportError:
+    websockets = None
+
+try:
+    import cv2
+    from cv_bridge import CvBridge
+    HAS_CAMERA = True
+except ImportError:
+    HAS_CAMERA = False
+
+# ---------------------------------------------------------------------------
+# Konstanten
+# ---------------------------------------------------------------------------
+WS_PORT = 9090
+MJPEG_PORT = 8082
+TELEMETRY_HZ = 10.0
+SCAN_BROADCAST_HZ = 2.0
+DEADMAN_TIMEOUT_S = 0.3
+MAX_LINEAR = 0.4       # m/s
+MAX_ANGULAR = 1.0      # rad/s
+JPEG_QUALITY = 70
+HZ_WINDOW = 50         # Anzahl Timestamps fuer Hz-Berechnung
+
+
+def quaternion_to_yaw(q):
+    """Quaternion (x, y, z, w) -> Yaw-Winkel in Radiant."""
+    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+    return math.atan2(siny_cosp, cosy_cosp)
+
+
+def clamp(val, limit):
+    """Begrenzt val auf [-limit, +limit]."""
+    return max(min(val, limit), -limit)
+
+
+# =========================================================================
+# MJPEG HTTP Server
+# =========================================================================
+class MjpegHandler(BaseHTTPRequestHandler):
+    """HTTP-Handler fuer MJPEG-Stream und einfache Testseite."""
+
+    # Referenz auf den ROS2-Node (wird in start_mjpeg_server gesetzt)
+    bridge_node = None
+
+    def log_message(self, fmt, *args):
+        """Unterdrueckt Standard-HTTP-Logging."""
+        pass
+
+    def do_GET(self):
+        if self.path == '/stream':
+            self._handle_stream()
+        elif self.path == '/':
+            self._handle_index()
+        else:
+            self.send_error(404)
+
+    def _handle_index(self):
+        html = (
+            '<html><head><title>AMR Kamera</title></head>'
+            '<body style="margin:0;background:#111;">'
+            '<img src="/stream" style="width:100%;height:auto;" />'
+            '</body></html>'
+        )
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.end_headers()
+        self.wfile.write(html.encode('utf-8'))
+
+    def _handle_stream(self):
+        self.send_response(200)
+        self.send_header('Content-Type',
+                         'multipart/x-mixed-replace; boundary=frame')
+        self.end_headers()
+        node = MjpegHandler.bridge_node
+        if node is None:
+            return
+        while True:
+            jpeg_bytes = node.get_latest_jpeg()
+            if jpeg_bytes is None:
+                time.sleep(0.1)
+                continue
+            try:
+                self.wfile.write(b'--frame\r\n')
+                self.wfile.write(b'Content-Type: image/jpeg\r\n')
+                self.wfile.write(
+                    ('Content-Length: %d\r\n\r\n' % len(jpeg_bytes)).encode()
+                )
+                self.wfile.write(jpeg_bytes)
+                self.wfile.write(b'\r\n')
+            except (BrokenPipeError, ConnectionResetError):
+                break
+
+
+def start_mjpeg_server(node):
+    """Startet den MJPEG-HTTP-Server in einem Daemon-Thread."""
+    MjpegHandler.bridge_node = node
+    server = HTTPServer(('0.0.0.0', MJPEG_PORT), MjpegHandler)
+    server.daemon_threads = True
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+    node.get_logger().info(
+        'MJPEG-Server gestartet auf http://0.0.0.0:%d/stream' % MJPEG_PORT
+    )
+
+
+# =========================================================================
+# WebSocket Server (asyncio)
+# =========================================================================
+class WebSocketServer:
+    """Asyncio-basierter WebSocket-Server fuer Telemetrie und Steuerung."""
+
+    def __init__(self, node):
+        self.node = node
+        self.clients = set()
+        self.controller_ws = None  # Nur ein Client darf cmd_vel senden
+        self.loop = None
+
+    async def handler(self, ws):
+        """Verbindungs-Handler fuer neue WebSocket-Clients."""
+        self.clients.add(ws)
+        self.node.get_logger().info(
+            'WebSocket-Client verbunden (%d aktiv)' % len(self.clients)
+        )
+        try:
+            async for raw in ws:
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                self._handle_message(ws, msg)
+        except websockets.exceptions.ConnectionClosed:
+            pass
+        finally:
+            self.clients.discard(ws)
+            if self.controller_ws is ws:
+                self.controller_ws = None
+                self.node.publish_stop()
+                self.node.get_logger().info(
+                    'Controller-Client getrennt -> Stopp gesendet'
+                )
+            self.node.get_logger().info(
+                'WebSocket-Client getrennt (%d aktiv)' % len(self.clients)
+            )
+
+    def _handle_message(self, ws, msg):
+        op = msg.get('op', '')
+        if op == 'cmd_vel':
+            # Single-Controller: erster Client = Controller
+            if self.controller_ws is None:
+                self.controller_ws = ws
+            if ws is not self.controller_ws:
+                return  # Nicht der Controller
+            lin_x = clamp(float(msg.get('linear_x', 0.0)), MAX_LINEAR)
+            ang_z = clamp(float(msg.get('angular_z', 0.0)), MAX_ANGULAR)
+            self.node.publish_cmd_vel(lin_x, ang_z)
+        elif op == 'heartbeat':
+            self.node.record_heartbeat()
+
+    async def broadcast(self, data_str):
+        """Sendet JSON-String an alle verbundenen Clients."""
+        if not self.clients:
+            return
+        stale = set()
+        for ws in self.clients:
+            try:
+                await ws.send(data_str)
+            except (websockets.exceptions.ConnectionClosed, Exception):
+                stale.add(ws)
+        for ws in stale:
+            self.clients.discard(ws)
+            if self.controller_ws is ws:
+                self.controller_ws = None
+                self.node.publish_stop()
+
+    async def _run(self):
+        """Startet den WebSocket-Server und Broadcast-Loops."""
+        async with websockets.serve(
+            self.handler, '0.0.0.0', WS_PORT,
+            ping_interval=20, ping_timeout=10,
+        ):
+            self.node.get_logger().info(
+                'WebSocket-Server gestartet auf ws://0.0.0.0:%d' % WS_PORT
+            )
+            # Telemetrie- und Scan-Broadcast parallel
+            await asyncio.gather(
+                self._telemetry_loop(),
+                self._scan_loop(),
+            )
+
+    async def _telemetry_loop(self):
+        """Sendet Telemetrie-JSON mit 10 Hz."""
+        interval = 1.0 / TELEMETRY_HZ
+        while True:
+            data = self.node.build_telemetry()
+            await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _scan_loop(self):
+        """Sendet LiDAR-Scans mit 2 Hz."""
+        interval = 1.0 / SCAN_BROADCAST_HZ
+        while True:
+            data = self.node.build_scan_msg()
+            if data is not None:
+                await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    def start(self):
+        """Startet die asyncio Event-Loop in einem Daemon-Thread."""
+        def _run_loop():
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            self.loop.run_until_complete(self._run())
+
+        t = threading.Thread(target=_run_loop, daemon=True)
+        t.start()
+
+
+# =========================================================================
+# ROS2 Node
+# =========================================================================
+class DashboardBridge(Node):
+    """ROS2-Node: Bruecke zwischen ROS2-Topics und Web-Dashboard."""
+
+    def __init__(self):
+        super().__init__('dashboard_bridge')
+
+        # --- Shared State (geschuetzt durch Lock) ---
+        self.lock = threading.Lock()
+        self.latest_odom = None
+        self.latest_imu = None
+        self.latest_scan = None
+        self.latest_jpeg = None
+        self.odom_times = deque(maxlen=HZ_WINDOW)
+        self.scan_times = deque(maxlen=HZ_WINDOW)
+        self.last_cmd_time = 0.0
+        self.last_heartbeat_time = 0.0
+
+        # --- CvBridge (Kamera) ---
+        self.cv_bridge = CvBridge() if HAS_CAMERA else None
+
+        # --- ROS2 Subscriptions ---
+        sensor_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+        self.sub_odom = self.create_subscription(
+            Odometry, '/odom', self._odom_cb, 10
+        )
+        self.sub_imu = self.create_subscription(
+            Imu, '/imu', self._imu_cb, 10
+        )
+        self.sub_scan = self.create_subscription(
+            LaserScan, '/scan', self._scan_cb, sensor_qos
+        )
+        if HAS_CAMERA:
+            self.sub_image = self.create_subscription(
+                Image, '/camera/image_raw', self._image_cb, sensor_qos
+            )
+
+        # --- ROS2 Publisher ---
+        self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        # --- Deadman-Timer (300 ms) ---
+        self.deadman_timer = self.create_timer(
+            DEADMAN_TIMEOUT_S, self._deadman_cb
+        )
+
+        # --- WebSocket-Server ---
+        if websockets is None:
+            self.get_logger().error(
+                'Python-Paket "websockets" nicht installiert! '
+                'WebSocket-Server deaktiviert.'
+            )
+            self.ws_server = None
+        else:
+            self.ws_server = WebSocketServer(self)
+            self.ws_server.start()
+
+        # --- MJPEG-Server ---
+        if HAS_CAMERA:
+            start_mjpeg_server(self)
+        else:
+            self.get_logger().warn(
+                'cv2/cv_bridge nicht verfuegbar -> MJPEG-Server deaktiviert'
+            )
+
+        self.get_logger().info('DashboardBridge gestartet')
+
+    # --- ROS2 Callbacks ---
+
+    def _odom_cb(self, msg):
+        now = time.time()
+        with self.lock:
+            self.latest_odom = msg
+            self.odom_times.append(now)
+
+    def _imu_cb(self, msg):
+        with self.lock:
+            self.latest_imu = msg
+
+    def _scan_cb(self, msg):
+        now = time.time()
+        with self.lock:
+            self.latest_scan = msg
+            self.scan_times.append(now)
+
+    def _image_cb(self, msg):
+        if self.cv_bridge is None:
+            return
+        try:
+            cv_img = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+            ok, buf = cv2.imencode('.jpg', cv_img, encode_param)
+            if ok:
+                with self.lock:
+                    self.latest_jpeg = buf.tobytes()
+        except Exception as e:
+            self.get_logger().warn('Bild-Konvertierung fehlgeschlagen: %s' % e)
+
+    # --- Deadman-Timer ---
+
+    def _deadman_cb(self):
+        now = time.time()
+        with self.lock:
+            last_cmd = self.last_cmd_time
+            last_hb = self.last_heartbeat_time
+        # Pruefen ob Steuerbefehle oder Heartbeat empfangen wurden
+        last_activity = max(last_cmd, last_hb)
+        if last_activity > 0.0 and (now - last_activity) > DEADMAN_TIMEOUT_S:
+            self.publish_stop()
+
+    # --- Publizier-Methoden (thread-safe) ---
+
+    def publish_cmd_vel(self, linear_x, angular_z):
+        """Publiziert Twist auf /cmd_vel mit Geschwindigkeitsbegrenzung."""
+        twist = Twist()
+        twist.linear.x = clamp(float(linear_x), MAX_LINEAR)
+        twist.angular.z = clamp(float(angular_z), MAX_ANGULAR)
+        self.pub_cmd_vel.publish(twist)
+        with self.lock:
+            self.last_cmd_time = time.time()
+
+    def publish_stop(self):
+        """Publiziert Twist(0,0,0) auf /cmd_vel."""
+        self.pub_cmd_vel.publish(Twist())
+
+    def record_heartbeat(self):
+        """Aktualisiert den Heartbeat-Zeitstempel."""
+        with self.lock:
+            self.last_heartbeat_time = time.time()
+
+    # --- Daten-Abfragen (thread-safe) ---
+
+    def get_latest_jpeg(self):
+        """Gibt das letzte JPEG-Bild als Bytes zurueck (oder None)."""
+        with self.lock:
+            return self.latest_jpeg
+
+    def _compute_hz(self, timestamps):
+        """Berechnet die Frequenz aus einer Timestamp-Deque (Lock muss gehalten werden)."""
+        if len(timestamps) < 2:
+            return 0.0
+        dt = timestamps[-1] - timestamps[0]
+        if dt <= 0.0:
+            return 0.0
+        return (len(timestamps) - 1) / dt
+
+    def build_telemetry(self):
+        """Erstellt das Telemetrie-JSON-Dictionary."""
+        with self.lock:
+            odom = self.latest_odom
+            imu = self.latest_imu
+            odom_hz = self._compute_hz(self.odom_times)
+            scan_hz = self._compute_hz(self.scan_times)
+
+        # Odom-Daten
+        odom_data = {
+            'x': 0.0, 'y': 0.0, 'yaw_deg': 0.0,
+            'vel_linear': 0.0, 'vel_angular': 0.0,
+        }
+        if odom is not None:
+            yaw = quaternion_to_yaw(odom.pose.pose.orientation)
+            odom_data = {
+                'x': round(odom.pose.pose.position.x, 4),
+                'y': round(odom.pose.pose.position.y, 4),
+                'yaw_deg': round(math.degrees(yaw), 2),
+                'vel_linear': round(odom.twist.twist.linear.x, 4),
+                'vel_angular': round(odom.twist.twist.angular.z, 4),
+            }
+
+        # IMU-Daten
+        imu_data = {'heading_deg': 0.0, 'gz_deg_s': 0.0}
+        if imu is not None:
+            imu_yaw = quaternion_to_yaw(imu.orientation)
+            imu_data = {
+                'heading_deg': round(math.degrees(imu_yaw), 2),
+                'gz_deg_s': round(math.degrees(imu.angular_velocity.z), 2),
+            }
+
+        # Verbindungsstatus
+        esp32_active = odom_hz > 1.0
+
+        return {
+            'op': 'telemetry',
+            'ts': round(time.time(), 3),
+            'odom': odom_data,
+            'imu': imu_data,
+            'connection': {
+                'esp32_active': esp32_active,
+                'odom_hz': round(odom_hz, 1),
+                'scan_hz': round(scan_hz, 1),
+            },
+        }
+
+    def build_scan_msg(self):
+        """Erstellt das Scan-JSON-Dictionary (oder None)."""
+        with self.lock:
+            scan = self.latest_scan
+        if scan is None:
+            return None
+        # NaN/Inf durch 0.0 ersetzen fuer JSON-Kompatibilitaet
+        ranges = []
+        for r in scan.ranges:
+            if math.isnan(r) or math.isinf(r):
+                ranges.append(0.0)
+            else:
+                ranges.append(round(r, 3))
+        return {
+            'op': 'scan',
+            'angle_min': round(scan.angle_min, 4),
+            'angle_max': round(scan.angle_max, 4),
+            'angle_increment': round(scan.angle_increment, 6),
+            'ranges': ranges,
+        }
+
+
+# =========================================================================
+# Entry Point
+# =========================================================================
+def main(args=None):
+    rclpy.init(args=args)
+    node = DashboardBridge()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info('Beende DashboardBridge...')
+    finally:
+        node.publish_stop()
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

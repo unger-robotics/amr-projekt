@@ -85,6 +85,11 @@ def generate_launch_description():
         default_value='/dev/video10',
         description='Video-Device fuer die Kamera (v4l2loopback-Bridge)',
     )
+    declare_use_dashboard = DeclareLaunchArgument(
+        'use_dashboard',
+        default_value='False',
+        description='Web-Dashboard starten (WebSocket :9090, MJPEG :8082)',
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -203,6 +208,15 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_camera')),
     )
 
+    # --- 7. Dashboard Bridge (WebSocket + MJPEG, optional) ---
+    dashboard_node = Node(
+        package='my_bot',
+        executable='dashboard_bridge',
+        name='dashboard_bridge',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_dashboard')),
+    )
+
     return LaunchDescription([
         # Launch Arguments
         declare_use_slam,
@@ -213,6 +227,7 @@ def generate_launch_description():
         declare_slam_params_file,
         declare_use_camera,
         declare_camera_device,
+        declare_use_dashboard,
         # Nodes / Prozesse
         rplidar_node,
         laser_tf,
@@ -223,4 +238,5 @@ def generate_launch_description():
         rviz_node,
         camera_node,
         camera_tf,
+        dashboard_node,
     ])

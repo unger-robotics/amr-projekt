@@ -38,6 +38,7 @@ setup(
             'straight_drive_test = my_bot.straight_drive_test:main',
             'rplidar_test = my_bot.rplidar_test:main',
             'odom_to_tf = my_bot.odom_to_tf:main',
+            'dashboard_bridge = my_bot.dashboard_bridge:main',
         ],
     },
 )

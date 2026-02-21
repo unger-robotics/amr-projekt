@@ -98,6 +98,11 @@ RUN echo "# ROS2 Humble" >> /root/.bashrc && \
     echo "" >> /root/.bashrc && \
     echo "cd /ros2_ws" >> /root/.bashrc
 
+# ---------------------------------------------------------------------------
+# 5b. Dashboard-Bridge Abhaengigkeit (WebSocket-Server)
+# ---------------------------------------------------------------------------
+RUN pip3 install --no-cache-dir websockets
+
 WORKDIR /ros2_ws
 
 COPY amr/docker/entrypoint.sh /entrypoint.sh

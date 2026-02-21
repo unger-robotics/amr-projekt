@@ -40,3 +40,7 @@ hardware_info_*.md
 # Grosse Mediendateien
 *.MOV
 *.mov
+
+# Dashboard (Frontend)
+node_modules/
+dashboard/dist/

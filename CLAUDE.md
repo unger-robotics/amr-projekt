@@ -58,6 +58,24 @@ ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternative
 ros2 launch my_bot full_stack.launch.py camera_device:=/dev/video10  # Alternatives Kamera-Device
 ```
 
+### Web Dashboard (optional)
+
+```bash
+# Backend starten (im Docker-Container):
+./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_rviz:=False
+
+# Frontend entwickeln (auf beliebigem Rechner):
+cd dashboard && npm install && npm run dev
+# Oeffnet http://localhost:5173, WebSocket verbindet zum Pi
+
+# Frontend bauen und als statische Dateien servieren:
+cd dashboard && npm run build
+python3 -m http.server 3000 -d dashboard/dist/
+# Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
+```
+
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
+
 ### Validierungsskripte (Raspberry Pi)
 
 ```bash
@@ -81,7 +99,7 @@ ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
 ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Check (5 min)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
 
 **Docker Dual-Mount-Pattern:** Die relativen Symlinks (`../../../../../amr/scripts/`) loesen im Container anders auf als auf dem Host. Daher mountet `docker-compose.yml` das Skript-Verzeichnis doppelt: `../scripts:/amr_scripts:ro` und `../scripts:/scripts:ro`. Beide Pfade sind noetig, damit die Symlinks sowohl im Host-Kontext als auch im Container korrekt aufloesen.
 
@@ -141,7 +159,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 13 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 14 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
 
 **Launch-Parameter (vollstaendig):**
 
@@ -155,6 +173,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `slam_params_file` | mapper_params_online_async.yaml | SLAM Parameterdatei (Pfad relativ zu config/) |
 | `use_camera` | False | Kamera und ArUco-Docking aktivieren |
 | `camera_device` | /dev/video10 | v4l2loopback-Device fuer Kamera-Bridge |
+| `use_dashboard` | False | Web-Dashboard (WebSocket + MJPEG) starten |
 
 ### ROS2 Topics und Nodes
 
@@ -244,7 +263,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 16 Dateien in `amr/scripts/` (14 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 17 Dateien in `amr/scripts/` (15 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
