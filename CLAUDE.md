@@ -118,6 +118,8 @@ rsync -avz --delete \
   --exclude='sources/' \
   --exclude='hardware/media/' \
   --exclude='hardware/datasheet/' \
+  --exclude='node_modules/' \
+  --exclude='dashboard/dist/' \
   <lokaler-projekt-pfad>/AMR-Bachelorarbeit/ pi@rover:~/AMR-Bachelorarbeit
 # Literatur-PDFs herunterladen (virtuelle Umgebung .venv/ im Projekt-Root):
 source .venv/bin/activate && python suche/download_sources.py
@@ -315,7 +317,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 ## Nicht-getrackte Dateien (.gitignore)
 
-Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml` (lokal generierte SLAM-Karten), `.vscode/`, `.idea/`, `.DS_Store`.
+Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`.
 
 ## Troubleshooting
 
