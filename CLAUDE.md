@@ -75,7 +75,7 @@ python3 -m http.server 3000 -d dashboard/dist/
 # Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
 ```
 
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP, `ThreadingHTTPServer` fuer parallele Clients — noetig weil Hailo-Runner ebenfalls MJPEG liest). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s). Vollstaendige Startanleitung: `Dashboard-Start-Live-Betrieb.md`.
 
 WebSocket-Protokoll (Custom JSON, kein rosbridge):
 - **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition), `vision_detections` (5 Hz, Hailo-8 BBoxen + Inference-Zeit), `vision_semantics` (0.5 Hz, Gemini-Analyse)
@@ -356,7 +356,8 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
-- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8 (aus Hailo Model Zoo v2.11.0, 18 MB, in `.gitignore`)
+- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8L (aus Hailo Model Zoo v2.11.0, 25 MB, in `.gitignore`)
+- `Dashboard-Start-Live-Betrieb.md` – Vollstaendige Startanleitung fuer Dashboard + Vision Live-Betrieb (4 Terminals, Reihenfolge, Troubleshooting)
 
 ## Projektdokumente (Projektroot)
 

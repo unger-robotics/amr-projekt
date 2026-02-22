@@ -51,28 +51,32 @@ MJPEG_URL = 'http://127.0.0.1:8082/stream'
 
 
 def preprocess(frame: np.ndarray) -> np.ndarray:
-    """Bild auf Modell-Eingabegroesse skalieren und normalisieren."""
+    """Bild auf Modell-Eingabegroesse skalieren (uint8 RGB fuer Hailo)."""
     resized = cv2.resize(frame, (INPUT_WIDTH, INPUT_HEIGHT))
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-    return rgb.astype(np.float32) / 255.0
+    return rgb.astype(np.uint8)
 
 
 def postprocess(raw_output: dict, orig_h: int, orig_w: int,
                 threshold: float) -> list:
     """Hailo-NMS-Ausgabe in Detektionsliste umwandeln.
 
-    Hailo-HEF mit integriertem NMS liefert Shape (num_classes, N, 5)
+    Hailo-HEF mit integriertem NMS liefert einen ragged Array:
+    data[0][class_id] = np.array shape (N_i, 5) pro Klasse,
     wobei 5 = [y_min, x_min, y_max, x_max, confidence], normalisiert [0,1].
+    N_i variiert je Klasse (inhomogene Dimensionen).
     """
     detections = []
     for _name, data in raw_output.items():
-        output = np.squeeze(data)
-        if output.ndim != 3 or output.shape[2] != 5:
-            continue
+        # Batch-Dimension: data[0] = Array mit 80 Klassen-Arrays
+        batch = data[0] if hasattr(data, '__getitem__') else data
+        num_classes = len(batch)
 
-        num_classes = output.shape[0]
         for class_id in range(num_classes):
-            class_dets = output[class_id]
+            class_dets = batch[class_id]
+            if class_dets is None or len(class_dets) == 0:
+                continue
+
             for det in class_dets:
                 confidence = float(det[4])
                 if confidence < threshold:
@@ -154,7 +158,7 @@ def run_hailo(model_path: str, threshold: float,
     output_vstream_info = hef.get_output_vstream_infos()
 
     input_params = InputVStreamParams.make_from_network_group(
-        network_group, quantized=False, format_type=FormatType.FLOAT32)
+        network_group, quantized=False, format_type=FormatType.UINT8)
     output_params = OutputVStreamParams.make_from_network_group(
         network_group, quantized=False, format_type=FormatType.FLOAT32)
 
@@ -198,8 +202,12 @@ def run_hailo(model_path: str, threshold: float,
 
                 if count == 0:
                     for name, data in raw_output.items():
-                        shape = np.squeeze(data).shape
-                        print(f'[DEBUG] Output "{name}": shape={shape}')
+                        batch = data[0]
+                        sizes = [len(batch[i]) for i in range(len(batch))]
+                        total = sum(sizes)
+                        print(f'[DEBUG] Output "{name}": '
+                              f'{len(batch)} Klassen, '
+                              f'{total} Detektionen gesamt')
 
                 detections = postprocess(
                     raw_output, orig_h, orig_w, threshold)

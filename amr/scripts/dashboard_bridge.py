@@ -26,7 +26,7 @@ import socket
 import threading
 import time
 from collections import deque
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
 import rclpy
@@ -144,7 +144,7 @@ class MjpegHandler(BaseHTTPRequestHandler):
 def start_mjpeg_server(node):
     """Startet den MJPEG-HTTP-Server in einem Daemon-Thread."""
     MjpegHandler.bridge_node = node
-    server = HTTPServer(('0.0.0.0', MJPEG_PORT), MjpegHandler)
+    server = ThreadingHTTPServer(('0.0.0.0', MJPEG_PORT), MjpegHandler)
     server.daemon_threads = True
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
