@@ -463,6 +463,9 @@ class DashboardBridge(Node):
                 ranges.append(0.0)
             else:
                 ranges.append(round(r, 3))
+        # NOTE: Scan-Daten werden im Sensor-Frame (laser) gesendet.
+        # Der RPLidar ist 180° gedreht montiert (TF: base_link->laser, yaw=pi).
+        # Die Winkelkorrektur erfolgt im Frontend (LidarView.tsx, SENSOR_YAW_OFFSET).
         return {
             'op': 'scan',
             'angle_min': round(scan.angle_min, 4),

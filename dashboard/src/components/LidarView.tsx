@@ -4,6 +4,7 @@ import { useTelemetryStore } from '../store/telemetryStore';
 const MAX_DISPLAY_RANGE = 4.0; // meters
 const GRID_STEP = 1.0; // meters between grid circles
 const POINT_RADIUS = 2;
+const SENSOR_YAW_OFFSET = Math.PI; // LiDAR 180° gedreht montiert (TF: base_link→laser, yaw=π)
 
 function rangeToColor(range: number): string {
   if (range < 1.0) return '#ef4444'; // red-500
@@ -82,8 +83,9 @@ export function LidarView() {
       const range = scanRanges[i];
       if (!isFinite(range) || range <= 0 || range > MAX_DISPLAY_RANGE) continue;
 
-      const angle = scanAngleMin + i * scanAngleIncrement;
-      // Forward = up on screen. ROS convention: 0 rad = forward, positive = left.
+      const angle = scanAngleMin + i * scanAngleIncrement + SENSOR_YAW_OFFSET;
+      // Forward = up on screen. Sensor mounted 180° rotated → add π offset.
+      // ROS convention: 0 rad = forward, positive = left.
       // Canvas: x-right, y-down.
       // screen_x = cx + range * sin(angle) * scale   (sin because left-positive maps to screen-right for negative angles)
       // screen_y = cy - range * cos(angle) * scale   (cos maps forward to screen-up)
