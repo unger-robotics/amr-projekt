@@ -76,6 +76,13 @@ python3 -m http.server 3000 -d dashboard/dist/
 
 Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
 
+WebSocket-Protokoll (Custom JSON, kein rosbridge):
+- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices)
+- **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
+- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg`)
+
+Komponenten: `Dashboard.tsx` (Layout+WebSocket), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+
 ### Validierungsskripte (Raspberry Pi)
 
 ```bash
