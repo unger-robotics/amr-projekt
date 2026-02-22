@@ -39,7 +39,7 @@ docker compose build               # Image bauen (~15-20 Min, danach gecached)
 ./verify.sh                        # Gesamttest: Image, ROS_DISTRO, Pakete (nav2, slam_toolbox, rplidar, cv_bridge, micro_ros_agent), colcon, Serial-Device, Kamera-Bridge, Workspace-Build, Node-Count
 ```
 
-Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro, Dual-Mount auf `/amr_scripts` und `/scripts` fuer Symlink-Kompatibilitaet), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`). Environment: `ROS_DOMAIN_ID=0`, `DISPLAY=${DISPLAY:-:0}`, `QT_X11_NO_MITSHM=1`.
+Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro, Dual-Mount auf `/amr_scripts` und `/scripts` fuer Symlink-Kompatibilitaet), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`). Environment: `ROS_DOMAIN_ID=0`, `DISPLAY=${DISPLAY:-:0}`, `QT_X11_NO_MITSHM=1`, `GEMINI_API_KEY` (aus `amr/docker/.env`, fuer Gemini Semantic Node).
 
 RViz2 benoetigt X11 auf dem Host: `export DISPLAY=:0 && xhost +local:docker`. Alternativ RViz2 auf separatem PC ausfuehren und per ROS2 DDS verbinden (`ROS_DOMAIN_ID=0`).
 
@@ -106,7 +106,7 @@ ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
 ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Check (5 min)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py`, `hailo_inference_node.py`, `gemini_semantic_node.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
 
 **Docker Dual-Mount-Pattern:** Die relativen Symlinks (`../../../../../amr/scripts/`) loesen im Container anders auf als auf dem Host. Daher mountet `docker-compose.yml` das Skript-Verzeichnis doppelt: `../scripts:/amr_scripts:ro` und `../scripts:/scripts:ro`. Beide Pfade sind noetig, damit die Symlinks sowohl im Host-Kontext als auch im Container korrekt aufloesen.
 
@@ -168,7 +168,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 14 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 16 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf`, `hailo_inference_node`, `gemini_semantic_node` (alle aus `my_bot.<name>:main`)
 
 **Launch-Parameter (vollstaendig):**
 
@@ -195,8 +195,10 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/imu` | `sensor_msgs/Imu` | ESP32 (20 Hz) | IMU-Daten (Beschleunigung, Drehrate, fusionierte Orientierung) |
 | `/map` | `nav_msgs/OccupancyGrid` | SLAM Toolbox | Belegungskarte (5 cm Aufloesung, via dashboard_bridge als PNG zum Browser) |
 | `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher, slam_toolbox | TF-Baum (inkl. map→odom von SLAM) |
+| `/vision/detections` | `std_msgs/String` | hailo_inference_node (5 Hz) | JSON-kodierte YOLOv8-Detektionen (Hailo-8) |
+| `/vision/semantics` | `std_msgs/String` | gemini_semantic_node | JSON-kodierte semantische Analyse (Gemini Cloud) |
 
-Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
+Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional), `hailo_inference_node` (Objekterkennung), `gemini_semantic_node` (semantische Analyse, optional).
 
 Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
 
@@ -240,6 +242,31 @@ sudo systemctl status camera-v4l2-bridge.service
 v4l2-ctl -d /dev/video10 --all   # Pruefen ob Frames ankommen
 ```
 
+### Vision-Pipeline (Objekterkennung)
+
+Hybride KI-Pipeline: Lokale Echtzeit-Inference (Hailo-8) + Cloud-Semantik (Google Gemini).
+
+```
+/camera/image_raw → [hailo_inference_node] → /vision/detections (JSON)
+                            │ Hailo-8 PCIe, YOLOv8s @ 5 Hz       │
+                            │ hardware/models/yolov8s.hef          ▼
+/camera/image_raw → [gemini_semantic_node] → /vision/semantics (JSON)
+                            │ Gemini 3.1 Pro, Rate-Limited 2s
+```
+
+- **hailo_inference_node**: Subscribt `/camera/image_raw`, fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen), publiziert Bounding-Boxen als JSON auf `/vision/detections`. Parameter: `model_path`, `confidence_threshold` (0.5), `inference_hz` (5.0).
+- **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, sendet Bild + Detektions-Kontext an Gemini API (`gemini-3.1-pro-preview`), publiziert semantische Beschreibung auf `/vision/semantics`. Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 2s zwischen API-Aufrufen.
+- **Modell**: YOLOv8s als HEF (Hailo Executable Format), Platzhalter-Pfad `hardware/models/yolov8s.hef`. Kompilierung via Hailo Model Zoo / Dataflow Compiler.
+- **Python-Deps** (im Docker): `pip3 install google-generativeai` (Gemini), `hailort` (Hailo-8, auf Pi 5 vorinstalliert).
+
+```bash
+# Nodes einzeln starten (Kamera + micro-ROS Agent muessen laufen):
+ros2 run my_bot hailo_inference_node
+ros2 run my_bot gemini_semantic_node
+# Detektionen pruefen:
+ros2 topic echo /vision/detections --once
+```
+
 ### Serial-Port-Management (3 Projekte teilen ESP32)
 
 Der ESP32-Port `/dev/ttyACM0` wird von 3 Projekten geteilt (`selection-panel.service`, `embedded-bridge.service`, AMR Docker). Lockfile: `/var/lock/esp32-serial.lock` (flock-basiert).
@@ -273,7 +300,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 17 Dateien in `amr/scripts/` (15 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 19 Dateien in `amr/scripts/` (17 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -316,6 +343,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8 (Platzhalter, muss via Hailo Model Zoo erstellt werden)
 
 ## Projektdokumente (Projektroot)
 
@@ -327,7 +355,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`.
 
-Nicht getrackt (aber nicht in `.gitignore`): `objekterkennung/` – Planungsdokumente fuer zukuenftige Erweiterungen (Hailo-8L AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, erweiterte Schaltplaene).
+Nicht getrackt (aber nicht in `.gitignore`): `objekterkennung/` – Konzepte und Planungsdokumente fuer Objekterkennung (Hailo-8 AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, erweiterte Schaltplaene). Die implementierte Vision-Pipeline (`hailo_inference_node`, `gemini_semantic_node`) liegt in `amr/scripts/`.
 
 ## Troubleshooting
 
