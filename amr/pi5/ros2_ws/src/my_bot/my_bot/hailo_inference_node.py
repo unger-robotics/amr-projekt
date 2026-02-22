@@ -1,0 +1,1 @@
+../../../../../scripts/hailo_inference_node.py

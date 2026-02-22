@@ -39,6 +39,8 @@ setup(
             'rplidar_test = my_bot.rplidar_test:main',
             'odom_to_tf = my_bot.odom_to_tf:main',
             'dashboard_bridge = my_bot.dashboard_bridge:main',
+            'hailo_inference_node = my_bot.hailo_inference_node:main',
+            'gemini_semantic_node = my_bot.gemini_semantic_node:main',
         ],
     },
 )

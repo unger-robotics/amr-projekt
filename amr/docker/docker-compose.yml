@@ -52,6 +52,7 @@ services:
       - QT_X11_NO_MITSHM=1
       - ROS_DOMAIN_ID=0
       - TERM=xterm-256color
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
 
     # Container bleibt interaktiv
     stdin_open: true
