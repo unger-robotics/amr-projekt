@@ -47,15 +47,15 @@ export function Dashboard() {
         <SystemMetrics />
       </aside>
 
-      {/* Center content: Camera + Map + LiDAR */}
-      <main className="flex flex-col min-h-0 sm:col-span-1">
-        <div className="flex-[2] min-h-0">
+      {/* Center content: untereinander (mobile/tablet), nebeneinander oben angedockt (desktop) */}
+      <main className="flex flex-col lg:flex-row lg:items-start min-h-0 sm:col-span-1">
+        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
           <CameraView />
         </div>
-        <div className="flex-[3] min-h-0">
+        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
           <MapView />
         </div>
-        <div className="flex-[3] min-h-0">
+        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
           <LidarView />
         </div>
       </main>

@@ -38,8 +38,7 @@ export function CameraView() {
         <img
           src={streamUrl}
           alt="Kamera-Stream"
-          className="w-full h-full object-contain"
-          style={{ aspectRatio: '4 / 3' }}
+          className="max-w-full max-h-full object-contain"
           onError={handleError}
           onLoad={handleLoad}
         />
