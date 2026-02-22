@@ -12,74 +12,78 @@ function drawAmrKinematics(
   centerY: number,
   scale: number
 ) {
-  // Robot parameters from config.h / TF tree
-  const trackWidth = 0.178 * scale;
-  const wheelRadius = 0.0328 * scale;
-  const wheelWidth = 0.025 * scale;
-  const chassisRadius = 0.09 * scale;
-  const casterOffset = 0.07 * scale;
-
-  // Sensor positions (x=0.10m from TF tree)
-  const sensorOffsetX = 0.10 * scale;
-  const lidarRadius = 0.035 * scale;     // ~70mm diameter RPLIDAR A1
-  const cameraWidth = 0.015 * scale;
-  const cameraHeight = 0.03 * scale;
+  // 1. Physische Hardware-Masse in Pixel skalieren
+  const trackWidth = 0.178 * scale;      // Spurbreite
+  const wheelRadius = 0.033 * scale;     // Rad-Radius
+  const wheelWidth = 0.025 * scale;      // Rad-Breite
+  const chassisRadius = 0.09 * scale;    // AMR Grundflaeche
+  const casterOffset = 0.075 * scale;    // Stuetzrad vorne (+X)
+  const cameraOffsetX = 0.085 * scale;   // Kamera an der Front (+X)
 
   ctx.save();
   ctx.translate(centerX, centerY);
 
-  // Rotate so X-axis (forward) points UP on canvas (egocentric view: no dynamic yaw)
+  // 2. X-Achse (Fahrtrichtung) statisch auf 12 Uhr (oben) drehen
   ctx.rotate(-Math.PI / 2);
 
-  // Base styling (HUD Neon-Orange)
-  ctx.strokeStyle = '#f97316';
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'square';
-
-  // 1. Central chassis
+  // --- 3. Zentrales Chassis (Cyan HUD-Style) ---
   ctx.beginPath();
-  ctx.fillStyle = '#f973161A';
+  ctx.fillStyle = '#00e5ff1A'; // Cyan mit 10% Opazitaet (Hex + Alpha)
+  ctx.strokeStyle = '#00e5ff'; // Cyan Rand (Theme: hud-cyan)
+  ctx.lineWidth = 1.5;
   ctx.arc(0, 0, chassisRadius, 0, 2 * Math.PI);
   ctx.fill();
   ctx.stroke();
 
-  // 2. Drive wheels (left and right on Y-axis)
+  // --- 4. Antriebsraeder (Dunkel / Schwarz) ---
+  ctx.fillStyle = '#1e293b';
+  // Linkes Rad (ROS-Y positiv -> Canvas unten nach Rotation)
+  ctx.fillRect(-wheelRadius, trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
+  // Rechtes Rad (ROS-Y negativ -> Canvas oben nach Rotation)
+  ctx.fillRect(-wheelRadius, -trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
+
+  // --- 5. Vorderes Stuetzrad (Schwarz) ---
   ctx.beginPath();
-  ctx.fillStyle = '#f9731633';
-  ctx.rect(-wheelRadius, -trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
-  ctx.rect(-wheelRadius, trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
+  ctx.moveTo(0, 0);
+  ctx.lineTo(casterOffset, 0);
+  ctx.strokeStyle = '#1e293b80'; // 50% Opazitaet fuer die Strebe
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(casterOffset, 0, 0.015 * scale, 0, 2 * Math.PI);
+  ctx.fillStyle = '#1e293b';
   ctx.fill();
+
+  // --- 6. RPLIDAR A1 (Mitte ueber Antriebsachse) ---
+  ctx.beginPath();
+  ctx.arc(0, 0, 0.025 * scale, 0, 2 * Math.PI); // Aeusserer rotierender Kopf
+  ctx.strokeStyle = '#f97316'; // Orange Fokus-Ring
   ctx.stroke();
 
-  // 3. Caster wheel (rear on negative X-axis)
   ctx.beginPath();
-  ctx.arc(-casterOffset, 0, 0.015 * scale, 0, 2 * Math.PI);
-  ctx.stroke();
-
-  // 4. RPLIDAR A1 sensor (front on positive X-axis)
-  ctx.beginPath();
-  ctx.arc(sensorOffsetX, 0, lidarRadius, 0, 2 * Math.PI);
-  ctx.fillStyle = '#f9731680';
+  ctx.arc(0, 0, 0.008 * scale, 0, 2 * Math.PI); // Roter Laser-Emitter
+  ctx.fillStyle = '#ef4444';
   ctx.fill();
-  ctx.stroke();
 
-  // 5. IMX296 camera (mounted above LiDAR, shown as rectangle at front)
-  ctx.beginPath();
-  ctx.rect(sensorOffsetX, -cameraHeight / 2, cameraWidth, cameraHeight);
-  ctx.fillStyle = '#f97316';
-  ctx.fill();
-  ctx.stroke();
+  // --- 7. IMX296 Weitwinkel-Kamera (Ganz vorne) ---
+  const camWidth = 0.015 * scale;
+  const camHeight = 0.03 * scale;
+  // Gehaeuse
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(cameraOffsetX, -camHeight / 2, camWidth, camHeight);
+  // Linse
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(cameraOffsetX + camWidth, -camHeight / 4, 0.005 * scale, camHeight / 2);
 
-  // 6. Camera field of view (dashed lines forward)
+  // --- 8. Kamera-Sichtfeld (Gestrichelt Cyan) ---
   ctx.beginPath();
-  ctx.setLineDash([4, 4]);
-  ctx.lineWidth = 1;
-  ctx.moveTo(sensorOffsetX + cameraWidth, -cameraHeight / 2);
-  ctx.lineTo(sensorOffsetX + 0.25 * scale, -0.15 * scale);
-  ctx.moveTo(sensorOffsetX + cameraWidth, cameraHeight / 2);
-  ctx.lineTo(sensorOffsetX + 0.25 * scale, 0.15 * scale);
+  ctx.strokeStyle = '#00e5ff';
+  ctx.setLineDash([4, 4]); // HUD-Raster Effekt
+  ctx.moveTo(cameraOffsetX + camWidth, -camHeight / 4);
+  ctx.lineTo(cameraOffsetX + 0.3 * scale, -0.2 * scale); // Linke Sichtfeldkante
+  ctx.moveTo(cameraOffsetX + camWidth, camHeight / 4);
+  ctx.lineTo(cameraOffsetX + 0.3 * scale, 0.2 * scale);  // Rechte Sichtfeldkante
   ctx.stroke();
-  ctx.setLineDash([]);
 
   ctx.restore();
 }

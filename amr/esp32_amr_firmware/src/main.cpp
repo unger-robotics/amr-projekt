@@ -75,7 +75,7 @@ void controlTask(void *p) {
         ml_filt = ema_alpha * ml + (1.0f - ema_alpha) * ml_filt;
         mr_filt = ema_alpha * mr + (1.0f - ema_alpha) * mr_filt;
 
-        float tv, tw;
+        float tv = 0, tw = 0;
         if (xSemaphoreTake(mutex, 10)) {
             tv = shared.tv;
             tw = shared.tw;
@@ -90,21 +90,28 @@ void controlTask(void *p) {
 
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
 
-        // Rampe (skaliert mit tatsaechlichem dt)
-        float max_d = MAX_ACCEL * dt;
-        if (t.left_rad_s > last_sp_l + max_d)
-            last_sp_l += max_d;
-        else if (t.left_rad_s < last_sp_l - max_d)
-            last_sp_l -= max_d;
-        else
-            last_sp_l = t.left_rad_s;
+        // Hard-Stop: Bei Zielgeschwindigkeit Null Rampe umgehen
+        // → Cytron MDD3A Kurzschlussbremse greift sofort bei PWM=0
+        if (fabsf(tv) < 0.001f && fabsf(tw) < 0.001f) {
+            last_sp_l = 0.0f;
+            last_sp_r = 0.0f;
+        } else {
+            // Rampe (skaliert mit tatsaechlichem dt) -- nur bei aktiver Fahrt
+            float max_d = MAX_ACCEL * dt;
+            if (t.left_rad_s > last_sp_l + max_d)
+                last_sp_l += max_d;
+            else if (t.left_rad_s < last_sp_l - max_d)
+                last_sp_l -= max_d;
+            else
+                last_sp_l = t.left_rad_s;
 
-        if (t.right_rad_s > last_sp_r + max_d)
-            last_sp_r += max_d;
-        else if (t.right_rad_s < last_sp_r - max_d)
-            last_sp_r -= max_d;
-        else
-            last_sp_r = t.right_rad_s;
+            if (t.right_rad_s > last_sp_r + max_d)
+                last_sp_r += max_d;
+            else if (t.right_rad_s < last_sp_r - max_d)
+                last_sp_r -= max_d;
+            else
+                last_sp_r = t.right_rad_s;
+        }
 
         // Bei Zielgeschwindigkeit ~0: PID umgehen, Motoren direkt stoppen
         // Verhindert Integral-Windup-Zittern im Stillstand
