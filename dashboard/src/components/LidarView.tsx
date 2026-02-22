@@ -6,6 +6,84 @@ const GRID_STEP = 1.0; // meters between grid circles
 const POINT_RADIUS = 2;
 const SENSOR_YAW_OFFSET = Math.PI; // LiDAR 180° gedreht montiert (TF: base_link→laser, yaw=π)
 
+function drawAmrKinematics(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  scale: number
+) {
+  // Robot parameters from config.h / TF tree
+  const trackWidth = 0.178 * scale;
+  const wheelRadius = 0.0328 * scale;
+  const wheelWidth = 0.025 * scale;
+  const chassisRadius = 0.09 * scale;
+  const casterOffset = 0.07 * scale;
+
+  // Sensor positions (x=0.10m from TF tree)
+  const sensorOffsetX = 0.10 * scale;
+  const lidarRadius = 0.035 * scale;     // ~70mm diameter RPLIDAR A1
+  const cameraWidth = 0.015 * scale;
+  const cameraHeight = 0.03 * scale;
+
+  ctx.save();
+  ctx.translate(centerX, centerY);
+
+  // Rotate so X-axis (forward) points UP on canvas (egocentric view: no dynamic yaw)
+  ctx.rotate(-Math.PI / 2);
+
+  // Base styling (HUD Neon-Orange)
+  ctx.strokeStyle = '#f97316';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'square';
+
+  // 1. Central chassis
+  ctx.beginPath();
+  ctx.fillStyle = '#f973161A';
+  ctx.arc(0, 0, chassisRadius, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.stroke();
+
+  // 2. Drive wheels (left and right on Y-axis)
+  ctx.beginPath();
+  ctx.fillStyle = '#f9731633';
+  ctx.rect(-wheelRadius, -trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
+  ctx.rect(-wheelRadius, trackWidth / 2 - wheelWidth / 2, wheelRadius * 2, wheelWidth);
+  ctx.fill();
+  ctx.stroke();
+
+  // 3. Caster wheel (rear on negative X-axis)
+  ctx.beginPath();
+  ctx.arc(-casterOffset, 0, 0.015 * scale, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  // 4. RPLIDAR A1 sensor (front on positive X-axis)
+  ctx.beginPath();
+  ctx.arc(sensorOffsetX, 0, lidarRadius, 0, 2 * Math.PI);
+  ctx.fillStyle = '#f9731680';
+  ctx.fill();
+  ctx.stroke();
+
+  // 5. IMX296 camera (mounted above LiDAR, shown as rectangle at front)
+  ctx.beginPath();
+  ctx.rect(sensorOffsetX, -cameraHeight / 2, cameraWidth, cameraHeight);
+  ctx.fillStyle = '#f97316';
+  ctx.fill();
+  ctx.stroke();
+
+  // 6. Camera field of view (dashed lines forward)
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.moveTo(sensorOffsetX + cameraWidth, -cameraHeight / 2);
+  ctx.lineTo(sensorOffsetX + 0.25 * scale, -0.15 * scale);
+  ctx.moveTo(sensorOffsetX + cameraWidth, cameraHeight / 2);
+  ctx.lineTo(sensorOffsetX + 0.25 * scale, 0.15 * scale);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
 function rangeToColor(range: number): string {
   if (range < 1.0) return '#00e5ff';
   if (range < 2.0) return '#00b8d4';
@@ -20,7 +98,6 @@ export function LidarView() {
   const scanRanges = useTelemetryStore((s) => s.scanRanges);
   const scanAngleMin = useTelemetryStore((s) => s.scanAngleMin);
   const scanAngleIncrement = useTelemetryStore((s) => s.scanAngleIncrement);
-
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -85,10 +162,8 @@ export function LidarView() {
       if (!isFinite(range) || range <= 0 || range > MAX_DISPLAY_RANGE) continue;
 
       const angle = scanAngleMin + i * scanAngleIncrement + SENSOR_YAW_OFFSET;
-      // Forward = up on screen. Sensor mounted 180° rotated → add π offset.
-      // ROS convention: 0 rad = forward, positive = left.
-      // Canvas: x-right, y-down.
-      const sx = cx + range * Math.sin(angle) * scale;
+      // ROS→Canvas: X(forward)→-Y(up), Y(left)→-X(left). Sensor 180° rotated → +π.
+      const sx = cx - range * Math.sin(angle) * scale;
       const sy = cy - range * Math.cos(angle) * scale;
 
       ctx.fillStyle = rangeToColor(range);
@@ -97,19 +172,8 @@ export function LidarView() {
       ctx.fill();
     }
 
-    // Robot triangle at center (pointing up = forward) with glow
-    const triSize = 8;
-    ctx.save();
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = '#00e5ff';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - triSize);
-    ctx.lineTo(cx - triSize * 0.6, cy + triSize * 0.5);
-    ctx.lineTo(cx + triSize * 0.6, cy + triSize * 0.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    // Kinematic robot model at center (static, egocentric: forward = up)
+    drawAmrKinematics(ctx, cx, cy, scale);
   }, [scanRanges, scanAngleMin, scanAngleIncrement]);
 
   useEffect(() => {

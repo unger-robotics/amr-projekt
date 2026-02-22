@@ -81,7 +81,7 @@ WebSocket-Protokoll (Custom JSON, kein rosbridge):
 - **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
 - Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg`)
 
-Komponenten: `Dashboard.tsx` (Layout+WebSocket), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+Komponenten: `Dashboard.tsx` (Layout+WebSocket), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Chassis/Raeder/Sensoren/Kamera-FOV in Orange-Overlay, yaw-rotiert), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
 ### Validierungsskripte (Raspberry Pi)
 
