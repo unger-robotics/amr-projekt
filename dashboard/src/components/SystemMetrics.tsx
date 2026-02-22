@@ -47,9 +47,23 @@ export function SystemMetrics() {
   const lidarActive = useTelemetryStore((s) => s.lidarActive);
   const cameraActive = useTelemetryStore((s) => s.cameraActive);
   const hailoDetected = useTelemetryStore((s) => s.hailoDetected);
+  const hostIp = useTelemetryStore((s) => s.hostIp);
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 border-t border-hud-border">
+      {/* Netzwerk */}
+      {hostIp && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
+            Netzwerk
+          </h2>
+          <div className="flex justify-between text-xs">
+            <span className="text-hud-text-dim uppercase tracking-wider">Pi5 IP</span>
+            <span className="text-hud-cyan font-medium font-mono">{hostIp}</span>
+          </div>
+        </section>
+      )}
+
       {/* System */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">

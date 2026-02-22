@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg, SystemMsg } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -35,10 +35,23 @@ interface TelemetryState {
   cameraActive: boolean;
   hailoDetected: boolean;
   lastSystemTs: number;
+  // Host network
+  hostIp: string;
+  // SLAM Map
+  mapPngB64: string | null;
+  mapWidth: number;
+  mapHeight: number;
+  mapResolution: number;
+  mapOriginX: number;
+  mapOriginY: number;
+  robotMapX: number;
+  robotMapY: number;
+  robotMapYaw: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
   updateSystem: (msg: SystemMsg) => void;
+  updateMap: (msg: MapMsg) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -52,6 +65,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   diskUsedGb: 0, diskTotalGb: 0, diskUsagePct: 0,
   lidarActive: false, cameraActive: false, hailoDetected: false,
   lastSystemTs: 0,
+  hostIp: '',
+  mapPngB64: null, mapWidth: 0, mapHeight: 0, mapResolution: 0.05,
+  mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -87,5 +103,18 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     cameraActive: msg.devices.camera,
     hailoDetected: msg.devices.hailo,
     lastSystemTs: msg.ts,
+    hostIp: msg.ip ?? '',
+  }),
+
+  updateMap: (msg) => set({
+    mapPngB64: msg.png_b64,
+    mapWidth: msg.width,
+    mapHeight: msg.height,
+    mapResolution: msg.resolution,
+    mapOriginX: msg.origin_x,
+    mapOriginY: msg.origin_y,
+    robotMapX: msg.robot.x,
+    robotMapY: msg.robot.y,
+    robotMapYaw: msg.robot.yaw,
   }),
 }));

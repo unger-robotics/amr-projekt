@@ -9,6 +9,7 @@ import { LidarView } from './LidarView';
 import { Joystick } from './Joystick';
 import { EmergencyStop } from './EmergencyStop';
 import { SystemMetrics } from './SystemMetrics';
+import { MapView } from './MapView';
 
 export function Dashboard() {
   const [statusVisible, setStatusVisible] = useState(false);
@@ -16,14 +17,16 @@ export function Dashboard() {
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
   const updateSystem = useTelemetryStore((s) => s.updateSystem);
+  const updateMap = useTelemetryStore((s) => s.updateMap);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
       if (msg.op === 'telemetry') updateTelemetry(msg);
       else if (msg.op === 'scan') updateScan(msg);
       else if (msg.op === 'system') updateSystem(msg);
+      else if (msg.op === 'map') updateMap(msg);
     },
-    [updateTelemetry, updateScan, updateSystem],
+    [updateTelemetry, updateScan, updateSystem, updateMap],
   );
 
   const { connected, latencyMs, send } = useWebSocket(onMessage);
@@ -44,12 +47,15 @@ export function Dashboard() {
         <SystemMetrics />
       </aside>
 
-      {/* Center content: Camera + LiDAR */}
+      {/* Center content: Camera + Map + LiDAR */}
       <main className="flex flex-col min-h-0 sm:col-span-1">
-        <div className="flex-1 min-h-0">
+        <div className="flex-[2] min-h-0">
           <CameraView />
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="flex-[3] min-h-0">
+          <MapView />
+        </div>
+        <div className="flex-[3] min-h-0">
           <LidarView />
         </div>
       </main>
@@ -87,6 +93,7 @@ export function Dashboard() {
             aria-label="Statusanzeige"
           >
             <StatusPanel connected={connected} latencyMs={latencyMs} />
+            <SystemMetrics />
           </div>
         </div>
       )}

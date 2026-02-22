@@ -17,21 +17,25 @@ Verwendung:
   ros2 launch my_bot full_stack.launch.py use_dashboard:=True
 """
 
+import base64
 import glob as globmod
 import json
 import math
 import os
+import socket
 import threading
 import time
 from collections import deque
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import Imu, LaserScan, Image
+from tf2_msgs.msg import TFMessage
 
 try:
     import asyncio
@@ -59,6 +63,8 @@ MAX_ANGULAR = 1.0      # rad/s
 JPEG_QUALITY = 70
 HZ_WINDOW = 50         # Anzahl Timestamps fuer Hz-Berechnung
 SYSTEM_BROADCAST_HZ = 1.0  # System-Metriken Broadcast-Rate
+MAP_BROADCAST_HZ = 0.5    # Karten-Broadcast-Rate
+MAP_PNG_QUALITY = 6        # PNG-Kompressionsgrad (0-9)
 
 
 def quaternion_to_yaw(q):
@@ -222,11 +228,12 @@ class WebSocketServer:
             self.node.get_logger().info(
                 'WebSocket-Server gestartet auf ws://0.0.0.0:%d' % WS_PORT
             )
-            # Telemetrie- und Scan-Broadcast parallel
+            # Telemetrie-, Scan-, System- und Map-Broadcast parallel
             await asyncio.gather(
                 self._telemetry_loop(),
                 self._scan_loop(),
                 self._system_loop(),
+                self._map_loop(),
             )
 
     async def _telemetry_loop(self):
@@ -252,6 +259,15 @@ class WebSocketServer:
         while True:
             data = self.node.build_system_msg()
             await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _map_loop(self):
+        """Sendet SLAM-Karte mit 0.5 Hz."""
+        interval = 1.0 / MAP_BROADCAST_HZ
+        while True:
+            data = self.node.build_map_msg()
+            if data is not None:
+                await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
 
     def start(self):
@@ -307,6 +323,20 @@ class DashboardBridge(Node):
             self.sub_image = self.create_subscription(
                 Image, '/camera/image_raw', self._image_cb, sensor_qos
             )
+        self.sub_map = self.create_subscription(
+            OccupancyGrid, '/map', self._map_cb,
+            QoSProfile(
+                reliability=ReliabilityPolicy.RELIABLE,
+                history=HistoryPolicy.KEEP_LAST,
+                depth=1,
+            )
+        )
+        self.sub_tf = self.create_subscription(TFMessage, '/tf', self._tf_cb, 10)
+
+        # --- Map / TF State (geschuetzt durch Lock) ---
+        self.latest_map_png = None      # Base64 string
+        self.map_metadata = None        # dict
+        self.map_to_odom_tf = None      # dict
 
         # --- ROS2 Publisher ---
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -367,6 +397,92 @@ class DashboardBridge(Node):
                     self.latest_jpeg = buf.tobytes()
         except Exception as e:
             self.get_logger().warn('Bild-Konvertierung fehlgeschlagen: %s' % e)
+
+    def _map_cb(self, msg):
+        """OccupancyGrid -> RGBA PNG -> Base64."""
+        try:
+            width = msg.info.width
+            height = msg.info.height
+            if width == 0 or height == 0:
+                return
+            grid = np.array(msg.data, dtype=np.int8).reshape((height, width))
+
+            # RGBA-Bild erzeugen
+            rgba = np.zeros((height, width, 4), dtype=np.uint8)
+            # Unbekannt (-1): dunkelblau, halbtransparent
+            unknown = grid == -1
+            rgba[unknown] = [15, 21, 33, 100]
+            # Frei (0): sehr dunkel, leicht transparent
+            free = grid == 0
+            rgba[free] = [10, 14, 23, 180]
+            # Belegt (>50): Cyan (Theme-Farbe), voll opak
+            occupied = grid > 50
+            rgba[occupied] = [0, 229, 255, 255]
+            # Partial (1-50): abgestuft
+            partial = (grid > 0) & (grid <= 50)
+            if np.any(partial):
+                vals = grid[partial].astype(np.float32) / 50.0
+                rgba[partial, 0] = (10 + vals * (0 - 10)).astype(np.uint8)
+                rgba[partial, 1] = (14 + vals * (229 - 14)).astype(np.uint8)
+                rgba[partial, 2] = (23 + vals * (255 - 23)).astype(np.uint8)
+                rgba[partial, 3] = (180 + vals * (255 - 180)).astype(np.uint8)
+
+            # ROS Y-oben -> Bild Y-unten
+            rgba = np.flipud(rgba)
+
+            # BGRA fuer cv2 (OpenCV erwartet BGRA, nicht RGBA)
+            bgra = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA)
+            ok, buf = cv2.imencode(
+                '.png', bgra,
+                [cv2.IMWRITE_PNG_COMPRESSION, MAP_PNG_QUALITY]
+            )
+            if not ok:
+                return
+            png_b64 = base64.b64encode(buf.tobytes()).decode('ascii')
+            metadata = {
+                'width': width,
+                'height': height,
+                'resolution': msg.info.resolution,
+                'origin_x': msg.info.origin.position.x,
+                'origin_y': msg.info.origin.position.y,
+            }
+            with self.lock:
+                self.latest_map_png = png_b64
+                self.map_metadata = metadata
+        except Exception as e:
+            self.get_logger().warn('Map-Konvertierung fehlgeschlagen: %s' % e)
+
+    def _tf_cb(self, msg):
+        """Speichert map->odom Transform."""
+        for tf in msg.transforms:
+            if tf.header.frame_id == 'map' and tf.child_frame_id == 'odom':
+                t = tf.transform.translation
+                q = tf.transform.rotation
+                yaw = math.atan2(
+                    2.0 * (q.w * q.z + q.x * q.y),
+                    1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+                )
+                with self.lock:
+                    self.map_to_odom_tf = {
+                        'x': t.x,
+                        'y': t.y,
+                        'yaw': yaw,
+                    }
+
+    def _get_host_ip(self):
+        """Ermittelt die Host-IP-Adresse ueber UDP-Socket-Trick."""
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            pass
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return '127.0.0.1'
 
     # --- Deadman-Timer ---
 
@@ -488,6 +604,53 @@ class DashboardBridge(Node):
         }
 
 
+    def build_map_msg(self):
+        """Erstellt das Map-JSON-Dictionary (oder None)."""
+        with self.lock:
+            png_b64 = self.latest_map_png
+            metadata = self.map_metadata
+            tf_data = self.map_to_odom_tf
+            odom = self.latest_odom
+
+        if png_b64 is None or metadata is None:
+            return None
+
+        # Roboterposition im Map-Frame
+        robot_x, robot_y, robot_yaw = 0.0, 0.0, 0.0
+        if odom is not None:
+            ox = odom.pose.pose.position.x
+            oy = odom.pose.pose.position.y
+            o_yaw = quaternion_to_yaw(odom.pose.pose.orientation)
+            if tf_data is not None:
+                # P_map = T_map_odom * P_odom
+                tf_yaw = tf_data['yaw']
+                cos_y = math.cos(tf_yaw)
+                sin_y = math.sin(tf_yaw)
+                robot_x = tf_data['x'] + cos_y * ox - sin_y * oy
+                robot_y = tf_data['y'] + sin_y * ox + cos_y * oy
+                robot_yaw = tf_yaw + o_yaw
+            else:
+                # Ohne TF: Odom direkt als Naeherung
+                robot_x = ox
+                robot_y = oy
+                robot_yaw = o_yaw
+
+        return {
+            'op': 'map',
+            'ts': round(time.time(), 3),
+            'png_b64': png_b64,
+            'width': metadata['width'],
+            'height': metadata['height'],
+            'resolution': metadata['resolution'],
+            'origin_x': metadata['origin_x'],
+            'origin_y': metadata['origin_y'],
+            'robot': {
+                'x': round(robot_x, 4),
+                'y': round(robot_y, 4),
+                'yaw': round(robot_yaw, 4),
+            },
+        }
+
     def build_system_msg(self):
         """Erstellt das System-Metriken-JSON-Dictionary."""
         # CPU-Temperatur
@@ -576,6 +739,7 @@ class DashboardBridge(Node):
                 'camera': has_jpeg,
                 'hailo': os.path.exists('/dev/hailo0'),
             },
+            'ip': self._get_host_ip(),
         }
 
 

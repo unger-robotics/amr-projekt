@@ -50,7 +50,21 @@ export interface SystemMsg {
   ram: { total_mb: number; used_mb: number; usage_pct: number };
   disk: { total_gb: number; used_gb: number; usage_pct: number };
   devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean };
+  ip: string;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg;
+/** SLAM-Karte vom Backend (~0.5 Hz) */
+export interface MapMsg {
+  op: 'map';
+  ts: number;
+  png_b64: string;
+  width: number;
+  height: number;
+  resolution: number;
+  origin_x: number;
+  origin_y: number;
+  robot: { x: number; y: number; yaw: number; };
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg;
 export type ClientMessage = CmdVelMsg | HeartbeatMsg;
