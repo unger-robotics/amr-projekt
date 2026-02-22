@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, Detection } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -47,11 +47,21 @@ interface TelemetryState {
   robotMapX: number;
   robotMapY: number;
   robotMapYaw: number;
+  // Vision
+  visionDetections: Detection[];
+  inferenceMs: number;
+  detectionHz: number;
+  lastDetectionTs: number;
+  semanticAnalysis: string;
+  semanticModel: string;
+  lastSemanticsTs: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
   updateSystem: (msg: SystemMsg) => void;
   updateMap: (msg: MapMsg) => void;
+  updateVisionDetections: (msg: VisionDetectionsMsg) => void;
+  updateVisionSemantics: (msg: VisionSemanticsMsg) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -68,6 +78,8 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   hostIp: '',
   mapPngB64: null, mapWidth: 0, mapHeight: 0, mapResolution: 0.05,
   mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
+  visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
+  semanticAnalysis: '', semanticModel: '', lastSemanticsTs: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -116,5 +128,18 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     robotMapX: msg.robot.x,
     robotMapY: msg.robot.y,
     robotMapYaw: msg.robot.yaw,
+  }),
+
+  updateVisionDetections: (msg) => set({
+    visionDetections: msg.detections,
+    inferenceMs: msg.inference_ms,
+    detectionHz: msg.detection_hz,
+    lastDetectionTs: msg.ts,
+  }),
+
+  updateVisionSemantics: (msg) => set({
+    semanticAnalysis: msg.analysis,
+    semanticModel: msg.model,
+    lastSemanticsTs: msg.ts,
   }),
 }));

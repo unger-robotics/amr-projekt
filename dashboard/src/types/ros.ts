@@ -66,5 +66,31 @@ export interface MapMsg {
   robot: { x: number; y: number; yaw: number; };
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg;
+/** Einzelne Objekterkennung (Hailo-8 YOLOv8) */
+export interface Detection {
+  class_id: number;
+  label: string;
+  confidence: number;
+  /** Normalisierte BBox [x1, y1, x2, y2] im Bereich 0.0-1.0 */
+  bbox_norm: [number, number, number, number];
+}
+
+/** Vision-Detektionen vom Backend (5 Hz) */
+export interface VisionDetectionsMsg {
+  op: 'vision_detections';
+  ts: number;
+  inference_ms: number;
+  detections: Detection[];
+  detection_hz: number;
+}
+
+/** Semantische Analyse vom Backend (~0.5 Hz) */
+export interface VisionSemanticsMsg {
+  op: 'vision_semantics';
+  ts: number;
+  analysis: string;
+  model: string;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg;
 export type ClientMessage = CmdVelMsg | HeartbeatMsg;

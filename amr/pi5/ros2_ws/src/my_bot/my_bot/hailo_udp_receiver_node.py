@@ -1,0 +1,1 @@
+../../../../../scripts/hailo_udp_receiver_node.py

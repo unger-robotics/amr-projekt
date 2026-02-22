@@ -90,6 +90,12 @@ def generate_launch_description():
         default_value='False',
         description='Web-Dashboard starten (WebSocket :9090, MJPEG :8082)',
     )
+    declare_use_vision = DeclareLaunchArgument(
+        'use_vision',
+        default_value='False',
+        description='Vision-Pipeline starten (Hailo UDP Receiver + Gemini Semantik). '
+                    'host_hailo_runner.py separat auf dem Host starten!',
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -217,6 +223,24 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_dashboard')),
     )
 
+    # --- 8. Vision Pipeline (Hailo UDP Receiver + Gemini, optional) ---
+    # Hailo-8 Inference laeuft auf dem Host (host_hailo_runner.py),
+    # Ergebnisse kommen via UDP 127.0.0.1:5005 in den Container.
+    hailo_udp_receiver_node = Node(
+        package='my_bot',
+        executable='hailo_udp_receiver_node',
+        name='hailo_udp_receiver',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_vision')),
+    )
+    gemini_semantic_node = Node(
+        package='my_bot',
+        executable='gemini_semantic_node',
+        name='gemini_semantic_node',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('use_vision')),
+    )
+
     return LaunchDescription([
         # Launch Arguments
         declare_use_slam,
@@ -228,6 +252,7 @@ def generate_launch_description():
         declare_use_camera,
         declare_camera_device,
         declare_use_dashboard,
+        declare_use_vision,
         # Nodes / Prozesse
         rplidar_node,
         laser_tf,
@@ -239,4 +264,6 @@ def generate_launch_description():
         camera_node,
         camera_tf,
         dashboard_node,
+        hailo_udp_receiver_node,
+        gemini_semantic_node,
     ])

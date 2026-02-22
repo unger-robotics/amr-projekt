@@ -1,9 +1,51 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useImageFit } from '../hooks/useImageFit';
+import { useTelemetryStore } from '../store/telemetryStore';
+import type { Detection } from '../types/ros';
 
 const STREAM_PORT = 8082;
 
+function confidenceColor(conf: number): string {
+  if (conf >= 0.8) return 'rgb(0, 230, 118)';   // gruen
+  if (conf >= 0.5) return 'rgb(249, 115, 22)';   // orange
+  return 'rgb(239, 68, 68)';                      // rot
+}
+
+function DetectionBox({ det, fitW, fitH }: { det: Detection; fitW: number; fitH: number }) {
+  const [x1, y1, x2, y2] = det.bbox_norm;
+  const color = confidenceColor(det.confidence);
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `${x1 * fitW}px`,
+        top: `${y1 * fitH}px`,
+        width: `${(x2 - x1) * fitW}px`,
+        height: `${(y2 - y1) * fitH}px`,
+        border: `1px solid ${color}`,
+        boxShadow: `0 0 4px ${color}40`,
+      }}
+    >
+      <span
+        className="absolute -top-4 left-0 text-[9px] font-mono leading-none px-0.5 whitespace-nowrap"
+        style={{ backgroundColor: `${color}cc`, color: '#0a0e17' }}
+      >
+        {det.label} {(det.confidence * 100).toFixed(0)}%
+      </span>
+    </div>
+  );
+}
+
 export function CameraView() {
   const [error, setError] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const fit = useImageFit(containerRef, imgRef);
+
+  const visionDetections = useTelemetryStore((s) => s.visionDetections);
+  const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
+  const semanticAnalysis = useTelemetryStore((s) => s.semanticAnalysis);
 
   const streamUrl = `http://${window.location.hostname}:${STREAM_PORT}/stream`;
 
@@ -16,7 +58,7 @@ export function CameraView() {
   }, []);
 
   return (
-    <div className="bg-hud-bg flex items-center justify-center w-full h-full relative overflow-hidden">
+    <div ref={containerRef} className="bg-hud-bg flex items-center justify-center w-full h-full relative overflow-hidden">
       {error ? (
         <div className="flex flex-col items-center gap-2 text-hud-text-dim">
           <svg
@@ -36,12 +78,46 @@ export function CameraView() {
         </div>
       ) : (
         <img
+          ref={imgRef}
           src={streamUrl}
           alt="Kamera-Stream"
           className="max-w-full max-h-full object-contain"
           onError={handleError}
           onLoad={handleLoad}
         />
+      )}
+
+      {/* BBox Overlay — positioniert auf der tatsaechlichen Bildflaeche */}
+      {!error && fit.width > 0 && visionDetections.length > 0 && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: `${fit.offsetX}px`,
+            top: `${fit.offsetY}px`,
+            width: `${fit.width}px`,
+            height: `${fit.height}px`,
+          }}
+        >
+          {visionDetections.map((det, i) => (
+            <DetectionBox key={i} det={det} fitW={fit.width} fitH={fit.height} />
+          ))}
+        </div>
+      )}
+
+      {/* Inference HUD Label */}
+      {inferenceMs > 0 && (
+        <div className="absolute top-2 right-7 text-[10px] font-mono uppercase tracking-widest pointer-events-none text-orange-400/70">
+          HAILO {inferenceMs.toFixed(0)} MS
+        </div>
+      )}
+
+      {/* Gemini Semantic Streifen */}
+      {semanticAnalysis && (
+        <div className="absolute bottom-0 left-0 right-0 bg-hud-bg/70 backdrop-blur-sm px-2 py-1 pointer-events-none">
+          <p className="text-[10px] font-mono text-hud-cyan/80 line-clamp-2 leading-tight">
+            {semanticAnalysis}
+          </p>
+        </div>
       )}
 
       {/* HUD Overlay Elements (pointer-events-none) */}

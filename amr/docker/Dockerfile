@@ -99,9 +99,15 @@ RUN echo "# ROS2 Humble" >> /root/.bashrc && \
     echo "cd /ros2_ws" >> /root/.bashrc
 
 # ---------------------------------------------------------------------------
-# 5b. Dashboard-Bridge Abhaengigkeit (WebSocket-Server)
+# 5b. Python-Abhaengigkeiten (WebSocket, Vision-Pipeline)
+#     hailort ist NICHT via PyPI verfuegbar — wird auf dem Host ueber das
+#     Raspberry Pi OS apt-Paket (python3-hailort) installiert. Die native
+#     .so (cpython-313) ist inkompatibel mit dem Container (cpython-310).
+#     hailo_inference_node prueft zur Laufzeit via HAS_HAILO-Flag.
 # ---------------------------------------------------------------------------
-RUN pip3 install --no-cache-dir websockets
+RUN pip3 install --no-cache-dir \
+    websockets \
+    google-generativeai
 
 WORKDIR /ros2_ws
 

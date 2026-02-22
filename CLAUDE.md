@@ -35,6 +35,7 @@ docker compose build               # Image bauen (~15-20 Min, danach gecached)
 ./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false   # Nur SLAM
 ./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True # Mit Kamera (ArUco-Docking)
 ./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_nav:=False use_slam:=False use_rviz:=False  # Nur Kamera
+./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_vision:=True use_dashboard:=True use_rviz:=False  # Kamera + Vision + Dashboard
 ./run.sh exec bash                 # Zweites Terminal im laufenden Container
 ./verify.sh                        # Gesamttest: Image, ROS_DISTRO, Pakete (nav2, slam_toolbox, rplidar, cv_bridge, micro_ros_agent), colcon, Serial-Device, Kamera-Bridge, Workspace-Build, Node-Count
 ```
@@ -74,14 +75,14 @@ python3 -m http.server 3000 -d dashboard/dist/
 # Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
 ```
 
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
 
 WebSocket-Protokoll (Custom JSON, kein rosbridge):
-- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition)
+- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition), `vision_detections` (5 Hz, Hailo-8 BBoxen + Inference-Zeit), `vision_semantics` (0.5 Hz, Gemini-Analyse)
 - **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
-- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg`)
+- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg`)
 
-Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay + Vision-BBox-Overlay + Gemini-Semantik-Streifen, `useImageFit`-Hook fuer object-contain-Positionierung), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
 ### Validierungsskripte (Raspberry Pi)
 
@@ -106,7 +107,7 @@ ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
 ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Check (5 min)
 ```
 
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py`, `hailo_inference_node.py`, `gemini_semantic_node.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
+**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py`, `hailo_inference_node.py`, `hailo_udp_receiver_node.py`, `gemini_semantic_node.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
 
 **Docker Dual-Mount-Pattern:** Die relativen Symlinks (`../../../../../amr/scripts/`) loesen im Container anders auf als auf dem Host. Daher mountet `docker-compose.yml` das Skript-Verzeichnis doppelt: `../scripts:/amr_scripts:ro` und `../scripts:/scripts:ro`. Beide Pfade sind noetig, damit die Symlinks sowohl im Host-Kontext als auch im Container korrekt aufloesen.
 
@@ -168,7 +169,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 - **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 16 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf`, `hailo_inference_node`, `gemini_semantic_node` (alle aus `my_bot.<name>:main`)
+- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 17 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf`, `hailo_inference_node`, `hailo_udp_receiver_node`, `gemini_semantic_node` (alle aus `my_bot.<name>:main`)
 
 **Launch-Parameter (vollstaendig):**
 
@@ -183,6 +184,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `use_camera` | False | Kamera und ArUco-Docking aktivieren |
 | `camera_device` | /dev/video10 | v4l2loopback-Device fuer Kamera-Bridge |
 | `use_dashboard` | False | Web-Dashboard (WebSocket + MJPEG) starten |
+| `use_vision` | False | Vision-Pipeline (Hailo UDP Receiver + Gemini Semantik, host_hailo_runner.py separat starten!) |
 
 ### ROS2 Topics und Nodes
 
@@ -195,10 +197,10 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/imu` | `sensor_msgs/Imu` | ESP32 (20 Hz) | IMU-Daten (Beschleunigung, Drehrate, fusionierte Orientierung) |
 | `/map` | `nav_msgs/OccupancyGrid` | SLAM Toolbox | Belegungskarte (5 cm Aufloesung, via dashboard_bridge als PNG zum Browser) |
 | `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher, slam_toolbox | TF-Baum (inkl. map→odom von SLAM) |
-| `/vision/detections` | `std_msgs/String` | hailo_inference_node (5 Hz) | JSON-kodierte YOLOv8-Detektionen (Hailo-8) |
+| `/vision/detections` | `std_msgs/String` | hailo_udp_receiver_node (5 Hz, via UDP von host_hailo_runner.py) | JSON-kodierte YOLOv8-Detektionen (Hailo-8) |
 | `/vision/semantics` | `std_msgs/String` | gemini_semantic_node | JSON-kodierte semantische Analyse (Gemini Cloud) |
 
-Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional), `hailo_inference_node` (Objekterkennung), `gemini_semantic_node` (semantische Analyse, optional).
+Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional), `hailo_udp_receiver_node` (UDP-Empfaenger fuer Objekterkennung), `gemini_semantic_node` (semantische Analyse, optional).
 
 Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
 
@@ -244,27 +246,38 @@ v4l2-ctl -d /dev/video10 --all   # Pruefen ob Frames ankommen
 
 ### Vision-Pipeline (Objekterkennung)
 
-Hybride KI-Pipeline: Lokale Echtzeit-Inference (Hailo-8) + Cloud-Semantik (Google Gemini).
+Hybride KI-Pipeline: Lokale Echtzeit-Inference (Hailo-8) + Cloud-Semantik (Google Gemini). UDP-Bruecke zwischen Host (Python 3.13 + hailort) und Docker-Container (Python 3.10 + ROS2).
 
 ```
-/camera/image_raw → [hailo_inference_node] → /vision/detections (JSON)
-                            │ Hailo-8 PCIe, YOLOv8s @ 5 Hz       │
-                            │ hardware/models/yolov8s.hef          ▼
-/camera/image_raw → [gemini_semantic_node] → /vision/semantics (JSON)
-                            │ Gemini 3.1 Pro, Rate-Limited 2s
+Host (Python 3.13):                    Docker (Python 3.10, ROS2):
+
+host_hailo_runner.py                   hailo_udp_receiver_node
+  │ MJPEG von :8082/stream               │ UDP 0.0.0.0:5005
+  │ Hailo-8 YOLOv8 @ 5 Hz                │ Publiziert /vision/detections
+  └── UDP 127.0.0.1:5005 ──────────────▶│
+                                          ▼
+                                   gemini_semantic_node (unveraendert)
+                                   dashboard_bridge (unveraendert)
 ```
 
-- **hailo_inference_node**: Subscribt `/camera/image_raw`, fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen), publiziert Bounding-Boxen als JSON auf `/vision/detections`. Parameter: `model_path`, `confidence_threshold` (0.5), `inference_hz` (5.0).
+- **host_hailo_runner.py** (`amr/scripts/`, Host-seitig, kein ROS2): Liest MJPEG-Stream von `http://127.0.0.1:8082/stream` (dashboard_bridge), fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen, 5 Hz), sendet Detektionen als JSON via UDP an `127.0.0.1:5005`. Parameter: `--model` (HEF-Pfad), `--threshold` (0.5), `--fallback` (Dummy-Detektionen ohne Hailo-Hardware).
+- **hailo_udp_receiver_node** (Docker/ROS2): Empfaengt JSON-Detektionen via UDP (Port 5005), validiert und publiziert auf `/vision/detections`. Identisches JSON-Schema wie `hailo_inference_node`.
+- **hailo_inference_node** (Legacy): Direkter Hailo-8 Zugriff aus dem Container – bleibt als Datei/Entry-Point fuer Rueckwaertskompatibilitaet, wird aber nicht mehr gelauncht.
 - **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, sendet Bild + Detektions-Kontext an Gemini API (`gemini-3.1-pro-preview`), publiziert semantische Beschreibung auf `/vision/semantics`. Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 2s zwischen API-Aufrufen.
 - **Modell**: YOLOv8s als HEF (Hailo Executable Format), Platzhalter-Pfad `hardware/models/yolov8s.hef`. Kompilierung via Hailo Model Zoo / Dataflow Compiler.
-- **Python-Deps** (im Docker): `pip3 install google-generativeai` (Gemini), `hailort` (Hailo-8, auf Pi 5 vorinstalliert).
+- **Python-Deps**: Docker: `pip3 install google-generativeai` (Gemini). Host: `hailort` + `opencv-python` + `numpy` (auf Pi 5 vorinstalliert).
 
 ```bash
-# Nodes einzeln starten (Kamera + micro-ROS Agent muessen laufen):
-ros2 run my_bot hailo_inference_node
-ros2 run my_bot gemini_semantic_node
-# Detektionen pruefen:
+# 1. Container: Vision-Pipeline starten (use_dashboard fuer MJPEG noetig):
+./run.sh ros2 launch my_bot full_stack.launch.py use_vision:=True use_dashboard:=True use_camera:=True use_rviz:=False use_nav:=False
+
+# 2. Host: Hailo-Runner starten (separates Terminal):
+python3 ~/AMR-Bachelorarbeit/amr/scripts/host_hailo_runner.py --model hardware/models/yolov8s.hef
+python3 ~/AMR-Bachelorarbeit/amr/scripts/host_hailo_runner.py --fallback   # Ohne Hailo-Hardware
+
+# 3. Container: Detektionen pruefen:
 ros2 topic echo /vision/detections --once
+ros2 topic hz /vision/detections   # ~5 Hz erwartet
 ```
 
 ### Serial-Port-Management (3 Projekte teilen ESP32)
@@ -300,7 +313,7 @@ Zentral in `hardware/config.h` definiert (Single Source of Truth). Code-relevant
 ## Validierung
 
 - Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 19 Dateien in `amr/scripts/` (17 Skripte + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
+- 21 Dateien in `amr/scripts/` (18 Skripte + `host_hailo_runner.py` Host-Skript + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
 - Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
 - Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
 
@@ -355,7 +368,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`.
 
-Nicht getrackt (aber nicht in `.gitignore`): `objekterkennung/` – Konzepte und Planungsdokumente fuer Objekterkennung (Hailo-8 AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, erweiterte Schaltplaene). Die implementierte Vision-Pipeline (`hailo_inference_node`, `gemini_semantic_node`) liegt in `amr/scripts/`.
+Nicht getrackt (aber nicht in `.gitignore`): `objekterkennung/` – Konzepte und Planungsdokumente fuer Objekterkennung (Hailo-8 AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, erweiterte Schaltplaene). Die implementierte Vision-Pipeline (`hailo_udp_receiver_node`, `host_hailo_runner.py`, `hailo_inference_node` Legacy, `gemini_semantic_node`) liegt in `amr/scripts/`.
 
 ## Troubleshooting
 

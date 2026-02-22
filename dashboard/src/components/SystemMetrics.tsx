@@ -48,6 +48,9 @@ export function SystemMetrics() {
   const cameraActive = useTelemetryStore((s) => s.cameraActive);
   const hailoDetected = useTelemetryStore((s) => s.hailoDetected);
   const hostIp = useTelemetryStore((s) => s.hostIp);
+  const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
+  const detectionHz = useTelemetryStore((s) => s.detectionHz);
+  const visionDetections = useTelemetryStore((s) => s.visionDetections);
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 border-t border-hud-border">
@@ -76,6 +79,29 @@ export function SystemMetrics() {
           <MetricBar label="Disk" value={diskUsagePct} max={100} unit="%" />
         </div>
       </section>
+
+      {/* Vision (nur sichtbar wenn Hailo aktiv) */}
+      {detectionHz > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
+            Vision
+          </h2>
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Inference</span>
+              <span className="text-orange-400 font-mono">{inferenceMs.toFixed(0)} ms</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Det. Hz</span>
+              <span className="text-hud-cyan font-mono">{detectionHz.toFixed(1)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Objekte</span>
+              <span className="text-hud-cyan font-mono">{visionDetections.length}</span>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Geraete */}
       <section>

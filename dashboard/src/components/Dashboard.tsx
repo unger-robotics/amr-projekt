@@ -18,6 +18,8 @@ export function Dashboard() {
   const updateScan = useTelemetryStore((s) => s.updateScan);
   const updateSystem = useTelemetryStore((s) => s.updateSystem);
   const updateMap = useTelemetryStore((s) => s.updateMap);
+  const updateVisionDetections = useTelemetryStore((s) => s.updateVisionDetections);
+  const updateVisionSemantics = useTelemetryStore((s) => s.updateVisionSemantics);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
@@ -25,8 +27,10 @@ export function Dashboard() {
       else if (msg.op === 'scan') updateScan(msg);
       else if (msg.op === 'system') updateSystem(msg);
       else if (msg.op === 'map') updateMap(msg);
+      else if (msg.op === 'vision_detections') updateVisionDetections(msg);
+      else if (msg.op === 'vision_semantics') updateVisionSemantics(msg);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics],
   );
 
   const { connected, latencyMs, send } = useWebSocket(onMessage);

@@ -35,6 +35,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry, OccupancyGrid
 from sensor_msgs.msg import Imu, LaserScan, Image
+from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 
 try:
@@ -65,6 +66,8 @@ HZ_WINDOW = 50         # Anzahl Timestamps fuer Hz-Berechnung
 SYSTEM_BROADCAST_HZ = 1.0  # System-Metriken Broadcast-Rate
 MAP_BROADCAST_HZ = 0.5    # Karten-Broadcast-Rate
 MAP_PNG_QUALITY = 6        # PNG-Kompressionsgrad (0-9)
+DETECTION_BROADCAST_HZ = 5.0   # Vision-Detektionen Broadcast-Rate
+SEMANTICS_BROADCAST_HZ = 0.5   # Semantische Analyse Broadcast-Rate
 
 
 def quaternion_to_yaw(q):
@@ -228,12 +231,14 @@ class WebSocketServer:
             self.node.get_logger().info(
                 'WebSocket-Server gestartet auf ws://0.0.0.0:%d' % WS_PORT
             )
-            # Telemetrie-, Scan-, System- und Map-Broadcast parallel
+            # Telemetrie-, Scan-, System-, Map- und Vision-Broadcast parallel
             await asyncio.gather(
                 self._telemetry_loop(),
                 self._scan_loop(),
                 self._system_loop(),
                 self._map_loop(),
+                self._detections_loop(),
+                self._semantics_loop(),
             )
 
     async def _telemetry_loop(self):
@@ -266,6 +271,24 @@ class WebSocketServer:
         interval = 1.0 / MAP_BROADCAST_HZ
         while True:
             data = self.node.build_map_msg()
+            if data is not None:
+                await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _detections_loop(self):
+        """Sendet Vision-Detektionen mit 5 Hz."""
+        interval = 1.0 / DETECTION_BROADCAST_HZ
+        while True:
+            data = self.node.build_detections_msg()
+            if data is not None:
+                await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _semantics_loop(self):
+        """Sendet semantische Analyse mit 0.5 Hz."""
+        interval = 1.0 / SEMANTICS_BROADCAST_HZ
+        while True:
+            data = self.node.build_semantics_msg()
             if data is not None:
                 await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
@@ -332,11 +355,24 @@ class DashboardBridge(Node):
             )
         )
         self.sub_tf = self.create_subscription(TFMessage, '/tf', self._tf_cb, 10)
+        self.sub_detections = self.create_subscription(
+            String, '/vision/detections', self._detections_cb, 10
+        )
+        self.sub_semantics = self.create_subscription(
+            String, '/vision/semantics', self._semantics_cb, 10
+        )
 
         # --- Map / TF State (geschuetzt durch Lock) ---
         self.latest_map_png = None      # Base64 string
         self.map_metadata = None        # dict
         self.map_to_odom_tf = None      # dict
+
+        # --- Vision State (geschuetzt durch Lock) ---
+        self.latest_detections = None   # dict (geparster JSON)
+        self.latest_semantics = None    # dict (geparster JSON)
+        self.detection_times = deque(maxlen=HZ_WINDOW)
+        self.camera_image_width = 1456
+        self.camera_image_height = 1088
 
         # --- ROS2 Publisher ---
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -390,13 +426,56 @@ class DashboardBridge(Node):
             return
         try:
             cv_img = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            h, w = cv_img.shape[:2]
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
             ok, buf = cv2.imencode('.jpg', cv_img, encode_param)
             if ok:
                 with self.lock:
                     self.latest_jpeg = buf.tobytes()
+                    self.camera_image_width = w
+                    self.camera_image_height = h
         except Exception as e:
             self.get_logger().warn('Bild-Konvertierung fehlgeschlagen: %s' % e)
+
+    def _detections_cb(self, msg):
+        """Parst /vision/detections JSON und normalisiert BBoxen."""
+        now = time.time()
+        try:
+            data = json.loads(msg.data)
+            detections = data.get('detections', [])
+            inference_ms = data.get('inference_ms', 0.0)
+            with self.lock:
+                img_w = self.camera_image_width
+                img_h = self.camera_image_height
+                self.detection_times.append(now)
+            # BBoxen normalisieren (Pixel -> 0.0-1.0)
+            for det in detections:
+                bbox = det.get('bbox', [0, 0, 0, 0])
+                det['bbox_norm'] = [
+                    bbox[0] / img_w,
+                    bbox[1] / img_h,
+                    bbox[2] / img_w,
+                    bbox[3] / img_h,
+                ]
+            with self.lock:
+                self.latest_detections = {
+                    'detections': detections,
+                    'inference_ms': inference_ms,
+                }
+        except (json.JSONDecodeError, Exception) as e:
+            self.get_logger().warn('Detection-Parse fehlgeschlagen: %s' % e)
+
+    def _semantics_cb(self, msg):
+        """Parst /vision/semantics JSON."""
+        try:
+            data = json.loads(msg.data)
+            with self.lock:
+                self.latest_semantics = {
+                    'analysis': data.get('analysis', ''),
+                    'model': data.get('model', ''),
+                }
+        except (json.JSONDecodeError, Exception) as e:
+            self.get_logger().warn('Semantics-Parse fehlgeschlagen: %s' % e)
 
     def _map_cb(self, msg):
         """OccupancyGrid -> RGBA PNG -> Base64."""
@@ -712,6 +791,7 @@ class DashboardBridge(Node):
         with self.lock:
             odom_hz = self._compute_hz(self.odom_times)
             scan_hz = self._compute_hz(self.scan_times)
+            det_hz = self._compute_hz(self.detection_times)
             has_jpeg = self.latest_jpeg is not None
 
         return {
@@ -737,9 +817,37 @@ class DashboardBridge(Node):
                 'esp32': odom_hz > 1.0,
                 'lidar': scan_hz > 1.0,
                 'camera': has_jpeg,
-                'hailo': os.path.exists('/dev/hailo0'),
+                'hailo': det_hz > 0.5 or os.path.exists('/dev/hailo0'),
             },
             'ip': self._get_host_ip(),
+        }
+
+    def build_detections_msg(self):
+        """Erstellt das Vision-Detections-JSON-Dictionary (oder None)."""
+        with self.lock:
+            data = self.latest_detections
+            det_hz = self._compute_hz(self.detection_times)
+        if data is None:
+            return None
+        return {
+            'op': 'vision_detections',
+            'ts': round(time.time(), 3),
+            'inference_ms': round(data.get('inference_ms', 0.0), 1),
+            'detections': data.get('detections', []),
+            'detection_hz': round(det_hz, 1),
+        }
+
+    def build_semantics_msg(self):
+        """Erstellt das Vision-Semantics-JSON-Dictionary (oder None)."""
+        with self.lock:
+            data = self.latest_semantics
+        if data is None:
+            return None
+        return {
+            'op': 'vision_semantics',
+            'ts': round(time.time(), 3),
+            'analysis': data.get('analysis', ''),
+            'model': data.get('model', ''),
         }
 
 
