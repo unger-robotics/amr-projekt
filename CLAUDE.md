@@ -74,14 +74,14 @@ python3 -m http.server 3000 -d dashboard/dist/
 # Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
 ```
 
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
 
 WebSocket-Protokoll (Custom JSON, kein rosbridge):
-- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices)
+- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition)
 - **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
-- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg`)
+- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg`)
 
-Komponenten: `Dashboard.tsx` (Layout+WebSocket), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
 ### Validierungsskripte (Raspberry Pi)
 
@@ -193,7 +193,8 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 | `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
 | `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
 | `/imu` | `sensor_msgs/Imu` | ESP32 (20 Hz) | IMU-Daten (Beschleunigung, Drehrate, fusionierte Orientierung) |
-| `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher | TF-Baum |
+| `/map` | `nav_msgs/OccupancyGrid` | SLAM Toolbox | Belegungskarte (5 cm Aufloesung, via dashboard_bridge als PNG zum Browser) |
+| `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher, slam_toolbox | TF-Baum (inkl. map→odom von SLAM) |
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional).
 
