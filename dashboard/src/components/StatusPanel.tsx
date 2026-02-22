@@ -8,8 +8,10 @@ interface StatusPanelProps {
 function Dot({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-block w-2.5 h-2.5 rounded-full ${
-        active ? 'bg-green-500' : 'bg-red-500'
+      className={`inline-block w-2 h-2 ${
+        active
+          ? 'bg-hud-green shadow-[0_0_6px_rgba(0,230,118,0.6)]'
+          : 'bg-hud-red shadow-[0_0_6px_rgba(255,23,68,0.6)]'
       }`}
     />
   );
@@ -17,9 +19,9 @@ function Dot({ active }: { active: boolean }) {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-gray-400">{label}</span>
-      <span className="font-mono">{value}</span>
+    <div className="flex justify-between text-xs">
+      <span className="text-hud-text-dim uppercase tracking-wider">{label}</span>
+      <span className="text-hud-cyan font-medium">{value}</span>
     </div>
   );
 }
@@ -36,28 +38,32 @@ export function StatusPanel({ connected, latencyMs }: StatusPanelProps) {
   const scanHz = useTelemetryStore((s) => s.scanHz);
 
   return (
-    <div className="bg-gray-900 text-white p-4 flex flex-col gap-4 overflow-y-auto">
+    <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 overflow-y-auto hud-glow">
       {/* Verbindung */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
           Verbindung
         </h2>
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-xs">
             <Dot active={connected} />
-            <span>{connected ? 'WebSocket verbunden' : 'Getrennt'}</span>
+            <span className={connected ? 'text-hud-green' : 'text-hud-red'}>
+              {connected ? 'WebSocket verbunden' : 'Getrennt'}
+            </span>
           </div>
           <Row label="Latenz" value={`${Math.round(latencyMs)} ms`} />
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-xs">
             <Dot active={esp32Active} />
-            <span>ESP32 {esp32Active ? 'aktiv' : 'inaktiv'}</span>
+            <span className={esp32Active ? 'text-hud-green' : 'text-hud-red'}>
+              ESP32 {esp32Active ? 'aktiv' : 'inaktiv'}
+            </span>
           </div>
         </div>
       </section>
 
       {/* Odometrie */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
           Odometrie
         </h2>
         <div className="flex flex-col gap-1.5">
@@ -71,7 +77,7 @@ export function StatusPanel({ connected, latencyMs }: StatusPanelProps) {
 
       {/* Sensoren */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
           Sensoren
         </h2>
         <div className="flex flex-col gap-1.5">

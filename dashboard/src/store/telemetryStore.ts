@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -23,9 +23,22 @@ interface TelemetryState {
   // Timestamps
   lastTelemetryTs: number;
   lastScanTs: number;
+  // System metrics
+  cpuTempC: number;
+  cpuLoad1m: number;
+  ramUsedMb: number;
+  ramTotalMb: number;
+  diskUsedGb: number;
+  diskTotalGb: number;
+  diskUsagePct: number;
+  lidarActive: boolean;
+  cameraActive: boolean;
+  hailoDetected: boolean;
+  lastSystemTs: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
+  updateSystem: (msg: SystemMsg) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -35,6 +48,10 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   esp32Active: false, odomHz: 0, scanHz: 0,
   scanRanges: [], scanAngleMin: 0, scanAngleMax: 0, scanAngleIncrement: 0,
   lastTelemetryTs: 0, lastScanTs: 0,
+  cpuTempC: 0, cpuLoad1m: 0, ramUsedMb: 0, ramTotalMb: 0,
+  diskUsedGb: 0, diskTotalGb: 0, diskUsagePct: 0,
+  lidarActive: false, cameraActive: false, hailoDetected: false,
+  lastSystemTs: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -56,5 +73,19 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     scanAngleMax: msg.angle_max,
     scanAngleIncrement: msg.angle_increment,
     lastScanTs: msg.ts,
+  }),
+
+  updateSystem: (msg) => set({
+    cpuTempC: msg.cpu.temp_c,
+    cpuLoad1m: msg.cpu.load_1m,
+    ramUsedMb: msg.ram.used_mb,
+    ramTotalMb: msg.ram.total_mb,
+    diskUsedGb: msg.disk.used_gb,
+    diskTotalGb: msg.disk.total_gb,
+    diskUsagePct: msg.disk.usage_pct,
+    lidarActive: msg.devices.lidar,
+    cameraActive: msg.devices.camera,
+    hailoDetected: msg.devices.hailo,
+    lastSystemTs: msg.ts,
   }),
 }));

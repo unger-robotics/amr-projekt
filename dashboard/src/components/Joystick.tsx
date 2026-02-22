@@ -28,7 +28,7 @@ export function Joystick({ onMove, onEnd, disabled }: JoystickProps) {
       zone: containerRef.current,
       mode: 'static',
       position: { bottom: '50%', left: '50%' },
-      color: '#3b82f6',
+      color: '#00e5ff',
       size: JOYSTICK_SIZE,
     });
     managerRef.current = manager;
@@ -60,7 +60,7 @@ export function Joystick({ onMove, onEnd, disabled }: JoystickProps) {
     <div className="flex items-center justify-center h-full w-full">
       <div
         ref={containerRef}
-        className={`relative w-[180px] h-[180px] ${disabled ? 'opacity-30 pointer-events-none' : ''}`}
+        className={`relative w-[180px] h-[180px] border border-hud-border ${disabled ? 'opacity-20 pointer-events-none' : ''}`}
       />
     </div>
   );

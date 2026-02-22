@@ -42,5 +42,15 @@ export interface HeartbeatMsg {
   op: 'heartbeat';
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg;
+/** System-Metriken vom Backend (1 Hz) */
+export interface SystemMsg {
+  op: 'system';
+  ts: number;
+  cpu: { temp_c: number; load_1m: number; load_5m: number; freq_mhz: number[] };
+  ram: { total_mb: number; used_mb: number; usage_pct: number };
+  disk: { total_gb: number; used_gb: number; usage_pct: number };
+  devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean };
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg;
 export type ClientMessage = CmdVelMsg | HeartbeatMsg;

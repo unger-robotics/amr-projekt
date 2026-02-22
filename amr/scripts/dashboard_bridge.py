@@ -17,8 +17,10 @@ Verwendung:
   ros2 launch my_bot full_stack.launch.py use_dashboard:=True
 """
 
+import glob as globmod
 import json
 import math
+import os
 import threading
 import time
 from collections import deque
@@ -56,6 +58,7 @@ MAX_LINEAR = 0.4       # m/s
 MAX_ANGULAR = 1.0      # rad/s
 JPEG_QUALITY = 70
 HZ_WINDOW = 50         # Anzahl Timestamps fuer Hz-Berechnung
+SYSTEM_BROADCAST_HZ = 1.0  # System-Metriken Broadcast-Rate
 
 
 def quaternion_to_yaw(q):
@@ -222,6 +225,7 @@ class WebSocketServer:
             await asyncio.gather(
                 self._telemetry_loop(),
                 self._scan_loop(),
+                self._system_loop(),
             )
 
     async def _telemetry_loop(self):
@@ -239,6 +243,14 @@ class WebSocketServer:
             data = self.node.build_scan_msg()
             if data is not None:
                 await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _system_loop(self):
+        """Sendet System-Metriken mit 1 Hz."""
+        interval = 1.0 / SYSTEM_BROADCAST_HZ
+        while True:
+            data = self.node.build_system_msg()
+            await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
 
     def start(self):
@@ -472,6 +484,97 @@ class DashboardBridge(Node):
             'angle_max': round(scan.angle_max, 4),
             'angle_increment': round(scan.angle_increment, 6),
             'ranges': ranges,
+        }
+
+
+    def build_system_msg(self):
+        """Erstellt das System-Metriken-JSON-Dictionary."""
+        # CPU-Temperatur
+        cpu_temp = 0.0
+        try:
+            with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
+                cpu_temp = int(f.read().strip()) / 1000.0
+        except (IOError, ValueError):
+            pass
+
+        # CPU-Load
+        load_1m, load_5m = 0.0, 0.0
+        try:
+            with open('/proc/loadavg', 'r') as f:
+                parts = f.read().strip().split()
+                load_1m = float(parts[0])
+                load_5m = float(parts[1])
+        except (IOError, ValueError, IndexError):
+            pass
+
+        # CPU-Frequenzen
+        freq_mhz = []
+        for path in sorted(globmod.glob(
+            '/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq'
+        )):
+            try:
+                with open(path, 'r') as f:
+                    freq_mhz.append(int(f.read().strip()) // 1000)
+            except (IOError, ValueError):
+                pass
+
+        # RAM
+        ram_total, ram_avail = 0, 0
+        try:
+            with open('/proc/meminfo', 'r') as f:
+                for line in f:
+                    if line.startswith('MemTotal:'):
+                        ram_total = int(line.split()[1])
+                    elif line.startswith('MemAvailable:'):
+                        ram_avail = int(line.split()[1])
+        except (IOError, ValueError):
+            pass
+        ram_total_mb = ram_total / 1024.0
+        ram_used_mb = (ram_total - ram_avail) / 1024.0
+        ram_pct = (ram_used_mb / ram_total_mb * 100.0) if ram_total_mb > 0 else 0.0
+
+        # Disk
+        disk_total_gb, disk_used_gb, disk_pct = 0.0, 0.0, 0.0
+        try:
+            st = os.statvfs('/')
+            disk_total_gb = (st.f_blocks * st.f_frsize) / (1024 ** 3)
+            disk_free_gb = (st.f_bfree * st.f_frsize) / (1024 ** 3)
+            disk_used_gb = disk_total_gb - disk_free_gb
+            disk_pct = (disk_used_gb / disk_total_gb * 100.0) if disk_total_gb > 0 else 0.0
+        except OSError:
+            pass
+
+        # Geraete-Status
+        with self.lock:
+            odom_hz = self._compute_hz(self.odom_times)
+            scan_hz = self._compute_hz(self.scan_times)
+            has_jpeg = self.latest_jpeg is not None
+
+        return {
+            'op': 'system',
+            'ts': round(time.time(), 3),
+            'cpu': {
+                'temp_c': round(cpu_temp, 1),
+                'load_1m': round(load_1m, 2),
+                'load_5m': round(load_5m, 2),
+                'freq_mhz': freq_mhz,
+            },
+            'ram': {
+                'total_mb': round(ram_total_mb, 0),
+                'used_mb': round(ram_used_mb, 0),
+                'usage_pct': round(ram_pct, 1),
+            },
+            'disk': {
+                'total_gb': round(disk_total_gb, 1),
+                'used_gb': round(disk_used_gb, 1),
+                'usage_pct': round(disk_pct, 1),
+            },
+            'devices': {
+                'esp32': odom_hz > 1.0,
+                'lidar': scan_hz > 1.0,
+                'camera': has_jpeg,
+                'hailo': os.path.exists('/dev/hailo0'),
+            },
         }
 
 

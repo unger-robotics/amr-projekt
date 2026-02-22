@@ -7,9 +7,10 @@ const POINT_RADIUS = 2;
 const SENSOR_YAW_OFFSET = Math.PI; // LiDAR 180° gedreht montiert (TF: base_link→laser, yaw=π)
 
 function rangeToColor(range: number): string {
-  if (range < 1.0) return '#ef4444'; // red-500
-  if (range < 2.0) return '#eab308'; // yellow-500
-  return '#22c55e'; // green-500
+  if (range < 1.0) return '#00e5ff';
+  if (range < 2.0) return '#00b8d4';
+  if (range < 3.0) return '#0097a7';
+  return '#00695c';
 }
 
 export function LidarView() {
@@ -41,7 +42,7 @@ export function LidarView() {
     ctx.scale(dpr, dpr);
 
     // Clear
-    ctx.fillStyle = '#030712'; // gray-950
+    ctx.fillStyle = '#0a0e17';
     ctx.fillRect(0, 0, width, height);
 
     const cx = width / 2;
@@ -50,7 +51,7 @@ export function LidarView() {
     const scale = maxPixelRadius / MAX_DISPLAY_RANGE;
 
     // Grid circles
-    ctx.strokeStyle = '#374151'; // gray-700
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.15)';
     ctx.lineWidth = 0.5;
     const gridSteps = Math.floor(MAX_DISPLAY_RANGE / GRID_STEP);
     for (let i = 1; i <= gridSteps; i++) {
@@ -61,15 +62,15 @@ export function LidarView() {
     }
 
     // Grid labels
-    ctx.fillStyle = '#6b7280'; // gray-500
-    ctx.font = '10px monospace';
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.4)';
+    ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
     for (let i = 1; i <= gridSteps; i++) {
       ctx.fillText(`${i}m`, cx, cy - i * GRID_STEP * scale + 12);
     }
 
     // Cross-hair axes
-    ctx.strokeStyle = '#374151';
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
     ctx.moveTo(cx, cy - maxPixelRadius);
@@ -87,8 +88,6 @@ export function LidarView() {
       // Forward = up on screen. Sensor mounted 180° rotated → add π offset.
       // ROS convention: 0 rad = forward, positive = left.
       // Canvas: x-right, y-down.
-      // screen_x = cx + range * sin(angle) * scale   (sin because left-positive maps to screen-right for negative angles)
-      // screen_y = cy - range * cos(angle) * scale   (cos maps forward to screen-up)
       const sx = cx + range * Math.sin(angle) * scale;
       const sy = cy - range * Math.cos(angle) * scale;
 
@@ -98,15 +97,19 @@ export function LidarView() {
       ctx.fill();
     }
 
-    // Robot triangle at center (pointing up = forward)
+    // Robot triangle at center (pointing up = forward) with glow
     const triSize = 8;
-    ctx.fillStyle = '#3b82f6'; // blue-500
+    ctx.save();
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#00e5ff';
     ctx.beginPath();
     ctx.moveTo(cx, cy - triSize);
     ctx.lineTo(cx - triSize * 0.6, cy + triSize * 0.5);
     ctx.lineTo(cx + triSize * 0.6, cy + triSize * 0.5);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }, [scanRanges, scanAngleMin, scanAngleIncrement]);
 
   useEffect(() => {
@@ -126,8 +129,12 @@ export function LidarView() {
   }, [draw]);
 
   return (
-    <div ref={containerRef} className="bg-gray-950 w-full h-full relative">
+    <div ref={containerRef} className="bg-hud-bg w-full h-full relative">
       <canvas ref={canvasRef} className="absolute inset-0" />
+      {/* LiDAR label */}
+      <div className="absolute top-2 left-3 text-hud-cyan/60 text-[10px] uppercase tracking-widest pointer-events-none z-10">
+        LIDAR RPL-A1
+      </div>
     </div>
   );
 }

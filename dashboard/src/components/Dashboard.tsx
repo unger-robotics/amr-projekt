@@ -8,19 +8,22 @@ import { CameraView } from './CameraView';
 import { LidarView } from './LidarView';
 import { Joystick } from './Joystick';
 import { EmergencyStop } from './EmergencyStop';
+import { SystemMetrics } from './SystemMetrics';
 
 export function Dashboard() {
   const [statusVisible, setStatusVisible] = useState(false);
 
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
+  const updateSystem = useTelemetryStore((s) => s.updateSystem);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
       if (msg.op === 'telemetry') updateTelemetry(msg);
       else if (msg.op === 'scan') updateScan(msg);
+      else if (msg.op === 'system') updateSystem(msg);
     },
-    [updateTelemetry, updateScan],
+    [updateTelemetry, updateScan, updateSystem],
   );
 
   const { connected, latencyMs, send } = useWebSocket(onMessage);
@@ -34,10 +37,11 @@ export function Dashboard() {
   }, [send, onJoystickEnd]);
 
   return (
-    <div className="h-dvh bg-gray-950 text-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[280px_1fr_280px] overflow-hidden">
+    <div className="h-dvh bg-hud-bg text-hud-text grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[280px_1fr_280px] overflow-hidden">
       {/* Status panel -- visible on lg, toggle on mobile/tablet */}
-      <aside className="hidden lg:flex flex-col border-r border-gray-800 overflow-y-auto">
+      <aside className="hidden lg:flex flex-col border-r border-hud-border overflow-y-auto">
         <StatusPanel connected={connected} latencyMs={latencyMs} />
+        <SystemMetrics />
       </aside>
 
       {/* Center content: Camera + LiDAR */}
@@ -51,7 +55,7 @@ export function Dashboard() {
       </main>
 
       {/* Joystick panel */}
-      <aside className="border-t sm:border-t-0 sm:border-l border-gray-800 flex flex-col">
+      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col">
         <div className="flex-1 min-h-0">
           <Joystick
             onMove={onJoystickMove}
@@ -64,7 +68,7 @@ export function Dashboard() {
       {/* Mobile status toggle button */}
       <button
         onClick={() => setStatusVisible((v) => !v)}
-        className="fixed top-3 left-3 z-40 lg:hidden bg-gray-800 hover:bg-gray-700 text-gray-300 p-2 rounded-lg text-xs"
+        className="fixed top-3 left-3 z-40 lg:hidden bg-hud-panel hover:bg-hud-bg text-hud-text-dim p-2 border border-hud-border text-xs"
         aria-label="Status anzeigen"
       >
         {statusVisible ? 'Schliessen' : 'Status'}
@@ -72,12 +76,12 @@ export function Dashboard() {
 
       {/* Mobile status overlay */}
       {statusVisible && (
-        <div className="fixed inset-0 z-30 lg:hidden bg-gray-950/80 backdrop-blur-sm"
+        <div className="fixed inset-0 z-30 lg:hidden bg-hud-bg/90 backdrop-blur-sm"
           onClick={() => setStatusVisible(false)}
           role="presentation"
         >
           <div
-            className="absolute top-12 left-3 w-64 max-h-[80vh] rounded-lg border border-gray-700 overflow-y-auto"
+            className="absolute top-12 left-3 w-64 max-h-[80vh] border border-hud-border overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="Statusanzeige"

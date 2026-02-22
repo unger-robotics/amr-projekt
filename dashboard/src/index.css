@@ -1,1 +1,31 @@
 @import "tailwindcss";
+
+@theme {
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-sans: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --color-hud-bg: #0a0e17;
+  --color-hud-panel: #0d1321;
+  --color-hud-border: rgba(0, 229, 255, 0.2);
+  --color-hud-cyan: #00e5ff;
+  --color-hud-cyan-dim: rgba(0, 229, 255, 0.6);
+  --color-hud-amber: #ffab00;
+  --color-hud-red: #ff1744;
+  --color-hud-green: #00e676;
+  --color-hud-text: #e0f7fa;
+  --color-hud-text-dim: rgba(224, 247, 250, 0.5);
+}
+
+@layer utilities {
+  .hud-glow {
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.1), inset 0 0 15px rgba(0, 229, 255, 0.05);
+  }
+  .hud-scanline {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 229, 255, 0.03) 2px,
+      rgba(0, 229, 255, 0.03) 4px
+    );
+  }
+}

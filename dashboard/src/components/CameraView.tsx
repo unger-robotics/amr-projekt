@@ -16,9 +16,9 @@ export function CameraView() {
   }, []);
 
   return (
-    <div className="bg-gray-900 flex items-center justify-center w-full h-full">
+    <div className="bg-hud-bg flex items-center justify-center w-full h-full relative overflow-hidden">
       {error ? (
-        <div className="flex flex-col items-center gap-2 text-gray-500">
+        <div className="flex flex-col items-center gap-2 text-hud-text-dim">
           <svg
             className="w-12 h-12"
             fill="none"
@@ -44,6 +44,26 @@ export function CameraView() {
           onLoad={handleLoad}
         />
       )}
+
+      {/* HUD Overlay Elements (pointer-events-none) */}
+      {/* Scanline overlay */}
+      <div className="absolute inset-0 hud-scanline pointer-events-none" />
+
+      {/* Crosshair - vertical */}
+      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-hud-cyan/20 pointer-events-none" />
+      {/* Crosshair - horizontal */}
+      <div className="absolute left-0 right-0 top-1/2 h-px bg-hud-cyan/20 pointer-events-none" />
+
+      {/* Corner brackets */}
+      <div className="absolute top-3 left-3 w-5 h-5 border-t border-l border-hud-cyan/50 pointer-events-none" />
+      <div className="absolute top-3 right-3 w-5 h-5 border-t border-r border-hud-cyan/50 pointer-events-none" />
+      <div className="absolute bottom-3 left-3 w-5 h-5 border-b border-l border-hud-cyan/50 pointer-events-none" />
+      <div className="absolute bottom-3 right-3 w-5 h-5 border-b border-r border-hud-cyan/50 pointer-events-none" />
+
+      {/* Camera label */}
+      <div className="absolute top-2 left-7 text-hud-cyan/60 text-[10px] uppercase tracking-widest pointer-events-none">
+        CAM IMX296
+      </div>
     </div>
   );
 }

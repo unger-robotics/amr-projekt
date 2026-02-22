@@ -22,10 +22,11 @@ export function EmergencyStop({ onStop }: EmergencyStopProps) {
   return (
     <button
       onClick={handlePress}
-      className={`fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full
-        bg-red-600 hover:bg-red-700 active:bg-red-800
+      className={`fixed bottom-6 right-6 z-50 w-16 h-16
+        bg-hud-red hover:bg-red-700 active:bg-red-800
+        border border-hud-red/50
         text-white font-bold text-sm
-        shadow-lg shadow-red-900/50
+        shadow-[0_0_20px_rgba(255,23,68,0.3)]
         flex items-center justify-center
         transition-transform active:scale-95
         ${isMoving ? 'animate-pulse' : ''}`}
