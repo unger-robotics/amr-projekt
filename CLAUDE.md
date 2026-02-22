@@ -74,7 +74,7 @@ python3 -m http.server 3000 -d dashboard/dist/
 # Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
 ```
 
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s).
 
 ### Validierungsskripte (Raspberry Pi)
 
@@ -317,7 +317,9 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 ## Nicht-getrackte Dateien (.gitignore)
 
-Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`.
+Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`.
+
+Nicht getrackt (aber nicht in `.gitignore`): `objekterkennung/` – Planungsdokumente fuer zukuenftige Erweiterungen (Hailo-8L AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, erweiterte Schaltplaene).
 
 ## Troubleshooting
 
