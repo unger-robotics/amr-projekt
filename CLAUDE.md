@@ -264,7 +264,7 @@ host_hailo_runner.py                   hailo_udp_receiver_node
 - **hailo_udp_receiver_node** (Docker/ROS2): Empfaengt JSON-Detektionen via UDP (Port 5005), validiert und publiziert auf `/vision/detections`. Identisches JSON-Schema wie `hailo_inference_node`.
 - **hailo_inference_node** (Legacy): Direkter Hailo-8 Zugriff aus dem Container – bleibt als Datei/Entry-Point fuer Rueckwaertskompatibilitaet, wird aber nicht mehr gelauncht.
 - **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, sendet Bild + Detektions-Kontext an Gemini API (`gemini-3.1-pro-preview`), publiziert semantische Beschreibung auf `/vision/semantics`. Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 2s zwischen API-Aufrufen.
-- **Modell**: YOLOv8s als HEF (Hailo Executable Format), Platzhalter-Pfad `hardware/models/yolov8s.hef`. Kompilierung via Hailo Model Zoo / Dataflow Compiler.
+- **Modell**: YOLOv8s als HEF (Hailo Executable Format), vorkompiliert aus Hailo Model Zoo v2.11.0 fuer **Hailo-8L** (`hardware/models/yolov8s.hef`, 25 MB, in `.gitignore`). Download: `wget -O hardware/models/yolov8s.hef "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.11.0/hailo8l/yolov8s.hef"`. **Achtung**: Hailo-8 und Hailo-8L HEFs sind inkompatibel (Device-Arch-Pruefung). Das HEF enthaelt integriertes NMS — Output-Shape `(80, N, 5)` mit `[y_min, x_min, y_max, x_max, confidence]` normalisiert, NICHT das Software-Format `[num_boxes, 84]`. Inference ~36 ms/Frame.
 - **Python-Deps**: Docker: `pip3 install google-generativeai` (Gemini). Host: `hailort` + `opencv-python` + `numpy` (auf Pi 5 vorinstalliert).
 
 ```bash
@@ -356,7 +356,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
-- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8 (Platzhalter, muss via Hailo Model Zoo erstellt werden)
+- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8 (aus Hailo Model Zoo v2.11.0, 18 MB, in `.gitignore`)
 
 ## Projektdokumente (Projektroot)
 

@@ -59,44 +59,43 @@ def preprocess(frame: np.ndarray) -> np.ndarray:
 
 def postprocess(raw_output: dict, orig_h: int, orig_w: int,
                 threshold: float) -> list:
-    """YOLOv8-Rohausgabe in Detektionsliste umwandeln."""
+    """Hailo-NMS-Ausgabe in Detektionsliste umwandeln.
+
+    Hailo-HEF mit integriertem NMS liefert Shape (num_classes, N, 5)
+    wobei 5 = [y_min, x_min, y_max, x_max, confidence], normalisiert [0,1].
+    """
     detections = []
     for _name, data in raw_output.items():
         output = np.squeeze(data)
-        if output.ndim != 2:
-            continue
-        num_values = output.shape[1]
-        if num_values <= 4:
+        if output.ndim != 3 or output.shape[2] != 5:
             continue
 
-        boxes = output[:, :4]
-        scores = output[:, 4:]
+        num_classes = output.shape[0]
+        for class_id in range(num_classes):
+            class_dets = output[class_id]
+            for det in class_dets:
+                confidence = float(det[4])
+                if confidence < threshold:
+                    continue
 
-        for i in range(output.shape[0]):
-            class_id = int(np.argmax(scores[i]))
-            confidence = float(scores[i, class_id])
-            if confidence < threshold:
-                continue
+                y1 = float(det[0]) * orig_h
+                x1 = float(det[1]) * orig_w
+                y2 = float(det[2]) * orig_h
+                x2 = float(det[3]) * orig_w
 
-            cx, cy, w, h = boxes[i]
-            x1 = (cx - w / 2) * orig_w
-            y1 = (cy - h / 2) * orig_h
-            x2 = (cx + w / 2) * orig_w
-            y2 = (cy + h / 2) * orig_h
-
-            label = COCO_LABELS[class_id] if class_id < len(
-                COCO_LABELS) else f'class_{class_id}'
-            detections.append({
-                'class_id': class_id,
-                'label': label,
-                'confidence': round(confidence, 3),
-                'bbox': [
-                    round(float(x1), 1),
-                    round(float(y1), 1),
-                    round(float(x2), 1),
-                    round(float(y2), 1),
-                ],
-            })
+                label = COCO_LABELS[class_id] if class_id < len(
+                    COCO_LABELS) else f'class_{class_id}'
+                detections.append({
+                    'class_id': class_id,
+                    'label': label,
+                    'confidence': round(confidence, 3),
+                    'bbox': [
+                        round(x1, 1),
+                        round(y1, 1),
+                        round(x2, 1),
+                        round(y2, 1),
+                    ],
+                })
     return detections
 
 
@@ -171,51 +170,62 @@ def run_hailo(model_path: str, threshold: float,
         print('Ist dashboard_bridge gestartet?')
         sys.exit(1)
 
-    with InferVStreams(network_group, input_params, output_params) as pipeline:
-        count = 0
-        while True:
-            t_start = time.monotonic()
+    with network_group.activate():
+        with InferVStreams(network_group, input_params,
+                          output_params) as pipeline:
+            count = 0
+            while True:
+                t_start = time.monotonic()
 
-            ret, frame = cap.read()
-            if not ret:
-                # Reconnect bei Stream-Abbruch
-                cap.release()
-                time.sleep(1.0)
-                cap = cv2.VideoCapture(MJPEG_URL)
-                continue
+                ret, frame = cap.read()
+                if not ret:
+                    # Reconnect bei Stream-Abbruch
+                    cap.release()
+                    time.sleep(1.0)
+                    cap = cv2.VideoCapture(MJPEG_URL)
+                    continue
 
-            orig_h, orig_w = frame.shape[:2]
-            preprocessed = preprocess(frame)
-            input_data = {
-                input_vstream_info[0].name:
-                    np.expand_dims(preprocessed, axis=0)
-            }
+                orig_h, orig_w = frame.shape[:2]
+                preprocessed = preprocess(frame)
+                input_data = {
+                    input_vstream_info[0].name:
+                        np.expand_dims(preprocessed, axis=0)
+                }
 
-            t_infer = time.monotonic()
-            raw_output = pipeline.infer(input_data)
-            dt_ms = (time.monotonic() - t_infer) * 1000.0
+                t_infer = time.monotonic()
+                raw_output = pipeline.infer(input_data)
+                dt_ms = (time.monotonic() - t_infer) * 1000.0
 
-            detections = postprocess(raw_output, orig_h, orig_w, threshold)
+                if count == 0:
+                    for name, data in raw_output.items():
+                        shape = np.squeeze(data).shape
+                        print(f'[DEBUG] Output "{name}": shape={shape}')
 
-            payload = json.dumps({
-                'timestamp': time.time(),
-                'inference_ms': round(dt_ms, 1),
-                'detections': detections,
-            }).encode('utf-8')
+                detections = postprocess(
+                    raw_output, orig_h, orig_w, threshold)
 
-            udp_sock.sendto(payload, (UDP_HOST, UDP_PORT))
+                payload = json.dumps({
+                    'timestamp': time.time(),
+                    'inference_ms': round(dt_ms, 1),
+                    'detections': detections,
+                }).encode('utf-8')
 
-            count += 1
-            if detections and count % 5 == 0:
-                labels = [d['label'] for d in detections]
-                print(f'[HAILO] {len(detections)} Objekt(e) in {dt_ms:.1f} ms: '
-                      f'{", ".join(labels)}')
+                udp_sock.sendto(payload, (UDP_HOST, UDP_PORT))
 
-            # Rate-Limiting auf 5 Hz
-            elapsed = time.monotonic() - t_start
-            sleep_time = 0.2 - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+                count += 1
+                if detections and count % 5 == 0:
+                    labels = [d['label'] for d in detections]
+                    print(f'[HAILO] {len(detections)} Objekt(e) in '
+                          f'{dt_ms:.1f} ms: {", ".join(labels)}')
+                elif count % 25 == 0:
+                    print(f'[HAILO] Frame {count}: {dt_ms:.1f} ms, '
+                          f'keine Detektionen')
+
+                # Rate-Limiting auf 5 Hz
+                elapsed = time.monotonic() - t_start
+                sleep_time = 0.2 - elapsed
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
 
     cap.release()
 

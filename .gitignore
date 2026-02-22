@@ -41,6 +41,9 @@ hardware_info_*.md
 *.MOV
 *.mov
 
+# Hailo HEF-Modelle (Binaer, ~25-50 MB)
+*.hef
+
 # Dashboard (Frontend)
 node_modules/
 dashboard/dist/
