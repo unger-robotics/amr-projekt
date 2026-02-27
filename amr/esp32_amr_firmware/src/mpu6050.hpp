@@ -2,10 +2,6 @@
 #include <Wire.h>
 #include "config.h"
 
-#ifndef IMU_COMPLEMENTARY_ALPHA
-#define IMU_COMPLEMENTARY_ALPHA 0.02f
-#endif
-
 class MPU6050 {
   private:
     static constexpr uint8_t REG_SMPLRT_DIV   = 0x19;
@@ -15,9 +11,7 @@ class MPU6050 {
     static constexpr uint8_t REG_PWR_MGMT_1    = 0x6B;
     static constexpr uint8_t REG_WHO_AM_I      = 0x75;
 
-    static constexpr float ACCEL_SENSITIVITY = 16384.0f; // LSB/g at +/-2g
-    static constexpr float GYRO_SENSITIVITY  = 131.0f;   // LSB/(deg/s) at +/-250 deg/s
-    static constexpr float GRAVITY           = 9.80665f; // m/s^2
+    static constexpr float GRAVITY = 9.80665f; // m/s^2
     // DEG_TO_RAD is provided by Arduino.h
 
     uint8_t addr_;
@@ -45,15 +39,15 @@ class MPU6050 {
   public:
     MPU6050()
         : addr_(0), gx_bias_(0), gy_bias_(0), gz_bias_(0),
-          heading_(0), alpha_(IMU_COMPLEMENTARY_ALPHA) {}
+          heading_(0), alpha_(amr::imu::complementary_alpha) {}
 
     bool init(uint8_t sda = PIN_I2C_SDA, uint8_t scl = PIN_I2C_SCL,
-              uint8_t addr = IMU_I2C_ADDR) {
+              uint8_t addr = amr::i2c::addr_mpu6050) {
         addr_ = addr;
-        alpha_ = IMU_COMPLEMENTARY_ALPHA;
+        alpha_ = amr::imu::complementary_alpha;
 
         Wire.begin(sda, scl);
-        Wire.setClock(400000); // 400 kHz Fast Mode
+        Wire.setClock(amr::i2c::master_freq_hz);
 
         // WHO_AM_I check
         uint8_t who = readRegister(REG_WHO_AM_I);
@@ -101,7 +95,7 @@ class MPU6050 {
             sum_gy += raw_gy;
             sum_gz += raw_gz;
 
-            delay(2); // ~500 Hz sampling during calibration
+            delay(2);
         }
 
         gx_bias_ = (float)sum_gx / (float)samples;
@@ -133,21 +127,23 @@ class MPU6050 {
         int16_t raw_gz = (int16_t)((Wire.read() << 8) | Wire.read());
 
         // Accel: raw / sensitivity * gravity -> m/s^2
-        ax = (float)raw_ax / ACCEL_SENSITIVITY * GRAVITY;
-        ay = (float)raw_ay / ACCEL_SENSITIVITY * GRAVITY;
-        az = (float)raw_az / ACCEL_SENSITIVITY * GRAVITY;
+        ax = (float)raw_ax / amr::imu::accel_sensitivity * GRAVITY;
+        ay = (float)raw_ay / amr::imu::accel_sensitivity * GRAVITY;
+        az = (float)raw_az / amr::imu::accel_sensitivity * GRAVITY;
 
         // Gyro: (raw - bias) / sensitivity * deg_to_rad -> rad/s
-        gx = ((float)raw_gx - gx_bias_) / GYRO_SENSITIVITY * DEG_TO_RAD;
-        gy = ((float)raw_gy - gy_bias_) / GYRO_SENSITIVITY * DEG_TO_RAD;
-        gz = ((float)raw_gz - gz_bias_) / GYRO_SENSITIVITY * DEG_TO_RAD;
+        gx = ((float)raw_gx - gx_bias_) / amr::imu::gyro_sensitivity * DEG_TO_RAD;
+        gy = ((float)raw_gy - gy_bias_) / amr::imu::gyro_sensitivity * DEG_TO_RAD;
+        gz = ((float)raw_gz - gz_bias_) / amr::imu::gyro_sensitivity * DEG_TO_RAD;
 
         return true;
     }
 
+    // Komplementaerfilter: alpha = 98% Gyro, (1-alpha) = 2% Encoder
+    // Konsistent mit config.h-Konvention (alpha = Gyro-Anteil)
     float updateHeading(float encoder_heading, float gz, float dt) {
-        heading_ = alpha_ * encoder_heading
-                 + (1.0f - alpha_) * (heading_ + gz * dt);
+        heading_ = alpha_ * (heading_ + gz * dt)
+                 + (1.0f - alpha_) * encoder_heading;
         return heading_;
     }
 

@@ -7,13 +7,8 @@ volatile int32_t encoder_right_count = 0;
 
 // Overflow-Analyse: int32_t max ~2.147 Mrd Ticks
 // Bei 2x-Quadratur (0,273 mm/Tick) entspricht dies ~586 km Gesamtfahrstrecke
-// Fuer Indoor-AMR praktisch kein Overflow-Risiko
-
-// Drehrichtung wird aus Quadratur-Dekodierung (Phase A + B) bestimmt.
 
 void IRAM_ATTR isr_enc_left() {
-    // Quadratur: Richtung aus XOR von Phase A und Phase B
-    // Vorzeichen empirisch bestimmt: Vorwaerts-PWM = positive Ticks
     if (digitalRead(PIN_ENC_LEFT_A) ^ digitalRead(PIN_ENC_LEFT_B)) {
         encoder_left_count--;
     } else {
@@ -22,8 +17,6 @@ void IRAM_ATTR isr_enc_left() {
 }
 
 void IRAM_ATTR isr_enc_right() {
-    // Rechter Motor: gegenueberliegende Montage
-    // Vorzeichen empirisch bestimmt: Vorwaerts-PWM = positive Ticks
     if (digitalRead(PIN_ENC_RIGHT_A) ^ digitalRead(PIN_ENC_RIGHT_B)) {
         encoder_right_count++;
     } else {
@@ -36,17 +29,18 @@ class RobotHAL {
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
     void driveMotor(uint8_t ch_a, uint8_t ch_b, float speed) {
-        // Dead-Band: PID-Rauschen nahe Null ignorieren, verhindert
-        // Zittern durch Deadzone-Sprung (0 -> PWM_DEADZONE)
-        if (fabsf(speed) < 0.08f) {
+        // Dead-Band: PID-Rauschen nahe Null ignorieren
+        if (fabsf(speed) < amr::pid::deadband_threshold) {
             ledcWrite(ch_a, 0);
             ledcWrite(ch_b, 0);
             return;
         }
-        int16_t duty = constrain(abs(speed) * MOTOR_PWM_MAX, 0, MOTOR_PWM_MAX);
-        // Deadzone-Kompensation: Werte unter PWM_DEADZONE erzeugen keine Bewegung
-        if (duty < PWM_DEADZONE) {
-            duty = PWM_DEADZONE;
+        int16_t duty = constrain(
+            static_cast<int16_t>(fabsf(speed) * amr::pwm::motor_max),
+            static_cast<int16_t>(0),
+            static_cast<int16_t>(amr::pwm::motor_max));
+        if (duty < static_cast<int16_t>(amr::pwm::deadzone)) {
+            duty = static_cast<int16_t>(amr::pwm::deadzone);
         }
         if (speed > 0) {
             ledcWrite(ch_a, duty);
@@ -62,7 +56,7 @@ class RobotHAL {
 
   public:
     void init() {
-        // Encoder: Phase A (Interrupt) + Phase B (Richtung), Pins aus config.h
+        // Encoder: Phase A (Interrupt) + Phase B (Richtung)
         pinMode(PIN_ENC_LEFT_A, INPUT_PULLUP);
         pinMode(PIN_ENC_RIGHT_A, INPUT_PULLUP);
         pinMode(PIN_ENC_LEFT_B, INPUT_PULLUP);
@@ -72,19 +66,19 @@ class RobotHAL {
         attachInterrupt(digitalPinToInterrupt(PIN_ENC_RIGHT_A), isr_enc_right,
                         CHANGE);
 
-        // Motor-PWM: 4 Kanaele mit Zuordnung aus config.h
-        ledcSetup(PWM_CH_LEFT_A, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
-        ledcSetup(PWM_CH_LEFT_B, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
-        ledcSetup(PWM_CH_RIGHT_A, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
-        ledcSetup(PWM_CH_RIGHT_B, MOTOR_PWM_FREQ, MOTOR_PWM_BITS);
+        // Motor-PWM: 4 Kanaele
+        ledcSetup(PWM_CH_LEFT_A, amr::pwm::motor_freq_hz, amr::pwm::motor_bits);
+        ledcSetup(PWM_CH_LEFT_B, amr::pwm::motor_freq_hz, amr::pwm::motor_bits);
+        ledcSetup(PWM_CH_RIGHT_A, amr::pwm::motor_freq_hz, amr::pwm::motor_bits);
+        ledcSetup(PWM_CH_RIGHT_B, amr::pwm::motor_freq_hz, amr::pwm::motor_bits);
         ledcAttachPin(PIN_MOTOR_LEFT_A, PWM_CH_LEFT_A);
         ledcAttachPin(PIN_MOTOR_LEFT_B, PWM_CH_LEFT_B);
         ledcAttachPin(PIN_MOTOR_RIGHT_A, PWM_CH_RIGHT_A);
         ledcAttachPin(PIN_MOTOR_RIGHT_B, PWM_CH_RIGHT_B);
 
-        // LED-PWM: Kanal 4 auf D10
-        ledcSetup(LED_PWM_CHANNEL, LED_PWM_FREQ, LED_PWM_BITS);
-        ledcAttachPin(PIN_LED_MOSFET, LED_PWM_CHANNEL);
+        // LED-PWM: Kanal aus config.h
+        ledcSetup(amr::pwm::led_channel, amr::pwm::led_freq_hz, amr::pwm::led_bits);
+        ledcAttachPin(PIN_LED_MOSFET, amr::pwm::led_channel);
     }
 
     void readEncoders(int32_t &left, int32_t &right) {
