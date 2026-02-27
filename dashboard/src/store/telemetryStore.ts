@@ -55,6 +55,14 @@ interface TelemetryState {
   semanticAnalysis: string;
   semanticModel: string;
   lastSemanticsTs: number;
+  // Battery (INA260)
+  batteryVoltage: number;
+  batteryCurrent: number;
+  batteryPower: number;
+  batteryPercentage: number;
+  // Servo (PCA9685 Pan/Tilt)
+  servoPan: number;
+  servoTilt: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -80,6 +88,8 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
   visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
   semanticAnalysis: '', semanticModel: '', lastSemanticsTs: 0,
+  batteryVoltage: 0, batteryCurrent: 0, batteryPower: 0, batteryPercentage: 0,
+  servoPan: 90, servoTilt: 90,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -93,6 +103,16 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     odomHz: msg.connection.odom_hz,
     scanHz: msg.connection.scan_hz,
     lastTelemetryTs: msg.ts,
+    ...(msg.battery && {
+      batteryVoltage: msg.battery.voltage,
+      batteryCurrent: msg.battery.current,
+      batteryPower: msg.battery.power,
+      batteryPercentage: msg.battery.percentage,
+    }),
+    ...(msg.servo && {
+      servoPan: msg.servo.pan,
+      servoTilt: msg.servo.tilt,
+    }),
   }),
 
   updateScan: (msg) => set({

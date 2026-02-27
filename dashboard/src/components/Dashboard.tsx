@@ -10,6 +10,7 @@ import { Joystick } from './Joystick';
 import { EmergencyStop } from './EmergencyStop';
 import { SystemMetrics } from './SystemMetrics';
 import { MapView } from './MapView';
+import ServoControl from './ServoControl';
 
 export function Dashboard() {
   const [statusVisible, setStatusVisible] = useState(false);
@@ -33,7 +34,7 @@ export function Dashboard() {
     [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics],
   );
 
-  const { connected, latencyMs, send } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd } = useWebSocket(onMessage);
   const { onJoystickMove, onJoystickEnd } = useJoystick(send);
 
   const handleEmergencyStop = useCallback(() => {
@@ -65,7 +66,7 @@ export function Dashboard() {
       </main>
 
       {/* Joystick panel */}
-      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col">
+      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col overflow-y-auto">
         <div className="flex-1 min-h-0">
           <Joystick
             onMove={onJoystickMove}
@@ -73,6 +74,7 @@ export function Dashboard() {
             disabled={!connected}
           />
         </div>
+        <ServoControl sendServoCmd={sendServoCmd} />
       </aside>
 
       {/* Mobile status toggle button */}

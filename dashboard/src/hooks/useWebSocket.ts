@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
@@ -71,5 +71,15 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     }
   }, []);
 
-  return { connected, latencyMs, send };
+  /** Throttled servo command sender (max 10 Hz / 100ms between sends) */
+  const lastServoCmdRef = useRef(0);
+  const sendServoCmd = useCallback((pan: number, tilt: number) => {
+    const now = Date.now();
+    if (now - lastServoCmdRef.current < 100) return;
+    lastServoCmdRef.current = now;
+    const msg: ServoCmdMsg = { op: 'servo_cmd', pan, tilt };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd };
 }

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "config.h"
 #include <geometry_msgs/msg/twist.h>
+#include <geometry_msgs/msg/point.h>
 #include <micro_ros_platformio.h>
 #include <nav_msgs/msg/odometry.h>
 #include <sensor_msgs/msg/imu.h>
@@ -46,7 +47,9 @@ rcl_publisher_t pub_odom;
 rcl_publisher_t pub_imu;
 rcl_publisher_t pub_battery;
 rcl_subscription_t sub_vel;
+rcl_subscription_t sub_servo;
 geometry_msgs__msg__Twist msg_vel;
+geometry_msgs__msg__Point msg_servo;
 nav_msgs__msg__Odometry msg_odom;
 sensor_msgs__msg__Imu msg_imu;
 sensor_msgs__msg__BatteryState msg_bat;
@@ -101,6 +104,12 @@ void controlTask(void *p) {
         if (battery_motor_shutdown) {
             tv = 0;
             tw = 0;
+        }
+
+        // Servo-Rampen aktualisieren (vor Motor-PID, Kamera-Tracking hat Prioritaet)
+        if (pca9685_ok) {
+            pca9685.updateRamp(amr::servo::ch_pan);
+            pca9685.updateRamp(amr::servo::ch_tilt);
         }
 
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
@@ -175,6 +184,21 @@ void vel_cb(const void *m) {
     last_cmd_time = millis();
 }
 
+void servo_cmd_callback(const void *m) {
+    if (m == nullptr) return;
+    const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
+    if (pca9685_ok) {
+        float pan = static_cast<float>(msg->x);
+        if (pan < amr::servo::angle_min_deg) pan = amr::servo::angle_min_deg;
+        if (pan > amr::servo::angle_max_deg) pan = amr::servo::angle_max_deg;
+        float tilt = static_cast<float>(msg->y);
+        if (tilt < amr::servo::angle_min_deg) tilt = amr::servo::angle_min_deg;
+        if (tilt > amr::servo::angle_max_deg) tilt = amr::servo::angle_max_deg;
+        pca9685.setTargetAngle(amr::servo::ch_pan, pan);
+        pca9685.setTargetAngle(amr::servo::ch_tilt, tilt);
+    }
+}
+
 // SOC-Schaetzung (lineare Interpolation aus Spannungskurve)
 static float estimateSOC(float voltage) {
     if (voltage >= amr::battery::pack_charge_max_v) return 1.0f;
@@ -231,7 +255,7 @@ void setup() {
     rc = rclc_node_init_default(&node, "esp32_bot", "", &support);
     if (rc != RCL_RET_OK) init_ok = false;
 
-    rc = rclc_executor_init(&executor, &support.context, 1, &allocator);
+    rc = rclc_executor_init(&executor, &support.context, 2, &allocator);
     if (rc != RCL_RET_OK) init_ok = false;
 
     rc = rclc_subscription_init_default(
@@ -241,6 +265,15 @@ void setup() {
 
     rc = rclc_executor_add_subscription(&executor, &sub_vel, &msg_vel, &vel_cb,
                                         ON_NEW_DATA);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_subscription_init_default(
+        &sub_servo, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point),
+        "servo_cmd");
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_executor_add_subscription(&executor, &sub_servo, &msg_servo,
+                                        &servo_cmd_callback, ON_NEW_DATA);
     if (rc != RCL_RET_OK) init_ok = false;
 
     rc = rclc_publisher_init_default(&pub_odom, &node,

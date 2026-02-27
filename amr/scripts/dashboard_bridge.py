@@ -32,9 +32,9 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Point, Twist
 from nav_msgs.msg import Odometry, OccupancyGrid
-from sensor_msgs.msg import Imu, LaserScan, Image
+from sensor_msgs.msg import BatteryState, Imu, LaserScan, Image
 from std_msgs.msg import String
 from tf2_msgs.msg import TFMessage
 
@@ -203,6 +203,10 @@ class WebSocketServer:
             lin_x = clamp(float(msg.get('linear_x', 0.0)), MAX_LINEAR)
             ang_z = clamp(float(msg.get('angular_z', 0.0)), MAX_ANGULAR)
             self.node.publish_cmd_vel(lin_x, ang_z)
+        elif op == 'servo_cmd':
+            pan = float(msg.get('pan', 90.0))
+            tilt = float(msg.get('tilt', 90.0))
+            self.node.publish_servo_cmd(pan, tilt)
         elif op == 'heartbeat':
             self.node.record_heartbeat()
 
@@ -323,6 +327,9 @@ class DashboardBridge(Node):
         self.scan_times = deque(maxlen=HZ_WINDOW)
         self.last_cmd_time = 0.0
         self.last_heartbeat_time = 0.0
+        self.battery_data = None         # dict: voltage, current, power, percentage
+        self.servo_pan = 90.0            # Letzte Servo-Pan-Position (Grad)
+        self.servo_tilt = 90.0           # Letzte Servo-Tilt-Position (Grad)
 
         # --- CvBridge (Kamera) ---
         self.cv_bridge = CvBridge() if HAS_CAMERA else None
@@ -361,6 +368,9 @@ class DashboardBridge(Node):
         self.sub_semantics = self.create_subscription(
             String, '/vision/semantics', self._semantics_cb, 10
         )
+        self.sub_battery = self.create_subscription(
+            BatteryState, '/battery', self._battery_cb, sensor_qos
+        )
 
         # --- Map / TF State (geschuetzt durch Lock) ---
         self.latest_map_png = None      # Base64 string
@@ -376,6 +386,7 @@ class DashboardBridge(Node):
 
         # --- ROS2 Publisher ---
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.pub_servo_cmd = self.create_publisher(Point, '/servo_cmd', 10)
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(
@@ -476,6 +487,16 @@ class DashboardBridge(Node):
                 }
         except (json.JSONDecodeError, Exception) as e:
             self.get_logger().warn('Semantics-Parse fehlgeschlagen: %s' % e)
+
+    def _battery_cb(self, msg):
+        """Speichert BatteryState-Daten (INA260)."""
+        with self.lock:
+            self.battery_data = {
+                'voltage': round(msg.voltage, 3),
+                'current': round(msg.current, 3),
+                'power': round(msg.voltage * msg.current, 3),
+                'percentage': round(msg.percentage, 3),
+            }
 
     def _map_cb(self, msg):
         """OccupancyGrid -> RGBA PNG -> Base64."""
@@ -590,6 +611,17 @@ class DashboardBridge(Node):
         """Publiziert Twist(0,0,0) auf /cmd_vel."""
         self.pub_cmd_vel.publish(Twist())
 
+    def publish_servo_cmd(self, pan, tilt):
+        """Publiziert Servo-Kommando auf /servo_cmd (Point: x=pan, y=tilt, z=0)."""
+        point = Point()
+        point.x = float(pan)
+        point.y = float(tilt)
+        point.z = 0.0
+        self.pub_servo_cmd.publish(point)
+        with self.lock:
+            self.servo_pan = float(pan)
+            self.servo_tilt = float(tilt)
+
     def record_heartbeat(self):
         """Aktualisiert den Heartbeat-Zeitstempel."""
         with self.lock:
@@ -618,6 +650,9 @@ class DashboardBridge(Node):
             imu = self.latest_imu
             odom_hz = self._compute_hz(self.odom_times)
             scan_hz = self._compute_hz(self.scan_times)
+            battery = self.battery_data
+            servo_pan = self.servo_pan
+            servo_tilt = self.servo_tilt
 
         # Odom-Daten
         odom_data = {
@@ -651,6 +686,11 @@ class DashboardBridge(Node):
             'ts': round(time.time(), 3),
             'odom': odom_data,
             'imu': imu_data,
+            'battery': battery,
+            'servo': {
+                'pan': servo_pan,
+                'tilt': servo_tilt,
+            },
             'connection': {
                 'esp32_active': esp32_active,
                 'odom_hz': round(odom_hz, 1),
@@ -793,6 +833,7 @@ class DashboardBridge(Node):
             scan_hz = self._compute_hz(self.scan_times)
             det_hz = self._compute_hz(self.detection_times)
             has_jpeg = self.latest_jpeg is not None
+            has_battery = self.battery_data is not None
 
         return {
             'op': 'system',
@@ -818,6 +859,7 @@ class DashboardBridge(Node):
                 'lidar': scan_hz > 1.0,
                 'camera': has_jpeg,
                 'hailo': det_hz > 0.5 or os.path.exists('/dev/hailo0'),
+                'ina260': has_battery,
             },
             'ip': self._get_host_ip(),
         }

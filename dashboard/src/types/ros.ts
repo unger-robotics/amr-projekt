@@ -1,3 +1,17 @@
+/** Batterie-Daten (INA260, 2 Hz) */
+export interface BatteryData {
+  voltage: number;
+  current: number;
+  power: number;
+  percentage: number;
+}
+
+/** Servo-Daten (PCA9685 Pan/Tilt) */
+export interface ServoData {
+  pan: number;
+  tilt: number;
+}
+
 /** Telemetrie-Nachricht vom Backend (10 Hz) */
 export interface TelemetryMsg {
   op: 'telemetry';
@@ -18,6 +32,8 @@ export interface TelemetryMsg {
     odom_hz: number;
     scan_hz: number;
   };
+  battery?: BatteryData;
+  servo?: ServoData;
 }
 
 /** LiDAR-Scan vom Backend (2 Hz) */
@@ -40,6 +56,13 @@ export interface CmdVelMsg {
 /** Heartbeat ans Backend (Deadman-Switch) */
 export interface HeartbeatMsg {
   op: 'heartbeat';
+}
+
+/** Servo-Steuerbefehl ans Backend (PCA9685 Pan/Tilt) */
+export interface ServoCmdMsg {
+  op: 'servo_cmd';
+  pan: number;
+  tilt: number;
 }
 
 /** System-Metriken vom Backend (1 Hz) */
@@ -93,4 +116,4 @@ export interface VisionSemanticsMsg {
 }
 
 export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg;

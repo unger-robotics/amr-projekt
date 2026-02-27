@@ -22,6 +22,47 @@ function MetricBar({ label, value, max, unit }: { label: string; value: number; 
   );
 }
 
+/** Returns a Tailwind color class based on battery voltage level */
+function batteryColor(voltage: number): string {
+  if (voltage < 9.5) return 'bg-hud-red';
+  if (voltage < 10.5) return 'bg-hud-amber';
+  if (voltage < 11.5) return 'bg-yellow-400';
+  return 'bg-hud-green';
+}
+
+/** Returns a Tailwind text color class based on battery voltage level */
+function batteryTextColor(voltage: number): string {
+  if (voltage < 9.5) return 'text-hud-red';
+  if (voltage < 10.5) return 'text-hud-amber';
+  if (voltage < 11.5) return 'text-yellow-400';
+  return 'text-hud-green';
+}
+
+function BatteryBar({ label, value, min, max, unit, voltage }: {
+  label: string; value: number; min: number; max: number; unit: string; voltage: number;
+}) {
+  const pct = Math.min(Math.max(((value - min) / (max - min)) * 100, 0), 100);
+  const barColor = batteryColor(voltage);
+  const txtColor = batteryTextColor(voltage);
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-hud-text-dim uppercase tracking-wider">{label}</span>
+        <span className={`${txtColor} font-mono`}>
+          {value.toFixed(label === 'SOC' ? 0 : 2)}{unit}
+        </span>
+      </div>
+      <div className="h-1 bg-hud-bg">
+        <div
+          className={`h-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function DeviceIndicator({ label, active }: { label: string; active: boolean }) {
   return (
     <div className="flex items-center gap-2 text-xs">
@@ -51,6 +92,11 @@ export function SystemMetrics() {
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const detectionHz = useTelemetryStore((s) => s.detectionHz);
   const visionDetections = useTelemetryStore((s) => s.visionDetections);
+  const batteryVoltage = useTelemetryStore((s) => s.batteryVoltage);
+  const batteryCurrent = useTelemetryStore((s) => s.batteryCurrent);
+  const batteryPower = useTelemetryStore((s) => s.batteryPower);
+  const batteryPercentage = useTelemetryStore((s) => s.batteryPercentage);
+  const hasBattery = batteryVoltage > 0 || batteryCurrent > 0 || batteryPower > 0 || batteryPercentage > 0;
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 border-t border-hud-border">
@@ -66,6 +112,26 @@ export function SystemMetrics() {
           </div>
         </section>
       )}
+
+      {/* Batterie */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
+          Batterie
+        </h2>
+        {hasBattery ? (
+          <div className="flex flex-col gap-2">
+            <BatteryBar label="Spannung" value={batteryVoltage} min={9.0} max={12.6} unit=" V" voltage={batteryVoltage} />
+            <BatteryBar label="SOC" value={batteryPercentage} min={0} max={100} unit="%" voltage={batteryVoltage} />
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Strom / Leistung</span>
+              <span className="text-hud-cyan font-mono">{batteryCurrent.toFixed(2)} A / {batteryPower.toFixed(1)} W</span>
+            </div>
+            <div className="text-[10px] text-hud-text-dim tracking-wider">3S1P INR18650-35E</div>
+          </div>
+        ) : (
+          <div className="text-xs text-hud-text-dim">Nicht verfuegbar</div>
+        )}
+      </section>
 
       {/* System */}
       <section>
