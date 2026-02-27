@@ -82,7 +82,7 @@ WebSocket-Protokoll (Custom JSON, kein rosbridge):
 - **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
 - Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg`)
 
-Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay + Vision-BBox-Overlay + Gemini-Semantik-Streifen, `useImageFit`-Hook fuer object-contain-Positionierung), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay + Vision-BBox-Overlay + Gemini-Semantik-Streifen), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). Hooks (`src/hooks/`): `useWebSocket.ts` (Reconnection-Logik), `useJoystick.ts` (nipplejs + cmd_vel-Mapping), `useImageFit.ts` (object-contain Canvas-Positionierung). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
 ### Validierungsskripte (Raspberry Pi)
 
@@ -364,6 +364,9 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `systemdokumentation.md` – Technische Systembeschreibung (~2 DIN-A4-Seiten, Architektur, Hardware, Software, Kommunikation, Navigation, Parameter)
 - `benutzerhandbuch.md` – Inbetriebnahme, Bedienung, Troubleshooting (~2 DIN-A4-Seiten, 7 Abschnitte)
 - `beamer.md` – Praesentationsfolien (~10 Folien, Pandoc/Beamer-kompatibel, Metropolis-Theme)
+- `reproduzierbarkeit.md` – Reproduzierbarkeitsanleitung (Hardware-Stueckliste, Software-Setup, Kalibrierung)
+- `abschlussbericht.md` – Abschlussbericht der Bachelorarbeit
+- `validierung_todo.md` – Validierungs-Checkliste (offene und abgeschlossene Testpunkte)
 
 ## Nicht-getrackte Dateien (.gitignore)
 
