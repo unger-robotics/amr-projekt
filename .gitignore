@@ -47,3 +47,13 @@ hardware_info_*.md
 # Dashboard (Frontend)
 node_modules/
 dashboard/dist/
+
+# Secrets / Credentials
+amr/docker/.env
+
+# Logs
+hailort.log
+*.log
+
+# Profiling / Debug
+gstshark_*/
