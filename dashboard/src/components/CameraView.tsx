@@ -81,7 +81,7 @@ export function CameraView() {
           ref={imgRef}
           src={streamUrl}
           alt="Kamera-Stream"
-          className="max-w-full max-h-full object-contain"
+          className="max-w-full max-h-full object-contain rotate-180"
           onError={handleError}
           onLoad={handleLoad}
         />

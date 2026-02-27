@@ -39,14 +39,18 @@ except ImportError:
     HAS_GENAI = False
 
 SYSTEM_PROMPT = (
-    "Analysiere dieses Bild aus der Perspektive eines autonomen "
-    "Transportroboters. Beschreibe praegnant das detektierte Objekt "
-    "(z.B. Farbe, Form, Zustand). Antworte auf Deutsch in maximal "
-    "2-3 Saetzen."
+    "Roboter-Sichtsystem. Antworte AUF DEUTSCH mit Schluesselwoertern. "
+    "KEIN Englisch, KEINE ganzen Saetze. "
+    "Format: Marke Produkt, Farbe Material, weitere Objekte. "
+    "Beispiel: Gerolsteiner Medium, gruene Glasflasche, Brille daneben. "
+    "Lies Etiketten ab. Nenne weitere sichtbare Objekte."
 )
 
 # Rate-Limiting: Mindestabstand zwischen API-Aufrufen
-MIN_REQUEST_INTERVAL_S = 2.0
+MIN_REQUEST_INTERVAL_S = 4.0
+
+# Maximale Bildgroesse fuer Gemini (laengste Seite in Pixel)
+MAX_IMAGE_DIM = 640
 
 
 class GeminiSemanticNode(Node):
@@ -56,7 +60,7 @@ class GeminiSemanticNode(Node):
         super().__init__('gemini_semantic_node')
 
         # Parameter
-        self.declare_parameter('model', 'gemini-3.1-pro-preview')
+        self.declare_parameter('model', 'gemini-2.5-flash')
         self.declare_parameter('max_tokens', 256)
 
         model_name = self.get_parameter(
@@ -147,9 +151,21 @@ class GeminiSemanticNode(Node):
     def _send_to_gemini(self, cv_image: np.ndarray, detections: list):
         """Bild und Detektionen asynchron an Gemini API senden."""
         try:
+            # Kamera ist 180° gedreht montiert — Bild vor Analyse drehen
+            cv_image = cv2.rotate(cv_image, cv2.ROTATE_180)
+
+            # Bild verkleinern fuer weniger Image-Tokens
+            h, w = cv_image.shape[:2]
+            if max(h, w) > MAX_IMAGE_DIM:
+                scale = MAX_IMAGE_DIM / max(h, w)
+                cv_image = cv2.resize(
+                    cv_image,
+                    (int(w * scale), int(h * scale)),
+                    interpolation=cv2.INTER_AREA)
+
             # Bild als JPEG kodieren fuer API-Transfer
             _, jpeg_buf = cv2.imencode(
-                '.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                '.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
             jpeg_bytes = jpeg_buf.tobytes()
 
             # Detektions-Kontext als Textprompt

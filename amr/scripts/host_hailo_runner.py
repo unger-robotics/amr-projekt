@@ -26,7 +26,7 @@ import time
 import cv2
 import numpy as np
 
-# COCO-Klassen (YOLOv8 Default, 80 Klassen)
+# COCO-Klassen (YOLOv8 Default, 80 Klassen) — Englisch fuer Modell-Kompatibilitaet
 COCO_LABELS = [
     "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train",
     "truck", "boat", "traffic light", "fire hydrant", "stop sign",
@@ -41,6 +41,23 @@ COCO_LABELS = [
     "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave",
     "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
     "scissors", "teddy bear", "hair drier", "toothbrush",
+]
+
+# Deutsche Uebersetzung der COCO-Klassen (fuer Dashboard-Anzeige)
+COCO_LABELS_DE = [
+    "Person", "Fahrrad", "Auto", "Motorrad", "Flugzeug", "Bus", "Zug",
+    "LKW", "Boot", "Ampel", "Hydrant", "Stoppschild",
+    "Parkuhr", "Bank", "Vogel", "Katze", "Hund", "Pferd", "Schaf",
+    "Kuh", "Elefant", "Baer", "Zebra", "Giraffe", "Rucksack", "Regenschirm",
+    "Handtasche", "Krawatte", "Koffer", "Frisbee", "Skier", "Snowboard",
+    "Ball", "Drachen", "Baseballschlaeger", "Baseballhandschuh", "Skateboard",
+    "Surfbrett", "Tennisschlaeger", "Flasche", "Weinglas", "Tasse", "Gabel",
+    "Messer", "Loeffel", "Schuessel", "Banane", "Apfel", "Sandwich", "Orange",
+    "Brokkoli", "Karotte", "Hotdog", "Pizza", "Donut", "Kuchen", "Stuhl",
+    "Sofa", "Topfpflanze", "Bett", "Esstisch", "Toilette", "Fernseher",
+    "Laptop", "Maus", "Fernbedienung", "Tastatur", "Handy", "Mikrowelle",
+    "Ofen", "Toaster", "Spuele", "Kuehlschrank", "Buch", "Uhr", "Vase",
+    "Schere", "Teddybaer", "Foehn", "Zahnbuerste",
 ]
 
 INPUT_WIDTH = 640
@@ -87,8 +104,8 @@ def postprocess(raw_output: dict, orig_h: int, orig_w: int,
                 y2 = float(det[2]) * orig_h
                 x2 = float(det[3]) * orig_w
 
-                label = COCO_LABELS[class_id] if class_id < len(
-                    COCO_LABELS) else f'class_{class_id}'
+                label = COCO_LABELS_DE[class_id] if class_id < len(
+                    COCO_LABELS_DE) else f'Klasse_{class_id}'
                 detections.append({
                     'class_id': class_id,
                     'label': label,
@@ -189,6 +206,8 @@ def run_hailo(model_path: str, threshold: float,
                     cap = cv2.VideoCapture(MJPEG_URL)
                     continue
 
+                # Kamera ist 180° gedreht montiert — Bild vor Inference drehen
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
                 orig_h, orig_w = frame.shape[:2]
                 preprocessed = preprocess(frame)
                 input_data = {
@@ -245,8 +264,8 @@ def main():
         '--model', default='hardware/models/yolov8s.hef',
         help='Pfad zum HEF-Modell (Default: hardware/models/yolov8s.hef)')
     parser.add_argument(
-        '--threshold', type=float, default=0.5,
-        help='Confidence-Schwellwert (Default: 0.5)')
+        '--threshold', type=float, default=0.35,
+        help='Confidence-Schwellwert (Default: 0.35)')
     parser.add_argument(
         '--fallback', action='store_true',
         help='Fallback-Modus: Dummy-Detektionen ohne Hailo-Hardware')

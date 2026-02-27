@@ -66,7 +66,7 @@ export function Dashboard() {
       </main>
 
       {/* Joystick panel */}
-      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col overflow-y-auto">
+      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col overflow-y-auto pb-24">
         <div className="flex-1 min-h-0">
           <Joystick
             onMove={onJoystickMove}

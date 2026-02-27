@@ -482,7 +482,7 @@ class DashboardBridge(Node):
             data = json.loads(msg.data)
             with self.lock:
                 self.latest_semantics = {
-                    'analysis': data.get('analysis', ''),
+                    'analysis': data.get('semantic_analysis', ''),
                     'model': data.get('model', ''),
                 }
         except (json.JSONDecodeError, Exception) as e:
