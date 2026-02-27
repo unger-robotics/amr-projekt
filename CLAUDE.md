@@ -75,14 +75,14 @@ python3 -m http.server 3000 -d dashboard/dist/
 # Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
 ```
 
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP, `ThreadingHTTPServer` fuer parallele Clients — noetig weil Hailo-Runner ebenfalls MJPEG liest). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s). Vollstaendige Startanleitung: `Dashboard-Start-Live-Betrieb.md`.
+Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf, /battery) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP, `ThreadingHTTPServer` fuer parallele Clients — noetig weil Hailo-Runner ebenfalls MJPEG liest). Empfaengt Servo-Befehle vom Browser und publiziert auf `/servo_cmd`. Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s). Vollstaendige Startanleitung: `Dashboard-Start-Live-Betrieb.md`.
 
 WebSocket-Protokoll (Custom JSON, kein rosbridge):
-- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition), `vision_detections` (5 Hz, Hailo-8 BBoxen + Inference-Zeit), `vision_semantics` (0.5 Hz, Gemini-Analyse)
-- **Client→Server**: `cmd_vel` (Joystick-Steuerung), `heartbeat` (Deadman-Switch)
-- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg`)
+- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Battery+Servo+Connection), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP, inkl. INA260-Indikator), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition), `vision_detections` (5 Hz, Hailo-8 BBoxen + Inference-Zeit), `vision_semantics` (0.5 Hz, Gemini-Analyse)
+- **Client→Server**: `cmd_vel` (Joystick-Steuerung), `servo_cmd` (Pan/Tilt-Servo, 10 Hz throttled), `heartbeat` (Deadman-Switch)
+- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg`, `ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg`)
 
-Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay + Vision-BBox-Overlay + Gemini-Semantik-Streifen), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). Hooks (`src/hooks/`): `useWebSocket.ts` (Reconnection-Logik), `useJoystick.ts` (nipplejs + cmd_vel-Mapping), `useImageFit.ts` (object-contain Canvas-Positionierung). State: `telemetryStore.ts` (Zustand). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
+Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `ServoControl.tsx` (Pan/Tilt-Slider 0-180° mit Zentrieren-Button, sendet `servo_cmd` via WebSocket, 10 Hz throttled), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte: Base64-PNG auf Canvas, Roboter-Richtungspfeil, Massstabsleiste, HUD-Labels), `CameraView.tsx` (MJPEG+Scanline-Overlay + Vision-BBox-Overlay + Gemini-Semantik-Streifen), `StatusPanel.tsx` (Odom/IMU/Connection), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + Batterie-Abschnitt: Spannungs-/SOC-Balken mit Farbverlauf rot→gruen, Strom/Leistung, 3S1P-Label + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo/INA260-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). Hooks (`src/hooks/`): `useWebSocket.ts` (Reconnection-Logik, `sendServoCmd()` mit 10 Hz Throttling), `useJoystick.ts` (nipplejs + cmd_vel-Mapping), `useImageFit.ts` (object-contain Canvas-Positionierung). State: `telemetryStore.ts` (Zustand, inkl. Battery/Servo-Felder). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
 ### Validierungsskripte (Raspberry Pi)
 
@@ -139,17 +139,17 @@ source .venv/bin/activate && python suche/download_sources.py
 
 Die Firmware partitioniert die Kerne fuer Echtzeit-Garantien:
 
-- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist), publiziert `Odometry` (20 Hz), `Imu` (50 Hz), `BatteryState` (2 Hz, INA260), Watchdog-Ueberwachung
-- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`)
+- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist) und `servo_cmd` (Point), publiziert `Odometry` (20 Hz), `Imu` (50 Hz), `BatteryState` (2 Hz, INA260), Watchdog-Ueberwachung
+- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`), PCA9685-Servo-Rampenaktualisierung (vor Motor-PID)
 - **Thread-Safety**: FreeRTOS-Mutex (`SharedData`) schuetzt geteilte Daten zwischen den Cores
 
-Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish
+Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish. Servo-Pfad: `servo_cmd` (Point) → Clamping 0-180° → `setTargetAngle()` → `updateRamp()` (Core 1, 50 Hz) → PCA9685 PWM
 
 ### Firmware-Module (Header-only Pattern)
 
 | Datei | Funktion |
 |---|---|
-| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Odom/IMU/Battery Publisher, INA260/PCA9685 Init, Batterie-Unterspannungsabschaltung |
+| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Odom/IMU/Battery Publisher, `/servo_cmd` Subscriber (Point), INA260/PCA9685 Init, Batterie-Unterspannungsabschaltung |
 | `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (Quadratur A+B, Richtung aus Phasenversatz), PWM-Steuerung, Deadzone (`amr::pid::deadband_threshold`), LED-MOSFET-PWM |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup und D-Term-Tiefpass (`amr::pid::d_filter_tau`), Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter via Konstruktor) |
@@ -161,7 +161,7 @@ Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `am
 
 **Batterie-Ueberwachung (INA260):** Bei Packspannung < 9.5 V (`amr::battery::threshold_motor_shutdown_v`): Motoren + Servos werden abgeschaltet (PCA9685 `allOff()`). Hysterese 0.3 V fuer Wiederaktivierung. SOC-Schaetzung per linearer Interpolation. BatteryState-Topic `/battery` @ 2 Hz.
 
-**Servo-Steuerung (PCA9685):** Pan/Tilt-Servos (MG996R) auf Kanaelen 0/1, Mittelstellung (90°) bei Startup. Nicht-blockierende Rampenfahrt (1°/20ms). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
+**Servo-Steuerung (PCA9685):** Pan/Tilt-Servos (MG996R) auf Kanaelen 0/1, Mittelstellung (90°) bei Startup. Nicht-blockierende Rampenfahrt (1°/20ms, in `controlTask` Core 1). Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
 
 **LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler.
 
@@ -196,7 +196,8 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
 | Topic | Typ | Quelle | Beschreibung |
 |---|---|---|---|
-| `/cmd_vel` | `geometry_msgs/Twist` | Nav2 / Teleop → ESP32 | Geschwindigkeitskommandos |
+| `/cmd_vel` | `geometry_msgs/Twist` | Nav2 / Teleop / Dashboard → ESP32 | Geschwindigkeitskommandos |
+| `/servo_cmd` | `geometry_msgs/Point` | Dashboard-Bridge → ESP32 | Pan/Tilt-Servo-Winkel (x=Pan, y=Tilt, 0-180°) |
 | `/odom` | `nav_msgs/Odometry` | ESP32 (20 Hz) | Rad-Odometrie |
 | `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
 | `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
@@ -209,7 +210,7 @@ Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
 Zentrale Nodes: `micro_ros_agent` (Serial-Bridge), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `nav2` (Lifecycle-Stack), `v4l2_camera_node` (optional), `hailo_udp_receiver_node` (UDP-Empfaenger fuer Objekterkennung), `gemini_semantic_node` (semantische Analyse, optional).
 
-Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 topic echo /battery --once`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
+Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 topic echo /battery --once`, `ros2 topic echo /servo_cmd --once`, `ros2 topic pub /servo_cmd geometry_msgs/msg/Point "{x: 45.0, y: 90.0}" --once`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
 
 ### micro-ROS / XRCE-DDS Constraints
 
