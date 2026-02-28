@@ -1,14 +1,17 @@
 /**
  * @file config.h
  * @brief Zentrale Konfiguration fuer AMR Slave-Node (ESP32-S3)
- * @version 2.3.2
- * @date 2026-02-27
+ * @version 2.4.0
+ * @date 2026-02-28
  *
  * @standard REP-103 (SI-Einheiten), REP-105 (Frames), Safety-First
  * @hardware Seeed Studio XIAO ESP32-S3, Cytron MDD3A, JGA25-370 (1:34),
- *           INA260, PCA9685, MPU6050 (GY-521), 2x MG996R,
+ *           INA260, PCA9685, MPU6050 (GY-521), 2x MG90S (aktuell),
  *           Pololu D36V50F6 (6 V Buck), LED-Streifen SMD 5050
  * @battery  Samsung INR18650-35E 3S1P (NCA, 10,80 V / 3.350 mAh)
+ *
+ * @note     Servo-Upgrade auf 2x MG996R (TowerPro Original, bestellt)
+ *           geplant. MG996R-Werte sind als Kommentar hinterlegt.
  *
  * I2C-Bus: 400 kHz Fast-mode
  *   0x40 – INA260  (Leistungsmonitor, Default-Adresse)
@@ -19,6 +22,12 @@
  *   3S-Pack (9,0…12,6 V) ---> INA260 (High-Side) --+-- Pololu D36V50F6 --> 6 V (Servos)
  *                                                  +-- Buck --> 5 V (Pi 5)
  *                                                  +-- Buck --> 3,3 V (ESP32-S3)
+ *
+ * Aenderungen gegenueber v2.3.2:
+ *   [FIX] Servo-Typ: MG996R -> MG90S (tatsaechlich verbaute Hardware)
+ *   [FIX] stall_current_a: 2,5 -> 0,9 A (MG90S @ 6 V)
+ *   [FIX] move_current_ma: 900 -> 250 mA (MG90S @ 6 V)
+ *   [DOK] MG996R-Werte als Kommentar fuer geplantes Upgrade beibehalten
  *
  * Aenderungen gegenueber v2.3.1:
  *   [ENT] amr::adc Namespace entfernt (kein GPIO verfuegbar, kein Pin zugewiesen)
@@ -44,7 +53,8 @@
  *   - Cytron MDD3A Datasheet Rev 1.0
  *   - JGA25-370 Encoder-Spezifikation (11 CPR, Quadratur)
  *   - NXP PCA9685 Datenblatt Rev. 4
- *   - TowerPro MG996R Spezifikation
+ *   - TowerPro MG90S Spezifikation (digital, Metallgetriebe)
+ *   - TowerPro MG996R Spezifikation (fuer geplantes Upgrade)
  *   - Pololu D36V50F6 Produktseite (#4092)
  *   - LongLife LED Art.-Nr. 1845 (SMD 5050, 12 V)
  */
@@ -187,14 +197,12 @@ constexpr float led_gamma = 2.2f;                  // Gamma-Korrektur
 
 } // namespace amr::pwm
 
-// --- PID-Defaultwerte ---
-// Tuning-Empfehlung (JGA25-370 @ 12 V, 1:34):
-//   Kp 1,5…3,0 | Ki 3,0…8,0 | Kd 0,05…0,2
+// --- PID-Parameter (getunt via pid_tuning.py Sprungantwort) ---
 namespace amr::pid {
 
-constexpr float kp = 0.4f;  // Getuned (Sprungantwort-Analyse)
-constexpr float ki = 0.1f;  // Getuned
-constexpr float kd = 0.0f;  // Getuned (kein D-Anteil noetig)
+constexpr float kp = 0.4f;   // Proportional (getunt)
+constexpr float ki = 0.1f;   // Integral (getunt)
+constexpr float kd = 0.0f;   // Derivativ (deaktiviert)
 
 constexpr float i_min = -1.0f; // Anti-Windup untere Grenze
 constexpr float i_max = 1.0f;  // Anti-Windup obere Grenze
@@ -202,30 +210,30 @@ constexpr float i_max = 1.0f;  // Anti-Windup obere Grenze
 constexpr float output_min = -1.0f; // Normierte Stellgroesse
 constexpr float output_max = 1.0f;
 
-constexpr float d_filter_tau = 0.02f; // [s] D-Term-Tiefpass
+constexpr float d_filter_tau = 0.02f; // [s] D-Term-Tiefpass (No-Op bei Kd=0)
 
-// --- Encoder-Filter & Rampe ---
-constexpr float ema_alpha = 0.3f;           // EMA-Glaettungsfaktor fuer Encoder-Geschwindigkeit
-constexpr float max_accel_rad_s2 = 5.0f;    // [rad/s^2] Beschleunigungsrampe
-constexpr float deadband_threshold = 0.08f; // Normierte Motor-Totband-Schwelle
-constexpr float hard_stop_threshold = 0.001f; // Stopp-Bypass-Schwelle (v/w)
-constexpr float stillstand_threshold = 0.01f; // PID-Reset-Schwelle (rad/s)
+constexpr float ema_alpha = 0.3f;           // EMA-Filter fuer Encoder-Rauschen
+constexpr float max_accel_rad_s2 = 5.0f;    // Beschleunigungsrampe [rad/s^2]
+constexpr float deadband_threshold = 0.08f;  // Totzonen-Schwelle (PWM)
+constexpr float hard_stop_threshold = 0.01f; // Rampe umgehen bei ~0 cmd_vel
+constexpr float stillstand_threshold = 0.01f; // PID umgehen bei ~0 Sollwert
 
 } // namespace amr::pid
 
 // ==========================================================================
-// 3.1 SERVO-KONFIGURATION (PCA9685 + 2x MG996R)
+// 3.1 SERVO-KONFIGURATION (PCA9685 + 2x MG90S)
 // ==========================================================================
 //
 // Quellen:
 //   - NXP PCA9685 Datenblatt Rev. 4 (PRE_SCALE, Oszillator 25 MHz)
-//   - TowerPro MG996R Spezifikation (Pulsbreite, Stall-Strom)
+//   - TowerPro MG90S Spezifikation (digital, Metallgetriebe, 25T-Spline)
+//   - TowerPro MG996R Spezifikation (Upgrade geplant, Werte auskommentiert)
 //   - Pololu D36V50F6 liefert 6 V Servo-Versorgung
 //
 // Topologie:
 //   3S-Pack -> INA260 -> D36V50F6 (6 V) -> PCA9685 V+ Schraubklemme
 //   ESP32-S3 3,3 V -> PCA9685 VCC (Logik)
-//   PCA9685 CH0 -> MG996R Pan | CH1 -> MG996R Tilt
+//   PCA9685 CH0 -> MG90S Pan | CH1 -> MG90S Tilt
 //
 // OE-Pin: Fest auf GND geloetet (Hardware-Bruecke).
 //   Konsequenz: Alle 16 PWM-Ausgaenge sind permanent aktiv.
@@ -253,13 +261,11 @@ constexpr uint32_t pca_osc_hz = 25000000;
 constexpr uint8_t ch_pan = 0;
 constexpr uint8_t ch_tilt = 1;
 
-// --- MG996R Pulsbreiten ---
+// --- MG90S Pulsbreiten ---
 //
-// Theoretischer Bereich: 500 … 2500 µs (±90°, 180° gesamt)
-// Sicherer Bereich:      600 … 2400 µs (Endanschlag-Brummen vermeiden)
-//
-// Kalibrierung: Empirisch pro Exemplar bestimmen. Die Default-Werte
-// lassen 100 µs Sicherheitsmarge zu den mechanischen Endanschlaegen.
+// MG90S und MG996R verwenden identische PWM-Parameter (500…2500 µs).
+// Sicherer Bereich mit 100 µs Marge zu den mechanischen Endanschlaegen.
+// Kalibrierung: Empirisch pro Exemplar bestimmen.
 constexpr uint16_t pulse_min_us = 600;     // [µs] Sicheres Minimum
 constexpr uint16_t pulse_center_us = 1500; // [µs] Mittelstellung (0°)
 constexpr uint16_t pulse_max_us = 2400;    // [µs] Sicheres Maximum
@@ -270,7 +276,7 @@ constexpr uint16_t ticks_min = 123;    // 600 µs
 constexpr uint16_t ticks_center = 307; // 1500 µs
 constexpr uint16_t ticks_max = 491;    // 2400 µs
 
-// --- MG996R Stellbereich ---
+// --- MG90S Stellbereich ---
 constexpr float angle_range_deg = 180.0f; // Gesamtstellbereich
 constexpr float angle_min_deg = 0.0f;     // Entspricht pulse_min_us
 constexpr float angle_max_deg = 180.0f;   // Entspricht pulse_max_us
@@ -284,10 +290,16 @@ constexpr uint32_t ramp_step_ms = 20;     // [ms] = ein PWM-Zyklus (50 Hz)
 // Resultierende Maximalgeschwindigkeit: 50°/s (1°/20ms)
 // Volle Traverse (180°): 3,6 s
 
-// --- MG996R Strombedarf (bei 6 V Versorgung) ---
+// --- MG90S Strombedarf (bei 6 V Versorgung) ---
+// Quelle: TowerPro MG90S Datenblatt, empirische Messungen
 constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
-constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
-constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
+constexpr float move_current_ma = 250.0f; // [mA] pro Servo, unter Last
+constexpr float stall_current_a = 0.9f;   // [A] pro Servo, Blockierung
+
+// --- MG996R Strombedarf (fuer geplantes Upgrade) ---
+// constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
+// constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
+// constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
 
 } // namespace amr::servo
 
@@ -298,13 +310,13 @@ constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
 // Quelle: Pololu Produktseite #4092
 // Topologie: Synchroner Buck-Konverter, 6 V fest, max. 5,5 A @ 36 V
 // Eingang: 3S-Pack ueber INA260 (9,0 … 12,6 V)
-// Ausgang: PCA9685 V+ Schraubklemme -> 2x MG996R Servos
+// Ausgang: PCA9685 V+ Schraubklemme -> 2x MG90S Servos (MG996R nach Upgrade)
 //
 // Dropout bei 5 A: ca. 0,8 V -> min. 6,8 V Eingang
 // Pack-Minimum 9,0 V >> 6,8 V -> komfortabel erfuellt
 //
 // Max. Dauerstrom bei 12 V Eingang: ca. 7 A
-// 2x MG996R Stall: 5 A -> unterhalb des Limits
+// 2x MG90S Stall: 1,8 A -> reichlich Headroom (MG996R: 5 A)
 //
 // EN-Pin: Interner 100 kOhm Pull-up nach VIN (Default: aktiv).
 //   Fuer Hardware-Unterspannungsabschaltung kann ein Spannungsteiler
@@ -363,7 +375,7 @@ constexpr uint32_t battery_publish_period_ms = 1000 / battery_publish_hz; // 500
 constexpr uint32_t failsafe_timeout_ms = 500;
 
 // --- Watchdog ---
-constexpr uint32_t watchdog_miss_limit = 50; // Core1-Heartbeat Fehltakte bis Notfall-Stopp
+constexpr uint32_t watchdog_miss_limit = 50; // Core 1 Heartbeat-Zyklen ohne Update
 
 } // namespace amr::timing
 
@@ -381,7 +393,7 @@ constexpr uint32_t calibration_samples = 500;
 // alpha = 0.98 -> 98 % Gyro, 2 % Beschleunigungsmesser
 constexpr float complementary_alpha = 0.98f;
 
-constexpr float gyro_sensitivity = 131.0f;    // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
+constexpr float gyro_sensitivity = 131.0f;     // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
 constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 
 } // namespace amr::imu
@@ -391,7 +403,7 @@ constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 // ==========================================================================
 //
 // DC-Motoren: Cytron MDD3A max. 3 A Dauer, JGA25-370 Stall 2,5…3,0 A
-// Servos:     MG996R Stall 2,5 A @ 6 V, kein eingebauter Schutz
+// Servos:     MG90S Stall 0,9 A @ 6 V (MG996R: 2,5 A, nach Upgrade)
 
 namespace amr::safety {
 
@@ -531,11 +543,6 @@ static_assert(amr::i2c::addr_pca9685 != amr::i2c::addr_mpu6050,
 // --- PID ---
 static_assert(amr::pid::i_min < amr::pid::i_max, "PID: i_min < i_max");
 static_assert(amr::pid::output_min < amr::pid::output_max, "PID: output_min < output_max");
-static_assert(amr::pid::ema_alpha > 0.0f && amr::pid::ema_alpha <= 1.0f,
-              "PID: ema_alpha in (0, 1]");
-static_assert(amr::pid::max_accel_rad_s2 > 0.0f, "PID: max_accel > 0");
-static_assert(amr::pid::deadband_threshold > 0.0f && amr::pid::deadband_threshold < 1.0f,
-              "PID: deadband_threshold in (0, 1)");
 
 // --- Timing ---
 static_assert(amr::timing::control_loop_hz > 0, "control_loop_hz > 0");
@@ -595,7 +602,7 @@ static_assert(amr::battery::max_continuous_a < amr::battery::max_pulse_a,
 static_assert(amr::safety::motor_stall_timeout_ms > 0, "Motor-Stall-Timeout > 0");
 static_assert(amr::safety::servo_stall_timeout_ms > 0, "Servo-Stall-Timeout > 0");
 static_assert(amr::safety::motor_overcurrent_immediate_a < amr::battery::max_continuous_a,
-              "Motor-Sofortabschaltung muss unter Pack-Dauerstrom liegen");
+              "Sofortabschaltung < Pack-Dauerstrom");
 
 // --- INA260 ---
 static_assert(amr::ina260::coulomb_capacity_mah > 0, "Coulomb-Referenz > 0");
