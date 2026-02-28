@@ -161,7 +161,7 @@ Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `am
 
 **Batterie-Ueberwachung (INA260):** Bei Packspannung < 9.5 V (`amr::battery::threshold_motor_shutdown_v`): Motoren + Servos werden abgeschaltet (PCA9685 `allOff()`). Hysterese 0.3 V fuer Wiederaktivierung. SOC-Schaetzung per linearer Interpolation. BatteryState-Topic `/battery` @ 2 Hz.
 
-**Servo-Steuerung (PCA9685):** Pan/Tilt-Servos (MG996R) auf Kanaelen 0/1, Mittelstellung (90°) bei Startup. Nicht-blockierende Rampenfahrt (1°/20ms, in `controlTask` Core 1). Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
+**Servo-Steuerung (PCA9685):** Pan/Tilt-Servos (MG90S, MG996R-Upgrade geplant) auf Kanaelen 0/1, Mittelstellung (90°) bei Startup. Nicht-blockierende Rampenfahrt (1°/20ms, in `controlTask` Core 1). Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
 
 **LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler.
 
@@ -306,7 +306,7 @@ sudo lslocks | grep esp32-serial              # Lock-Status pruefen
 
 ## Roboter-Parameter
 
-Zentral in `hardware/config.h` v2.3.2 definiert (Single Source of Truth, C++-Namespaces statt flache `#define`s). Code-relevante Werte:
+Zentral in `hardware/config.h` v2.4.0 definiert (Single Source of Truth, C++-Namespaces statt flache `#define`s). Code-relevante Werte:
 
 - **Kinematik** (`amr::kinematics::`): Raddurchmesser 65.67 mm (kalibriert), Spurbreite 178 mm, Encoder ~748 Ticks/Rev (2x Quadratur)
 - **PWM** (`amr::pwm::`): Motor-Deadzone 35, 20 kHz/8-bit (Motoren), 5 kHz/10-bit (LED-Kanal 4)
@@ -314,7 +314,7 @@ Zentral in `hardware/config.h` v2.3.2 definiert (Single Source of Truth, C++-Nam
 - **Timing** (`amr::timing::`): Regelschleife 50 Hz, Odom 20 Hz, IMU 50 Hz, Batterie 2 Hz, Failsafe 500 ms, Watchdog 50 Zyklen
 - **IMU** (`amr::imu::`): Komplementaerfilter alpha=0.98 (98% Gyro), Gyro-Sensitivity 131.0 (±250°/s), 500 Kalibrierproben
 - **Batterie** (`amr::battery::`): Samsung INR18650-35E 3S1P, 10.80 V nominal, Warnung 10.0 V, Motor-Shutdown 9.5 V, System-Shutdown 9.0 V
-- **Servo** (`amr::servo::`): PCA9685 50 Hz, MG996R 600-2400 µs, Rampe 1°/20ms, Pan=CH0, Tilt=CH1
+- **Servo** (`amr::servo::`): PCA9685 50 Hz, MG90S 600-2400 µs (MG996R-Upgrade geplant), Rampe 1°/20ms, Pan=CH0, Tilt=CH1
 - **I2C** (`amr::i2c::`): 400 kHz, INA260=0x40, PCA9685=0x41, MPU6050=0x68
 
 ## Firmware-Constraints
@@ -365,7 +365,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 ## Wichtige Pfade (nicht offensichtlich)
 
-- `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth, v2.3.2, C++-Namespaces `amr::*`), eingebunden via `-I../../hardware` Build-Flag
+- `hardware/config.h` – Alle Hardware-Parameter (Single Source of Truth, v2.4.0, C++-Namespaces `amr::*`), eingebunden via `-I../../hardware` Build-Flag
 - `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v3.0, Docker-basiert)
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
@@ -405,5 +405,5 @@ Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.c
 - **IMU Gyro-Drift hoch**: Kalibrierung laeuft 500 Samples beim Startup. Roboter muss waehrend der ersten ~5s nach Power-On still stehen.
 - **INA260 nicht erkannt**: Manufacturer-ID (0xFE) gibt nicht 0x5449 zurueck. I2C-Adresse pruefen: Default 0x40 (A0=GND, A1=GND). `i2cdetect -y 1` auf dem ESP32 nicht verfuegbar — stattdessen Serial-Monitor-Output pruefen.
 - **PCA9685 Prescaler falsch**: Prescaler-Verifizierung in `init()` schlaegt fehl. PCA9685 muss im Sleep-Modus sein vor Prescaler-Aenderung. Bei Loetbruecke A0 offen: Adresse ist 0x40 (Kollision mit INA260!) — A0 muss geschlossen sein fuer 0x41.
-- **Servos zittern**: MG996R brummt am Endanschlag. Sicheren Pulsbereich (600-2400 µs) einhalten. `pca9685.allOff()` bei Nichtgebrauch aufrufen.
+- **Servos zittern**: MG90S/MG996R brummt am Endanschlag. Sicheren Pulsbereich (600-2400 µs) einhalten. `pca9685.allOff()` bei Nichtgebrauch aufrufen.
 - **Batterie-Shutdown zu frueh**: `threshold_motor_shutdown_v` (9.5 V) evtl. zu hoch bei hohem Strom (Spannungseinbruch durch Pack-Impedanz 183 mOhm). INA260-Spannung unter Last pruefen: `ros2 topic echo /battery --once`.
