@@ -18,18 +18,19 @@ Reihenfolge kritisch — ESP32 hat keine Reconnection-Logik!
 | 4 | `micro_ros_agent` | Container-Prozess | Serial-Bridge ESP32 ↔ ROS2 (USB-CDC) |
 | 5 | `odom_to_tf` | Container-Node | Odometrie → TF-Broadcast (odom → base_link) |
 | 6 | `slam_toolbox` | Container-Node | Async SLAM (Ceres-Solver, 5 cm Aufloesung) |
-| 7 | `v4l2_camera_node` | Container-Node | IMX296 Kamera via v4l2loopback (15 fps) |
+| 7 | `v4l2_camera_node` | Container-Node | IMX296 Kamera via v4l2loopback (640x480, 15 fps, bgr8) |
 | 8 | `dashboard_bridge` | Container-Node | WebSocket (JSON) + MJPEG-Server (HTTP) |
 | 9 | `hailo_udp_receiver` | Container-Node | UDP-Empfaenger → `/vision/detections` |
-| 10 | `gemini_semantic_node` | Container-Node | Gemini Cloud-Analyse → `/vision/semantics` |
+| 10 | `gemini_semantic_node` | Container-Node | Gemini Cloud-Analyse (gemini-3-flash-preview) → `/vision/semantics` |
 | 11 | `esp32_bot` | ESP32 micro-ROS | Odom (20 Hz), IMU (50 Hz), Battery (2 Hz) |
 | 12 | `host_hailo_runner.py` | Host-Prozess | YOLOv8 Inference auf Hailo-8L (5 Hz, ~36 ms) |
-| 13 | `camera-v4l2-bridge` | Host-Service | rpicam-vid → ffmpeg → /dev/video10 |
+| 13 | `camera-v4l2-bridge` | Host-Service | rpicam-vid (640x480) → ffmpeg → /dev/video10 |
 
 ## Voraussetzungen
 
 - HEF-Modell vorhanden: `hardware/models/yolov8s.hef` (sonst: siehe Abschnitt "HEF herunterladen")
 - `GEMINI_API_KEY` in `amr/docker/.env` gesetzt (fuer Gemini-Semantik)
+- Docker-Image aktuell: `docker compose build` (enthaelt `google-genai` SDK)
 - Kein anderer Dienst auf dem ESP32-Port (`/dev/ttyACM0`)
 
 ## Startsequenz (3 Terminals)
@@ -72,7 +73,7 @@ Warten bis alle Nodes gestartet melden:
 - `[micro_ros_agent]` → `session established` (ESP32 verbunden)
 - `[slam_toolbox]` → `Registering sensor` (LiDAR erkannt)
 - `[dashboard_bridge]` → `WebSocket-Server gestartet` + `MJPEG-Server gestartet`
-- `[gemini_semantic_node]` → `Gemini Semantic Node gestartet`
+- `[gemini_semantic_node]` → `Gemini-Modell konfiguriert: gemini-3-flash-preview`
 - `[hailo_udp_receiver]` → `warte auf host_hailo_runner.py`
 
 ### Terminal 2: Hailo-Runner (Host-nativ, kein ROS2)
@@ -88,8 +89,11 @@ Erwartete Ausgabe:
 === Hailo-8 Host Runner ===
 [HAILO] Lade Modell: .../yolov8s.hef
 [HAILO] Initialisiert: 1 Input(s), 1 Output(s)
+[HAILO] MJPEG-Stream verbunden (Versuch 1)
 [HAILO] 3 Objekt(e) in 35.5 ms: Stuhl, Stuhl, Buch
 ```
+
+Der Runner wartet automatisch auf den MJPEG-Stream (bis zu 10 Versuche mit Backoff), falls `dashboard_bridge` noch nicht bereit ist.
 
 Ohne Hailo-Hardware: `--fallback` statt `--model ...`
 
@@ -155,4 +159,6 @@ wget -O hardware/models/yolov8s.hef \
 | Port 8082/9090 belegt | Alter Container/Prozess | `sudo fuser -k 8082/tcp 9090/tcp` |
 | Warte auf SLAM-Karte | ESP32 nicht verbunden → kein Odom → kein TF | ESP32-Status pruefen, ggf. DTR/RTS Reset |
 | 0 Detektionen | Kein COCO-Objekt vor Kamera | Person/Flasche/Stuhl vor Kamera halten |
-| Gemini 429 (Rate Limit) | Free-Tier-Quote erschoepft | Min. 4s zwischen Aufrufen, Modell: `gemini-2.5-flash` |
+| Gemini 429 (Rate Limit) | Free-Tier-Quote erschoepft | Min. 4s zwischen Aufrufen, Modell: `gemini-3-flash-preview` |
+| SLAM `Message Filter dropping` | ESP32 nicht verbunden → kein odom→base_link TF | ESP32 VOR Container-Start resetten |
+| YAML-Aenderung wirkt nicht | Colcon-Build-Cache veraltet | `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log` + `colcon build` |
