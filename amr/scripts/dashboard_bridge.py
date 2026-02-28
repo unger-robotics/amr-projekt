@@ -231,6 +231,11 @@ class WebSocketServer:
             pan = float(msg.get('pan', 90.0))
             tilt = float(msg.get('tilt', 90.0))
             self.node.publish_servo_cmd(pan, tilt)
+        elif op == 'hardware_cmd':
+            motor_limit = max(0.0, min(100.0, float(msg.get('motor_limit', 100.0))))
+            servo_speed = max(1.0, min(10.0, float(msg.get('servo_speed', 5.0))))
+            led_pwm = max(0.0, min(255.0, float(msg.get('led_pwm', 0.0))))
+            self.node.publish_hardware_cmd(motor_limit, servo_speed, led_pwm)
         elif op == 'heartbeat':
             self.node.record_heartbeat()
 
@@ -356,6 +361,9 @@ class DashboardBridge(Node):
         self.battery_ema_initialized = False
         self.servo_pan = 90.0            # Letzte Servo-Pan-Position (Grad)
         self.servo_tilt = 90.0           # Letzte Servo-Tilt-Position (Grad)
+        self.hw_motor_limit = 100.0      # Motor-Limit 0-100%
+        self.hw_servo_speed = 5.0        # Servo-Speed 1-10
+        self.hw_led_pwm = 0.0            # LED-PWM 0-255 (0 = Auto-Heartbeat)
         self.prev_cpu_stats = None       # /proc/stat Vorheriger Zustand
 
         # --- CvBridge (Kamera) ---
@@ -414,6 +422,7 @@ class DashboardBridge(Node):
         # --- ROS2 Publisher ---
         self.pub_cmd_vel = self.create_publisher(Twist, '/cmd_vel', 10)
         self.pub_servo_cmd = self.create_publisher(Point, '/servo_cmd', 10)
+        self.pub_hardware_cmd = self.create_publisher(Point, '/hardware_cmd', 10)
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(
@@ -672,6 +681,18 @@ class DashboardBridge(Node):
             self.servo_pan = float(pan)
             self.servo_tilt = float(tilt)
 
+    def publish_hardware_cmd(self, motor_limit, servo_speed, led_pwm):
+        """Publiziert Hardware-Parameter auf /hardware_cmd (Point: x=motor, y=servo_speed, z=led)."""
+        msg = Point()
+        msg.x = float(motor_limit)
+        msg.y = float(servo_speed)
+        msg.z = float(led_pwm)
+        self.pub_hardware_cmd.publish(msg)
+        with self.lock:
+            self.hw_motor_limit = motor_limit
+            self.hw_servo_speed = servo_speed
+            self.hw_led_pwm = led_pwm
+
     def record_heartbeat(self):
         """Aktualisiert den Heartbeat-Zeitstempel."""
         with self.lock:
@@ -703,6 +724,9 @@ class DashboardBridge(Node):
             battery = self.battery_data
             servo_pan = self.servo_pan
             servo_tilt = self.servo_tilt
+            hw_motor_limit = self.hw_motor_limit
+            hw_servo_speed = self.hw_servo_speed
+            hw_led_pwm = self.hw_led_pwm
 
         # Odom-Daten
         odom_data = {
@@ -740,6 +764,11 @@ class DashboardBridge(Node):
             'servo': {
                 'pan': servo_pan,
                 'tilt': servo_tilt,
+            },
+            'hardware': {
+                'motor_limit': hw_motor_limit,
+                'servo_speed': hw_servo_speed,
+                'led_pwm': hw_led_pwm,
             },
             'connection': {
                 'esp32_active': esp32_active,

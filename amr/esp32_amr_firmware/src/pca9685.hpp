@@ -26,6 +26,7 @@ class PCA9685 {
     static constexpr uint8_t NUM_SERVO_CH = 2;
     float current_angle_[NUM_SERVO_CH];
     float target_angle_[NUM_SERVO_CH];
+    float ramp_deg_per_step_;  // Runtime-konfigurierbar via setRampSpeed()
 
     void writeRegister(uint8_t reg, uint8_t val) {
         Wire.beginTransmission(addr_);
@@ -67,7 +68,8 @@ class PCA9685 {
     PCA9685()
         : addr_(amr::i2c::addr_pca9685),
           current_angle_{90.0f, 90.0f},
-          target_angle_{90.0f, 90.0f} {}
+          target_angle_{90.0f, 90.0f},
+          ramp_deg_per_step_(amr::servo::ramp_deg_per_step) {}
 
     bool init() {
         // Sleep -> Prescaler -> Wake -> Restart (Datenblatt Abschnitt 7.3.1.1)
@@ -120,28 +122,30 @@ class PCA9685 {
         }
     }
 
-    // Nicht-blockierende Rampenfahrt: 1 Schritt pro Aufruf (1 deg/20ms)
+    // Nicht-blockierende Rampenfahrt: 1 Schritt pro Aufruf
     // Rueckgabe: true wenn Ziel erreicht
+    // WICHTIG: Nutzt setPWM() direkt statt setAngle(), da setAngle()
+    // target_angle_ zuruecksetzt und damit die Rampe bricht.
     bool updateRamp(uint8_t channel) {
         if (channel >= NUM_SERVO_CH) return true;
         float diff = target_angle_[channel] - current_angle_[channel];
         if (fabsf(diff) < 0.5f) {
             current_angle_[channel] = target_angle_[channel];
-            setAngle(channel, current_angle_[channel]);
+            setPWM(channel, 0, angleToPWM(current_angle_[channel]));
             return true;
         }
         if (diff > 0) {
-            current_angle_[channel] += amr::servo::ramp_deg_per_step;
+            current_angle_[channel] += ramp_deg_per_step_;
             if (current_angle_[channel] > target_angle_[channel]) {
                 current_angle_[channel] = target_angle_[channel];
             }
         } else {
-            current_angle_[channel] -= amr::servo::ramp_deg_per_step;
+            current_angle_[channel] -= ramp_deg_per_step_;
             if (current_angle_[channel] < target_angle_[channel]) {
                 current_angle_[channel] = target_angle_[channel];
             }
         }
-        setAngle(channel, current_angle_[channel]);
+        setPWM(channel, 0, angleToPWM(current_angle_[channel]));
         return false;
     }
 
@@ -158,5 +162,11 @@ class PCA9685 {
     float getCurrentAngle(uint8_t channel) const {
         if (channel >= NUM_SERVO_CH) return 0.0f;
         return current_angle_[channel];
+    }
+
+    void setRampSpeed(float deg_per_step) {
+        if (deg_per_step < 0.1f) deg_per_step = 0.1f;
+        if (deg_per_step > 10.0f) deg_per_step = 10.0f;
+        ramp_deg_per_step_ = deg_per_step;
     }
 };

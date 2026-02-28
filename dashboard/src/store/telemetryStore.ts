@@ -73,6 +73,10 @@ interface TelemetryState {
   // Servo (PCA9685 Pan/Tilt)
   servoPan: number;
   servoTilt: number;
+  // Hardware (Motor-Limit, Servo-Speed, LED)
+  hwMotorLimit: number;
+  hwServoSpeed: number;
+  hwLedPwm: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -102,6 +106,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   cpuLoad5m: 0, cpuLoad15m: 0, cpuFreqMhz: [], cpuPerCorePct: [], uptimeS: 0,
   processesRunning: 0, processesTotal: 0, ina260Active: false,
   servoPan: 90, servoTilt: 90,
+  hwMotorLimit: 100, hwServoSpeed: 5, hwLedPwm: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -125,6 +130,11 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     ...(msg.servo && {
       servoPan: msg.servo.pan,
       servoTilt: msg.servo.tilt,
+    }),
+    ...(msg.hardware && {
+      hwMotorLimit: msg.hardware.motor_limit,
+      hwServoSpeed: msg.hardware.servo_speed,
+      hwLedPwm: msg.hardware.led_pwm,
     }),
   }),
 

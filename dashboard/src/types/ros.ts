@@ -35,6 +35,7 @@ export interface TelemetryMsg {
   };
   battery?: BatteryData;
   servo?: ServoData;
+  hardware?: HardwareData;
 }
 
 /** LiDAR-Scan vom Backend (2 Hz) */
@@ -64,6 +65,21 @@ export interface ServoCmdMsg {
   op: 'servo_cmd';
   pan: number;
   tilt: number;
+}
+
+/** Hardware-Steuerbefehl ans Backend (Motor/Servo/LED) */
+export interface HardwareCmdMsg {
+  op: 'hardware_cmd';
+  motor_limit: number;   // 0-100 (%)
+  servo_speed: number;   // 1-10 (Grad/Schritt)
+  led_pwm: number;       // 0-255 (0 = Auto-Heartbeat)
+}
+
+/** Hardware-Daten (Telemetrie-Feedback) */
+export interface HardwareData {
+  motor_limit: number;
+  servo_speed: number;
+  led_pwm: number;
 }
 
 /** System-Metriken vom Backend (1 Hz) */
@@ -119,4 +135,4 @@ export interface VisionSemanticsMsg {
 }
 
 export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage, ServoCmdMsg } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
@@ -81,5 +81,15 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send(msg);
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd };
+  /** Throttled hardware command sender (max 10 Hz / 100ms between sends) */
+  const lastHwCmdRef = useRef(0);
+  const sendHardwareCmd = useCallback((motorLimit: number, servoSpeed: number, ledPwm: number) => {
+    const now = Date.now();
+    if (now - lastHwCmdRef.current < 100) return;
+    lastHwCmdRef.current = now;
+    const msg: HardwareCmdMsg = { op: 'hardware_cmd', motor_limit: motorLimit, servo_speed: servoSpeed, led_pwm: ledPwm };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd };
 }

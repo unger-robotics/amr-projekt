@@ -11,6 +11,7 @@ import { EmergencyStop } from './EmergencyStop';
 import { SystemMetrics } from './SystemMetrics';
 import { MapView } from './MapView';
 import ServoControl from './ServoControl';
+import HardwareControl from './HardwareControl';
 
 export function Dashboard() {
   const [statusVisible, setStatusVisible] = useState(false);
@@ -34,7 +35,7 @@ export function Dashboard() {
     [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics],
   );
 
-  const { connected, latencyMs, send, sendServoCmd } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd } = useWebSocket(onMessage);
   const { onJoystickMove, onJoystickEnd } = useJoystick(send);
 
   const handleEmergencyStop = useCallback(() => {
@@ -52,6 +53,7 @@ export function Dashboard() {
         <aside className="hidden lg:flex lg:flex-col lg:col-start-1 lg:row-start-1 lg:row-end-7 border-r border-hud-border overflow-y-auto">
           <StatusPanel connected={connected} latencyMs={latencyMs} />
           <SystemMetrics />
+          <HardwareControl sendHardwareCmd={sendHardwareCmd} />
         </aside>
 
         {/* Kamera (Zeile 1-3, Spalte 2) */}

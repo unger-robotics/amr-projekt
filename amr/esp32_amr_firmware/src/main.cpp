@@ -48,8 +48,10 @@ rcl_publisher_t pub_imu;
 rcl_publisher_t pub_battery;
 rcl_subscription_t sub_vel;
 rcl_subscription_t sub_servo;
+rcl_subscription_t sub_hardware;
 geometry_msgs__msg__Twist msg_vel;
 geometry_msgs__msg__Point msg_servo;
+geometry_msgs__msg__Point msg_hardware;
 nav_msgs__msg__Odometry msg_odom;
 sensor_msgs__msg__Imu msg_imu;
 sensor_msgs__msg__BatteryState msg_bat;
@@ -72,6 +74,15 @@ struct ServoCommand {
     volatile bool update_pending;
 };
 ServoCommand servo_cmd = {90.0f, 90.0f, false};
+
+// Deferred Hardware Command (Callback → RAM, loop() → I2C/PWM)
+struct HardwareCommand {
+    volatile float motor_limit_pct;   // 0-100
+    volatile float servo_speed;       // 1-10 (Grad/Schritt)
+    volatile float led_pwm;           // 0-255, 0 = auto heartbeat
+    volatile bool update_pending;
+};
+HardwareCommand hw_cmd = {100.0f, 5.0f, 0.0f, false};
 
 void controlTask(void *p) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -119,6 +130,11 @@ void controlTask(void *p) {
         }
 
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
+
+        // Motor-Limit anwenden (0-100% → 0.0-1.0 Faktor)
+        float motor_scale = hw_cmd.motor_limit_pct / 100.0f;
+        t.left_rad_s *= motor_scale;
+        t.right_rad_s *= motor_scale;
 
         // Hard-Stop: Bei Zielgeschwindigkeit Null Rampe umgehen
         if (fabsf(tv) < amr::pid::hard_stop_threshold && fabsf(tw) < amr::pid::hard_stop_threshold) {
@@ -213,6 +229,24 @@ void servo_cmd_callback(const void *m) {
     }
 }
 
+void hardware_cmd_callback(const void *m) {
+    if (m == nullptr) return;
+    const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
+    float motor = static_cast<float>(msg->x);
+    if (motor < 0.0f) motor = 0.0f;
+    if (motor > 100.0f) motor = 100.0f;
+    float speed = static_cast<float>(msg->y);
+    if (speed < 1.0f) speed = 1.0f;
+    if (speed > 10.0f) speed = 10.0f;
+    float led = static_cast<float>(msg->z);
+    if (led < 0.0f) led = 0.0f;
+    if (led > 255.0f) led = 255.0f;
+    hw_cmd.motor_limit_pct = motor;
+    hw_cmd.servo_speed = speed;
+    hw_cmd.led_pwm = led;
+    hw_cmd.update_pending = true;
+}
+
 // SOC-Schaetzung (lineare Interpolation aus Spannungskurve)
 static float estimateSOC(float voltage) {
     if (voltage >= amr::battery::pack_charge_max_v) return 1.0f;
@@ -270,7 +304,7 @@ void setup() {
     rc = rclc_node_init_default(&node, "esp32_bot", "", &support);
     if (rc != RCL_RET_OK) init_ok = false;
 
-    rc = rclc_executor_init(&executor, &support.context, 2, &allocator);
+    rc = rclc_executor_init(&executor, &support.context, 3, &allocator);
     if (rc != RCL_RET_OK) init_ok = false;
 
     rc = rclc_subscription_init_default(
@@ -289,6 +323,15 @@ void setup() {
 
     rc = rclc_executor_add_subscription(&executor, &sub_servo, &msg_servo,
                                         &servo_cmd_callback, ON_NEW_DATA);
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_subscription_init_default(
+        &sub_hardware, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point),
+        "hardware_cmd");
+    if (rc != RCL_RET_OK) init_ok = false;
+
+    rc = rclc_executor_add_subscription(&executor, &sub_hardware, &msg_hardware,
+                                        &hardware_cmd_callback, ON_NEW_DATA);
     if (rc != RCL_RET_OK) init_ok = false;
 
     rc = rclc_publisher_init_default(&pub_odom, &node,
@@ -337,30 +380,53 @@ void loop() {
     }
     last_hb = hb;
 
-    // LED-Heartbeat
-    static uint32_t led_counter = 0;
-    if (++led_counter > 20) {
-        led_counter = 0;
-        static bool led_on = false;
-        led_on = !led_on;
-        ledcWrite(amr::pwm::led_channel, led_on ? 32 : 0);
-    }
-
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
     delay(1);
+
+    // LED-Heartbeat / Manual Override (nach spin_some, damit Callback-Werte gelten)
+    {
+        static uint32_t hb_counter = 0;
+        static bool hb_on = false;
+        float led_override = hw_cmd.led_pwm;
+        if (led_override > 0.5f) {
+            // Manueller LED-Modus: Slider 0-255 direkt als Duty
+            uint32_t duty = static_cast<uint32_t>(led_override);
+            if (duty > 255) duty = 255;
+            ledcWrite(amr::pwm::led_channel, duty);
+        } else {
+            // Auto-Heartbeat
+            if (++hb_counter > 20) {
+                hb_counter = 0;
+                hb_on = !hb_on;
+                ledcWrite(amr::pwm::led_channel, hb_on ? 32 : 0);
+            }
+        }
+    }
 
     // Deferred Servo I2C (nach spin_some, Core 0)
     if (pca9685_ok && servo_cmd.update_pending) {
         servo_cmd.update_pending = false;
-        float pan = servo_cmd.pan;
-        float tilt = servo_cmd.tilt;
+        // Zielwinkel setzen (RAM-only, kein I2C)
+        pca9685.setTargetAngle(amr::servo::ch_pan, servo_cmd.pan);
+        pca9685.setTargetAngle(amr::servo::ch_tilt, servo_cmd.tilt);
+    }
+
+    // Servo-Rampenfahrt: Schrittweise zum Ziel (I2C, mit Mutex)
+    if (pca9685_ok) {
         if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-            pca9685.setAngle(amr::servo::ch_pan, pan);
-            pca9685.setAngle(amr::servo::ch_tilt, tilt);
+            pca9685.updateRamp(amr::servo::ch_pan);
+            pca9685.updateRamp(amr::servo::ch_tilt);
             xSemaphoreGive(i2c_mutex);
         } else {
             i2c_contention_errors++;
         }
+    }
+
+    // Deferred Hardware Command (Servo-Speed → RAM, kein I2C noetig)
+    if (hw_cmd.update_pending) {
+        hw_cmd.update_pending = false;
+        // Servo-Speed: 1-10 → 0.5-5.0 deg/step
+        pca9685.setRampSpeed(hw_cmd.servo_speed * 0.5f);
     }
 
     // Odom publish
@@ -388,12 +454,13 @@ void loop() {
         msg_odom.child_frame_id.capacity = 10;
         msg_odom.pose.pose.position.x = x;
         msg_odom.pose.pose.position.y = y;
+        msg_odom.pose.pose.position.z = hw_cmd.led_pwm; // DEBUG: LED-Wert pruefen
         msg_odom.pose.pose.orientation.z = sin(th / 2);
         msg_odom.pose.pose.orientation.w = cos(th / 2);
         msg_odom.twist.twist.linear.x = v;
         msg_odom.twist.twist.angular.z = w;
         rcl_ret_t pub_rc = rcl_publish(&pub_odom, &msg_odom, NULL);
-        if (pub_rc != RCL_RET_OK) {
+        if (pub_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {
             ledcWrite(amr::pwm::led_channel, 255);
         }
 
@@ -436,7 +503,7 @@ void loop() {
             msg_imu.linear_acceleration_covariance[4] = 0.1;
             msg_imu.linear_acceleration_covariance[8] = 0.1;
             rcl_ret_t imu_rc = rcl_publish(&pub_imu, &msg_imu, NULL);
-            if (imu_rc != RCL_RET_OK) {
+            if (imu_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {
                 ledcWrite(amr::pwm::led_channel, 255);
             }
         }
@@ -492,7 +559,7 @@ void loop() {
                 msg_bat.power_supply_technology = sensor_msgs__msg__BatteryState__POWER_SUPPLY_TECHNOLOGY_LION;
                 msg_bat.present = true;
                 rcl_ret_t bat_rc = rcl_publish(&pub_battery, &msg_bat, NULL);
-                if (bat_rc != RCL_RET_OK) {
+                if (bat_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {
                     ledcWrite(amr::pwm::led_channel, 255);
                 }
             }
