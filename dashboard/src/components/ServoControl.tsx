@@ -38,9 +38,10 @@ function ServoSlider({ label, value, onChange }: SliderProps) {
 
 interface ServoControlProps {
   sendServoCmd: (pan: number, tilt: number) => void;
+  layout?: 'vertical' | 'horizontal';
 }
 
-export default function ServoControl({ sendServoCmd }: ServoControlProps) {
+export default function ServoControl({ sendServoCmd, layout = 'vertical' }: ServoControlProps) {
   const storePan = useTelemetryStore((s) => s.servoPan);
   const storeTilt = useTelemetryStore((s) => s.servoTilt);
 
@@ -66,6 +67,28 @@ export default function ServoControl({ sendServoCmd }: ServoControlProps) {
     setTilt(90);
     sendServoCmd(90, 90);
   }, [sendServoCmd]);
+
+  if (layout === 'horizontal') {
+    return (
+      <div className="flex items-center gap-4 text-hud-text">
+        <span className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 shrink-0">Servo</span>
+        <div className="flex-1 min-w-[100px]">
+          <ServoSlider label="Pan" value={pan} onChange={handlePan} />
+        </div>
+        <div className="flex-1 min-w-[100px]">
+          <ServoSlider label="Tilt" value={tilt} onChange={handleTilt} />
+        </div>
+        <button
+          onClick={handleCenter}
+          className="py-1 px-3 text-xs uppercase tracking-wider font-semibold shrink-0
+            border border-hud-border text-hud-cyan hover:bg-hud-cyan/10
+            transition-colors duration-150"
+        >
+          Mitte
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 border-t border-hud-border">

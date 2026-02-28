@@ -107,7 +107,7 @@ RUN echo "# ROS2 Humble" >> /root/.bashrc && \
 # ---------------------------------------------------------------------------
 RUN pip3 install --no-cache-dir \
     websockets \
-    google-generativeai
+    google-genai
 
 WORKDIR /ros2_ws
 

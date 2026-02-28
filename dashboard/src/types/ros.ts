@@ -4,6 +4,7 @@ export interface BatteryData {
   current: number;
   power: number;
   percentage: number;
+  runtime_min: number;
 }
 
 /** Servo-Daten (PCA9685 Pan/Tilt) */
@@ -69,11 +70,13 @@ export interface ServoCmdMsg {
 export interface SystemMsg {
   op: 'system';
   ts: number;
-  cpu: { temp_c: number; load_1m: number; load_5m: number; freq_mhz: number[] };
+  cpu: { temp_c: number; load_1m: number; load_5m: number; load_15m: number; freq_mhz: number[]; per_cpu_pct: number[] };
   ram: { total_mb: number; used_mb: number; usage_pct: number };
   disk: { total_gb: number; used_gb: number; usage_pct: number };
-  devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean };
+  devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean; ina260: boolean };
   ip: string;
+  uptime_s: number;
+  processes: { running: number; total: number };
 }
 
 /** SLAM-Karte vom Backend (~0.5 Hz) */

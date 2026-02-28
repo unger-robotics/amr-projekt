@@ -45,37 +45,50 @@ export function Dashboard() {
   }, [send, onJoystickEnd]);
 
   return (
-    <div className="h-dvh bg-hud-bg text-hud-text grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[280px_1fr_280px] overflow-hidden">
-      {/* Status panel -- visible on lg, toggle on mobile/tablet */}
-      <aside className="hidden lg:flex flex-col border-r border-hud-border overflow-y-auto">
-        <StatusPanel connected={connected} latencyMs={latencyMs} />
-        <SystemMetrics />
-      </aside>
+    <div className="h-dvh bg-hud-bg text-hud-text flex flex-col overflow-hidden">
+      {/* 6x4 Grid: Sidebar | Kamera/SLAM/LiDAR (oben) | Joystick/Servo/Stop (unten) */}
+      <main className="flex-1 min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[320px_1fr_1fr_1fr] lg:grid-rows-[repeat(6,minmax(0,1fr))]">
+        {/* Sidebar: alle 6 Zeilen, scrollbar */}
+        <aside className="hidden lg:flex lg:flex-col lg:col-start-1 lg:row-start-1 lg:row-end-7 border-r border-hud-border overflow-y-auto">
+          <StatusPanel connected={connected} latencyMs={latencyMs} />
+          <SystemMetrics />
+        </aside>
 
-      {/* Center content: untereinander (mobile/tablet), nebeneinander oben angedockt (desktop) */}
-      <main className="flex flex-col lg:flex-row lg:items-start min-h-0 sm:col-span-1">
-        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
+        {/* Kamera (Zeile 1-3, Spalte 2) */}
+        <div className="min-h-[200px] lg:min-h-0 lg:col-start-2 lg:row-start-1 lg:row-end-4 overflow-hidden">
           <CameraView />
         </div>
-        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
+
+        {/* SLAM-Karte (Zeile 1-3, Spalte 3) */}
+        <div className="min-h-[200px] lg:min-h-0 lg:col-start-3 lg:row-start-1 lg:row-end-4 overflow-hidden">
           <MapView />
         </div>
-        <div className="flex-1 min-h-0 lg:min-w-0 lg:h-[50vh]">
+
+        {/* LiDAR (Zeile 1-3, Spalte 4) */}
+        <div className="min-h-[200px] lg:min-h-0 lg:col-start-4 lg:row-start-1 lg:row-end-4 overflow-hidden">
           <LidarView />
         </div>
-      </main>
 
-      {/* Joystick panel */}
-      <aside className="border-t sm:border-t-0 sm:border-l border-hud-border flex flex-col overflow-y-auto pb-24">
-        <div className="flex-1 min-h-0">
+        {/* Joystick — unter Kamera (Zeile 4-6, Spalte 2) */}
+        <div className="shrink-0 lg:shrink lg:col-start-2 lg:row-start-4 lg:row-end-7 flex items-center justify-center p-2 border-t border-hud-border lg:border-t-0">
           <Joystick
             onMove={onJoystickMove}
             onEnd={onJoystickEnd}
             disabled={!connected}
+            compact
           />
         </div>
-        <ServoControl sendServoCmd={sendServoCmd} />
-      </aside>
+
+        {/* ServoControl — unter SLAM (Zeile 4-6, Spalte 3) */}
+        <div className="shrink-0 lg:shrink lg:col-start-3 lg:row-start-4 lg:row-end-7 flex flex-col justify-center border-t border-hud-border lg:border-t-0">
+          <ServoControl sendServoCmd={sendServoCmd} />
+        </div>
+
+        {/* EmergencyStop — unter LiDAR (Zeile 4-6, Spalte 4) */}
+        <div className="shrink-0 lg:shrink lg:col-start-4 lg:row-start-4 lg:row-end-7 flex items-center justify-center p-4 border-t border-hud-border lg:border-t-0">
+          <EmergencyStop onStop={handleEmergencyStop} />
+        </div>
+      </main>
 
       {/* Mobile status toggle button */}
       <button
@@ -103,9 +116,6 @@ export function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Emergency stop -- always visible */}
-      <EmergencyStop onStop={handleEmergencyStop} />
     </div>
   );
 }

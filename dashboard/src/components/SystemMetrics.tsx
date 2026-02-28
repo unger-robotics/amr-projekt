@@ -78,6 +78,16 @@ function DeviceIndicator({ label, active }: { label: string; active: boolean }) 
   );
 }
 
+function formatUptime(seconds: number): string {
+  if (seconds <= 0) return '--';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export function SystemMetrics() {
   const cpuTempC = useTelemetryStore((s) => s.cpuTempC);
   const cpuLoad1m = useTelemetryStore((s) => s.cpuLoad1m);
@@ -88,7 +98,15 @@ export function SystemMetrics() {
   const lidarActive = useTelemetryStore((s) => s.lidarActive);
   const cameraActive = useTelemetryStore((s) => s.cameraActive);
   const hailoDetected = useTelemetryStore((s) => s.hailoDetected);
+  const ina260Active = useTelemetryStore((s) => s.ina260Active);
   const hostIp = useTelemetryStore((s) => s.hostIp);
+  const cpuLoad5m = useTelemetryStore((s) => s.cpuLoad5m);
+  const cpuLoad15m = useTelemetryStore((s) => s.cpuLoad15m);
+  const cpuFreqMhz = useTelemetryStore((s) => s.cpuFreqMhz);
+  const cpuPerCorePct = useTelemetryStore((s) => s.cpuPerCorePct);
+  const uptimeS = useTelemetryStore((s) => s.uptimeS);
+  const processesRunning = useTelemetryStore((s) => s.processesRunning);
+  const processesTotal = useTelemetryStore((s) => s.processesTotal);
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const detectionHz = useTelemetryStore((s) => s.detectionHz);
   const visionDetections = useTelemetryStore((s) => s.visionDetections);
@@ -96,6 +114,7 @@ export function SystemMetrics() {
   const batteryCurrent = useTelemetryStore((s) => s.batteryCurrent);
   const batteryPower = useTelemetryStore((s) => s.batteryPower);
   const batteryPercentage = useTelemetryStore((s) => s.batteryPercentage);
+  const batteryRuntimeMin = useTelemetryStore((s) => s.batteryRuntimeMin);
   const hasBattery = batteryVoltage > 0 || batteryCurrent > 0 || batteryPower > 0 || batteryPercentage > 0;
 
   return (
@@ -126,6 +145,14 @@ export function SystemMetrics() {
               <span className="text-hud-text-dim uppercase tracking-wider">Strom / Leistung</span>
               <span className="text-hud-cyan font-mono">{batteryCurrent.toFixed(2)} A / {batteryPower.toFixed(1)} W</span>
             </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Restlaufzeit</span>
+              <span className={`font-mono ${batteryTextColor(batteryVoltage)}`}>
+                {batteryRuntimeMin > 0
+                  ? `~${Math.floor(batteryRuntimeMin / 60)}h ${String(Math.round(batteryRuntimeMin % 60)).padStart(2, '0')}min`
+                  : '-- : --'}
+              </span>
+            </div>
             <div className="text-[10px] text-hud-text-dim tracking-wider">3S1P INR18650-35E</div>
           </div>
         ) : (
@@ -140,9 +167,55 @@ export function SystemMetrics() {
         </h2>
         <div className="flex flex-col gap-2">
           <MetricBar label="CPU Temp" value={cpuTempC} max={85} unit="°C" />
-          <MetricBar label="CPU Load" value={cpuLoad1m} max={4.0} unit="" />
+          {/* Load 1/5/15m */}
+          <div className="flex justify-between text-xs">
+            <span className="text-hud-text-dim uppercase tracking-wider">Load</span>
+            <span className="text-hud-cyan font-mono">
+              {cpuLoad1m.toFixed(2)} / {cpuLoad5m.toFixed(2)} / {cpuLoad15m.toFixed(2)}
+            </span>
+          </div>
+          {/* Per-CPU-Balken */}
+          {cpuPerCorePct.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs text-hud-text-dim uppercase tracking-wider">Per-CPU</span>
+              <div className="flex gap-1">
+                {cpuPerCorePct.map((pct, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div className="w-full h-3 bg-hud-bg relative">
+                      <div
+                        className={`absolute bottom-0 w-full transition-all duration-500 ${pct > 80 ? 'bg-hud-amber' : 'bg-hud-cyan'}`}
+                        style={{ height: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-hud-text-dim font-mono">{Math.round(pct)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* CPU-Frequenzen */}
+          {cpuFreqMhz.length > 0 && (
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Freq</span>
+              <span className="text-hud-cyan font-mono text-[10px]">
+                {cpuFreqMhz.map((f) => `${f}`).join(' / ')} MHz
+              </span>
+            </div>
+          )}
           <MetricBar label="RAM" value={ramUsedMb} max={ramTotalMb || 1} unit=" MB" />
           <MetricBar label="Disk" value={diskUsagePct} max={100} unit="%" />
+          {/* Uptime */}
+          <div className="flex justify-between text-xs">
+            <span className="text-hud-text-dim uppercase tracking-wider">Uptime</span>
+            <span className="text-hud-cyan font-mono">{formatUptime(uptimeS)}</span>
+          </div>
+          {/* Prozesse */}
+          {processesTotal > 0 && (
+            <div className="flex justify-between text-xs">
+              <span className="text-hud-text-dim uppercase tracking-wider">Prozesse</span>
+              <span className="text-hud-cyan font-mono">{processesRunning} / {processesTotal}</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -179,6 +252,7 @@ export function SystemMetrics() {
           <DeviceIndicator label="RPLidar A1" active={lidarActive} />
           <DeviceIndicator label="IMX296 Cam" active={cameraActive} />
           <DeviceIndicator label="Hailo-8" active={hailoDetected} />
+          <DeviceIndicator label="INA260" active={ina260Active} />
         </div>
       </section>
     </div>

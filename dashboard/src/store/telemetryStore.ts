@@ -60,6 +60,16 @@ interface TelemetryState {
   batteryCurrent: number;
   batteryPower: number;
   batteryPercentage: number;
+  batteryRuntimeMin: number;
+  // System extended
+  cpuLoad5m: number;
+  cpuLoad15m: number;
+  cpuFreqMhz: number[];
+  cpuPerCorePct: number[];
+  uptimeS: number;
+  processesRunning: number;
+  processesTotal: number;
+  ina260Active: boolean;
   // Servo (PCA9685 Pan/Tilt)
   servoPan: number;
   servoTilt: number;
@@ -88,7 +98,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
   visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
   semanticAnalysis: '', semanticModel: '', lastSemanticsTs: 0,
-  batteryVoltage: 0, batteryCurrent: 0, batteryPower: 0, batteryPercentage: 0,
+  batteryVoltage: 0, batteryCurrent: 0, batteryPower: 0, batteryPercentage: 0, batteryRuntimeMin: -1,
+  cpuLoad5m: 0, cpuLoad15m: 0, cpuFreqMhz: [], cpuPerCorePct: [], uptimeS: 0,
+  processesRunning: 0, processesTotal: 0, ina260Active: false,
   servoPan: 90, servoTilt: 90,
 
   updateTelemetry: (msg) => set({
@@ -108,6 +120,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
       batteryCurrent: msg.battery.current,
       batteryPower: msg.battery.power,
       batteryPercentage: msg.battery.percentage,
+      batteryRuntimeMin: msg.battery.runtime_min ?? -1,
     }),
     ...(msg.servo && {
       servoPan: msg.servo.pan,
@@ -126,6 +139,10 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   updateSystem: (msg) => set({
     cpuTempC: msg.cpu.temp_c,
     cpuLoad1m: msg.cpu.load_1m,
+    cpuLoad5m: msg.cpu.load_5m ?? 0,
+    cpuLoad15m: msg.cpu.load_15m ?? 0,
+    cpuFreqMhz: msg.cpu.freq_mhz ?? [],
+    cpuPerCorePct: msg.cpu.per_cpu_pct ?? [],
     ramUsedMb: msg.ram.used_mb,
     ramTotalMb: msg.ram.total_mb,
     diskUsedGb: msg.disk.used_gb,
@@ -134,8 +151,12 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     lidarActive: msg.devices.lidar,
     cameraActive: msg.devices.camera,
     hailoDetected: msg.devices.hailo,
+    ina260Active: msg.devices.ina260 ?? false,
     lastSystemTs: msg.ts,
     hostIp: msg.ip ?? '',
+    uptimeS: msg.uptime_s ?? 0,
+    processesRunning: msg.processes?.running ?? 0,
+    processesTotal: msg.processes?.total ?? 0,
   }),
 
   updateMap: (msg) => set({

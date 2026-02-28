@@ -191,8 +191,9 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'video_device': LaunchConfiguration('camera_device'),
-            'image_size': [1456, 1088],
+            'image_size': [640, 480],
             'pixel_format': 'YUYV',
+            'output_encoding': 'bgr8',
             'camera_frame_id': 'camera_link',
         }],
         remappings=[

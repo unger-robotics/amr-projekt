@@ -3,9 +3,10 @@ import { useTelemetryStore } from '../store/telemetryStore';
 
 interface EmergencyStopProps {
   onStop: () => void;
+  inline?: boolean;
 }
 
-export function EmergencyStop({ onStop }: EmergencyStopProps) {
+export function EmergencyStop({ onStop, inline }: EmergencyStopProps) {
   const velLinear = useTelemetryStore((s) => s.velLinear);
   const velAngular = useTelemetryStore((s) => s.velAngular);
 
@@ -22,12 +23,12 @@ export function EmergencyStop({ onStop }: EmergencyStopProps) {
   return (
     <button
       onClick={handlePress}
-      className={`fixed bottom-6 right-6 z-50 w-16 h-16
+      className={`${inline ? 'w-12 h-12 text-sm' : 'w-20 h-20 text-lg'}
         bg-hud-red hover:bg-red-700 active:bg-red-800
         border border-hud-red/50
-        text-white font-bold text-sm
+        text-white font-bold
         shadow-[0_0_20px_rgba(255,23,68,0.3)]
-        flex items-center justify-center
+        flex items-center justify-center shrink-0
         transition-transform active:scale-95
         ${isMoving ? 'animate-pulse' : ''}`}
       aria-label="Notaus"

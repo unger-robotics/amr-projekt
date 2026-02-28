@@ -33,7 +33,8 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
@@ -60,7 +61,7 @@ class GeminiSemanticNode(Node):
         super().__init__('gemini_semantic_node')
 
         # Parameter
-        self.declare_parameter('model', 'gemini-2.5-flash')
+        self.declare_parameter('model', 'gemini-3-flash-preview')
         self.declare_parameter('max_tokens', 256)
 
         model_name = self.get_parameter(
@@ -77,8 +78,8 @@ class GeminiSemanticNode(Node):
         # Gemini konfigurieren
         if not HAS_GENAI:
             self.get_logger().error(
-                'google-generativeai nicht installiert! '
-                'pip3 install google-generativeai')
+                'google-genai nicht installiert! '
+                'pip3 install google-genai')
             return
 
         api_key = os.getenv('GEMINI_API_KEY')
@@ -88,8 +89,8 @@ class GeminiSemanticNode(Node):
                 'Export oder docker-compose.yml pruefen.')
             return
 
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
         self.get_logger().info(f'Gemini-Modell konfiguriert: {model_name}')
 
         # Publisher / Subscriber
@@ -178,20 +179,20 @@ class GeminiSemanticNode(Node):
             )
 
             # Gemini API-Aufruf mit Bild
-            image_part = {
-                'mime_type': 'image/jpeg',
-                'data': jpeg_bytes,
-            }
-            response = self.model.generate_content(
-                [prompt, image_part],
-                generation_config={'max_output_tokens': self.max_tokens})
+            image_part = types.Part.from_bytes(
+                data=jpeg_bytes, mime_type='image/jpeg')
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[prompt, image_part],
+                config=types.GenerateContentConfig(
+                    max_output_tokens=self.max_tokens))
 
             if response and response.text:
                 result = {
                     'timestamp': time.time(),
                     'detections_input': detections[:5],
                     'semantic_analysis': response.text.strip(),
-                    'model': self.model.model_name,
+                    'model': self.model_name,
                 }
 
                 msg = String()

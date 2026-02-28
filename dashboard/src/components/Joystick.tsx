@@ -9,9 +9,10 @@ interface JoystickProps {
   onMove: (linearX: number, angularZ: number) => void;
   onEnd: () => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
-export function Joystick({ onMove, onEnd, disabled }: JoystickProps) {
+export function Joystick({ onMove, onEnd, disabled, compact }: JoystickProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const managerRef = useRef<nipplejs.JoystickManager | null>(null);
 
@@ -29,7 +30,7 @@ export function Joystick({ onMove, onEnd, disabled }: JoystickProps) {
       mode: 'static',
       position: { bottom: '50%', left: '50%' },
       color: '#00e5ff',
-      size: JOYSTICK_SIZE,
+      size: compact ? 100 : JOYSTICK_SIZE,
     });
     managerRef.current = manager;
 
@@ -54,13 +55,15 @@ export function Joystick({ onMove, onEnd, disabled }: JoystickProps) {
       manager.destroy();
       managerRef.current = null;
     };
-  }, [disabled]);
+  }, [disabled, compact]);
+
+  const sizeClass = compact ? 'w-[120px] h-[120px]' : 'w-[180px] h-[180px]';
 
   return (
     <div className="flex items-center justify-center h-full w-full">
       <div
         ref={containerRef}
-        className={`relative w-[180px] h-[180px] border border-hud-border ${disabled ? 'opacity-20 pointer-events-none' : ''}`}
+        className={`relative ${sizeClass} border border-hud-border ${disabled ? 'opacity-20 pointer-events-none' : ''}`}
       />
     </div>
   );

@@ -69,6 +69,30 @@ MAP_PNG_QUALITY = 6        # PNG-Kompressionsgrad (0-9)
 DETECTION_BROADCAST_HZ = 5.0   # Vision-Detektionen Broadcast-Rate
 SEMANTICS_BROADCAST_HZ = 0.5   # Semantische Analyse Broadcast-Rate
 
+# Batterie: OCV-SOC-Tabelle (3S Li-Ion, Samsung INR18650-35E)
+BATTERY_CAPACITY_MAH = 3500.0
+BATTERY_EMA_ALPHA = 0.05
+OCV_SOC_TABLE = [
+    (12.60, 100.0), (12.30, 90.0), (12.00, 80.0), (11.70, 65.0),
+    (11.40, 50.0), (11.10, 35.0), (10.80, 20.0), (10.50, 10.0),
+    (10.20, 5.0), (9.60, 2.0), (9.00, 0.0),
+]
+
+
+def ocv_to_soc(voltage):
+    """OCV-Spannung -> SOC (%) via lineare Interpolation."""
+    if voltage >= OCV_SOC_TABLE[0][0]:
+        return OCV_SOC_TABLE[0][1]
+    if voltage <= OCV_SOC_TABLE[-1][0]:
+        return OCV_SOC_TABLE[-1][1]
+    for i in range(len(OCV_SOC_TABLE) - 1):
+        v_high, soc_high = OCV_SOC_TABLE[i]
+        v_low, soc_low = OCV_SOC_TABLE[i + 1]
+        if v_low <= voltage <= v_high:
+            frac = (voltage - v_low) / (v_high - v_low)
+            return soc_low + frac * (soc_high - soc_low)
+    return 0.0
+
 
 def quaternion_to_yaw(q):
     """Quaternion (x, y, z, w) -> Yaw-Winkel in Radiant."""
@@ -327,9 +351,12 @@ class DashboardBridge(Node):
         self.scan_times = deque(maxlen=HZ_WINDOW)
         self.last_cmd_time = 0.0
         self.last_heartbeat_time = 0.0
-        self.battery_data = None         # dict: voltage, current, power, percentage
+        self.battery_data = None         # dict: voltage, current, power, percentage, runtime_min
+        self.battery_ema_current_a = 0.0
+        self.battery_ema_initialized = False
         self.servo_pan = 90.0            # Letzte Servo-Pan-Position (Grad)
         self.servo_tilt = 90.0           # Letzte Servo-Tilt-Position (Grad)
+        self.prev_cpu_stats = None       # /proc/stat Vorheriger Zustand
 
         # --- CvBridge (Kamera) ---
         self.cv_bridge = CvBridge() if HAS_CAMERA else None
@@ -489,13 +516,36 @@ class DashboardBridge(Node):
             self.get_logger().warn('Semantics-Parse fehlgeschlagen: %s' % e)
 
     def _battery_cb(self, msg):
-        """Speichert BatteryState-Daten (INA260)."""
+        """Speichert BatteryState-Daten (INA260) mit OCV-SOC und EMA-Laufzeit."""
+        voltage = msg.voltage
+        current_abs = abs(msg.current)
+
+        # EMA-geglaetteter Strom
+        if not self.battery_ema_initialized:
+            self.battery_ema_current_a = current_abs
+            self.battery_ema_initialized = True
+        else:
+            self.battery_ema_current_a = (
+                BATTERY_EMA_ALPHA * current_abs
+                + (1.0 - BATTERY_EMA_ALPHA) * self.battery_ema_current_a
+            )
+
+        # SOC aus OCV-Tabelle
+        soc = ocv_to_soc(voltage)
+
+        # Restlaufzeit: (Kapazitaet_mAh * SOC/100) / I_avg_mA * 60 [min]
+        runtime_min = -1.0
+        i_avg_ma = self.battery_ema_current_a * 1000.0
+        if i_avg_ma > 50.0 and soc > 0.0:
+            runtime_min = (BATTERY_CAPACITY_MAH * soc / 100.0) / i_avg_ma * 60.0
+
         with self.lock:
             self.battery_data = {
-                'voltage': round(msg.voltage, 3),
+                'voltage': round(voltage, 3),
                 'current': round(msg.current, 3),
-                'power': round(msg.voltage * msg.current, 3),
-                'percentage': round(msg.percentage, 3),
+                'power': round(voltage * msg.current, 3),
+                'percentage': round(soc, 1),
+                'runtime_min': round(runtime_min, 1),
             }
 
     def _map_cb(self, msg):
@@ -770,6 +820,44 @@ class DashboardBridge(Node):
             },
         }
 
+    def _read_proc_stat(self):
+        """Liest /proc/stat -> dict {cpuN: (user, nice, system, idle, iowait, irq, softirq, steal)}."""
+        result = {}
+        try:
+            with open('/proc/stat', 'r') as f:
+                for line in f:
+                    if line.startswith('cpu') and line[3] != ' ':
+                        parts = line.split()
+                        name = parts[0]
+                        vals = tuple(int(x) for x in parts[1:9])
+                        result[name] = vals
+        except (IOError, ValueError):
+            pass
+        return result
+
+    def _compute_per_cpu_pct(self):
+        """Berechnet Per-CPU-Auslastung in % als Delta zum vorherigen Reading."""
+        cur = self._read_proc_stat()
+        if not cur:
+            return []
+        if self.prev_cpu_stats is None:
+            self.prev_cpu_stats = cur
+            return []
+        pcts = []
+        for name in sorted(cur.keys()):
+            if name not in self.prev_cpu_stats:
+                continue
+            prev = self.prev_cpu_stats[name]
+            now = cur[name]
+            idle_delta = (now[3] + now[4]) - (prev[3] + prev[4])
+            total_delta = sum(now) - sum(prev)
+            if total_delta > 0:
+                pcts.append(round((1.0 - idle_delta / total_delta) * 100.0, 1))
+            else:
+                pcts.append(0.0)
+        self.prev_cpu_stats = cur
+        return pcts
+
     def build_system_msg(self):
         """Erstellt das System-Metriken-JSON-Dictionary."""
         # CPU-Temperatur
@@ -780,15 +868,32 @@ class DashboardBridge(Node):
         except (IOError, ValueError):
             pass
 
-        # CPU-Load
-        load_1m, load_5m = 0.0, 0.0
+        # CPU-Load + Prozesse
+        load_1m, load_5m, load_15m = 0.0, 0.0, 0.0
+        proc_running, proc_total = 0, 0
         try:
             with open('/proc/loadavg', 'r') as f:
                 parts = f.read().strip().split()
                 load_1m = float(parts[0])
                 load_5m = float(parts[1])
+                load_15m = float(parts[2])
+                if '/' in parts[3]:
+                    r, t = parts[3].split('/')
+                    proc_running = int(r)
+                    proc_total = int(t)
         except (IOError, ValueError, IndexError):
             pass
+
+        # Uptime
+        uptime_s = 0.0
+        try:
+            with open('/proc/uptime', 'r') as f:
+                uptime_s = float(f.read().strip().split()[0])
+        except (IOError, ValueError, IndexError):
+            pass
+
+        # Per-CPU-Auslastung
+        per_cpu_pct = self._compute_per_cpu_pct()
 
         # CPU-Frequenzen
         freq_mhz = []
@@ -842,7 +947,9 @@ class DashboardBridge(Node):
                 'temp_c': round(cpu_temp, 1),
                 'load_1m': round(load_1m, 2),
                 'load_5m': round(load_5m, 2),
+                'load_15m': round(load_15m, 2),
                 'freq_mhz': freq_mhz,
+                'per_cpu_pct': per_cpu_pct,
             },
             'ram': {
                 'total_mb': round(ram_total_mb, 0),
@@ -862,6 +969,11 @@ class DashboardBridge(Node):
                 'ina260': has_battery,
             },
             'ip': self._get_host_ip(),
+            'uptime_s': round(uptime_s, 0),
+            'processes': {
+                'running': proc_running,
+                'total': proc_total,
+            },
         }
 
     def build_detections_msg(self):

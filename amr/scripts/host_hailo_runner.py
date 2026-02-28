@@ -185,9 +185,24 @@ def run_hailo(model_path: str, threshold: float,
     print(f'[HAILO] UDP → {UDP_HOST}:{UDP_PORT}')
     print(f'[HAILO] Threshold: {threshold}, Rate: 5 Hz')
 
-    cap = cv2.VideoCapture(MJPEG_URL)
-    if not cap.isOpened():
-        print(f'FEHLER: Kann MJPEG-Stream nicht oeffnen: {MJPEG_URL}')
+    MAX_STARTUP_RETRIES = 10
+    retry_delay = 2.0
+    cap = None
+    for attempt in range(1, MAX_STARTUP_RETRIES + 1):
+        cap = cv2.VideoCapture(MJPEG_URL)
+        if cap.isOpened():
+            print(f'[HAILO] MJPEG-Stream verbunden (Versuch {attempt})')
+            break
+        cap.release()
+        if attempt < MAX_STARTUP_RETRIES:
+            print(f'[HAILO] MJPEG-Stream nicht erreichbar, '
+                  f'Versuch {attempt}/{MAX_STARTUP_RETRIES} '
+                  f'(naechster in {retry_delay:.0f}s)')
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 1.5, 30.0)
+    else:
+        print(f'FEHLER: MJPEG-Stream nach {MAX_STARTUP_RETRIES} Versuchen '
+              f'nicht erreichbar: {MJPEG_URL}')
         print('Ist dashboard_bridge gestartet?')
         sys.exit(1)
 
