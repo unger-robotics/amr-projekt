@@ -6,12 +6,12 @@
  *
  * @standard REP-103 (SI-Einheiten), REP-105 (Frames), Safety-First
  * @hardware Seeed Studio XIAO ESP32-S3, Cytron MDD3A, JGA25-370 (1:34),
- *           INA260, PCA9685, MPU6050 (GY-521), 2x MG90S (aktuell),
+ *           INA260, PCA9685, MPU6050 (GY-521), MG996R Pan + MG90S Tilt,
  *           Pololu D36V50F6 (6 V Buck), LED-Streifen SMD 5050
  * @battery  Samsung INR18650-35E 3S1P (NCA, 10,80 V / 3.350 mAh)
  *
- * @note     Servo-Upgrade auf 2x MG996R (TowerPro Original, bestellt)
- *           geplant. MG996R-Werte sind als Kommentar hinterlegt.
+ * @note     Pan=MG996R (verbaut). Tilt=MG90S (unterdimensioniert fuer
+ *           CS-Mount-Objektiv 53g). MG996R-Upgrade fuer Tilt geplant.
  *
  * I2C-Bus: 400 kHz Fast-mode
  *   0x40 – INA260  (Leistungsmonitor, Default-Adresse)
@@ -221,19 +221,24 @@ constexpr float stillstand_threshold = 0.01f; // PID umgehen bei ~0 Sollwert
 } // namespace amr::pid
 
 // ==========================================================================
-// 3.1 SERVO-KONFIGURATION (PCA9685 + 2x MG90S)
+// 3.1 SERVO-KONFIGURATION (PCA9685 + MG996R Pan / MG90S Tilt)
 // ==========================================================================
 //
 // Quellen:
 //   - NXP PCA9685 Datenblatt Rev. 4 (PRE_SCALE, Oszillator 25 MHz)
 //   - TowerPro MG90S Spezifikation (digital, Metallgetriebe, 25T-Spline)
-//   - TowerPro MG996R Spezifikation (Upgrade geplant, Werte auskommentiert)
+//   - TowerPro MG996R Spezifikation (11 kg*cm @ 6 V, Metallgetriebe)
 //   - Pololu D36V50F6 liefert 6 V Servo-Versorgung
+//
+// Status: Pan=MG996R (verbaut), Tilt=MG90S (unterdimensioniert fuer
+//   CS-Mount-Objektiv PT361060M3MP12, 53 g, langer Hebelarm).
+//   MG996R-Upgrade fuer Tilt geplant — MG90S schafft das Kippmoment
+//   des vorstehenden Objektivs nicht (Stall bei Aufwaertsbewegung).
 //
 // Topologie:
 //   3S-Pack -> INA260 -> D36V50F6 (6 V) -> PCA9685 V+ Schraubklemme
 //   ESP32-S3 3,3 V -> PCA9685 VCC (Logik)
-//   PCA9685 CH0 -> MG90S Pan | CH1 -> MG90S Tilt
+//   PCA9685 CH0 -> MG996R Pan | CH1 -> MG90S Tilt (MG996R nach Upgrade)
 //
 // OE-Pin: Fest auf GND geloetet (Hardware-Bruecke).
 //   Konsequenz: Alle 16 PWM-Ausgaenge sind permanent aktiv.
@@ -290,16 +295,18 @@ constexpr uint32_t ramp_step_ms = 20;     // [ms] = ein PWM-Zyklus (50 Hz)
 // Resultierende Maximalgeschwindigkeit: 50°/s (1°/20ms)
 // Volle Traverse (180°): 3,6 s
 
-// --- MG90S Strombedarf (bei 6 V Versorgung) ---
-// Quelle: TowerPro MG90S Datenblatt, empirische Messungen
+// --- MG996R Strombedarf (bei 6 V Versorgung) ---
+// Quelle: TowerPro MG996R Datenblatt, 11 kg*cm @ 6 V
+// Pan=MG996R (verbaut), Tilt=MG996R (nach Upgrade, aktuell MG90S)
 constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
-constexpr float move_current_ma = 250.0f; // [mA] pro Servo, unter Last
-constexpr float stall_current_a = 0.9f;   // [A] pro Servo, Blockierung
+constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
+constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
+constexpr float torque_kgcm = 11.0f;      // [kg*cm] @ 6 V (MG996R)
 
-// --- MG996R Strombedarf (fuer geplantes Upgrade) ---
-// constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
-// constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
-// constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
+// --- MG90S Referenzwerte (Tilt aktuell, bis MG996R-Upgrade) ---
+// constexpr float mg90s_move_current_ma = 250.0f; // [mA] unter Last
+// constexpr float mg90s_stall_current_a = 0.9f;   // [A] Blockierung
+// constexpr float mg90s_torque_kgcm = 1.8f;       // [kg*cm] @ 4.8 V
 
 } // namespace amr::servo
 
@@ -310,13 +317,13 @@ constexpr float stall_current_a = 0.9f;   // [A] pro Servo, Blockierung
 // Quelle: Pololu Produktseite #4092
 // Topologie: Synchroner Buck-Konverter, 6 V fest, max. 5,5 A @ 36 V
 // Eingang: 3S-Pack ueber INA260 (9,0 … 12,6 V)
-// Ausgang: PCA9685 V+ Schraubklemme -> 2x MG90S Servos (MG996R nach Upgrade)
+// Ausgang: PCA9685 V+ Schraubklemme -> MG996R Pan + MG90S Tilt (MG996R nach Upgrade)
 //
 // Dropout bei 5 A: ca. 0,8 V -> min. 6,8 V Eingang
 // Pack-Minimum 9,0 V >> 6,8 V -> komfortabel erfuellt
 //
 // Max. Dauerstrom bei 12 V Eingang: ca. 7 A
-// 2x MG90S Stall: 1,8 A -> reichlich Headroom (MG996R: 5 A)
+// 2x MG996R Stall: 5,0 A -> unter 5,5 A Regler-Limit (knapp, Peak kurzzeitig)
 //
 // EN-Pin: Interner 100 kOhm Pull-up nach VIN (Default: aktiv).
 //   Fuer Hardware-Unterspannungsabschaltung kann ein Spannungsteiler
@@ -403,7 +410,7 @@ constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 // ==========================================================================
 //
 // DC-Motoren: Cytron MDD3A max. 3 A Dauer, JGA25-370 Stall 2,5…3,0 A
-// Servos:     MG90S Stall 0,9 A @ 6 V (MG996R: 2,5 A, nach Upgrade)
+// Servos:     MG996R Stall 2,5 A @ 6 V (Pan verbaut, Tilt nach Upgrade)
 
 namespace amr::safety {
 

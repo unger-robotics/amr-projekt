@@ -23,8 +23,9 @@ class PCA9685 {
     uint8_t addr_;
 
     // Rampen-State pro Kanal (nur Pan + Tilt)
-    float current_angle_[2];
-    float target_angle_[2];
+    static constexpr uint8_t NUM_SERVO_CH = 2;
+    float current_angle_[NUM_SERVO_CH];
+    float target_angle_[NUM_SERVO_CH];
 
     void writeRegister(uint8_t reg, uint8_t val) {
         Wire.beginTransmission(addr_);
@@ -105,7 +106,7 @@ class PCA9685 {
         uint16_t off_ticks = angleToPWM(angle_deg);
         setPWM(channel, 0, off_ticks);
         // State aktualisieren (nur fuer Rampen-Kanaele)
-        if (channel < 2) {
+        if (channel < NUM_SERVO_CH) {
             current_angle_[channel] = angle_deg;
             target_angle_[channel] = angle_deg;
         }
@@ -114,7 +115,7 @@ class PCA9685 {
     void setTargetAngle(uint8_t channel, float angle_deg) {
         if (angle_deg < amr::servo::angle_min_deg) angle_deg = amr::servo::angle_min_deg;
         if (angle_deg > amr::servo::angle_max_deg) angle_deg = amr::servo::angle_max_deg;
-        if (channel < 2) {
+        if (channel < NUM_SERVO_CH) {
             target_angle_[channel] = angle_deg;
         }
     }
@@ -122,7 +123,7 @@ class PCA9685 {
     // Nicht-blockierende Rampenfahrt: 1 Schritt pro Aufruf (1 deg/20ms)
     // Rueckgabe: true wenn Ziel erreicht
     bool updateRamp(uint8_t channel) {
-        if (channel >= 2) return true;
+        if (channel >= NUM_SERVO_CH) return true;
         float diff = target_angle_[channel] - current_angle_[channel];
         if (fabsf(diff) < 0.5f) {
             current_angle_[channel] = target_angle_[channel];
@@ -155,7 +156,7 @@ class PCA9685 {
     }
 
     float getCurrentAngle(uint8_t channel) const {
-        if (channel >= 2) return 0.0f;
+        if (channel >= NUM_SERVO_CH) return 0.0f;
         return current_angle_[channel];
     }
 };
