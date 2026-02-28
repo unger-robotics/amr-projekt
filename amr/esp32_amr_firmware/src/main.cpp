@@ -61,6 +61,18 @@ rcl_node_t node;
 // Batterie-Unterspannungs-Flag (gesetzt in Core 0, gelesen in Core 1)
 volatile bool battery_motor_shutdown = false;
 
+// I2C Thread-Safety (Cross-Core Mutex)
+SemaphoreHandle_t i2c_mutex;
+uint32_t i2c_contention_errors = 0;
+
+// Deferred Servo Command (Callback → RAM, loop() → I2C)
+struct ServoCommand {
+    volatile float pan;
+    volatile float tilt;
+    volatile bool update_pending;
+};
+ServoCommand servo_cmd = {90.0f, 90.0f, false};
+
 void controlTask(void *p) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
     float last_sp_l = 0, last_sp_r = 0;
@@ -106,12 +118,6 @@ void controlTask(void *p) {
             tw = 0;
         }
 
-        // Servo-Rampen aktualisieren (vor Motor-PID, Kamera-Tracking hat Prioritaet)
-        if (pca9685_ok) {
-            pca9685.updateRamp(amr::servo::ch_pan);
-            pca9685.updateRamp(amr::servo::ch_tilt);
-        }
-
         WheelTargets t = kinematics.computeMotorSpeeds(tv, tw);
 
         // Hard-Stop: Bei Zielgeschwindigkeit Null Rampe umgehen
@@ -155,10 +161,17 @@ void controlTask(void *p) {
             shared.ow = (mr - ml) * amr::kinematics::wheel_radius / amr::kinematics::wheel_base;
             xSemaphoreGive(mutex);
         }
-        // IMU lesen und Heading fusionieren
+        // IMU lesen und Heading fusionieren (I2C mit Mutex geschuetzt)
         if (imu_ok) {
             float ax, ay, az, gx, gy, gz;
-            if (imu.read(ax, ay, az, gx, gy, gz)) {
+            bool imu_read_ok = false;
+            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                imu_read_ok = imu.read(ax, ay, az, gx, gy, gz);
+                xSemaphoreGive(i2c_mutex);
+            } else {
+                i2c_contention_errors++;
+            }
+            if (imu_read_ok) {
                 float fused_heading = imu.updateHeading(s.theta, gz, dt);
                 if (xSemaphoreTake(mutex, 10)) {
                     shared.imu_ax = ax; shared.imu_ay = ay; shared.imu_az = az;
@@ -194,8 +207,9 @@ void servo_cmd_callback(const void *m) {
         float tilt = static_cast<float>(msg->y);
         if (tilt < amr::servo::angle_min_deg) tilt = amr::servo::angle_min_deg;
         if (tilt > amr::servo::angle_max_deg) tilt = amr::servo::angle_max_deg;
-        pca9685.setTargetAngle(amr::servo::ch_pan, pan);
-        pca9685.setTargetAngle(amr::servo::ch_tilt, tilt);
+        servo_cmd.pan = pan;
+        servo_cmd.tilt = tilt;
+        servo_cmd.update_pending = true;
     }
 }
 
@@ -229,6 +243,7 @@ void setup() {
     }
 
     mutex = xSemaphoreCreateMutex();
+    i2c_mutex = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(controlTask, "Ctrl", 10000, NULL, 1, NULL, 1);
     delay(2000);
 
@@ -334,6 +349,20 @@ void loop() {
     rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
     delay(1);
 
+    // Deferred Servo I2C (nach spin_some, Core 0)
+    if (pca9685_ok && servo_cmd.update_pending) {
+        servo_cmd.update_pending = false;
+        float pan = servo_cmd.pan;
+        float tilt = servo_cmd.tilt;
+        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+            pca9685.setAngle(amr::servo::ch_pan, pan);
+            pca9685.setAngle(amr::servo::ch_tilt, tilt);
+            xSemaphoreGive(i2c_mutex);
+        } else {
+            i2c_contention_errors++;
+        }
+    }
+
     // Odom publish
     static unsigned long last = 0;
     if (millis() - last >= amr::timing::odom_publish_period_ms) {
@@ -419,12 +448,24 @@ void loop() {
         if (millis() - last_bat >= amr::timing::battery_publish_period_ms) {
             last_bat = millis();
             float voltage = 0, current = 0, power = 0;
-            if (ina260.read(voltage, current, power)) {
+            bool bat_read_ok = false;
+            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                bat_read_ok = ina260.read(voltage, current, power);
+                xSemaphoreGive(i2c_mutex);
+            } else {
+                i2c_contention_errors++;
+            }
+            if (bat_read_ok) {
                 // Batterie-Unterspannungsabschaltung
                 if (voltage > 0.5f && voltage < amr::battery::threshold_motor_shutdown_v) {
                     battery_motor_shutdown = true;
                     if (pca9685_ok) {
-                        pca9685.allOff();
+                        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                            pca9685.allOff();
+                            xSemaphoreGive(i2c_mutex);
+                        } else {
+                            i2c_contention_errors++;
+                        }
                     }
                 } else if (voltage > amr::battery::threshold_motor_shutdown_v + amr::battery::threshold_hysteresis_v) {
                     battery_motor_shutdown = false;
