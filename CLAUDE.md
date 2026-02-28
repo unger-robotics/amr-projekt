@@ -139,29 +139,29 @@ source .venv/bin/activate && python suche/download_sources.py
 
 Die Firmware partitioniert die Kerne fuer Echtzeit-Garantien:
 
-- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist) und `servo_cmd` (Point), publiziert `Odometry` (20 Hz), `Imu` (50 Hz), `BatteryState` (2 Hz, INA260), Watchdog-Ueberwachung
-- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`), PCA9685-Servo-Rampenaktualisierung (vor Motor-PID)
-- **Thread-Safety**: FreeRTOS-Mutex (`SharedData`) schuetzt geteilte Daten zwischen den Cores
+- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist) und `servo_cmd` (Point), publiziert `Odometry` (20 Hz), `Imu` (50 Hz), `BatteryState` (2 Hz, INA260), Watchdog-Ueberwachung, Deferred Servo-I2C
+- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`), IMU-Read (mit `i2c_mutex`)
+- **Thread-Safety**: `mutex` (FreeRTOS, SharedData zwischen Cores), `i2c_mutex` (5 ms Timeout, schuetzt alle I2C-Zugriffe Cross-Core)
 
-Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish. Servo-Pfad: `servo_cmd` (Point) → Clamping 0-180° → `setTargetAngle()` → `updateRamp()` (Core 1, 50 Hz) → PCA9685 PWM
+Datenfluss: `cmd_vel` → inverse Kinematik → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish. Servo-Pfad (Deferred-I2C): `servo_cmd` (Point) → Callback speichert in `ServoCommand` struct (RAM-only) → `loop()` nach `spin_some()` → `pca9685.setAngle()` (in `i2c_mutex`, Core 0). Kein I2C in Subscriber-Callbacks (Wire schlaegt still fehl in `rclc_executor_spin_some()`).
 
 ### Firmware-Module (Header-only Pattern)
 
 | Datei | Funktion |
 |---|---|
-| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Odom/IMU/Battery Publisher, `/servo_cmd` Subscriber (Point), INA260/PCA9685 Init, Batterie-Unterspannungsabschaltung |
+| `main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Odom/IMU/Battery Publisher, `/servo_cmd` Subscriber (Deferred-I2C), `i2c_mutex` Cross-Core, INA260/PCA9685 Init, Batterie-Unterspannungsabschaltung |
 | `robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (Quadratur A+B, Richtung aus Phasenversatz), PWM-Steuerung, Deadzone (`amr::pid::deadband_threshold`), LED-MOSFET-PWM |
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup und D-Term-Tiefpass (`amr::pid::d_filter_tau`), Ausgang [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter via Konstruktor) |
 | `mpu6050.hpp` | MPU6050 I2C-Treiber (±2g/±250°/s), Gyro-Bias-Kalibrierung, Komplementaerfilter (`amr::imu::complementary_alpha`) |
 | `ina260.hpp` | TI INA260 I2C-Leistungsmonitor: Spannung/Strom/Leistung, Unterspannungs-Alert (`amr::ina260::`) |
-| `pca9685.hpp` | NXP PCA9685 I2C-Servo-PWM: `setAngle()`, nicht-blockierende Rampe (`updateRamp()`), `allOff()` Notaus (`amr::servo::`) |
+| `pca9685.hpp` | NXP PCA9685 I2C-Servo-PWM: `setAngle()`, `allOff()` Notaus, `NUM_SERVO_CH` Bounds-Check (`amr::servo::`) |
 
 Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `amr::pwm::`, `amr::kinematics::` etc.): PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0), EMA-Filter (`ema_alpha=0.3`), Beschleunigungsrampe (`max_accel_rad_s2=5.0`), Dead-Band (`deadband_threshold=0.08`), Stillstand-Bypass (`stillstand_threshold=0.01`). Rohdaten fuer Odometrie, gefilterte Werte fuer PID. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
 **Batterie-Ueberwachung (INA260):** Bei Packspannung < 9.5 V (`amr::battery::threshold_motor_shutdown_v`): Motoren + Servos werden abgeschaltet (PCA9685 `allOff()`). Hysterese 0.3 V fuer Wiederaktivierung. SOC-Schaetzung per linearer Interpolation. BatteryState-Topic `/battery` @ 2 Hz.
 
-**Servo-Steuerung (PCA9685):** Pan/Tilt-Servos (MG90S, MG996R-Upgrade geplant) auf Kanaelen 0/1, Mittelstellung (90°) bei Startup. Nicht-blockierende Rampenfahrt (1°/20ms, in `controlTask` Core 1). Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
+**Servo-Steuerung (PCA9685, Deferred-I2C):** Pan=MG996R (CH0, verbaut), Tilt=MG90S (CH1, unterdimensioniert fuer CS-Mount-Objektiv PT361060M3MP12 mit 53 g — MG996R-Upgrade geplant). Mittelstellung (90°) bei Startup. Deferred-I2C-Pattern: Subscriber-Callback speichert Winkel in `ServoCommand` struct (RAM-only, kein I2C), `loop()` fuehrt `pca9685.setAngle()` nach `spin_some()` aus (in `i2c_mutex`). Alle I2C-Zugriffe (IMU, INA260, PCA9685) mit `i2c_mutex` (5 ms Timeout) geschuetzt — Arduino Wire ist NICHT thread-safe zwischen Cores. Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
 
 **LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler.
 
@@ -314,7 +314,7 @@ Zentral in `hardware/config.h` v2.4.0 definiert (Single Source of Truth, C++-Nam
 - **Timing** (`amr::timing::`): Regelschleife 50 Hz, Odom 20 Hz, IMU 50 Hz, Batterie 2 Hz, Failsafe 500 ms, Watchdog 50 Zyklen
 - **IMU** (`amr::imu::`): Komplementaerfilter alpha=0.98 (98% Gyro), Gyro-Sensitivity 131.0 (±250°/s), 500 Kalibrierproben
 - **Batterie** (`amr::battery::`): Samsung INR18650-35E 3S1P, 10.80 V nominal, Warnung 10.0 V, Motor-Shutdown 9.5 V, System-Shutdown 9.0 V
-- **Servo** (`amr::servo::`): PCA9685 50 Hz, MG90S 600-2400 µs (MG996R-Upgrade geplant), Rampe 1°/20ms, Pan=CH0, Tilt=CH1
+- **Servo** (`amr::servo::`): PCA9685 50 Hz, 600-2400 µs, Pan=MG996R CH0, Tilt=MG90S CH1 (MG996R-Upgrade geplant), Stall 2.5 A, Torque 11 kg*cm @ 6 V
 - **I2C** (`amr::i2c::`): 400 kHz, INA260=0x40, PCA9685=0x41, MPU6050=0x68
 
 ## Firmware-Constraints
@@ -405,5 +405,6 @@ Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.c
 - **IMU Gyro-Drift hoch**: Kalibrierung laeuft 500 Samples beim Startup. Roboter muss waehrend der ersten ~5s nach Power-On still stehen.
 - **INA260 nicht erkannt**: Manufacturer-ID (0xFE) gibt nicht 0x5449 zurueck. I2C-Adresse pruefen: Default 0x40 (A0=GND, A1=GND). `i2cdetect -y 1` auf dem ESP32 nicht verfuegbar — stattdessen Serial-Monitor-Output pruefen.
 - **PCA9685 Prescaler falsch**: Prescaler-Verifizierung in `init()` schlaegt fehl. PCA9685 muss im Sleep-Modus sein vor Prescaler-Aenderung. Bei Loetbruecke A0 offen: Adresse ist 0x40 (Kollision mit INA260!) — A0 muss geschlossen sein fuer 0x41.
-- **Servos zittern**: MG90S/MG996R brummt am Endanschlag. Sicheren Pulsbereich (600-2400 µs) einhalten. `pca9685.allOff()` bei Nichtgebrauch aufrufen.
+- **Servos zittern**: MG90S/MG996R brummt am Endanschlag. Sicheren Pulsbereich (600-2400 µs) einhalten. `pca9685.allOff()` bei Nichtgebrauch aufrufen. **Tilt-Servo (MG90S) zittert unter Last**: CS-Mount-Objektiv PT361060M3MP12 (53 g, langer Hebelarm) uebersteigt MG90S-Drehmoment (1.8 kg*cm). Kein Softwarefehler — MG996R-Upgrade (11 kg*cm) erforderlich.
+- **I2C in Subscriber-Callbacks**: Wire-Operationen schlagen STILL FEHL innerhalb von `rclc_executor_spin_some()`. Loesung: Deferred-I2C-Pattern (Callback speichert Werte, I2C in `loop()` nach `spin_some()`).
 - **Batterie-Shutdown zu frueh**: `threshold_motor_shutdown_v` (9.5 V) evtl. zu hoch bei hohem Strom (Spannungseinbruch durch Pack-Impedanz 183 mOhm). INA260-Spannung unter Last pruefen: `ros2 topic echo /battery --once`.
