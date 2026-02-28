@@ -171,8 +171,8 @@ Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `am
 
 Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
 
-- **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps, Recovery-Behaviors
-- **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure
+- **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps (raytrace/obstacle_min_range 0.2 m fuer RPLidar-Blindzone), Recovery-Behaviors
+- **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure, minimum_laser_range 0.2 m
 - **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
 - **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
 - **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 17 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf`, `hailo_inference_node`, `hailo_udp_receiver_node`, `gemini_semantic_node` (alle aus `my_bot.<name>:main`)
@@ -241,8 +241,8 @@ Die Sony IMX296 CSI-Kamera wird ueber eine v4l2loopback-Bridge in den Docker-Con
 IMX296 (CSI) → rpicam-vid (Host) → ffmpeg → /dev/video10 (v4l2loopback) → v4l2_camera_node (Docker/ROS2)
 ```
 
-- **Host-seitig**: `camera-v4l2-bridge.service` (systemd) startet die Pipeline (`rpicam-vid --codec mjpeg | ffmpeg -f v4l2 -pix_fmt yuyv422 /dev/video10`). Aufloesung: 1456x1088 @ 15fps.
-- **Container-seitig**: `v4l2_camera_node` liest `/dev/video10` (YUYV) und publiziert auf `/camera/image_raw`.
+- **Host-seitig**: `camera-v4l2-bridge.service` (systemd) startet die Pipeline (`rpicam-vid --codec mjpeg | ffmpeg -f v4l2 -pix_fmt yuyv422 /dev/video10`). Aufloesung: 640x480 @ 15fps (VGA genuegt fuer YOLOv8 640x640 Tensor, -80% Pixel vs. vorherige 1456x1088).
+- **Container-seitig**: `v4l2_camera_node` liest `/dev/video10` (YUYV), konvertiert zu `bgr8` (`output_encoding` Parameter) und publiziert auf `/camera/image_raw`.
 - **Setup**: `host_setup.sh` installiert v4l2loopback-dkms, modprobe-Config und den systemd-Service. `run.sh` prueft automatisch ob die Bridge aktiv ist bei `use_camera:=True`.
 - **180°-Drehung**: Kamera ist kopfueber montiert. `/camera/image_raw` liefert das Rohbild (ungedreht). Drehung erfolgt an 3 Stellen: CSS `rotate-180` (Dashboard), `cv2.rotate()` (host_hailo_runner.py vor Inference), `cv2.rotate()` (gemini_semantic_node.py vor API-Aufruf).
 
@@ -269,12 +269,12 @@ host_hailo_runner.py                   hailo_udp_receiver_node
                                    dashboard_bridge (unveraendert)
 ```
 
-- **host_hailo_runner.py** (`amr/scripts/`, Host-seitig, kein ROS2): Liest MJPEG-Stream von `http://127.0.0.1:8082/stream` (dashboard_bridge), dreht Bild 180° (Kamera kopfueber montiert), fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen, 5 Hz), sendet Detektionen mit deutschen Labels (`COCO_LABELS_DE`) als JSON via UDP an `127.0.0.1:5005`. Parameter: `--model` (HEF-Pfad), `--threshold` (0.35), `--fallback` (Dummy-Detektionen ohne Hailo-Hardware).
+- **host_hailo_runner.py** (`amr/scripts/`, Host-seitig, kein ROS2): Liest MJPEG-Stream von `http://127.0.0.1:8082/stream` (dashboard_bridge), dreht Bild 180° (Kamera kopfueber montiert), fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen, 5 Hz), sendet Detektionen mit deutschen Labels (`COCO_LABELS_DE`) als JSON via UDP an `127.0.0.1:5005`. Startup-Retry: 10 Versuche mit exponentiellem Backoff (2s→30s) falls MJPEG-Stream noch nicht bereit. Parameter: `--model` (HEF-Pfad), `--threshold` (0.35), `--fallback` (Dummy-Detektionen ohne Hailo-Hardware).
 - **hailo_udp_receiver_node** (Docker/ROS2): Empfaengt JSON-Detektionen via UDP (Port 5005), validiert und publiziert auf `/vision/detections`. Identisches JSON-Schema wie `hailo_inference_node`.
 - **hailo_inference_node** (Legacy): Direkter Hailo-8 Zugriff aus dem Container – bleibt als Datei/Entry-Point fuer Rueckwaertskompatibilitaet, wird aber nicht mehr gelauncht.
-- **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, dreht Bild 180° (Kamera kopfueber montiert), verkleinert auf max 640px, sendet an Gemini API (`gemini-2.5-flash`), publiziert Schluesselwort-Analyse auf `/vision/semantics` (z.B. "Gerolsteiner Medium, klare Glasflasche"). Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 4s zwischen API-Aufrufen.
+- **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, dreht Bild 180° (Kamera kopfueber montiert), verkleinert auf max 640px (bei 640x480 Kamera kein Resize noetig), sendet an Gemini API (`gemini-3-flash-preview`), publiziert Schluesselwort-Analyse auf `/vision/semantics` (z.B. "Gerolsteiner Medium, klare Glasflasche"). Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 4s zwischen API-Aufrufen. SDK: `google.genai` (neues SDK, `pip3 install google-genai`).
 - **Modell**: YOLOv8s als HEF (Hailo Executable Format), vorkompiliert aus Hailo Model Zoo v2.11.0 fuer **Hailo-8L** (`hardware/models/yolov8s.hef`, 25 MB, in `.gitignore`). Download: `wget -O hardware/models/yolov8s.hef "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.11.0/hailo8l/yolov8s.hef"`. **Achtung**: Hailo-8 und Hailo-8L HEFs sind inkompatibel (Device-Arch-Pruefung). Das HEF enthaelt integriertes NMS — Output-Shape `(80, N, 5)` mit `[y_min, x_min, y_max, x_max, confidence]` normalisiert, NICHT das Software-Format `[num_boxes, 84]`. Inference ~36 ms/Frame.
-- **Python-Deps**: Docker: `pip3 install google-generativeai` (Gemini). Host: `hailort` + `opencv-python` + `numpy` (auf Pi 5 vorinstalliert).
+- **Python-Deps**: Docker: `pip3 install google-genai` (Gemini, neues SDK). Host: `hailort` + `opencv-python` + `numpy` (auf Pi 5 vorinstalliert). `PYTHONUNBUFFERED=1` setzen beim Host-Runner (stdout-Pufferung bei Nicht-TTY).
 
 ```bash
 # 1. Container: Vision-Pipeline starten (use_dashboard fuer MJPEG noetig):
