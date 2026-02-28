@@ -3,14 +3,16 @@ import { useTelemetryStore } from '../store/telemetryStore';
 
 const MARGIN_FRACTION = 0.05; // 5% Rand
 const ROBOT_ARROW_SIZE = 10; // px (Dreieck-Groesse)
-const ROBOT_DOT_RADIUS = 3; // px (roter Mittelpunkt)
+const ROBOT_DOT_RADIUS = 3; // px (gruener Mittelpunkt)
 const ROBOT_GLOW_RADIUS = 14; // px (aeusserer Glow)
 const SCALE_BAR_MARGIN = 16; // px Abstand vom Rand
+const MAX_TRAIL_POINTS = 500; // Max Pfad-Punkte
 
 export function MapView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement | null>(null);
+  const trailRef = useRef<{ x: number; y: number }[]>([]);
 
   const [mapLoaded, setMapLoaded] = useState(false);
 
@@ -44,6 +46,23 @@ export function MapView() {
     img.src = `data:image/png;base64,${mapPngB64}`;
   }, [mapPngB64]);
 
+  // Roboter-Pfad aktualisieren
+  useEffect(() => {
+    if (robotMapX === 0 && robotMapY === 0) return;
+    const trail = trailRef.current;
+    const last = trail[trail.length - 1];
+    // Deduplizierung: nur hinzufuegen wenn Mindestabstand 2cm
+    if (last) {
+      const dx = robotMapX - last.x;
+      const dy = robotMapY - last.y;
+      if (dx * dx + dy * dy < 0.0004) return; // < 2cm
+    }
+    trail.push({ x: robotMapX, y: robotMapY });
+    if (trail.length > MAX_TRAIL_POINTS) {
+      trail.splice(0, trail.length - MAX_TRAIL_POINTS);
+    }
+  }, [robotMapX, robotMapY]);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -71,7 +90,7 @@ export function MapView() {
     const mapImg = mapImageRef.current;
     if (!mapImg || !mapLoaded || mapWidth === 0 || mapHeight === 0) {
       // Platzhalter
-      ctx.fillStyle = 'rgba(0, 229, 255, 0.4)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.font = '14px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -91,25 +110,45 @@ export function MapView() {
     const offsetX = (width - drawW) / 2;
     const offsetY = (height - drawH) / 2;
 
-    // Map zeichnen (Pixel-Look)
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(mapImg, offsetX, offsetY, drawW, drawH);
+    // Map zeichnen (geglaettet fuer Saugroboter-Look)
     ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(mapImg, offsetX, offsetY, drawW, drawH);
 
-    // Roboter-Position: Map-Meter → Pixel → Canvas
-    const pixelX = (robotMapX - mapOriginX) / mapResolution;
-    const pixelY = mapHeight - (robotMapY - mapOriginY) / mapResolution; // Y invertiert
-    const canvasRobotX = offsetX + pixelX * mapScale;
-    const canvasRobotY = offsetY + pixelY * mapScale;
+    // Hilfsfunktion: Map-Meter → Canvas-Pixel
+    const toCanvas = (mx: number, my: number) => ({
+      cx: offsetX + ((mx - mapOriginX) / mapResolution) * mapScale,
+      cy: offsetY + (mapHeight - (my - mapOriginY) / mapResolution) * mapScale,
+    });
+
+    // --- Roboter-Pfad-Trail ---
+    const trail = trailRef.current;
+    if (trail.length > 1) {
+      ctx.beginPath();
+      const p0 = toCanvas(trail[0].x, trail[0].y);
+      ctx.moveTo(p0.cx, p0.cy);
+      for (let i = 1; i < trail.length; i++) {
+        const p = toCanvas(trail[i].x, trail[i].y);
+        ctx.lineTo(p.cx, p.cy);
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // Roboter-Position
+    const { cx: canvasRobotX, cy: canvasRobotY } = toCanvas(robotMapX, robotMapY);
 
     // --- Roboter-Icon ---
-    // Aeusserer Glow-Kreis
+    // Aeusserer Glow-Kreis (weiss)
     ctx.beginPath();
     ctx.arc(canvasRobotX, canvasRobotY, ROBOT_GLOW_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.12)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.fill();
 
-    // Richtungspfeil (Cyan Dreieck)
+    // Richtungspfeil (weiss)
     ctx.save();
     ctx.translate(canvasRobotX, canvasRobotY);
     ctx.rotate(-robotMapYaw); // ROS CCW positiv → Canvas CW positiv
@@ -118,26 +157,26 @@ export function MapView() {
     ctx.lineTo(-ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
     ctx.lineTo(ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
     ctx.closePath();
-    ctx.fillStyle = '#00e5ff';
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
-    ctx.strokeStyle = '#00e5ffaa';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
 
-    // Roter Mittelpunkt
+    // Gruener Mittelpunkt (Saugroboter-Stil)
     ctx.beginPath();
     ctx.arc(canvasRobotX, canvasRobotY, ROBOT_DOT_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = '#ef4444';
+    ctx.fillStyle = '#00e676';
     ctx.fill();
 
-    // --- Massstabsleiste (1m) ---
+    // --- Massstabsleiste (1m, weiss) ---
     const oneMetrePixels = (1.0 / mapResolution) * mapScale;
     const barY = offsetY + drawH - SCALE_BAR_MARGIN;
     const barX = offsetX + SCALE_BAR_MARGIN;
     const endCapH = 6;
 
-    ctx.strokeStyle = '#00e5ff';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     // Horizontale Linie
@@ -152,7 +191,7 @@ export function MapView() {
     ctx.stroke();
 
     // Label
-    ctx.fillStyle = '#00e5ff';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';

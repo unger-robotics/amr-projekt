@@ -507,25 +507,25 @@ class DashboardBridge(Node):
                 return
             grid = np.array(msg.data, dtype=np.int8).reshape((height, width))
 
-            # RGBA-Bild erzeugen
+            # RGBA-Bild erzeugen (Saugroboter-Stil)
             rgba = np.zeros((height, width, 4), dtype=np.uint8)
-            # Unbekannt (-1): dunkelblau, halbtransparent
+            # Unbekannt (-1): fast schwarz, opak
             unknown = grid == -1
-            rgba[unknown] = [15, 21, 33, 100]
-            # Frei (0): sehr dunkel, leicht transparent
+            rgba[unknown] = [20, 24, 36, 255]
+            # Frei (0): hellblau (befahrbare Flaeche)
             free = grid == 0
-            rgba[free] = [10, 14, 23, 180]
-            # Belegt (>50): Cyan (Theme-Farbe), voll opak
+            rgba[free] = [106, 148, 191, 255]
+            # Belegt (>50): dunkelgrau (Waende/Hindernisse)
             occupied = grid > 50
-            rgba[occupied] = [0, 229, 255, 255]
-            # Partial (1-50): abgestuft
+            rgba[occupied] = [45, 55, 72, 255]
+            # Partial (1-50): Gradient blau → grau
             partial = (grid > 0) & (grid <= 50)
             if np.any(partial):
                 vals = grid[partial].astype(np.float32) / 50.0
-                rgba[partial, 0] = (10 + vals * (0 - 10)).astype(np.uint8)
-                rgba[partial, 1] = (14 + vals * (229 - 14)).astype(np.uint8)
-                rgba[partial, 2] = (23 + vals * (255 - 23)).astype(np.uint8)
-                rgba[partial, 3] = (180 + vals * (255 - 180)).astype(np.uint8)
+                rgba[partial, 0] = (106 + vals * (45 - 106)).astype(np.uint8)
+                rgba[partial, 1] = (148 + vals * (55 - 148)).astype(np.uint8)
+                rgba[partial, 2] = (191 + vals * (72 - 191)).astype(np.uint8)
+                rgba[partial, 3] = 255
 
             # ROS Y-oben -> Bild Y-unten
             rgba = np.flipud(rgba)

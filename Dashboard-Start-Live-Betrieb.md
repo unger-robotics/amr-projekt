@@ -1,10 +1,30 @@
-# Dashboard + Vision: Live-Betrieb Startanleitung
+# Dashboard + Vision + SLAM: Live-Betrieb Startanleitung
 
-Vollstaendige Startsequenz fuer Dashboard mit Kamera, Hailo-8L Objekterkennung und Gemini-Semantik.
+Vollstaendige Startsequenz fuer Dashboard mit SLAM-Kartierung, Kamera, Hailo-8L Objekterkennung und Gemini-Semantik.
 Reihenfolge kritisch — ESP32 hat keine Reconnection-Logik!
 
 **Ports:** WebSocket 9090, MJPEG 8082, Vite 5173, Hailo UDP 5005
 **URL:** http://192.168.1.24:5173
+
+## Systemuebersicht
+
+13 Komponenten im Live-Betrieb: 11 ROS2-Nodes im Docker-Container, 1 Host-Prozess, 1 ESP32 micro-ROS Node.
+
+| # | Komponente | Typ | Funktion |
+|---|---|---|---|
+| 1 | `rplidar_node` | Container-Node | RPLidar A1 LiDAR-Scanner (10 Hz) |
+| 2 | `laser_tf_publisher` | Container-Node | Statischer TF: base_link → laser |
+| 3 | `camera_tf_publisher` | Container-Node | Statischer TF: base_link → camera_link |
+| 4 | `micro_ros_agent` | Container-Prozess | Serial-Bridge ESP32 ↔ ROS2 (USB-CDC) |
+| 5 | `odom_to_tf` | Container-Node | Odometrie → TF-Broadcast (odom → base_link) |
+| 6 | `slam_toolbox` | Container-Node | Async SLAM (Ceres-Solver, 5 cm Aufloesung) |
+| 7 | `v4l2_camera_node` | Container-Node | IMX296 Kamera via v4l2loopback (15 fps) |
+| 8 | `dashboard_bridge` | Container-Node | WebSocket (JSON) + MJPEG-Server (HTTP) |
+| 9 | `hailo_udp_receiver` | Container-Node | UDP-Empfaenger → `/vision/detections` |
+| 10 | `gemini_semantic_node` | Container-Node | Gemini Cloud-Analyse → `/vision/semantics` |
+| 11 | `esp32_bot` | ESP32 micro-ROS | Odom (20 Hz), IMU (50 Hz), Battery (2 Hz) |
+| 12 | `host_hailo_runner.py` | Host-Prozess | YOLOv8 Inference auf Hailo-8L (5 Hz, ~36 ms) |
+| 13 | `camera-v4l2-bridge` | Host-Service | rpicam-vid → ffmpeg → /dev/video10 |
 
 ## Voraussetzungen
 
@@ -12,9 +32,9 @@ Reihenfolge kritisch — ESP32 hat keine Reconnection-Logik!
 - `GEMINI_API_KEY` in `amr/docker/.env` gesetzt (fuer Gemini-Semantik)
 - Kein anderer Dienst auf dem ESP32-Port (`/dev/ttyACM0`)
 
-## Startsequenz (4 Terminals)
+## Startsequenz (3 Terminals)
 
-### Terminal 1: Infrastruktur bereinigen
+### Terminal 1: Vorbereitung + Docker Full-Stack
 
 ```bash
 # 1. Alte Container und Ports freigeben
@@ -23,12 +43,13 @@ docker rm $(docker ps -aq) 2>/dev/null
 sudo fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp 2>/dev/null
 sudo systemctl stop embedded-bridge.service selection-panel.service 2>/dev/null
 
-# 2. Kamera-Bridge sauber neu laden
-sudo modprobe -r v4l2loopback
-sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
-sudo systemctl restart camera-v4l2-bridge.service
-sleep 4
-sudo systemctl is-active camera-v4l2-bridge.service   # → "active"
+# 2. Kamera-Bridge pruefen/starten
+sudo systemctl is-active camera-v4l2-bridge.service || {
+    sudo modprobe -r v4l2loopback 2>/dev/null
+    sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
+    sudo systemctl restart camera-v4l2-bridge.service
+    sleep 4
+}
 
 # 3. ESP32 per DTR/RTS resetten (geht in ping-Schleife, wartet auf Agent)
 python3 -c "
@@ -39,31 +60,35 @@ s.setDTR(True); s.setRTS(False); time.sleep(0.05)
 s.setDTR(False); s.close()
 print('ESP32 Reset OK')
 "
-```
 
-### Terminal 1: Docker Full-Stack starten
-
-```bash
+# 4. Docker Full-Stack starten (10 Nodes + micro_ros_agent)
 cd ~/AMR-Bachelorarbeit/amr/docker
 ./run.sh ros2 launch my_bot full_stack.launch.py \
-    use_dashboard:=True use_camera:=True use_vision:=True \
+    use_slam:=True use_dashboard:=True use_camera:=True use_vision:=True \
     use_rviz:=False use_nav:=False
 ```
 
-Warten bis `[dashboard_bridge]` und `[gemini_semantic_node]` gestartet melden.
+Warten bis alle Nodes gestartet melden:
+- `[micro_ros_agent]` → `session established` (ESP32 verbunden)
+- `[slam_toolbox]` → `Registering sensor` (LiDAR erkannt)
+- `[dashboard_bridge]` → `WebSocket-Server gestartet` + `MJPEG-Server gestartet`
+- `[gemini_semantic_node]` → `Gemini Semantic Node gestartet`
+- `[hailo_udp_receiver]` → `warte auf host_hailo_runner.py`
 
-### Terminal 2: Hailo-Runner (Host-nativ)
+### Terminal 2: Hailo-Runner (Host-nativ, kein ROS2)
 
 ```bash
 cd ~/AMR-Bachelorarbeit
 PYTHONUNBUFFERED=1 python3 amr/scripts/host_hailo_runner.py \
-    --model hardware/models/yolov8s.hef --threshold 0.3
+    --model hardware/models/yolov8s.hef --threshold 0.35
 ```
 
 Erwartete Ausgabe:
 ```
-[DEBUG] Output "yolov8s/yolov8_nms_postprocess": 80 Klassen, N Detektionen gesamt
-[HAILO] 1 Objekt(e) in 36.0 ms: bottle
+=== Hailo-8 Host Runner ===
+[HAILO] Lade Modell: .../yolov8s.hef
+[HAILO] Initialisiert: 1 Input(s), 1 Output(s)
+[HAILO] 3 Objekt(e) in 35.5 ms: Stuhl, Stuhl, Buch
 ```
 
 Ohne Hailo-Hardware: `--fallback` statt `--model ...`
@@ -77,14 +102,24 @@ npm run dev -- --host
 
 Oeffnet http://192.168.1.24:5173 auf iPhone/Tablet/Mac.
 
-### Terminal 4 (optional): Debugging
+Alternativ statisch servieren (nach `npm run build`):
+```bash
+python3 -m http.server 3000 -d ~/AMR-Bachelorarbeit/dashboard/dist/
+```
+
+### Optional: Debugging (zweite Container-Shell)
 
 ```bash
 cd ~/AMR-Bachelorarbeit/amr/docker
 ./run.sh exec bash
+
 # Im Container:
-ros2 topic hz /vision/detections      # ~5 Hz erwartet
+ros2 node list                         # 11 Nodes erwartet
+ros2 topic hz /vision/detections       # ~5 Hz erwartet
 ros2 topic echo /vision/detections --once
+ros2 topic hz /scan                    # ~7.5 Hz erwartet
+ros2 topic echo /battery --once        # Batterie-Status
+ros2 topic echo /odom --once           # Odometrie
 ros2 topic hz /camera/image_raw        # ~15 Hz erwartet
 ```
 
@@ -111,11 +146,13 @@ wget -O hardware/models/yolov8s.hef \
 
 | Problem | Ursache | Loesung |
 |---|---|---|
-| Kein Kamerabild im Dashboard | MJPEG-Server war single-threaded, Hailo blockierte | `ThreadingHTTPServer` Fix (bereits eingespielt) |
-| `HAILO_OUT_OF_PHYSICAL_DEVICES` | Alter Runner-Prozess haelt Device | `pkill -f host_hailo_runner` |
+| ESP32 inaktiv nach Container-Start | Firmware hat keine Reconnection-Logik | ESP32 VOR Container-Start resetten (DTR/RTS) |
+| `micro_ros_agent` Segfault | Race Condition beim Reconnect | Container stoppen, ESP32 resetten, Container neu starten |
+| `HAILO_OUT_OF_PHYSICAL_DEVICES` | Alter Runner-Prozess haelt Device | `pkill -9 -f host_hailo_runner && sleep 2` |
 | `HAILO_HEF_NOT_COMPATIBLE` | Falsches HEF (hailo8 statt hailo8l) | Neu herunterladen mit `hailo8l` URL |
-| `NETWORK_GROUP_NOT_ACTIVATED` | `activate()` fehlt | Bereits im Code gefixt |
+| Kein Kamerabild im Dashboard | MJPEG-Server blockiert | `ThreadingHTTPServer` Fix (bereits eingespielt) |
 | `/dev/video10` fehlt | v4l2loopback nicht geladen | `sudo modprobe v4l2loopback video_nr=10 ...` |
-| Port 8082 belegt | Alter Container/Prozess | `sudo fuser -k 8082/tcp` |
-| ESP32 inaktiv | Firmware hat keine Reconnection | DTR/RTS Reset-Sequenz ausfuehren |
+| Port 8082/9090 belegt | Alter Container/Prozess | `sudo fuser -k 8082/tcp 9090/tcp` |
+| Warte auf SLAM-Karte | ESP32 nicht verbunden → kein Odom → kein TF | ESP32-Status pruefen, ggf. DTR/RTS Reset |
 | 0 Detektionen | Kein COCO-Objekt vor Kamera | Person/Flasche/Stuhl vor Kamera halten |
+| Gemini 429 (Rate Limit) | Free-Tier-Quote erschoepft | Min. 4s zwischen Aufrufen, Modell: `gemini-2.5-flash` |
