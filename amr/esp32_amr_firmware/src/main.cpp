@@ -389,9 +389,9 @@ void loop() {
         static bool hb_on = false;
         float led_override = hw_cmd.led_pwm;
         if (led_override > 0.5f) {
-            // Manueller LED-Modus: Slider 0-255 direkt als Duty
-            uint32_t duty = static_cast<uint32_t>(led_override);
-            if (duty > 255) duty = 255;
+            // Manueller LED-Modus: Slider 0-255 auf 10-bit (0-1023) skalieren
+            uint32_t duty = static_cast<uint32_t>(led_override * (static_cast<float>(amr::pwm::led_max) / 255.0f));
+            if (duty > amr::pwm::led_max) duty = amr::pwm::led_max;
             ledcWrite(amr::pwm::led_channel, duty);
         } else {
             // Auto-Heartbeat
