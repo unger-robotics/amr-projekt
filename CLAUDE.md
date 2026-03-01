@@ -17,9 +17,10 @@ pio run                       # Firmware kompilieren
 pio run -t upload             # Auf ESP32 flashen (921600 Baud)
 pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
 pio run -t upload -t monitor  # Upload + Monitor kombiniert
+pio run -e led_test -t upload -t monitor  # MOSFET-Diagnose (ohne micro-ROS, ~5s Build)
 ```
 
-Wichtige Build-Flags in `platformio.ini`: `-DARDUINO_USB_CDC_ON_BOOT=1` (USB-CDC als Serial), `-I../../hardware` (config.h Include-Pfad). micro-ROS-Konfiguration: `board_microros_transport = serial`, `board_microros_distro = humble`.
+Wichtige Build-Flags in `platformio.ini`: `-DARDUINO_USB_CDC_ON_BOOT=1` (USB-CDC als Serial), `-I../../hardware` (config.h Include-Pfad). `build_src_filter` trennt Haupt-Firmware (`-<led_ramp_test.cpp>`) und Diagnose-Env (`+<led_ramp_test.cpp>`). micro-ROS-Konfiguration: `board_microros_transport = serial`, `board_microros_distro = humble`.
 
 ### ROS2 via Docker (Raspberry Pi 5)
 
@@ -156,6 +157,7 @@ Datenfluss: `cmd_vel` → inverse Kinematik → Motor-Limit-Skalierung → PID �
 | `mpu6050.hpp` | MPU6050 I2C-Treiber (±2g/±250°/s), Gyro-Bias-Kalibrierung, Komplementaerfilter (`amr::imu::complementary_alpha`) |
 | `ina260.hpp` | TI INA260 I2C-Leistungsmonitor: Spannung/Strom/Leistung, Unterspannungs-Alert (`amr::ina260::`) |
 | `pca9685.hpp` | NXP PCA9685 I2C-Servo-PWM: `setAngle()`, `setTargetAngle()`, `updateRamp()` (nicht-blockierend), `setRampSpeed()` (Runtime-konfigurierbar), `allOff()` Notaus, `NUM_SERVO_CH` Bounds-Check (`amr::servo::`) |
+| `led_ramp_test.cpp` | MOSFET-Diagnose ohne micro-ROS (4 Phasen: digitalWrite, LEDC-Rampe, Stufen, Blinken). Nur in `[env:led_test]` kompiliert |
 
 Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `amr::pwm::`, `amr::kinematics::` etc.): PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0), EMA-Filter (`ema_alpha=0.3`), Beschleunigungsrampe (`max_accel_rad_s2=5.0`), Dead-Band (`deadband_threshold=0.08`), Stillstand-Bypass (`stillstand_threshold=0.01`). Rohdaten fuer Odometrie, gefilterte Werte fuer PID. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution).
 
@@ -165,7 +167,7 @@ Alle Regelparameter zentral in `hardware/config.h` (Namespaces `amr::pid::`, `am
 
 **Hardware-Fernsteuerung (`/hardware_cmd`):** Dashboard-Slider fuer Motor-Limit (0-100%, skaliert PID-Sollwerte), Servo-Speed (1-10, setzt `pca9685.setRampSpeed()`), LED-PWM (0-255, 0 = Auto-Heartbeat, >0 = manueller Duty-Cycle). Deferred-Pattern: Callback speichert in `HardwareCommand` struct, `loop()` wendet Werte an.
 
-**LED-Status (D10, IRLZ24N Low-Side MOSFET):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler (nur im Auto-Modus, led_pwm=0). Bei led_pwm > 0: Manueller Duty-Cycle (0-255) via `/hardware_cmd`.
+**LED-Status (D10/GPIO9, IRLZ24N Low-Side MOSFET, LEDC-Kanal 4, 5 kHz, 10-bit):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, LED-Ramp-Test (0→100→0%) bei Setup, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler (nur im Auto-Modus, led_pwm=0). Bei led_pwm > 0: Manueller Duty-Cycle (0-255) via `/hardware_cmd`. **LEDC-API (ESP32 Arduino Core 2.x):** `ledcWrite()` erwartet **LEDC-Kanal** als erstes Argument, NICHT GPIO-Pin. Korrekt: `ledcWrite(amr::pwm::led_channel, duty)`. **MOSFET-Diagnose:** `pio run -e led_test -t upload -t monitor` (4 Phasen: digitalWrite, LEDC-Rampe, Stufen, Blinken).
 
 **Encoder-Hinweis**: Firmware nutzt Quadratur-Dekodierung (Phase A + B). Phase A (D6/D7) als CHANGE-Interrupt, Phase B (D8/D9) fuer Richtungserkennung. 2x-Zaehlung (~748 Ticks/Rev). D8/D9 sind nicht fuer Servos verfuegbar.
 
