@@ -99,15 +99,15 @@ constexpr int8_t MOTOR_DIRECTION_LEFT = -1;
 constexpr int8_t MOTOR_DIRECTION_RIGHT = +1;
 
 // --- Encoder Phase A (Hall-Encoder JGA25-370, 11 CPR) ---
-#define PIN_ENC_LEFT_A D6  // GPIO7  – Phase A (Interrupt-faehig)
-#define PIN_ENC_RIGHT_A D7 // GPIO8  – Phase A (Interrupt-faehig)
+#define PIN_ENC_LEFT_A D6  // GPIO43 – Phase A (Interrupt-faehig)
+#define PIN_ENC_RIGHT_A D7 // GPIO44 – Phase A (Interrupt-faehig)
 
 // --- Encoder Phase B (Quadratur-Richtungserkennung) ---
-#define PIN_ENC_LEFT_B D8  // GPIO9  – Phase B
-#define PIN_ENC_RIGHT_B D9 // GPIO10 – Phase B
+#define PIN_ENC_LEFT_B D8  // GPIO7  – Phase B
+#define PIN_ENC_RIGHT_B D9 // GPIO8  – Phase B
 
 // --- Peripherie & Status ---
-#define PIN_LED_MOSFET D10 // GPIO21 – IRLZ24N Low-Side Switch (LED-Streifen)
+#define PIN_LED_MOSFET D10 // GPIO9  – IRLZ24N Low-Side Switch (LED-Streifen)
 
 // --- I2C Bus (Sensoren & Aktoren) ---
 #define PIN_I2C_SDA D4 // GPIO5

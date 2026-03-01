@@ -362,6 +362,17 @@ void setup() {
 
     rmw_uros_sync_session(1000);
 
+    // LED-Ramp-Test: 0% → 100% → 0% (3s, verifiziert LEDC 10-bit + MOSFET)
+    for (uint32_t d = 0; d <= amr::pwm::led_max; d += 64) {
+        ledcWrite(amr::pwm::led_channel, d);
+        delay(100);
+    }
+    ledcWrite(amr::pwm::led_channel, amr::pwm::led_max);
+    delay(500);
+    for (int32_t d = amr::pwm::led_max; d >= 0; d -= 64) {
+        ledcWrite(amr::pwm::led_channel, static_cast<uint32_t>(d));
+        delay(100);
+    }
     // LED an = Setup erfolgreich
     ledcWrite(amr::pwm::led_channel, 64);
 }
@@ -454,7 +465,6 @@ void loop() {
         msg_odom.child_frame_id.capacity = 10;
         msg_odom.pose.pose.position.x = x;
         msg_odom.pose.pose.position.y = y;
-        msg_odom.pose.pose.position.z = hw_cmd.led_pwm; // DEBUG: LED-Wert pruefen
         msg_odom.pose.pose.orientation.z = sin(th / 2);
         msg_odom.pose.pose.orientation.w = cos(th / 2);
         msg_odom.twist.twist.linear.x = v;

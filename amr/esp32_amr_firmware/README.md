@@ -59,13 +59,16 @@ Core 0 (loop)                      Core 1 (controlTask)
 - **Beschleunigungsrampe**: max. 5.0 rad/s^2 begrenzt Stromspitzen
 - **Agent-Warten**: Firmware blockiert in `setup()` bis micro-ROS Agent erreichbar ist
 
-### LED-Status (D10 ueber IRLZ24N MOSFET)
+### LED-Status (D10 ueber IRLZ24N MOSFET, LEDC-Kanal 4)
 
 - **Langsames Blinken**: Agent-Suche (Firmware wartet auf micro-ROS Agent)
 - **Schnelles Blinken**: Init-Fehler
 - **Gedimmt**: Setup erfolgreich abgeschlossen
 - **Heartbeat-Toggle**: `loop()` laeuft normal
 - **Dauer-An**: Publish-Fehler
+- **Manuell**: Duty-Cycle 0-255 via `/hardware_cmd` Topic (z=LED-PWM)
+
+**Hinweis:** Die ESP32 Arduino Core 2.x LEDC-API ist kanalbasiert — `ledcWrite(channel, duty)`, nicht `ledcWrite(pin, duty)`. LED-PWM verwendet LEDC-Kanal `amr::pwm::led_channel` (Kanal 4, 5 kHz, 10-bit).
 
 ## Konfiguration (`hardware/config.h`)
 
