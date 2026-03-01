@@ -40,6 +40,10 @@ hardware_info_*.md
 # Grosse Mediendateien
 *.MOV
 *.mov
+*.mp4
+
+# Grosse Datasheets (lokal behalten, nicht in Git)
+hardware/datasheet/Raspi 5 Pinout.pdf
 
 # Hailo HEF-Modelle (Binaer, ~25-50 MB)
 *.hef

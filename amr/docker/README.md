@@ -80,7 +80,7 @@ Die Sony IMX296 CSI-Kamera ist nicht direkt im Docker-Container nutzbar. Stattde
 IMX296 (CSI) -> rpicam-vid (MJPEG) -> ffmpeg -> /dev/video10 (YUYV422) -> v4l2_camera_node (Container)
 ```
 
-Der systemd-Service `camera-v4l2-bridge.service` wird durch `host_setup.sh` installiert und beim Boot aktiviert. Aufloesung: 1456x1088 bei 15 fps.
+Der systemd-Service `camera-v4l2-bridge.service` wird durch `host_setup.sh` installiert und beim Boot aktiviert. Aufloesung: 640x480 bei 15 fps.
 
 ```bash
 # Service starten/pruefen
