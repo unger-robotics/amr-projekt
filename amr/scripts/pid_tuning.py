@@ -23,14 +23,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from amr_utils import PID_KD, PID_KI, PID_KP
+
 # ===========================================================================
 # Roboter-Parameter
 # ===========================================================================
 SOLL_GESCHWINDIGKEIT = 0.4  # [m/s] Zielgeschwindigkeit
 AUFNAHME_DAUER = 10.0  # [s] Aufnahmedauer Live-Modus
 SPRUNG_VERZOEGERUNG = 2.0  # [s] Wartezeit vor Sprung
-
-from amr_utils import PID_KD, PID_KI, PID_KP
 
 # Aktuelle PID-Werte (aus amr_utils / hardware/config.h)
 KP = PID_KP
@@ -108,7 +108,7 @@ def live_aufnahme():
     # Aufzeichnung
     print(f"Zeichne {AUFNAHME_DAUER:.0f} s auf...")
     t_aufnahme = time.time()
-    letzte_pub = 0
+    letzte_pub = 0.0
     while time.time() - t_aufnahme < AUFNAHME_DAUER:
         rclpy.spin_once(node, timeout_sec=0.02)
         # cmd_vel regelmaessig wiederholen (Failsafe-Timeout = 500 ms)
@@ -415,7 +415,7 @@ def erstelle_plot(erg, speicherpfad=None):
             xy=(t_mitte, soll * 0.5),
             fontsize=9,
             ha="center",
-            bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow"),
+            bbox={"boxstyle": "round,pad=0.3", "fc": "lightyellow"},
         )
 
     # Ueberschwingen markieren
@@ -425,7 +425,7 @@ def erstelle_plot(erg, speicherpfad=None):
             f"OS = {erg['overshoot_pct']:.1f}%",
             xy=(t[idx_max], v[idx_max]),
             xytext=(t[idx_max] + 0.3, v[idx_max] + 0.02),
-            arrowprops=dict(arrowstyle="->", color="red"),
+            arrowprops={"arrowstyle": "->", "color": "red"},
             fontsize=9,
             color="red",
         )

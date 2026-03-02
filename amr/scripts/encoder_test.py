@@ -136,8 +136,8 @@ def run_10_rev_test(node):
     print("  Das Skript zaehlt die Ticks ueber die Odometrie.")
     print("  Es werden 3 Durchgaenge fuer jedes Rad durchgefuehrt.\n")
 
-    results_left = []
-    results_right = []
+    results_left: list[float] = []
+    results_right: list[float] = []
 
     for rad_name, results_list in [("LINKS", results_left), ("RECHTS", results_right)]:
         print(f"\n--- Rad {rad_name} ---")
@@ -410,7 +410,7 @@ def print_config_recommendations(rev_results):
 
 def save_results(rev_results, direction_results, asymmetry_results):
     """Speichert alle Ergebnisse als JSON-Datei."""
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     data = {
         "timestamp": datetime.datetime.now().isoformat(),
         "config": {

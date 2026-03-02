@@ -84,6 +84,9 @@ class RotationController(Node):
         if self.done:
             return
 
+        if self.start_time is None:
+            return
+
         error = self.target_rad - self.accumulated_rad
         elapsed = time.time() - self.start_time
 

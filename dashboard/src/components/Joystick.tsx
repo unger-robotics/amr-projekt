@@ -19,8 +19,10 @@ export function Joystick({ onMove, onEnd, disabled, compact }: JoystickProps) {
   // Keep stable refs to callbacks so we don't recreate the joystick on every render
   const onMoveRef = useRef(onMove);
   const onEndRef = useRef(onEnd);
-  onMoveRef.current = onMove;
-  onEndRef.current = onEnd;
+  useEffect(() => {
+    onMoveRef.current = onMove;
+    onEndRef.current = onEnd;
+  });
 
   useEffect(() => {
     if (!containerRef.current || disabled) return;

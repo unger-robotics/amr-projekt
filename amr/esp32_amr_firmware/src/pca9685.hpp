@@ -9,16 +9,16 @@
 
 class PCA9685 {
   private:
-    static constexpr uint8_t REG_MODE1          = 0x00;
-    static constexpr uint8_t REG_MODE2          = 0x01;
-    static constexpr uint8_t REG_LED0_ON_L      = 0x06;
-    static constexpr uint8_t REG_ALL_LED_OFF_H  = 0xFD;
-    static constexpr uint8_t REG_PRESCALE       = 0xFE;
+    static constexpr uint8_t REG_MODE1 = 0x00;
+    static constexpr uint8_t REG_MODE2 = 0x01;
+    static constexpr uint8_t REG_LED0_ON_L = 0x06;
+    static constexpr uint8_t REG_ALL_LED_OFF_H = 0xFD;
+    static constexpr uint8_t REG_PRESCALE = 0xFE;
 
     // MODE1 bits
     static constexpr uint8_t MODE1_RESTART = 0x80;
-    static constexpr uint8_t MODE1_SLEEP   = 0x10;
-    static constexpr uint8_t MODE1_AI      = 0x20; // Auto-Increment
+    static constexpr uint8_t MODE1_SLEEP = 0x10;
+    static constexpr uint8_t MODE1_AI = 0x20; // Auto-Increment
 
     uint8_t addr_;
 
@@ -26,7 +26,7 @@ class PCA9685 {
     static constexpr uint8_t NUM_SERVO_CH = 2;
     float current_angle_[NUM_SERVO_CH];
     float target_angle_[NUM_SERVO_CH];
-    float ramp_deg_per_step_;  // Runtime-konfigurierbar via setRampSpeed()
+    float ramp_deg_per_step_; // Runtime-konfigurierbar via setRampSpeed()
 
     void writeRegister(uint8_t reg, uint8_t val) {
         Wire.beginTransmission(addr_);
@@ -56,8 +56,10 @@ class PCA9685 {
 
     uint16_t angleToPWM(float angle_deg) {
         // Winkel begrenzen
-        if (angle_deg < amr::servo::angle_min_deg) angle_deg = amr::servo::angle_min_deg;
-        if (angle_deg > amr::servo::angle_max_deg) angle_deg = amr::servo::angle_max_deg;
+        if (angle_deg < amr::servo::angle_min_deg)
+            angle_deg = amr::servo::angle_min_deg;
+        if (angle_deg > amr::servo::angle_max_deg)
+            angle_deg = amr::servo::angle_max_deg;
         // Linear interpolieren: angle -> ticks
         float fraction = (angle_deg - amr::servo::angle_min_deg) / amr::servo::angle_range_deg;
         return amr::servo::ticks_min +
@@ -66,10 +68,10 @@ class PCA9685 {
 
   public:
     PCA9685()
-        : addr_(amr::i2c::addr_pca9685),
-          current_angle_{90.0f, 90.0f},
-          target_angle_{90.0f, 90.0f},
-          ramp_deg_per_step_(amr::servo::ramp_deg_per_step) {}
+        : addr_(amr::i2c::addr_pca9685)
+        , current_angle_{90.0f, 90.0f}
+        , target_angle_{90.0f, 90.0f}
+        , ramp_deg_per_step_(amr::servo::ramp_deg_per_step) {}
 
     bool init() {
         // Sleep -> Prescaler -> Wake -> Restart (Datenblatt Abschnitt 7.3.1.1)
@@ -115,8 +117,10 @@ class PCA9685 {
     }
 
     void setTargetAngle(uint8_t channel, float angle_deg) {
-        if (angle_deg < amr::servo::angle_min_deg) angle_deg = amr::servo::angle_min_deg;
-        if (angle_deg > amr::servo::angle_max_deg) angle_deg = amr::servo::angle_max_deg;
+        if (angle_deg < amr::servo::angle_min_deg)
+            angle_deg = amr::servo::angle_min_deg;
+        if (angle_deg > amr::servo::angle_max_deg)
+            angle_deg = amr::servo::angle_max_deg;
         if (channel < NUM_SERVO_CH) {
             target_angle_[channel] = angle_deg;
         }
@@ -127,7 +131,8 @@ class PCA9685 {
     // WICHTIG: Nutzt setPWM() direkt statt setAngle(), da setAngle()
     // target_angle_ zuruecksetzt und damit die Rampe bricht.
     bool updateRamp(uint8_t channel) {
-        if (channel >= NUM_SERVO_CH) return true;
+        if (channel >= NUM_SERVO_CH)
+            return true;
         float diff = target_angle_[channel] - current_angle_[channel];
         if (fabsf(diff) < 0.5f) {
             current_angle_[channel] = target_angle_[channel];
@@ -150,23 +155,22 @@ class PCA9685 {
     }
 
     // Notfall-Abschaltung: ALL_LED_OFF_H Bit 4 = Full OFF
-    void allOff() {
-        writeRegister(REG_ALL_LED_OFF_H, 0x10);
-    }
+    void allOff() { writeRegister(REG_ALL_LED_OFF_H, 0x10); }
 
     // Alle Ausgaenge wieder aktivieren (Full-OFF zuruecksetzen)
-    void clearAllOff() {
-        writeRegister(REG_ALL_LED_OFF_H, 0x00);
-    }
+    void clearAllOff() { writeRegister(REG_ALL_LED_OFF_H, 0x00); }
 
     float getCurrentAngle(uint8_t channel) const {
-        if (channel >= NUM_SERVO_CH) return 0.0f;
+        if (channel >= NUM_SERVO_CH)
+            return 0.0f;
         return current_angle_[channel];
     }
 
     void setRampSpeed(float deg_per_step) {
-        if (deg_per_step < 0.1f) deg_per_step = 0.1f;
-        if (deg_per_step > 10.0f) deg_per_step = 10.0f;
+        if (deg_per_step < 0.1f)
+            deg_per_step = 0.1f;
+        if (deg_per_step > 10.0f)
+            deg_per_step = 10.0f;
         ramp_deg_per_step_ = deg_per_step;
     }
 };

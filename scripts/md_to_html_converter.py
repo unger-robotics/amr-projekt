@@ -46,17 +46,6 @@ Exit-Codes
 - 130 Abbruch durch SIGINT (Strg+C)
 """
 
-# === PFAD-KONFIGURATION (Projektstruktur: doc/md -> doc/html/_site) ===
-SOURCE_DIR = "doc/md"  # Markdown-Quelle
-OUTPUT_DIR = "doc/html/_site"  # HTML-Zielverzeichnis
-START_PAGE = "doc/html/start.html"  # Startseite neben doc/html/styles.css
-
-# CSS:
-# - Quelle/SSOT liegt in doc/html/styles.css (wird dort erweitert)
-# - Kopie nach doc/html/_site/styles.css (damit _site/*.html es findet)
-CSS_SOURCE = "doc/html/styles.css"
-CSS_NAME = "styles.css"
-
 # Standardbibliothek
 import argparse
 import datetime
@@ -70,15 +59,24 @@ import sys
 from pathlib import Path
 from shutil import which
 
+# === PFAD-KONFIGURATION (Projektstruktur: doc/md -> doc/html/_site) ===
+SOURCE_DIR = "doc/md"  # Markdown-Quelle
+OUTPUT_DIR = "doc/html/_site"  # HTML-Zielverzeichnis
+START_PAGE = "doc/html/start.html"  # Startseite neben doc/html/styles.css
+
+# CSS:
+# - Quelle/SSOT liegt in doc/html/styles.css (wird dort erweitert)
+# - Kopie nach doc/html/_site/styles.css (damit _site/*.html es findet)
+CSS_SOURCE = "doc/html/styles.css"
+CSS_NAME = "styles.css"
+
 
 def check_pandoc():
     """Prüft, ob Pandoc installiert ist."""
     try:
         if not which("pandoc"):
             return False
-        subprocess.run(
-            ["pandoc", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
-        )
+        subprocess.run(["pandoc", "--version"], capture_output=True, check=True)
         return True
     except Exception:
         return False
@@ -360,7 +358,10 @@ def sanitize_math_for_mathjax(text: str) -> str:
     fenced_re = re.compile(r"^\s*(```|~~~)")
     inline_code_re = re.compile(r"(`+)(.+?)\1")
     url_re = re.compile(r"https?://")
-    has_math_delim = lambda s: ("$" in s) or (r"\[" in s) or (r"\(" in s)
+
+    def has_math_delim(s):
+        return ("$" in s) or (r"\[" in s) or (r"\(" in s)
+
     tex_marker_re = re.compile(
         r"\\(frac|xrightarrow|dot|ddot|Delta|eta|rho|mathrm|sum|int|approx|sqrt|cdot|overline|underline|vec|bar)\b"
     )
@@ -626,13 +627,13 @@ def convert_all_markdown_files(args):
         # Optional: Eingabe sanitizen → temp-Datei
         tmp_input = md_file
         try:
-            with open(md_file, encoding="utf-8") as f:
-                raw = f.read()
+            with open(md_file, encoding="utf-8") as fh_in:
+                raw = fh_in.read()
             sanitized = sanitize_math_for_mathjax(raw)
             if sanitized != raw:
                 tmp_input = str(Path(md_file).with_suffix(".mathjax_tmp.md"))
-                with open(tmp_input, "w", encoding="utf-8") as f:
-                    f.write(sanitized)
+                with open(tmp_input, "w", encoding="utf-8") as fh_out:
+                    fh_out.write(sanitized)
         except Exception:
             tmp_input = md_file
 

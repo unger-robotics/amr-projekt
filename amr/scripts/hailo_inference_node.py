@@ -24,6 +24,7 @@ Verwendung:
   ros2 run my_bot hailo_inference_node --ros-args -p model_path:=<pfad.hef>
 """
 
+import contextlib
 import json
 import time
 
@@ -248,7 +249,7 @@ class HailoInferenceNode(Node):
 
         # YOLOv8 HEF-Output: je nach Kompilierung unterschiedlich
         # Typisch: ein Output-Tensor [1, num_boxes, 4+num_classes]
-        for name, data in raw_output.items():
+        for _name, data in raw_output.items():
             output = np.squeeze(data)
 
             if output.ndim != 2:
@@ -300,7 +301,11 @@ class HailoInferenceNode(Node):
 
     def _inference_tick(self):
         """Periodische Inference auf dem aktuellsten Bild."""
-        if self.latest_image is None or self.infer_pipeline is None:
+        if (
+            self.latest_image is None
+            or self.infer_pipeline is None
+            or self.input_vstream_info is None
+        ):
             return
 
         now = time.monotonic()
@@ -350,15 +355,11 @@ class HailoInferenceNode(Node):
     def destroy_node(self):
         """Hailo-Ressourcen sauber freigeben."""
         if self.infer_pipeline is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.infer_pipeline.__exit__(None, None, None)
-            except Exception:
-                pass
         if self.vdevice is not None:
-            try:
+            with contextlib.suppress(Exception):
                 del self.vdevice
-            except Exception:
-                pass
         super().destroy_node()
 
 

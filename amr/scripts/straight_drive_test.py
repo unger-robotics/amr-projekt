@@ -133,6 +133,9 @@ class StraightDriveTest(Node):
         if not self.running or self.done or self.settling:
             return
 
+        if self.start_time is None or self.start_yaw is None:
+            return
+
         # Gyro-Integration (bias-korrigiert)
         self.gyro_heading += (gz - self.gyro_bias) * dt
 
@@ -195,6 +198,13 @@ class StraightDriveTest(Node):
 
         # Nach Stopp: warten bis Odom sich nicht mehr aendert
         if self.settling:
+            if (
+                self.start_x is None
+                or self.start_y is None
+                or self.start_yaw is None
+                or self.start_time is None
+            ):
+                return
             dx = self.current_x - self.start_x
             dy = self.current_y - self.start_y
             self.forward_distance = dx * math.cos(self.start_yaw) + dy * math.sin(self.start_yaw)
@@ -213,6 +223,14 @@ class StraightDriveTest(Node):
             return
 
         if not self.running:
+            return
+
+        if (
+            self.start_x is None
+            or self.start_y is None
+            or self.start_yaw is None
+            or self.start_time is None
+        ):
             return
 
         # Vorwaertsstrecke im Roboter-Koerperkoordinatensystem
@@ -250,6 +268,8 @@ class StraightDriveTest(Node):
             time.sleep(0.02)
 
     def print_result(self, elapsed):
+        if self.start_x is None or self.start_y is None or self.start_yaw is None:
+            return
         dx = self.current_x - self.start_x
         dy = self.current_y - self.start_y
         distance = math.sqrt(dx * dx + dy * dy)

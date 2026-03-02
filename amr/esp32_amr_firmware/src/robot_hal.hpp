@@ -35,10 +35,9 @@ class RobotHAL {
             ledcWrite(ch_b, 0);
             return;
         }
-        int16_t duty = constrain(
-            static_cast<int16_t>(fabsf(speed) * amr::pwm::motor_max),
-            static_cast<int16_t>(0),
-            static_cast<int16_t>(amr::pwm::motor_max));
+        int16_t duty =
+            constrain(static_cast<int16_t>(fabsf(speed) * amr::pwm::motor_max),
+                      static_cast<int16_t>(0), static_cast<int16_t>(amr::pwm::motor_max));
         if (duty < static_cast<int16_t>(amr::pwm::deadzone)) {
             duty = static_cast<int16_t>(amr::pwm::deadzone);
         }
@@ -61,10 +60,8 @@ class RobotHAL {
         pinMode(PIN_ENC_RIGHT_A, INPUT_PULLUP);
         pinMode(PIN_ENC_LEFT_B, INPUT_PULLUP);
         pinMode(PIN_ENC_RIGHT_B, INPUT_PULLUP);
-        attachInterrupt(digitalPinToInterrupt(PIN_ENC_LEFT_A), isr_enc_left,
-                        CHANGE);
-        attachInterrupt(digitalPinToInterrupt(PIN_ENC_RIGHT_A), isr_enc_right,
-                        CHANGE);
+        attachInterrupt(digitalPinToInterrupt(PIN_ENC_LEFT_A), isr_enc_left, CHANGE);
+        attachInterrupt(digitalPinToInterrupt(PIN_ENC_RIGHT_A), isr_enc_right, CHANGE);
 
         // Motor-PWM: 4 Kanaele
         ledcSetup(PWM_CH_LEFT_A, amr::pwm::motor_freq_hz, amr::pwm::motor_bits);

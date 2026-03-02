@@ -165,7 +165,7 @@ class MjpegHandler(BaseHTTPRequestHandler):
             try:
                 self.wfile.write(b"--frame\r\n")
                 self.wfile.write(b"Content-Type: image/jpeg\r\n")
-                self.wfile.write(("Content-Length: %d\r\n\r\n" % len(jpeg_bytes)).encode())
+                self.wfile.write(f"Content-Length: {len(jpeg_bytes)}\r\n\r\n".encode())
                 self.wfile.write(jpeg_bytes)
                 self.wfile.write(b"\r\n")
             except (BrokenPipeError, ConnectionResetError):
@@ -179,7 +179,7 @@ def start_mjpeg_server(node):
     server.daemon_threads = True
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    node.get_logger().info("MJPEG-Server gestartet auf http://0.0.0.0:%d/stream" % MJPEG_PORT)
+    node.get_logger().info(f"MJPEG-Server gestartet auf http://0.0.0.0:{MJPEG_PORT}/stream")
 
 
 # =========================================================================
@@ -197,7 +197,7 @@ class WebSocketServer:
     async def handler(self, ws):
         """Verbindungs-Handler fuer neue WebSocket-Clients."""
         self.clients.add(ws)
-        self.node.get_logger().info("WebSocket-Client verbunden (%d aktiv)" % len(self.clients))
+        self.node.get_logger().info(f"WebSocket-Client verbunden ({len(self.clients)} aktiv)")
         try:
             async for raw in ws:
                 try:
@@ -213,7 +213,7 @@ class WebSocketServer:
                 self.controller_ws = None
                 self.node.publish_stop()
                 self.node.get_logger().info("Controller-Client getrennt -> Stopp gesendet")
-            self.node.get_logger().info("WebSocket-Client getrennt (%d aktiv)" % len(self.clients))
+            self.node.get_logger().info(f"WebSocket-Client getrennt ({len(self.clients)} aktiv)")
 
     def _handle_message(self, ws, msg):
         op = msg.get("op", "")
@@ -263,7 +263,7 @@ class WebSocketServer:
             ping_interval=20,
             ping_timeout=10,
         ):
-            self.node.get_logger().info("WebSocket-Server gestartet auf ws://0.0.0.0:%d" % WS_PORT)
+            self.node.get_logger().info(f"WebSocket-Server gestartet auf ws://0.0.0.0:{WS_PORT}")
             # Telemetrie-, Scan-, System-, Map- und Vision-Broadcast parallel
             await asyncio.gather(
                 self._telemetry_loop(),
@@ -488,7 +488,7 @@ class DashboardBridge(Node):
                     self.camera_image_width = w
                     self.camera_image_height = h
         except Exception as e:
-            self.get_logger().warn("Bild-Konvertierung fehlgeschlagen: %s" % e)
+            self.get_logger().warn(f"Bild-Konvertierung fehlgeschlagen: {e}")
 
     def _detections_cb(self, msg):
         """Parst /vision/detections JSON und normalisiert BBoxen."""
@@ -516,7 +516,7 @@ class DashboardBridge(Node):
                     "inference_ms": inference_ms,
                 }
         except (json.JSONDecodeError, Exception) as e:
-            self.get_logger().warn("Detection-Parse fehlgeschlagen: %s" % e)
+            self.get_logger().warn(f"Detection-Parse fehlgeschlagen: {e}")
 
     def _semantics_cb(self, msg):
         """Parst /vision/semantics JSON."""
@@ -528,7 +528,7 @@ class DashboardBridge(Node):
                     "model": data.get("model", ""),
                 }
         except (json.JSONDecodeError, Exception) as e:
-            self.get_logger().warn("Semantics-Parse fehlgeschlagen: %s" % e)
+            self.get_logger().warn(f"Semantics-Parse fehlgeschlagen: {e}")
 
     def _battery_cb(self, msg):
         """Speichert BatteryState-Daten (INA260) mit OCV-SOC und EMA-Laufzeit."""
@@ -612,7 +612,7 @@ class DashboardBridge(Node):
                 self.latest_map_png = png_b64
                 self.map_metadata = metadata
         except Exception as e:
-            self.get_logger().warn("Map-Konvertierung fehlgeschlagen: %s" % e)
+            self.get_logger().warn(f"Map-Konvertierung fehlgeschlagen: {e}")
 
     def _tf_cb(self, msg):
         """Speichert map->odom Transform."""
@@ -778,13 +778,10 @@ class DashboardBridge(Node):
             self._last_latency_log = now_log
             if latency_stats:
                 self.get_logger().info(
-                    "Serial-Latenz: avg=%.1f ms, p95=%.1f ms, max=%.1f ms (n=%d)"
-                    % (
-                        latency_stats["avg_ms"],
-                        latency_stats["p95_ms"],
-                        latency_stats["max_ms"],
-                        latency_stats["samples"],
-                    )
+                    f"Serial-Latenz: avg={latency_stats['avg_ms']:.1f} ms, "
+                    f"p95={latency_stats['p95_ms']:.1f} ms, "
+                    f"max={latency_stats['max_ms']:.1f} ms "
+                    f"(n={latency_stats['samples']})"
                 )
 
         return {

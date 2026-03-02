@@ -288,9 +288,9 @@ def test_drehung(node):
             abs(np.mean(cw_winkel) - soll_winkel), abs(np.mean(ccw_winkel) - soll_winkel)
         )
     else:
-        mittel_cw = 0
-        mittel_ccw = 0
-        asymmetrie = 0
+        mittel_cw = 0.0
+        mittel_ccw = 0.0
+        asymmetrie = 0.0
         max_fehler = float("nan")
 
     ergebnis = {
@@ -368,7 +368,7 @@ def test_kreisfahrt(node):
         ys = [m.pose.pose.position.y for m in node.odom_aufnahme]
         cx = np.mean(xs)
         cy = np.mean(ys)
-        radien = [math.sqrt((x - cx) ** 2 + (y - cy) ** 2) for x, y in zip(xs, ys)]
+        radien = [math.sqrt((x - cx) ** 2 + (y - cy) ** 2) for x, y in zip(xs, ys, strict=False)]
         ist_radius = np.mean(radien)
         radius_fehler_pct = abs(ist_radius - radius) / radius * 100.0
     else:
@@ -472,9 +472,9 @@ def speichere_json(ergebnisse, pfad):
 
     # numpy-Typen konvertieren
     def konvertiere(obj):
-        if isinstance(obj, (np.integer,)):
+        if isinstance(obj, np.integer):
             return int(obj)
-        if isinstance(obj, (np.floating,)):
+        if isinstance(obj, np.floating):
             return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()

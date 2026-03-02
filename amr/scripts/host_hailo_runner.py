@@ -414,7 +414,7 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
-    cap.release()
+    cap.release()  # type: ignore[unreachable]
 
 
 def main():

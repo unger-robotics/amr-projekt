@@ -11,7 +11,7 @@ BreakBeforeBraces: Attach
 NamespaceIndentation: None
 PointerAlignment: Right
 AccessModifierOffset: -2
-SortIncludes: CaseSensitive
+SortIncludes: Never
 IncludeBlocks: Preserve
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: Never

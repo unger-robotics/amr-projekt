@@ -9,8 +9,14 @@ class PidController {
 
   public:
     PidController(float p, float i, float d, float mn, float mx)
-        : kp(p), ki(i), kd(d), prev_error(0), integral(0), min_out(mn),
-          max_out(mx), d_filtered_(0) {}
+        : kp(p)
+        , ki(i)
+        , kd(d)
+        , prev_error(0)
+        , integral(0)
+        , min_out(mn)
+        , max_out(mx)
+        , d_filtered_(0) {}
 
     float compute(float setpoint, float measured, float dt) {
         float error = setpoint - measured;

@@ -25,7 +25,6 @@ try:
         COLOR_RESET,
         IMU_ACCEL_BIAS_MAX,
         IMU_GYRO_DRIFT_MAX,
-        IMU_PUBLISH_HZ,
         normalize_angle,
         quaternion_to_yaw,
         save_json,

@@ -14,6 +14,7 @@ Erfasste Daten:
 """
 
 import argparse
+import contextlib
 import datetime
 import json
 import os
@@ -23,6 +24,7 @@ import subprocess
 import sys
 from glob import glob
 from pathlib import Path
+from typing import Any
 
 # ===========================================================================
 # ANSI-Farben und Formatierung
@@ -131,7 +133,7 @@ def get_esp32_chip_data(port="/dev/ttyACM0", baudrate=115200):
 
 def collect_system_resources():
     """Sammelt Systemressourcen und thermischen Zustand."""
-    data = {}
+    data: dict[str, Any] = {}
 
     # Temperatur
     try:
@@ -181,10 +183,8 @@ def collect_system_resources():
             if ":" in line:
                 key, val = line.split(":", 1)
                 val = val.strip().replace(" kB", "")
-                try:
+                with contextlib.suppress(ValueError):
                     mem[key.strip()] = int(val)
-                except ValueError:
-                    pass
         total_kb = mem.get("MemTotal", 0)
         avail_kb = mem.get("MemAvailable", 0)
         used_kb = total_kb - avail_kb
@@ -244,7 +244,7 @@ def collect_system_resources():
 
 def collect_peripherals():
     """Sammelt AMR-Peripherie und Schnittstellen."""
-    data = {}
+    data: dict[str, Any] = {}
 
     # USB-Geraete via lsusb
     usb_devices = []
@@ -283,7 +283,7 @@ def collect_peripherals():
     data["serial_by_id"] = serial_by_id
 
     # Kamera (rpicam-hello / libcamera-hello)
-    cam_data = {"detected": False, "sensors": []}
+    cam_data: dict[str, Any] = {"detected": False, "sensors": []}
     for cam_cmd in ["rpicam-hello --list-cameras", "libcamera-hello --list-cameras"]:
         cam_output = run_cmd(cam_cmd, timeout=10)
         if cam_output:
@@ -339,7 +339,7 @@ def collect_peripherals():
 
 def collect_software():
     """Sammelt Betriebssystem- und Software-Informationen."""
-    data = {}
+    data: dict[str, Any] = {}
 
     # OS-Release
     try:
@@ -443,7 +443,7 @@ def collect_software():
 
 def collect_project_info():
     """Sammelt Projekt- und Reproduzierbarkeitsinformationen."""
-    data = {}
+    data: dict[str, Any] = {}
 
     # --- Git-Info ---
     git_hash = run_cmd("git rev-parse --short HEAD 2>/dev/null")

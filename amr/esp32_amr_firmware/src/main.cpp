@@ -21,8 +21,10 @@
 // --- SETUP ---
 RobotHAL hal;
 DiffDriveKinematics kinematics(amr::kinematics::wheel_radius, amr::kinematics::wheel_base);
-PidController pid_l(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_min, amr::pid::output_max);
-PidController pid_r(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_min, amr::pid::output_max);
+PidController pid_l(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_min,
+                    amr::pid::output_max);
+PidController pid_r(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_min,
+                    amr::pid::output_max);
 MPU6050 imu;
 bool imu_ok = false;
 INA260 ina260;
@@ -77,9 +79,9 @@ ServoCommand servo_cmd = {90.0f, 90.0f, false};
 
 // Deferred Hardware Command (Callback → RAM, loop() → I2C/PWM)
 struct HardwareCommand {
-    volatile float motor_limit_pct;   // 0-100
-    volatile float servo_speed;       // 1-10 (Grad/Schritt)
-    volatile float led_pwm;           // 0-255, 0 = auto heartbeat
+    volatile float motor_limit_pct; // 0-100
+    volatile float servo_speed;     // 1-10 (Grad/Schritt)
+    volatile float led_pwm;         // 0-255, 0 = auto heartbeat
     volatile bool update_pending;
 };
 HardwareCommand hw_cmd = {100.0f, 5.0f, 0.0f, false};
@@ -93,8 +95,10 @@ void controlTask(void *p) {
         uint32_t now_us = micros();
         float dt = (now_us - last_us) / 1000000.0f;
         last_us = now_us;
-        if (dt < 0.001f) dt = 0.001f;
-        if (dt > 0.1f) dt = 0.1f;
+        if (dt < 0.001f)
+            dt = 0.001f;
+        if (dt > 0.1f)
+            dt = 0.1f;
 
         int32_t tl, tr;
         hal.readEncoders(tl, tr);
@@ -137,7 +141,8 @@ void controlTask(void *p) {
         t.right_rad_s *= motor_scale;
 
         // Hard-Stop: Bei Zielgeschwindigkeit Null Rampe umgehen
-        if (fabsf(tv) < amr::pid::hard_stop_threshold && fabsf(tw) < amr::pid::hard_stop_threshold) {
+        if (fabsf(tv) < amr::pid::hard_stop_threshold &&
+            fabsf(tw) < amr::pid::hard_stop_threshold) {
             last_sp_l = 0.0f;
             last_sp_r = 0.0f;
         } else {
@@ -159,7 +164,8 @@ void controlTask(void *p) {
         }
 
         // Bei Zielgeschwindigkeit ~0: PID umgehen, Motoren direkt stoppen
-        if (fabsf(last_sp_l) < amr::pid::stillstand_threshold && fabsf(last_sp_r) < amr::pid::stillstand_threshold) {
+        if (fabsf(last_sp_l) < amr::pid::stillstand_threshold &&
+            fabsf(last_sp_r) < amr::pid::stillstand_threshold) {
             hal.setMotors(0, 0);
             pid_l.reset();
             pid_r.reset();
@@ -190,8 +196,12 @@ void controlTask(void *p) {
             if (imu_read_ok) {
                 float fused_heading = imu.updateHeading(s.theta, gz, dt);
                 if (xSemaphoreTake(mutex, 10)) {
-                    shared.imu_ax = ax; shared.imu_ay = ay; shared.imu_az = az;
-                    shared.imu_gx = gx; shared.imu_gy = gy; shared.imu_gz = gz;
+                    shared.imu_ax = ax;
+                    shared.imu_ay = ay;
+                    shared.imu_az = az;
+                    shared.imu_gx = gx;
+                    shared.imu_gy = gy;
+                    shared.imu_gz = gz;
                     shared.imu_heading = fused_heading;
                     xSemaphoreGive(mutex);
                 }
@@ -203,7 +213,8 @@ void controlTask(void *p) {
 }
 
 void vel_cb(const void *m) {
-    if (m == nullptr) return;
+    if (m == nullptr)
+        return;
     const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)m;
     if (xSemaphoreTake(mutex, 10)) {
         shared.tv = msg->linear.x;
@@ -214,15 +225,20 @@ void vel_cb(const void *m) {
 }
 
 void servo_cmd_callback(const void *m) {
-    if (m == nullptr) return;
+    if (m == nullptr)
+        return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
     if (pca9685_ok) {
         float pan = static_cast<float>(msg->x);
-        if (pan < amr::servo::angle_min_deg) pan = amr::servo::angle_min_deg;
-        if (pan > amr::servo::angle_max_deg) pan = amr::servo::angle_max_deg;
+        if (pan < amr::servo::angle_min_deg)
+            pan = amr::servo::angle_min_deg;
+        if (pan > amr::servo::angle_max_deg)
+            pan = amr::servo::angle_max_deg;
         float tilt = static_cast<float>(msg->y);
-        if (tilt < amr::servo::angle_min_deg) tilt = amr::servo::angle_min_deg;
-        if (tilt > amr::servo::angle_max_deg) tilt = amr::servo::angle_max_deg;
+        if (tilt < amr::servo::angle_min_deg)
+            tilt = amr::servo::angle_min_deg;
+        if (tilt > amr::servo::angle_max_deg)
+            tilt = amr::servo::angle_max_deg;
         servo_cmd.pan = pan;
         servo_cmd.tilt = tilt;
         servo_cmd.update_pending = true;
@@ -230,17 +246,24 @@ void servo_cmd_callback(const void *m) {
 }
 
 void hardware_cmd_callback(const void *m) {
-    if (m == nullptr) return;
+    if (m == nullptr)
+        return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
     float motor = static_cast<float>(msg->x);
-    if (motor < 0.0f) motor = 0.0f;
-    if (motor > 100.0f) motor = 100.0f;
+    if (motor < 0.0f)
+        motor = 0.0f;
+    if (motor > 100.0f)
+        motor = 100.0f;
     float speed = static_cast<float>(msg->y);
-    if (speed < 1.0f) speed = 1.0f;
-    if (speed > 10.0f) speed = 10.0f;
+    if (speed < 1.0f)
+        speed = 1.0f;
+    if (speed > 10.0f)
+        speed = 10.0f;
     float led = static_cast<float>(msg->z);
-    if (led < 0.0f) led = 0.0f;
-    if (led > 255.0f) led = 255.0f;
+    if (led < 0.0f)
+        led = 0.0f;
+    if (led > 255.0f)
+        led = 255.0f;
     hw_cmd.motor_limit_pct = motor;
     hw_cmd.servo_speed = speed;
     hw_cmd.led_pwm = led;
@@ -249,8 +272,10 @@ void hardware_cmd_callback(const void *m) {
 
 // SOC-Schaetzung (lineare Interpolation aus Spannungskurve)
 static float estimateSOC(float voltage) {
-    if (voltage >= amr::battery::pack_charge_max_v) return 1.0f;
-    if (voltage <= amr::battery::pack_cutoff_v) return 0.0f;
+    if (voltage >= amr::battery::pack_charge_max_v)
+        return 1.0f;
+    if (voltage <= amr::battery::pack_cutoff_v)
+        return 0.0f;
     return (voltage - amr::battery::pack_cutoff_v) /
            (amr::battery::pack_charge_max_v - amr::battery::pack_cutoff_v);
 }
@@ -299,56 +324,65 @@ void setup() {
     bool init_ok = true;
 
     rc = rclc_support_init(&support, 0, NULL, &allocator);
-    if (rc != RCL_RET_OK) init_ok = false;
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     rc = rclc_node_init_default(&node, "esp32_bot", "", &support);
-    if (rc != RCL_RET_OK) init_ok = false;
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     rc = rclc_executor_init(&executor, &support.context, 3, &allocator);
-    if (rc != RCL_RET_OK) init_ok = false;
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     rc = rclc_subscription_init_default(
-        &sub_vel, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-        "cmd_vel");
-    if (rc != RCL_RET_OK) init_ok = false;
+        &sub_vel, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist), "cmd_vel");
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
-    rc = rclc_executor_add_subscription(&executor, &sub_vel, &msg_vel, &vel_cb,
+    rc = rclc_executor_add_subscription(&executor, &sub_vel, &msg_vel, &vel_cb, ON_NEW_DATA);
+    if (rc != RCL_RET_OK)
+        init_ok = false;
+
+    rc = rclc_subscription_init_default(
+        &sub_servo, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point), "servo_cmd");
+    if (rc != RCL_RET_OK)
+        init_ok = false;
+
+    rc = rclc_executor_add_subscription(&executor, &sub_servo, &msg_servo, &servo_cmd_callback,
                                         ON_NEW_DATA);
-    if (rc != RCL_RET_OK) init_ok = false;
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
-    rc = rclc_subscription_init_default(
-        &sub_servo, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point),
-        "servo_cmd");
-    if (rc != RCL_RET_OK) init_ok = false;
-
-    rc = rclc_executor_add_subscription(&executor, &sub_servo, &msg_servo,
-                                        &servo_cmd_callback, ON_NEW_DATA);
-    if (rc != RCL_RET_OK) init_ok = false;
-
-    rc = rclc_subscription_init_default(
-        &sub_hardware, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point),
-        "hardware_cmd");
-    if (rc != RCL_RET_OK) init_ok = false;
+    rc = rclc_subscription_init_default(&sub_hardware, &node,
+                                        ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Point),
+                                        "hardware_cmd");
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     rc = rclc_executor_add_subscription(&executor, &sub_hardware, &msg_hardware,
                                         &hardware_cmd_callback, ON_NEW_DATA);
-    if (rc != RCL_RET_OK) init_ok = false;
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     rc = rclc_publisher_init_default(&pub_odom, &node,
-                             ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-                             "odom");
-    if (rc != RCL_RET_OK) init_ok = false;
+                                     ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry), "odom");
+    if (rc != RCL_RET_OK)
+        init_ok = false;
 
     if (imu_ok) {
         rc = rclc_publisher_init_default(&pub_imu, &node,
-            ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "imu");
-        if (rc != RCL_RET_OK) init_ok = false;
+                                         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu), "imu");
+        if (rc != RCL_RET_OK)
+            init_ok = false;
     }
 
     if (ina260_ok) {
-        rc = rclc_publisher_init_default(&pub_battery, &node,
-            ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState), "battery");
-        if (rc != RCL_RET_OK) init_ok = false;
+        rc = rclc_publisher_init_default(
+            &pub_battery, &node, ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, BatteryState),
+            "battery");
+        if (rc != RCL_RET_OK)
+            init_ok = false;
     }
 
     if (!init_ok) {
@@ -401,8 +435,10 @@ void loop() {
         float led_override = hw_cmd.led_pwm;
         if (led_override > 0.5f) {
             // Manueller LED-Modus: Slider 0-255 auf 10-bit (0-1023) skalieren
-            uint32_t duty = static_cast<uint32_t>(led_override * (static_cast<float>(amr::pwm::led_max) / 255.0f));
-            if (duty > amr::pwm::led_max) duty = amr::pwm::led_max;
+            uint32_t duty = static_cast<uint32_t>(led_override *
+                                                  (static_cast<float>(amr::pwm::led_max) / 255.0f));
+            if (duty > amr::pwm::led_max)
+                duty = amr::pwm::led_max;
             ledcWrite(amr::pwm::led_channel, duty);
         } else {
             // Auto-Heartbeat
@@ -484,8 +520,12 @@ void loop() {
             last_imu = millis();
             float iax = 0, iay = 0, iaz = 0, igx = 0, igy = 0, igz = 0, ih = 0;
             if (xSemaphoreTake(mutex, 10)) {
-                iax = shared.imu_ax; iay = shared.imu_ay; iaz = shared.imu_az;
-                igx = shared.imu_gx; igy = shared.imu_gy; igz = shared.imu_gz;
+                iax = shared.imu_ax;
+                iay = shared.imu_ay;
+                iaz = shared.imu_az;
+                igx = shared.imu_gx;
+                igy = shared.imu_gy;
+                igz = shared.imu_gz;
                 ih = shared.imu_heading;
                 xSemaphoreGive(mutex);
             }
@@ -544,7 +584,8 @@ void loop() {
                             i2c_contention_errors++;
                         }
                     }
-                } else if (voltage > amr::battery::threshold_motor_shutdown_v + amr::battery::threshold_hysteresis_v) {
+                } else if (voltage > amr::battery::threshold_motor_shutdown_v +
+                                         amr::battery::threshold_hysteresis_v) {
                     battery_motor_shutdown = false;
                 }
 
@@ -566,7 +607,8 @@ void loop() {
                 msg_bat.percentage = estimateSOC(voltage);
                 msg_bat.capacity = amr::battery::capacity_design_ah;
                 msg_bat.design_capacity = amr::battery::capacity_design_ah;
-                msg_bat.power_supply_technology = sensor_msgs__msg__BatteryState__POWER_SUPPLY_TECHNOLOGY_LION;
+                msg_bat.power_supply_technology =
+                    sensor_msgs__msg__BatteryState__POWER_SUPPLY_TECHNOLOGY_LION;
                 msg_bat.present = true;
                 rcl_ret_t bat_rc = rcl_publish(&pub_battery, &msg_bat, NULL);
                 if (bat_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {

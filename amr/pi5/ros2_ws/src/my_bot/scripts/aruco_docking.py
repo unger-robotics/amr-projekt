@@ -147,15 +147,13 @@ class DockingNode(Node):
             return
 
         # Marker-Verlust: zurueck zu SEARCHING
-        if self.state == self.APPROACHING:
-            if (
-                self.last_marker_time > 0
-                and (now - self.last_marker_time) > self.marker_lost_timeout
-            ):
-                self.state = self.SEARCHING
-                self.get_logger().warn(
-                    f"Marker verloren (>{self.marker_lost_timeout:.1f} s). State: SEARCHING"
-                )
+        if self.state == self.APPROACHING and (
+            self.last_marker_time > 0 and (now - self.last_marker_time) > self.marker_lost_timeout
+        ):
+            self.state = self.SEARCHING
+            self.get_logger().warn(
+                f"Marker verloren (>{self.marker_lost_timeout:.1f} s). State: SEARCHING"
+            )
 
     def stop_robot(self):
         """Sendet Null-Twist um Roboter zu stoppen."""

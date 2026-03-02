@@ -11,6 +11,7 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastPongRef = useRef(0);
+  const connectRef = useRef<(() => void) | undefined>(undefined);
 
   const getUrl = useCallback(() => {
     const host = window.location.hostname || 'localhost';
@@ -47,7 +48,7 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
         Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)
       ];
       reconnectAttempt.current++;
-      reconnectTimer.current = setTimeout(connect, delay);
+      reconnectTimer.current = setTimeout(() => connectRef.current?.(), delay);
     };
 
     ws.onerror = () => {
@@ -56,6 +57,10 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
 
     wsRef.current = ws;
   }, [getUrl, onMessage]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  });
 
   useEffect(() => {
     connect();

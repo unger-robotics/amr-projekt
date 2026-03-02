@@ -45,21 +45,6 @@ Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true
 
 RViz2 benoetigt X11 auf dem Host: `export DISPLAY=:0 && xhost +local:docker`. Alternativ RViz2 auf separatem PC ausfuehren und per ROS2 DDS verbinden (`ROS_DOMAIN_ID=0`).
 
-### ROS2 Workspace (nativ, falls Ubuntu 22.04)
-
-```bash
-# Im Verzeichnis: amr/pi5/ros2_ws/
-colcon build --packages-select my_bot --symlink-install
-source install/setup.bash
-ros2 launch my_bot full_stack.launch.py                # Gesamtsystem (micro-ROS + SLAM + Nav2 + RViz2)
-ros2 launch my_bot full_stack.launch.py use_nav:=false  # Nur SLAM (ohne Navigation)
-ros2 launch my_bot full_stack.launch.py use_rviz:=False # Ohne RViz2
-ros2 launch my_bot full_stack.launch.py use_slam:=False # Nur Navigation mit bestehender Karte
-ros2 launch my_bot full_stack.launch.py use_camera:=True  # Mit Kamera (ArUco-Docking)
-ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0  # Alternativer Serial-Port
-ros2 launch my_bot full_stack.launch.py camera_device:=/dev/video10  # Alternatives Kamera-Device
-```
-
 ### Web Dashboard (optional)
 
 ```bash
@@ -100,6 +85,10 @@ mypy --config-file mypy.ini                # Type-Checking
 
 # C++ Formatierung:
 clang-format --dry-run --Werror amr/esp32_amr_firmware/src/*.cpp amr/esp32_amr_firmware/src/*.hpp hardware/config.h
+
+# Dashboard (TypeScript/React):
+cd dashboard && npx tsc --noEmit           # TypeScript Type-Check
+cd dashboard && npm run build              # Build-Fehler pruefen (Vite + tsc)
 
 # Alle Hooks ausfuehren:
 pre-commit run --all-files

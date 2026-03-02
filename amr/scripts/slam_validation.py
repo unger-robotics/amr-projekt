@@ -58,6 +58,8 @@ try:
 except ImportError:
     ROSBAG_AVAILABLE = False
 
+import contextlib
+
 from amr_utils import quaternion_to_yaw
 
 # Matplotlib fuer Plots
@@ -327,10 +329,8 @@ def run_live_mode(duration, output_dir):
     rclpy.init()
     node = SlamValidationNode(duration)
 
-    try:
+    with contextlib.suppress(KeyboardInterrupt, SystemExit):
         rclpy.spin(node)
-    except (KeyboardInterrupt, SystemExit):
-        pass
 
     # TF-Kette pruefen (am Ende, wenn alles laeuft)
     tf_results = node.get_tf_results()
@@ -402,8 +402,8 @@ def run_bag_mode(bag_path, output_dir):
     # Einfacher Report ohne SLAM-Vergleich (nur Odom-Trajektorie)
     tf_results = {"Rosbag-Modus": "TF-Replay nicht implementiert"}
     ate_rmse = float("nan")
-    errors = []
-    slam_poses = []
+    errors: list[float] = []
+    slam_poses: list[tuple] = []
 
     generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output_dir)
 

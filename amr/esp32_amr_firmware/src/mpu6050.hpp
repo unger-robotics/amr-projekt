@@ -4,12 +4,12 @@
 
 class MPU6050 {
   private:
-    static constexpr uint8_t REG_SMPLRT_DIV   = 0x19;
-    static constexpr uint8_t REG_GYRO_CONFIG   = 0x1B;
-    static constexpr uint8_t REG_ACCEL_CONFIG  = 0x1C;
-    static constexpr uint8_t REG_ACCEL_XOUT_H  = 0x3B;
-    static constexpr uint8_t REG_PWR_MGMT_1    = 0x6B;
-    static constexpr uint8_t REG_WHO_AM_I      = 0x75;
+    static constexpr uint8_t REG_SMPLRT_DIV = 0x19;
+    static constexpr uint8_t REG_GYRO_CONFIG = 0x1B;
+    static constexpr uint8_t REG_ACCEL_CONFIG = 0x1C;
+    static constexpr uint8_t REG_ACCEL_XOUT_H = 0x3B;
+    static constexpr uint8_t REG_PWR_MGMT_1 = 0x6B;
+    static constexpr uint8_t REG_WHO_AM_I = 0x75;
 
     static constexpr float GRAVITY = 9.80665f; // m/s^2
     // DEG_TO_RAD is provided by Arduino.h
@@ -38,8 +38,12 @@ class MPU6050 {
 
   public:
     MPU6050()
-        : addr_(0), gx_bias_(0), gy_bias_(0), gz_bias_(0),
-          heading_(0), alpha_(amr::imu::complementary_alpha) {}
+        : addr_(0)
+        , gx_bias_(0)
+        , gy_bias_(0)
+        , gz_bias_(0)
+        , heading_(0)
+        , alpha_(amr::imu::complementary_alpha) {}
 
     bool init(uint8_t sda = PIN_I2C_SDA, uint8_t scl = PIN_I2C_SCL,
               uint8_t addr = amr::i2c::addr_mpu6050) {
@@ -103,8 +107,7 @@ class MPU6050 {
         gz_bias_ = (float)sum_gz / (float)samples;
     }
 
-    bool read(float &ax, float &ay, float &az,
-              float &gx, float &gy, float &gz) {
+    bool read(float &ax, float &ay, float &az, float &gx, float &gy, float &gz) {
         Wire.beginTransmission(addr_);
         Wire.write(REG_ACCEL_XOUT_H);
         Wire.endTransmission(false);
@@ -142,8 +145,7 @@ class MPU6050 {
     // Komplementaerfilter: alpha = 98% Gyro, (1-alpha) = 2% Encoder
     // Konsistent mit config.h-Konvention (alpha = Gyro-Anteil)
     float updateHeading(float encoder_heading, float gz, float dt) {
-        heading_ = alpha_ * (heading_ + gz * dt)
-                 + (1.0f - alpha_) * encoder_heading;
+        heading_ = alpha_ * (heading_ + gz * dt) + (1.0f - alpha_) * encoder_heading;
         return heading_;
     }
 

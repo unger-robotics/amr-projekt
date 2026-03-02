@@ -59,6 +59,13 @@ COLOR_CYAN = "\033[36m"
 COLOR_BOLD = "\033[1m"
 COLOR_RESET = "\033[0m"
 
+# Aliase (Rueckwaertskompatibilitaet mit aelteren Skripten)
+ANSI_BOLD = COLOR_BOLD
+ANSI_CYAN = COLOR_CYAN
+ANSI_GREEN = COLOR_GREEN
+ANSI_RED = COLOR_RED
+ANSI_RESET = COLOR_RESET
+
 
 # ===========================================================================
 # Geometrie-Funktionen
@@ -127,9 +134,9 @@ def numpy_safe_json(obj):
     try:
         import numpy as np
 
-        if isinstance(obj, (np.integer,)):
+        if isinstance(obj, np.integer):
             return int(obj)
-        if isinstance(obj, (np.floating,)):
+        if isinstance(obj, np.floating):
             return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()

@@ -200,9 +200,9 @@ constexpr float led_gamma = 2.2f;                  // Gamma-Korrektur
 // --- PID-Parameter (getunt via pid_tuning.py Sprungantwort) ---
 namespace amr::pid {
 
-constexpr float kp = 0.4f;   // Proportional (getunt)
-constexpr float ki = 0.1f;   // Integral (getunt)
-constexpr float kd = 0.0f;   // Derivativ (deaktiviert)
+constexpr float kp = 0.4f; // Proportional (getunt)
+constexpr float ki = 0.1f; // Integral (getunt)
+constexpr float kd = 0.0f; // Derivativ (deaktiviert)
 
 constexpr float i_min = -1.0f; // Anti-Windup untere Grenze
 constexpr float i_max = 1.0f;  // Anti-Windup obere Grenze
@@ -212,10 +212,10 @@ constexpr float output_max = 1.0f;
 
 constexpr float d_filter_tau = 0.02f; // [s] D-Term-Tiefpass (No-Op bei Kd=0)
 
-constexpr float ema_alpha = 0.3f;           // EMA-Filter fuer Encoder-Rauschen
-constexpr float max_accel_rad_s2 = 5.0f;    // Beschleunigungsrampe [rad/s^2]
-constexpr float deadband_threshold = 0.08f;  // Totzonen-Schwelle (PWM)
-constexpr float hard_stop_threshold = 0.01f; // Rampe umgehen bei ~0 cmd_vel
+constexpr float ema_alpha = 0.3f;             // EMA-Filter fuer Encoder-Rauschen
+constexpr float max_accel_rad_s2 = 5.0f;      // Beschleunigungsrampe [rad/s^2]
+constexpr float deadband_threshold = 0.08f;   // Totzonen-Schwelle (PWM)
+constexpr float hard_stop_threshold = 0.01f;  // Rampe umgehen bei ~0 cmd_vel
 constexpr float stillstand_threshold = 0.01f; // PID umgehen bei ~0 Sollwert
 
 } // namespace amr::pid
@@ -400,7 +400,7 @@ constexpr uint32_t calibration_samples = 500;
 // alpha = 0.98 -> 98 % Gyro, 2 % Beschleunigungsmesser
 constexpr float complementary_alpha = 0.98f;
 
-constexpr float gyro_sensitivity = 131.0f;     // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
+constexpr float gyro_sensitivity = 131.0f;    // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
 constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 
 } // namespace amr::imu
@@ -467,8 +467,8 @@ constexpr float charge_max_a = 2.0f;
 // Gemessen (DC-Puls, IMAX B6AC V2, 2026-02-27): 58 / 61 / 64 mOhm
 // DC-Werte enthalten Uebergangs- und Kabelwiderstaende und sind fuer
 // Spannungseinbruch-Abschaetzung unter Last realistischer.
-constexpr float cell_impedance_ac_mohm = 35.0f;   // [mOhm] Datenblatt (AC 1 kHz)
-constexpr float pack_impedance_mohm = 183.0f;     // [mOhm] gemessen DC-Puls (58+61+64)
+constexpr float cell_impedance_ac_mohm = 35.0f; // [mOhm] Datenblatt (AC 1 kHz)
+constexpr float pack_impedance_mohm = 183.0f;   // [mOhm] gemessen DC-Puls (58+61+64)
 
 // --- 3S-Pack ---
 constexpr float pack_nominal_v = cell_nominal_v * cell_count;       // 10,80 V

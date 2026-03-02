@@ -15,7 +15,7 @@ Verwendung:
   ros2 launch my_bot full_stack.launch.py use_slam:=False  # Nur Navigation mit bestehender Karte
 """
 
-from launch import LaunchDescription
+from launch import LaunchDescription  # type: ignore[attr-defined]
 from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,

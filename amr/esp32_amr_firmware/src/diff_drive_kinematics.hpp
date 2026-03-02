@@ -18,7 +18,9 @@ class DiffDriveKinematics {
 
   public:
     DiffDriveKinematics(float wheel_radius, float wheel_sep)
-        : r(wheel_radius), l(wheel_sep), odom{0, 0, 0} {}
+        : r(wheel_radius)
+        , l(wheel_sep)
+        , odom{0, 0, 0} {}
 
     WheelTargets computeMotorSpeeds(float v, float omega) {
         return {(v - (omega * l / 2.0f)) / r, (v + (omega * l / 2.0f)) / r};

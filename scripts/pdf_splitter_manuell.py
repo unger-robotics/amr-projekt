@@ -116,7 +116,7 @@ def main(target_path):
     # Falls ein Ordner übergeben wurde (Standard)
     if os.path.isdir(target_path):
         found_any = False
-        for root, dirs, files in os.walk(target_path):
+        for root, _dirs, files in os.walk(target_path):
             if "output_split" in root:
                 continue  # Output ignorieren
 

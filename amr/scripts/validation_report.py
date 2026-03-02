@@ -20,6 +20,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # ===========================================================================
 # Konfiguration: Erwartete Ergebnis-Dateien
@@ -41,7 +42,7 @@ ERGEBNIS_DATEIEN = {
 # Akzeptanzkriterien (Anforderung -> Prueffunktion)
 # ===========================================================================
 
-KRITERIEN = [
+KRITERIEN: list[dict[str, Any]] = [
     # --- Encoder ---
     {
         "bereich": "Encoder",
@@ -554,7 +555,7 @@ def main():
     print()
 
     # Status der Dateien anzeigen
-    for key, dateiname in ERGEBNIS_DATEIEN.items():
+    for _key, dateiname in ERGEBNIS_DATEIEN.items():
         pfad = ergebnis_verzeichnis / dateiname
         status = "gefunden" if pfad.exists() else "FEHLT"
         print(f"  {dateiname:30s} {status}")

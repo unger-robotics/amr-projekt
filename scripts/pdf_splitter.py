@@ -45,7 +45,7 @@ def split_pdf(input_path):
             page_num = reader.get_destination_page_number(item)
             if page_num is not None:
                 chapters.append({"title": item.title, "start": page_num})
-        except:
+        except Exception:
             pass
 
     if not chapters:
@@ -91,7 +91,7 @@ def process_path(target):
         return
 
     # Fall 2: Ziel ist ein Ordner (Rekursion)
-    for root, dirs, files in os.walk(target):
+    for root, _dirs, files in os.walk(target):
         # Ignoriere Output-Ordner und versteckte Ordner (z.B. .venv, .git)
         if "output_chapters" in root or "/." in root:
             continue

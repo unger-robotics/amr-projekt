@@ -240,7 +240,6 @@ def test_scan_rate_stability(node):
     window_rates = []
     t0 = timestamps[0]
 
-    window_start_idx = 0
     for window_num in range(int(total_duration / window_size)):
         w_start = t0 + window_num * window_size
         w_end = w_start + window_size

@@ -285,6 +285,7 @@ def run_failsafe_test(node):
     print()
 
     if failsafe_triggered:
+        assert timeout_measured is not None
         print(f"\n  Failsafe ausgeloest nach: {timeout_measured:.0f} ms")
         deviation = abs(timeout_measured - FAILSAFE_TIMEOUT_MS)
         tolerance = 200  # +/- 200ms Toleranz

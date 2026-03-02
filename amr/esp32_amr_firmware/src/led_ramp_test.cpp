@@ -27,23 +27,22 @@
 // ---------------------------------------------------------------
 // Konstanten
 // ---------------------------------------------------------------
-constexpr uint8_t PIN        = PIN_LED_MOSFET;  // D10 = GPIO 9
-constexpr uint8_t LEDC_CH    = amr::pwm::led_channel;   // Kanal 4
-constexpr uint32_t LEDC_FREQ = amr::pwm::led_freq_hz;   // 5 kHz
-constexpr uint8_t LEDC_BITS  = amr::pwm::led_bits;      // 10
-constexpr uint32_t LEDC_MAX  = amr::pwm::led_max;       // 1023
+constexpr uint8_t PIN = PIN_LED_MOSFET;               // D10 = GPIO 9
+constexpr uint8_t LEDC_CH = amr::pwm::led_channel;    // Kanal 4
+constexpr uint32_t LEDC_FREQ = amr::pwm::led_freq_hz; // 5 kHz
+constexpr uint8_t LEDC_BITS = amr::pwm::led_bits;     // 10
+constexpr uint32_t LEDC_MAX = amr::pwm::led_max;      // 1023
 
 // ---------------------------------------------------------------
 // Hilfsfunktion: Serielle Ausgabe mit Zeitstempel
 // ---------------------------------------------------------------
-static void logMsg(const char* msg) {
+static void logMsg(const char *msg) {
     Serial.printf("[%6lu ms] %s\n", millis(), msg);
 }
 
-static void logDuty(const char* label, uint32_t duty) {
+static void logDuty(const char *label, uint32_t duty) {
     float pct = static_cast<float>(duty) / LEDC_MAX * 100.0f;
-    Serial.printf("[%6lu ms] %s  duty=%4u/%u (%.0f %%)\n",
-                  millis(), label, duty, LEDC_MAX, pct);
+    Serial.printf("[%6lu ms] %s  duty=%4u/%u (%.0f %%)\n", millis(), label, duty, LEDC_MAX, pct);
 }
 
 // ---------------------------------------------------------------
@@ -81,7 +80,8 @@ static void testLedcRamp() {
     // Hoch
     for (uint32_t d = 0; d <= LEDC_MAX; d += 32) {
         ledcWrite(LEDC_CH, d);
-        if (d % 256 == 0) logDuty("  ramp up ", d);
+        if (d % 256 == 0)
+            logDuty("  ramp up ", d);
         delay(30);
     }
     ledcWrite(LEDC_CH, LEDC_MAX);
@@ -91,7 +91,8 @@ static void testLedcRamp() {
     // Runter
     for (int32_t d = LEDC_MAX; d >= 0; d -= 32) {
         ledcWrite(LEDC_CH, static_cast<uint32_t>(d));
-        if (d % 256 == 0) logDuty("  ramp dn ", static_cast<uint32_t>(d));
+        if (d % 256 == 0)
+            logDuty("  ramp dn ", static_cast<uint32_t>(d));
         delay(30);
     }
     ledcWrite(LEDC_CH, 0);
@@ -107,7 +108,7 @@ static void testLedcSteps() {
     logMsg("Erwartung: 4 unterscheidbare Helligkeiten");
 
     const uint32_t steps[] = {0, LEDC_MAX / 4, LEDC_MAX / 2, LEDC_MAX};
-    const char* labels[]   = {"  0 %%  ", " 25 %% ", " 50 %% ", "100 %% "};
+    const char *labels[] = {"  0 %%  ", " 25 %% ", " 50 %% ", "100 %% "};
 
     for (int i = 0; i < 4; i++) {
         logDuty(labels[i], steps[i]);

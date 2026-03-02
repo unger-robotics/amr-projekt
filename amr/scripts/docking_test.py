@@ -199,15 +199,13 @@ class DockingTestNode(Node):
             self.versuch_abschliessen()
             return
 
-        if self.state == self.APPROACHING:
-            if (
-                self.last_marker_time > 0
-                and (now - self.last_marker_time) > self.marker_lost_timeout
-            ):
-                self.state = self.SEARCHING
-                self.get_logger().warning(
-                    f"  Versuch {self.aktueller_versuch}: Marker verloren -> SEARCHING"
-                )
+        if self.state == self.APPROACHING and (
+            self.last_marker_time > 0 and (now - self.last_marker_time) > self.marker_lost_timeout
+        ):
+            self.state = self.SEARCHING
+            self.get_logger().warning(
+                f"  Versuch {self.aktueller_versuch}: Marker verloren -> SEARCHING"
+            )
 
     def versuch_abschliessen(self):
         """Speichert Ergebnis des aktuellen Versuchs."""

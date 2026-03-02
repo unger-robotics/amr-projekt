@@ -22,12 +22,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
+
 # ===========================================================================
 # Roboter-Parameter (aus hardware/config.h)
 # ===========================================================================
 L = 16.0  # Gesamtpfadlaenge 4x4m Quadrat [m]
 B_NOMINAL = 0.178  # WHEEL_BASE [m]
-from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
 
 TICKS_PER_REV_NOMINAL = TICKS_PER_REV
 
@@ -122,9 +123,9 @@ def berechne_umbmark(cw_positionen, ccw_positionen):
 
     # 2. Schwerpunkte in Meter umrechnen fuer Formeln
     x_cg_cw_m = x_cg_cw / 1000.0
-    y_cg_cw_m = y_cg_cw / 1000.0
+    y_cg_cw / 1000.0
     x_cg_ccw_m = x_cg_ccw / 1000.0
-    y_cg_ccw_m = y_cg_ccw / 1000.0
+    y_cg_ccw / 1000.0
 
     # 3. Fehlerwinkel (Borenstein Gl. 5.9, 5.10)
     alpha = ((x_cg_cw_m + x_cg_ccw_m) / (-4.0 * L)) * (180.0 / math.pi)

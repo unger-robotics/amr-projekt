@@ -9,17 +9,17 @@
 
 class INA260 {
   private:
-    static constexpr uint8_t REG_CONFIG       = 0x00;
-    static constexpr uint8_t REG_CURRENT      = 0x01;
-    static constexpr uint8_t REG_VOLTAGE      = 0x02;
-    static constexpr uint8_t REG_POWER        = 0x03;
-    static constexpr uint8_t REG_MASK_ENABLE  = 0x06;
-    static constexpr uint8_t REG_ALERT_LIMIT  = 0x07;
+    static constexpr uint8_t REG_CONFIG = 0x00;
+    static constexpr uint8_t REG_CURRENT = 0x01;
+    static constexpr uint8_t REG_VOLTAGE = 0x02;
+    static constexpr uint8_t REG_POWER = 0x03;
+    static constexpr uint8_t REG_MASK_ENABLE = 0x06;
+    static constexpr uint8_t REG_ALERT_LIMIT = 0x07;
     static constexpr uint8_t REG_MANUFACTURER = 0xFE;
-    static constexpr uint8_t REG_DIE_ID       = 0xFF;
+    static constexpr uint8_t REG_DIE_ID = 0xFF;
 
     static constexpr uint16_t MANUFACTURER_ID = 0x5449; // "TI"
-    static constexpr uint16_t DIE_ID          = 0x2270;
+    static constexpr uint16_t DIE_ID = 0x2270;
 
     // Alert Mask: Under-Voltage (Bit 12)
     static constexpr uint16_t MASK_UNDER_VOLTAGE = 0x1000;
@@ -45,7 +45,8 @@ class INA260 {
     }
 
   public:
-    INA260() : addr_(amr::i2c::addr_ina260) {}
+    INA260()
+        : addr_(amr::i2c::addr_ina260) {}
 
     bool init() {
         // Verify Manufacturer ID

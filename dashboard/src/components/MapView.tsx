@@ -14,7 +14,7 @@ export function MapView() {
   const mapImageRef = useRef<HTMLImageElement | null>(null);
   const trailRef = useRef<{ x: number; y: number }[]>([]);
 
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapVersion, setMapVersion] = useState(0);
 
   const mapPngB64 = useTelemetryStore((s) => s.mapPngB64);
   const mapWidth = useTelemetryStore((s) => s.mapWidth);
@@ -30,18 +30,17 @@ export function MapView() {
   useEffect(() => {
     if (!mapPngB64) {
       mapImageRef.current = null;
-      setMapLoaded(false);
       return;
     }
 
     const img = new Image();
     img.onload = () => {
       mapImageRef.current = img;
-      setMapLoaded(true);
+      setMapVersion(v => v + 1);
     };
     img.onerror = () => {
       mapImageRef.current = null;
-      setMapLoaded(false);
+      setMapVersion(v => v + 1);
     };
     img.src = `data:image/png;base64,${mapPngB64}`;
   }, [mapPngB64]);
@@ -88,7 +87,9 @@ export function MapView() {
     ctx.fillRect(0, 0, width, height);
 
     const mapImg = mapImageRef.current;
-    if (!mapImg || !mapLoaded || mapWidth === 0 || mapHeight === 0) {
+    // mapVersion is used to invalidate draw when the image loads/errors
+    void mapVersion;
+    if (!mapImg || mapWidth === 0 || mapHeight === 0) {
       // Platzhalter
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.font = '14px "JetBrains Mono", monospace';
@@ -197,7 +198,7 @@ export function MapView() {
     ctx.textBaseline = 'bottom';
     ctx.fillText('1m', barX + oneMetrePixels / 2, barY - endCapH / 2 - 2);
   }, [
-    mapLoaded, mapWidth, mapHeight, mapResolution,
+    mapVersion, mapWidth, mapHeight, mapResolution,
     mapOriginX, mapOriginY, robotMapX, robotMapY, robotMapYaw,
   ]);
 
