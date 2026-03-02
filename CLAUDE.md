@@ -98,16 +98,18 @@ ruff check .                               # Fehler anzeigen
 ruff format --check .                      # Format-Differenzen anzeigen
 mypy --config-file mypy.ini                # Type-Checking
 
-# C++ Linting (optional):
+# C++ Formatierung:
 clang-format --dry-run --Werror amr/esp32_amr_firmware/src/*.cpp amr/esp32_amr_firmware/src/*.hpp hardware/config.h
-cd amr/esp32_amr_firmware && pio run -t compiledb  # compile_commands.json erzeugen
-clang-tidy -p . src/main.cpp                       # Statische Analyse
 
 # Alle Hooks ausfuehren:
 pre-commit run --all-files
+
+# Auto-Fix (aendert Dateien!):
+ruff check --fix .                         # Auto-fixbare Fehler beheben
+ruff format .                              # Dateien formatieren
 ```
 
-Konfigurationsdateien: `ruff.toml` (Python-Linting), `mypy.ini` (Type-Checking), `.clang-format` (C++-Formatierung), `.clang-tidy` (C++-Analyse), `.pre-commit-config.yaml` (Git-Hooks). Symlink-Verzeichnis `my_bot/my_bot/` wird von allen Linting-Tools ausgeschlossen (Doppel-Scan verhindern).
+Konfigurationsdateien: `ruff.toml` (Python-Linting), `mypy.ini` (Type-Checking), `.clang-format` (C++-Formatierung), `.clang-tidy` (C++-Analyse, Config only), `.pre-commit-config.yaml` (Git-Hooks). Symlink-Verzeichnis `my_bot/my_bot/` wird von allen Linting-Tools ausgeschlossen (Doppel-Scan verhindern). **clang-tidy** ist NICHT ausfuehrbar: Xtensa ESP32-S3 Toolchain hat kein Clang-Backend (`unknown target triple 'xtensa-esp32s3-unknown-elf'`). Nur die Config-Datei ist vorhanden; `compile_commands.json` laesst sich via `pio run -t compiledb` generieren, aber clang-tidy kann damit nicht arbeiten.
 
 ### Validierungsskripte (Raspberry Pi)
 
