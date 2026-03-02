@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 r"""
 md_to_html_converter.py — Markdown → HTML mit Mermaid- & MathJax-Support
@@ -48,8 +47,8 @@ Exit-Codes
 """
 
 # === PFAD-KONFIGURATION (Projektstruktur: doc/md -> doc/html/_site) ===
-SOURCE_DIR = "doc/md"               # Markdown-Quelle
-OUTPUT_DIR = "doc/html/_site"       # HTML-Zielverzeichnis
+SOURCE_DIR = "doc/md"  # Markdown-Quelle
+OUTPUT_DIR = "doc/html/_site"  # HTML-Zielverzeichnis
 START_PAGE = "doc/html/start.html"  # Startseite neben doc/html/styles.css
 
 # CSS:
@@ -62,14 +61,14 @@ CSS_NAME = "styles.css"
 import argparse
 import datetime
 import glob
+import html
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from shutil import which
-import html
-import shutil
 
 
 def check_pandoc():
@@ -77,8 +76,9 @@ def check_pandoc():
     try:
         if not which("pandoc"):
             return False
-        subprocess.run(["pandoc", "--version"],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(
+            ["pandoc", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
+        )
         return True
     except Exception:
         return False
@@ -209,7 +209,8 @@ def enhance_css_file():
     marker_begin = "/* === MD-TO-HTML-CONVERTER EXTENSIONS === */"
     marker_end = "/* === END MD-TO-HTML-CONVERTER EXTENSIONS === */"
 
-    additional_css = f"""
+    additional_css = (
+        f"""
 {marker_begin}
 
 /* Mermaid-Diagramme */
@@ -270,15 +271,16 @@ pre.mermaid {{
 }}
 
 {marker_end}
-""".strip() + "\n"
+""".strip()
+        + "\n"
+    )
 
     content = css_path.read_text(encoding="utf-8")
 
     # Falls Block existiert: ersetzen (idempotent + updatefähig)
     if marker_begin in content and marker_end in content:
         pattern = re.compile(
-            re.escape(marker_begin) + r".*?" + re.escape(marker_end),
-            flags=re.DOTALL
+            re.escape(marker_begin) + r".*?" + re.escape(marker_end), flags=re.DOTALL
         )
         new_content, n = pattern.subn(additional_css.strip(), content, count=1)
         if n:
@@ -309,10 +311,7 @@ def check_and_fix_content(markdown_files):
     Kapselt rohe Mermaid-Blöcke idempotent in ```mermaid ... ```.
     """
     mermaid_re = re.compile(r"```\s*mermaid", re.IGNORECASE)
-    raw_mermaid_re = re.compile(
-        r"^(graph|flowchart)\s+(TD|TB|LR|RL|BT)\b",
-        re.MULTILINE
-    )
+    raw_mermaid_re = re.compile(r"^(graph|flowchart)\s+(TD|TB|LR|RL|BT)\b", re.MULTILINE)
     math_re = re.compile(r"\$[^$]+\$|\\\[|\\\(|\\begin\{")
 
     files_with_mermaid = []
@@ -321,7 +320,7 @@ def check_and_fix_content(markdown_files):
 
     for md_file in markdown_files:
         try:
-            with open(md_file, "r", encoding="utf-8") as f:
+            with open(md_file, encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
             print(f"Warnung: Kann '{md_file}' nicht lesen: {e}")
@@ -332,8 +331,10 @@ def check_and_fix_content(markdown_files):
 
         # Rohe Mermaid-Blöcke kapseln
         if raw_mermaid_re.search(content) and not mermaid_re.search(content):
+
             def wrap_mermaid(m):
                 return f"```mermaid\n{m.group(0)}"
+
             new_content = raw_mermaid_re.sub(wrap_mermaid, content)
             if new_content != content:
                 with open(md_file, "w", encoding="utf-8") as f:
@@ -386,11 +387,13 @@ def sanitize_math_for_mathjax(text: str) -> str:
         if not in_fence:
             line = unit_token_re.sub(_units_text_to_rm, line)
 
-        if (not in_fence
+        if (
+            not in_fence
             and not has_math_delim(line)
             and not inline_code_re.search(line)
             and not url_re.search(line)
-            and tex_marker_re.search(line)):
+            and tex_marker_re.search(line)
+        ):
             line = f"${line}$"
 
         out_lines.append(line)
@@ -529,9 +532,7 @@ def generate_start_page(html_files: list, start_page: str, css_source: str):
     for file_path in sorted(html_files, key=_natkey):
         rel = os.path.relpath(str(file_path), start_dir).replace("\\", "/")
         title = Path(rel).stem.replace("-", " ").replace("_", " ")
-        html_content.append(
-            f'      <li><a href="{html.escape(rel)}">{html.escape(title)}</a></li>'
-        )
+        html_content.append(f'      <li><a href="{html.escape(rel)}">{html.escape(title)}</a></li>')
 
     html_content += [
         "    </ul>",
@@ -625,7 +626,7 @@ def convert_all_markdown_files(args):
         # Optional: Eingabe sanitizen → temp-Datei
         tmp_input = md_file
         try:
-            with open(md_file, "r", encoding="utf-8") as f:
+            with open(md_file, encoding="utf-8") as f:
                 raw = f.read()
             sanitized = sanitize_math_for_mathjax(raw)
             if sanitized != raw:
@@ -638,12 +639,14 @@ def convert_all_markdown_files(args):
         cmd = [
             "pandoc",
             tmp_input,
-            "-o", str(html_file),
+            "-o",
+            str(html_file),
             "--standalone",
             "--to=html5",
             "--from=markdown+tex_math_dollars+tex_math_single_backslash+raw_tex",
             "--mathjax",
-            "--css", CSS_NAME,               # _site/*.html erwartet styles.css im selben Ordner
+            "--css",
+            CSS_NAME,  # _site/*.html erwartet styles.css im selben Ordner
             f"--lua-filter={lua_filter}",
         ]
         if md_file in files_with_mermaid:
@@ -676,25 +679,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Konvertiert Markdown-Dateien zu HTML (Mermaid + MathJax)."
     )
+    parser.add_argument("files", nargs="*", help="Spezifische Markdown-Dateien (optional).")
+    parser.add_argument("--no-start-page", action="store_true", help="Keine Startseite generieren.")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Ausführliche Ausgabe.")
     parser.add_argument(
-        "files", nargs="*",
-        help="Spezifische Markdown-Dateien (optional)."
+        "--dirs", action="append", help=f"Komma-separierte Verzeichnisse (Standard: {SOURCE_DIR})."
     )
     parser.add_argument(
-        "--no-start-page", action="store_true",
-        help="Keine Startseite generieren."
-    )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true",
-        help="Ausführliche Ausgabe."
-    )
-    parser.add_argument(
-        "--dirs", action="append",
-        help=f"Komma-separierte Verzeichnisse (Standard: {SOURCE_DIR})."
-    )
-    parser.add_argument(
-        "--recursive", action="store_true",
-        help="Rekursiv in Unterordnern nach *.md suchen."
+        "--recursive", action="store_true", help="Rekursiv in Unterordnern nach *.md suchen."
     )
 
     args = parser.parse_args()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+
 from pypdf import PdfReader, PdfWriter
 
 # ==============================================================================
@@ -13,22 +14,20 @@ from pypdf import PdfReader, PdfWriter
 PDF_REGISTRY = {
     # --- DATEI 1: Das ausführliche Lehrbuch ---
     "10_IV Thermodynamik.pdf": [
-        (2,   16,  "Kapitel_13_Temperatur_und_Nullter_Hauptsatz"),
-        (17,  41,  "Kapitel_14_Kinetische_Gastheorie"),
-        (42,  73,  "Kapitel_15_Waerme_und_Erster_Hauptsatz"),
-        (74,  103, "Kapitel_16_Zweiter_Hauptsatz"),
-        (104, 119, "Kapitel_17_Waermeuebertragung")
+        (2, 16, "Kapitel_13_Temperatur_und_Nullter_Hauptsatz"),
+        (17, 41, "Kapitel_14_Kinetische_Gastheorie"),
+        (42, 73, "Kapitel_15_Waerme_und_Erster_Hauptsatz"),
+        (74, 103, "Kapitel_16_Zweiter_Hauptsatz"),
+        (104, 119, "Kapitel_17_Waermeuebertragung"),
     ],
-
     # --- DATEI 2: Die Zusammenfassung / Teil IV ---
     "10_Teil IV Thermodynamik.pdf": [
-        (2,   5,   "Kapitel_13_Temperatur_und_Nullter_Hauptsatz"),
-        (6,   15,  "Kapitel_14_Kinetische_Gastheorie"),
-        (16,  27,  "Kapitel_15_Waerme_und_Erster_Hauptsatz"),
-        (28,  39,  "Kapitel_16_Zweiter_Hauptsatz"),
-        (40,  46,  "Kapitel_17_Waermeuebertragung")
+        (2, 5, "Kapitel_13_Temperatur_und_Nullter_Hauptsatz"),
+        (6, 15, "Kapitel_14_Kinetische_Gastheorie"),
+        (16, 27, "Kapitel_15_Waerme_und_Erster_Hauptsatz"),
+        (28, 39, "Kapitel_16_Zweiter_Hauptsatz"),
+        (40, 46, "Kapitel_17_Waermeuebertragung"),
     ],
-
     # --- PLATZHALTER FÜR NEUE DATEI (Einfach kopieren und ausfüllen) ---
     # "Mein_Neues_Buch.pdf": [
     #     (1, 10, "Kapitel_01_Einleitung"),
@@ -39,6 +38,7 @@ PDF_REGISTRY = {
 # ==============================================================================
 # 2. PROGRAMMLOGIK (NICHT ÄNDERN)
 # ==============================================================================
+
 
 def process_single_pdf(filepath, chapters):
     """Verarbeitet eine einzelne PDF-Datei basierend auf der Konfiguration."""
@@ -67,7 +67,9 @@ def process_single_pdf(filepath, chapters):
     for i, (start_p, end_p, raw_title) in enumerate(chapters):
         # 1. Validierung
         if start_p > total_pages:
-            print(f"   ⚠️  Überspringe '{raw_title}': Startseite {start_p} > PDF-Länge {total_pages}")
+            print(
+                f"   ⚠️  Überspringe '{raw_title}': Startseite {start_p} > PDF-Länge {total_pages}"
+            )
             continue
 
         # Korrigiere das Ende, falls es über das PDF hinausgeht
@@ -75,7 +77,7 @@ def process_single_pdf(filepath, chapters):
 
         # 2. Umrechnung (Mensch 1-basiert -> Python 0-basiert)
         idx_start = start_p - 1
-        idx_end = real_end # range ist exklusiv, daher passt das genau
+        idx_end = real_end  # range ist exklusiv, daher passt das genau
 
         if idx_start >= idx_end:
             print(f"   ⚠️  Ungültiger Bereich für '{raw_title}': {start_p}-{real_end}")
@@ -87,7 +89,7 @@ def process_single_pdf(filepath, chapters):
             writer.add_page(reader.pages[p])
 
         # Dateinamen formatieren
-        fname = f"{i+1:02d}_{raw_title}.pdf"
+        fname = f"{i + 1:02d}_{raw_title}.pdf"
         out_path = os.path.join(output_dir, fname)
 
         with open(out_path, "wb") as f:
@@ -115,7 +117,8 @@ def main(target_path):
     if os.path.isdir(target_path):
         found_any = False
         for root, dirs, files in os.walk(target_path):
-            if "output_split" in root: continue # Output ignorieren
+            if "output_split" in root:
+                continue  # Output ignorieren
 
             for file in files:
                 if file in PDF_REGISTRY:
@@ -126,6 +129,7 @@ def main(target_path):
         if not found_any:
             print("ℹ️  Keine passenden PDFs im Ordner gefunden, die in der Konfiguration stehen.")
             print("   (Bitte prüfe die Dateinamen in 'PDF_REGISTRY' oben im Skript)")
+
 
 if __name__ == "__main__":
     target = sys.argv[1] if len(sys.argv) > 1 else "."

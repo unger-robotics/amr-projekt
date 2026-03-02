@@ -12,23 +12,21 @@ Verwendung:
     ros2 run my_bot straight_drive_test uncorrected   # Nur ohne Korrektur
 """
 
-import sys
 import math
+import sys
 import time
 
 import rclpy
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
 
 try:
-    from amr_utils import (ANSI_GREEN, ANSI_RED, ANSI_BOLD, ANSI_RESET,
-                           ANSI_CYAN)
+    from amr_utils import ANSI_BOLD, ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_RESET
 except ImportError:
     try:
-        from my_bot.amr_utils import (ANSI_GREEN, ANSI_RED, ANSI_BOLD,
-                                      ANSI_RESET, ANSI_CYAN)
+        from my_bot.amr_utils import ANSI_BOLD, ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_RESET
     except ImportError:
         ANSI_GREEN = "\033[32m"
         ANSI_RED = "\033[31m"
@@ -46,14 +44,14 @@ def quaternion_to_yaw(q):
 
 class StraightDriveTest(Node):
     def __init__(self, use_correction=True):
-        super().__init__('straight_drive_test')
+        super().__init__("straight_drive_test")
 
         self.use_correction = use_correction
 
         # Fahrparameter
-        self.target_speed = 0.1     # m/s
+        self.target_speed = 0.1  # m/s
         self.target_distance = 1.0  # m (Closed-Loop auf Odom)
-        self.timeout = 20.0         # Sekunden Safety-Timeout
+        self.timeout = 20.0  # Sekunden Safety-Timeout
 
         # Heading-Korrektur P-Regler
         self.heading_kp = 0.5
@@ -90,17 +88,13 @@ class StraightDriveTest(Node):
         self.stable_count = 0
 
         # ROS2
-        self.pub_cmd = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.sub_imu = self.create_subscription(
-            Imu, '/imu', self.imu_callback, 10)
-        self.sub_odom = self.create_subscription(
-            Odometry, '/odom', self.odom_callback, 10)
+        self.pub_cmd = self.create_publisher(Twist, "/cmd_vel", 10)
+        self.sub_imu = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
+        self.sub_odom = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
 
         mode = "MIT" if use_correction else "OHNE"
-        self.get_logger().info(
-            f'Geradeausfahrt 1m {mode} IMU-Heading-Korrektur')
-        self.get_logger().info(
-            'Gyro-Kalibrierung (3s still stehen)...')
+        self.get_logger().info(f"Geradeausfahrt 1m {mode} IMU-Heading-Korrektur")
+        self.get_logger().info("Gyro-Kalibrierung (3s still stehen)...")
 
     def imu_callback(self, msg):
         now = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
@@ -124,16 +118,16 @@ class StraightDriveTest(Node):
                 bias_dps = math.degrees(self.gyro_bias)
                 self.calibrating = False
                 self.get_logger().info(
-                    f'Gyro-Bias: {bias_dps:+.3f} deg/s '
-                    f'({len(self.cal_samples)} Samples)')
+                    f"Gyro-Bias: {bias_dps:+.3f} deg/s ({len(self.cal_samples)} Samples)"
+                )
                 if abs(self.gyro_bias) > self.max_acceptable_bias:
                     self.get_logger().warn(
-                        f'Gyro-Bias zu hoch! Roboter stand nicht still. '
-                        f'Wiederhole Kalibrierung...')
+                        "Gyro-Bias zu hoch! Roboter stand nicht still. Wiederhole Kalibrierung..."
+                    )
                     self.cal_samples.clear()
                     self.calibrating = True
                     return
-                self.get_logger().info('Warte auf /odom...')
+                self.get_logger().info("Warte auf /odom...")
             return
 
         if not self.running or self.done or self.settling:
@@ -156,8 +150,7 @@ class StraightDriveTest(Node):
 
         if self.use_correction:
             corr = -self.heading_kp * self.gyro_heading
-            corr = max(-self.max_correction,
-                       min(corr, self.max_correction))
+            corr = max(-self.max_correction, min(corr, self.max_correction))
             twist.angular.z = corr
 
         self.pub_cmd.publish(twist)
@@ -170,9 +163,10 @@ class StraightDriveTest(Node):
             heading_deg = math.degrees(self.gyro_heading)
             corr_val = twist.angular.z if self.use_correction else 0.0
             self.get_logger().info(
-                f'  {elapsed:.0f}s | Dist: {self.forward_distance:.3f}m '
-                f'| Heading: {heading_deg:+.2f} Grad '
-                f'| Korrektur: {corr_val:+.3f} rad/s')
+                f"  {elapsed:.0f}s | Dist: {self.forward_distance:.3f}m "
+                f"| Heading: {heading_deg:+.2f} Grad "
+                f"| Korrektur: {corr_val:+.3f} rad/s"
+            )
 
     def odom_callback(self, msg):
         self.current_x = msg.pose.pose.position.x
@@ -193,8 +187,7 @@ class StraightDriveTest(Node):
             self.start_yaw = self.current_yaw
             self.start_time = time.time()
             mode = "MIT" if self.use_correction else "OHNE"
-            self.get_logger().info(
-                f'Fahrt gestartet! ({mode} Korrektur)')
+            self.get_logger().info(f"Fahrt gestartet! ({mode} Korrektur)")
             return
 
         if self.done:
@@ -204,8 +197,7 @@ class StraightDriveTest(Node):
         if self.settling:
             dx = self.current_x - self.start_x
             dy = self.current_y - self.start_y
-            self.forward_distance = (dx * math.cos(self.start_yaw)
-                                     + dy * math.sin(self.start_yaw))
+            self.forward_distance = dx * math.cos(self.start_yaw) + dy * math.sin(self.start_yaw)
             elapsed = time.time() - self.start_time
 
             # Stillstand: Odom-Aenderung < 0.5mm fuer 5 Zyklen (~250ms)
@@ -226,8 +218,7 @@ class StraightDriveTest(Node):
         # Vorwaertsstrecke im Roboter-Koerperkoordinatensystem
         dx = self.current_x - self.start_x
         dy = self.current_y - self.start_y
-        self.forward_distance = (dx * math.cos(self.start_yaw)
-                                 + dy * math.sin(self.start_yaw))
+        self.forward_distance = dx * math.cos(self.start_yaw) + dy * math.sin(self.start_yaw)
 
         elapsed = time.time() - self.start_time
 
@@ -242,7 +233,7 @@ class StraightDriveTest(Node):
         if elapsed >= self.timeout:
             self.stop_robot()
             self.done = True
-            self.get_logger().warn(f'Timeout nach {self.timeout:.0f}s!')
+            self.get_logger().warn(f"Timeout nach {self.timeout:.0f}s!")
             self.print_result(elapsed)
 
     def stop_robot(self):
@@ -276,20 +267,22 @@ class StraightDriveTest(Node):
         mode = "MIT" if self.use_correction else "OHNE"
 
         print()
-        print('=' * 60)
-        print(f'  {ANSI_BOLD}Geradeausfahrt {mode} IMU-Korrektur{ANSI_RESET}')
-        print('=' * 60)
-        print(f'  Soll-Strecke:     {self.target_distance:.3f} m')
-        print(f'  Odom-Strecke:     {distance:.3f} m '
-              f'(Fehler: {abs(self.target_distance - distance) * 100:.1f}%)')
-        print(f'  Vorwaerts:        {forward:.4f} m')
-        print(f'  Lateral:          {lateral:.4f} m')
-        print(f'  Lateral-Drift:    {lateral_drift:.1f} cm')
-        print(f'  Heading (Odom):   {heading_odom:+.2f} Grad')
-        print(f'  Heading (Gyro):   {heading_gyro:+.2f} Grad')
-        print(f'  Gyro-Bias:        {bias_dps:+.3f} deg/s')
-        print(f'  Dauer:            {elapsed:.1f}s')
-        print('=' * 60)
+        print("=" * 60)
+        print(f"  {ANSI_BOLD}Geradeausfahrt {mode} IMU-Korrektur{ANSI_RESET}")
+        print("=" * 60)
+        print(f"  Soll-Strecke:     {self.target_distance:.3f} m")
+        print(
+            f"  Odom-Strecke:     {distance:.3f} m "
+            f"(Fehler: {abs(self.target_distance - distance) * 100:.1f}%)"
+        )
+        print(f"  Vorwaerts:        {forward:.4f} m")
+        print(f"  Lateral:          {lateral:.4f} m")
+        print(f"  Lateral-Drift:    {lateral_drift:.1f} cm")
+        print(f"  Heading (Odom):   {heading_odom:+.2f} Grad")
+        print(f"  Heading (Gyro):   {heading_gyro:+.2f} Grad")
+        print(f"  Gyro-Bias:        {bias_dps:+.3f} deg/s")
+        print(f"  Dauer:            {elapsed:.1f}s")
+        print("=" * 60)
 
 
 def run_single_test(use_correction):
@@ -309,42 +302,41 @@ def main(args=None):
 
     mode = "both"
     for arg in sys.argv[1:]:
-        if arg.startswith('--ros-args'):
+        if arg.startswith("--ros-args"):
             break
-        if 'uncorrect' in arg.lower():
+        if "uncorrect" in arg.lower():
             mode = "uncorrected"
-        elif 'correct' in arg.lower():
+        elif "correct" in arg.lower():
             mode = "corrected"
 
     print()
-    print('*' * 60)
-    print(f'  {ANSI_BOLD}AMR Geradeausfahrt-Test mit IMU-Korrektur{ANSI_RESET}')
-    print('*' * 60)
+    print("*" * 60)
+    print(f"  {ANSI_BOLD}AMR Geradeausfahrt-Test mit IMU-Korrektur{ANSI_RESET}")
+    print("*" * 60)
 
     if mode in ("both", "uncorrected"):
-        print(f'\n{ANSI_CYAN}>>> Test 1: OHNE IMU-Korrektur{ANSI_RESET}')
-        print('    Roboter faehrt 1m geradeaus (Closed-Loop auf Odom-Distanz)')
+        print(f"\n{ANSI_CYAN}>>> Test 1: OHNE IMU-Korrektur{ANSI_RESET}")
+        print("    Roboter faehrt 1m geradeaus (Closed-Loop auf Odom-Distanz)")
         if mode == "both":
-            print('    Bitte Roboter zurueckstellen nach diesem Test!')
+            print("    Bitte Roboter zurueckstellen nach diesem Test!")
         run_single_test(use_correction=False)
 
     if mode == "both":
-        print(f'\n{ANSI_CYAN}Warte 5s... '
-              f'Roboter zurueckstellen!{ANSI_RESET}')
+        print(f"\n{ANSI_CYAN}Warte 5s... Roboter zurueckstellen!{ANSI_RESET}")
         time.sleep(5.0)
 
     if mode in ("both", "corrected"):
-        print(f'\n{ANSI_CYAN}>>> Test 2: MIT IMU-Korrektur{ANSI_RESET}')
-        print('    Roboter faehrt 1m geradeaus mit Heading-Stabilisierung')
+        print(f"\n{ANSI_CYAN}>>> Test 2: MIT IMU-Korrektur{ANSI_RESET}")
+        print("    Roboter faehrt 1m geradeaus mit Heading-Stabilisierung")
         run_single_test(use_correction=True)
 
     print()
-    print('*' * 60)
-    print(f'  {ANSI_BOLD}Tests abgeschlossen{ANSI_RESET}')
-    print('*' * 60)
+    print("*" * 60)
+    print(f"  {ANSI_BOLD}Tests abgeschlossen{ANSI_RESET}")
+    print("*" * 60)
 
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

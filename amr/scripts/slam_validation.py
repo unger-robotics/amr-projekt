@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 SLAM-Validierung: Berechnet den Absolute Trajectory Error (ATE)
 zwischen SLAM-korrigierter Pose und reiner Odometrie.
@@ -35,18 +34,26 @@ import numpy as np
 # ROS2-Imports (nur verfuegbar auf dem Roboter mit installiertem ROS2)
 try:
     import rclpy
+    from nav_msgs.msg import Odometry
     from rclpy.node import Node
     from rclpy.time import Time
-    from nav_msgs.msg import Odometry
-    from tf2_ros import Buffer, TransformListener, LookupException, ConnectivityException, ExtrapolationException
+    from tf2_ros import (
+        Buffer,
+        ConnectivityException,
+        ExtrapolationException,
+        LookupException,
+        TransformListener,
+    )
+
     ROS2_AVAILABLE = True
 except ImportError:
     ROS2_AVAILABLE = False
 
 # Rosbag-Import
 try:
-    from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
     from rclpy.serialization import deserialize_message
+    from rosbag2_py import ConverterOptions, SequentialReader, StorageOptions
+
     ROSBAG_AVAILABLE = True
 except ImportError:
     ROSBAG_AVAILABLE = False
@@ -56,8 +63,10 @@ from amr_utils import quaternion_to_yaw
 # Matplotlib fuer Plots
 try:
     import matplotlib
-    matplotlib.use('Agg')  # Headless-Backend fuer Roboter ohne Display
+
+    matplotlib.use("Agg")  # Headless-Backend fuer Roboter ohne Display
     import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -66,6 +75,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Hilfsfunktionen
 # ---------------------------------------------------------------------------
+
 
 def compute_ate(odom_poses, slam_poses):
     """
@@ -80,7 +90,7 @@ def compute_ate(odom_poses, slam_poses):
         errors:   Liste von (timestamp, error) Tupeln
     """
     if len(odom_poses) == 0 or len(slam_poses) == 0:
-        return float('nan'), []
+        return float("nan"), []
 
     odom_arr = np.array(odom_poses)
     slam_arr = np.array(slam_poses)
@@ -106,7 +116,7 @@ def compute_ate(odom_poses, slam_poses):
         squared_errors.append(err * err)
 
     if len(squared_errors) == 0:
-        return float('nan'), []
+        return float("nan"), []
 
     ate_rmse = math.sqrt(np.mean(squared_errors))
     return ate_rmse, errors
@@ -119,63 +129,63 @@ def verify_tf_chain(tf_buffer, node):
     Erwartete Kette: map -> odom -> base_link -> laser
     """
     required_transforms = [
-        ('map', 'odom'),
-        ('odom', 'base_link'),
-        ('base_link', 'laser'),
+        ("map", "odom"),
+        ("odom", "base_link"),
+        ("base_link", "laser"),
     ]
 
     results = {}
     for parent, child in required_transforms:
-        key = f'{parent} -> {child}'
+        key = f"{parent} -> {child}"
         try:
             tf_buffer.lookup_transform(parent, child, Time())
-            results[key] = 'OK'
-            node.get_logger().info(f'TF {key}: verfuegbar')
+            results[key] = "OK"
+            node.get_logger().info(f"TF {key}: verfuegbar")
         except (LookupException, ConnectivityException, ExtrapolationException) as e:
-            results[key] = f'FEHLT: {e}'
-            node.get_logger().warn(f'TF {key}: {e}')
+            results[key] = f"FEHLT: {e}"
+            node.get_logger().warn(f"TF {key}: {e}")
 
     return results
 
 
-def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output_dir='.'):
+def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output_dir="."):
     """Erzeugt Markdown-Report und optionalen Matplotlib-Plot."""
     # Akzeptanzkriterium
     passed = ate_rmse < 0.20
 
     # --- Markdown-Report ---
     report = []
-    report.append('# SLAM-Validierungsbericht')
-    report.append('')
-    report.append(f'Datum: {time.strftime("%Y-%m-%d %H:%M:%S")}')
-    report.append('')
+    report.append("# SLAM-Validierungsbericht")
+    report.append("")
+    report.append(f"Datum: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append("")
 
-    report.append('## TF-Ketten-Verifikation')
-    report.append('')
-    report.append('| Transform | Status |')
-    report.append('|-----------|--------|')
+    report.append("## TF-Ketten-Verifikation")
+    report.append("")
+    report.append("| Transform | Status |")
+    report.append("|-----------|--------|")
     for tf_name, status in tf_results.items():
-        report.append(f'| {tf_name} | {status} |')
-    report.append('')
+        report.append(f"| {tf_name} | {status} |")
+    report.append("")
 
-    report.append('## Absolute Trajectory Error (ATE)')
-    report.append('')
-    report.append(f'- Anzahl synchronisierter Posen-Paare: {len(errors)}')
-    report.append(f'- ATE (RMSE): **{ate_rmse:.4f} m**')
+    report.append("## Absolute Trajectory Error (ATE)")
+    report.append("")
+    report.append(f"- Anzahl synchronisierter Posen-Paare: {len(errors)}")
+    report.append(f"- ATE (RMSE): **{ate_rmse:.4f} m**")
     if len(errors) > 0:
         max_err = max(e[1] for e in errors)
         min_err = min(e[1] for e in errors)
-        report.append(f'- Max. Fehler: {max_err:.4f} m')
-        report.append(f'- Min. Fehler: {min_err:.4f} m')
-    report.append(f'- Akzeptanzkriterium: ATE < 0.20 m')
-    report.append(f'- Ergebnis: **{"BESTANDEN" if passed else "NICHT BESTANDEN"}**')
-    report.append('')
+        report.append(f"- Max. Fehler: {max_err:.4f} m")
+        report.append(f"- Min. Fehler: {min_err:.4f} m")
+    report.append("- Akzeptanzkriterium: ATE < 0.20 m")
+    report.append(f"- Ergebnis: **{'BESTANDEN' if passed else 'NICHT BESTANDEN'}**")
+    report.append("")
 
-    report_text = '\n'.join(report)
-    report_path = os.path.join(output_dir, 'slam_validation_report.md')
-    with open(report_path, 'w') as f:
+    report_text = "\n".join(report)
+    report_path = os.path.join(output_dir, "slam_validation_report.md")
+    with open(report_path, "w") as f:
         f.write(report_text)
-    print(f'Report gespeichert: {report_path}')
+    print(f"Report gespeichert: {report_path}")
 
     # --- JSON-Export fuer validation_report.py ---
     max_err = max(e[1] for e in errors) if errors else None
@@ -194,10 +204,10 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
         "num_slam_poses": len(slam_poses),
         "passed": passed,
     }
-    json_path = os.path.join(output_dir, 'slam_results.json')
-    with open(json_path, 'w') as f:
+    json_path = os.path.join(output_dir, "slam_results.json")
+    with open(json_path, "w") as f:
         json.dump(json_export, f, indent=2)
-    print(f'JSON gespeichert: {json_path}')
+    print(f"JSON gespeichert: {json_path}")
 
     # --- Plot ---
     if MATPLOTLIB_AVAILABLE and len(odom_poses) > 0 and len(slam_poses) > 0:
@@ -208,13 +218,13 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
 
         # Trajektorien-Vergleich
         ax1 = axes[0]
-        ax1.plot(odom_arr[:, 1], odom_arr[:, 2], 'b-', label='Odometrie', linewidth=1)
-        ax1.plot(slam_arr[:, 1], slam_arr[:, 2], 'r-', label='SLAM', linewidth=1)
-        ax1.set_xlabel('X (m)')
-        ax1.set_ylabel('Y (m)')
-        ax1.set_title('Trajektorien-Vergleich')
+        ax1.plot(odom_arr[:, 1], odom_arr[:, 2], "b-", label="Odometrie", linewidth=1)
+        ax1.plot(slam_arr[:, 1], slam_arr[:, 2], "r-", label="SLAM", linewidth=1)
+        ax1.set_xlabel("X (m)")
+        ax1.set_ylabel("Y (m)")
+        ax1.set_title("Trajektorien-Vergleich")
         ax1.legend()
-        ax1.set_aspect('equal')
+        ax1.set_aspect("equal")
         ax1.grid(True, alpha=0.3)
 
         # ATE ueber Zeit
@@ -222,19 +232,19 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
             ax2 = axes[1]
             err_arr = np.array(errors)
             t_rel = err_arr[:, 0] - err_arr[0, 0]  # Relative Zeit
-            ax2.plot(t_rel, err_arr[:, 1], 'k-', linewidth=1)
-            ax2.axhline(y=0.20, color='r', linestyle='--', label='Akzeptanz (0.20 m)')
-            ax2.set_xlabel('Zeit (s)')
-            ax2.set_ylabel('ATE (m)')
-            ax2.set_title('Absolute Trajectory Error ueber Zeit')
+            ax2.plot(t_rel, err_arr[:, 1], "k-", linewidth=1)
+            ax2.axhline(y=0.20, color="r", linestyle="--", label="Akzeptanz (0.20 m)")
+            ax2.set_xlabel("Zeit (s)")
+            ax2.set_ylabel("ATE (m)")
+            ax2.set_title("Absolute Trajectory Error ueber Zeit")
             ax2.legend()
             ax2.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plot_path = os.path.join(output_dir, 'slam_validation_plot.png')
+        plot_path = os.path.join(output_dir, "slam_validation_plot.png")
         plt.savefig(plot_path, dpi=150)
         plt.close()
-        print(f'Plot gespeichert: {plot_path}')
+        print(f"Plot gespeichert: {plot_path}")
 
     return passed
 
@@ -243,11 +253,12 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
 # Live-Modus: ROS2-Node
 # ---------------------------------------------------------------------------
 
+
 class SlamValidationNode(Node):
     """ROS2-Node fuer die Live-SLAM-Validierung."""
 
     def __init__(self, duration):
-        super().__init__('slam_validation')
+        super().__init__("slam_validation")
         self.duration = duration
         self.odom_poses = []
         self.slam_poses = []
@@ -258,16 +269,13 @@ class SlamValidationNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Odometrie-Subscriber
-        self.odom_sub = self.create_subscription(
-            Odometry, '/odom', self.odom_callback, 10
-        )
+        self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
 
         # Timer: Alle 200 ms SLAM-Pose aus TF abfragen
         self.sample_timer = self.create_timer(0.2, self.sample_slam_pose)
 
         self.get_logger().info(
-            f'SLAM-Validierung gestartet (Dauer: {duration}s). '
-            f'Warte auf Daten...'
+            f"SLAM-Validierung gestartet (Dauer: {duration}s). Warte auf Daten..."
         )
 
     def odom_callback(self, msg):
@@ -290,15 +298,13 @@ class SlamValidationNode(Node):
         elapsed = time.time() - self.start_time
         if elapsed > self.duration:
             self.get_logger().info(
-                f'Aufzeichnung beendet nach {elapsed:.1f}s. '
-                f'Odom: {len(self.odom_poses)}, SLAM: {len(self.slam_poses)} Posen.'
+                f"Aufzeichnung beendet nach {elapsed:.1f}s. "
+                f"Odom: {len(self.odom_poses)}, SLAM: {len(self.slam_poses)} Posen."
             )
             raise SystemExit(0)
 
         try:
-            transform = self.tf_buffer.lookup_transform(
-                'map', 'base_link', Time()
-            )
+            transform = self.tf_buffer.lookup_transform("map", "base_link", Time())
             t = time.time()
             pos = transform.transform.translation
             ori = transform.transform.rotation
@@ -315,8 +321,7 @@ class SlamValidationNode(Node):
 def run_live_mode(duration, output_dir):
     """Fuehrt die Live-Validierung aus."""
     if not ROS2_AVAILABLE:
-        print('FEHLER: ROS2 (rclpy) nicht verfuegbar. '
-              'Bitte ROS2 Humble sourcing durchfuehren.')
+        print("FEHLER: ROS2 (rclpy) nicht verfuegbar. Bitte ROS2 Humble sourcing durchfuehren.")
         sys.exit(1)
 
     rclpy.init()
@@ -333,14 +338,13 @@ def run_live_mode(duration, output_dir):
     # ATE berechnen
     ate_rmse, errors = compute_ate(node.odom_poses, node.slam_poses)
 
-    print(f'\n--- Ergebnis ---')
-    print(f'Odom-Posen:  {len(node.odom_poses)}')
-    print(f'SLAM-Posen:  {len(node.slam_poses)}')
-    print(f'ATE (RMSE):  {ate_rmse:.4f} m')
+    print("\n--- Ergebnis ---")
+    print(f"Odom-Posen:  {len(node.odom_poses)}")
+    print(f"SLAM-Posen:  {len(node.slam_poses)}")
+    print(f"ATE (RMSE):  {ate_rmse:.4f} m")
 
     passed = generate_report(
-        ate_rmse, errors, node.odom_poses, node.slam_poses,
-        tf_results, output_dir
+        ate_rmse, errors, node.odom_poses, node.slam_poses, tf_results, output_dir
     )
 
     node.destroy_node()
@@ -353,24 +357,23 @@ def run_live_mode(duration, output_dir):
 # Rosbag-Modus
 # ---------------------------------------------------------------------------
 
+
 def run_bag_mode(bag_path, output_dir):
     # TODO: Rosbag-Modus nicht implementiert – TF-Replay fuer SLAM-Posen fehlt.
     """Liest eine rosbag2-Aufzeichnung und berechnet ATE."""
     if not ROSBAG_AVAILABLE:
-        print('FEHLER: rosbag2_py nicht verfuegbar. '
-              'Bitte ROS2 Humble sourcing durchfuehren.')
+        print("FEHLER: rosbag2_py nicht verfuegbar. Bitte ROS2 Humble sourcing durchfuehren.")
         sys.exit(1)
 
     if not ROS2_AVAILABLE:
-        print('FEHLER: rclpy nicht verfuegbar.')
+        print("FEHLER: rclpy nicht verfuegbar.")
         sys.exit(1)
 
     rclpy.init()
 
-    storage_options = StorageOptions(uri=bag_path, storage_id='sqlite3')
+    storage_options = StorageOptions(uri=bag_path, storage_id="sqlite3")
     converter_options = ConverterOptions(
-        input_serialization_format='cdr',
-        output_serialization_format='cdr'
+        input_serialization_format="cdr", output_serialization_format="cdr"
     )
 
     reader = SequentialReader()
@@ -385,26 +388,24 @@ def run_bag_mode(bag_path, output_dir):
         topic, data, timestamp = reader.read_next()
         t_sec = timestamp / 1e9  # Nanosekunden -> Sekunden
 
-        if topic == '/odom':
+        if topic == "/odom":
             msg = deserialize_message(data, Odometry)
             pos = msg.pose.pose.position
             ori = msg.pose.pose.orientation
             yaw = quaternion_to_yaw([ori.x, ori.y, ori.z, ori.w])
             odom_poses.append((t_sec, pos.x, pos.y, yaw))
 
-    print(f'Rosbag gelesen: {len(odom_poses)} Odometrie-Nachrichten')
-    print('Hinweis: Fuer vollstaendige ATE-Berechnung aus rosbag '
-          'wird ein TF-Replay benoetigt.')
-    print('Die Odometrie-Trajektorie wurde extrahiert.')
+    print(f"Rosbag gelesen: {len(odom_poses)} Odometrie-Nachrichten")
+    print("Hinweis: Fuer vollstaendige ATE-Berechnung aus rosbag wird ein TF-Replay benoetigt.")
+    print("Die Odometrie-Trajektorie wurde extrahiert.")
 
     # Einfacher Report ohne SLAM-Vergleich (nur Odom-Trajektorie)
-    tf_results = {'Rosbag-Modus': 'TF-Replay nicht implementiert'}
-    ate_rmse = float('nan')
+    tf_results = {"Rosbag-Modus": "TF-Replay nicht implementiert"}
+    ate_rmse = float("nan")
     errors = []
     slam_poses = []
 
-    generate_report(ate_rmse, errors, odom_poses, slam_poses,
-                    tf_results, output_dir)
+    generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output_dir)
 
     rclpy.shutdown()
     return False
@@ -416,25 +417,23 @@ def run_bag_mode(bag_path, output_dir):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='SLAM-Validierung: ATE-Berechnung fuer AMR'
-    )
+    parser = argparse.ArgumentParser(description="SLAM-Validierung: ATE-Berechnung fuer AMR")
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument(
-        '--live', action='store_true',
-        help='Live-Modus: Subscribt auf /odom und TF'
+        "--live", action="store_true", help="Live-Modus: Subscribt auf /odom und TF"
     )
-    mode_group.add_argument(
-        '--bag', type=str,
-        help='Rosbag-Modus: Pfad zur rosbag2-Datenbank'
+    mode_group.add_argument("--bag", type=str, help="Rosbag-Modus: Pfad zur rosbag2-Datenbank")
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=120,
+        help="Aufzeichnungsdauer im Live-Modus (Sekunden, Standard: 120)",
     )
     parser.add_argument(
-        '--duration', type=int, default=120,
-        help='Aufzeichnungsdauer im Live-Modus (Sekunden, Standard: 120)'
-    )
-    parser.add_argument(
-        '--output', type=str, default=os.path.dirname(os.path.abspath(__file__)),
-        help='Ausgabeverzeichnis fuer Report und Plots'
+        "--output",
+        type=str,
+        default=os.path.dirname(os.path.abspath(__file__)),
+        help="Ausgabeverzeichnis fuer Report und Plots",
     )
 
     args = parser.parse_args()
@@ -447,12 +446,12 @@ def main():
         passed = run_bag_mode(args.bag, args.output)
 
     if passed:
-        print('\nSLAM-Validierung BESTANDEN (ATE < 0.20 m)')
+        print("\nSLAM-Validierung BESTANDEN (ATE < 0.20 m)")
     else:
-        print('\nSLAM-Validierung NICHT BESTANDEN oder unvollstaendig')
+        print("\nSLAM-Validierung NICHT BESTANDEN oder unvollstaendig")
 
     sys.exit(0 if passed else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

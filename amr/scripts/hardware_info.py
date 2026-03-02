@@ -18,12 +18,11 @@ import datetime
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
-import re
 from glob import glob
 from pathlib import Path
-
 
 # ===========================================================================
 # ANSI-Farben und Formatierung
@@ -72,9 +71,7 @@ def print_fail(text, value=""):
 def run_cmd(cmd, timeout=5):
     """Fuehrt ein Shell-Kommando aus und gibt stdout zurueck (oder None bei Fehler)."""
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
         if result.returncode == 0:
             return result.stdout.strip()
         return None
@@ -85,6 +82,7 @@ def run_cmd(cmd, timeout=5):
 # ===========================================================================
 # Datensammlung
 # ===========================================================================
+
 
 def get_esp32_chip_data(port="/dev/ttyACM0", baudrate=115200):
     """
@@ -108,14 +106,14 @@ def get_esp32_chip_data(port="/dev/ttyACM0", baudrate=115200):
             "chip_type": None,
             "mac_address": None,
             "features": None,
-            "flash_size": None
+            "flash_size": None,
         }
 
         patterns = {
             "chip_type": r"Detecting chip type\.\.\.\s*(.+)",
             "mac_address": r"MAC:\s*([0-9a-fA-F:]+)",
             "features": r"Features:\s*(.+)",
-            "flash_size": r"Detected flash size:\s*(.+)"
+            "flash_size": r"Detected flash size:\s*(.+)",
         }
 
         for key, pattern in patterns.items():
@@ -203,9 +201,9 @@ def collect_system_resources():
         total_bytes = st.f_frsize * st.f_blocks
         free_bytes = st.f_frsize * st.f_bavail
         used_bytes = total_bytes - free_bytes
-        data["disk_total_gb"] = round(total_bytes / (1024 ** 3), 1)
-        data["disk_used_gb"] = round(used_bytes / (1024 ** 3), 1)
-        data["disk_free_gb"] = round(free_bytes / (1024 ** 3), 1)
+        data["disk_total_gb"] = round(total_bytes / (1024**3), 1)
+        data["disk_used_gb"] = round(used_bytes / (1024**3), 1)
+        data["disk_free_gb"] = round(free_bytes / (1024**3), 1)
         data["disk_usage_pct"] = round(used_bytes / total_bytes * 100, 1) if total_bytes else 0
     except OSError:
         pass
@@ -277,7 +275,7 @@ def collect_peripherals():
     # Hardwarenahe ESP32 Daten via esptool auslesen
     data["esp32_chip_info"] = None
     if data["esp32_found"] and acm_devices:
-        target_port = acm_devices[0] # Nutze ersten ACM-Port als Annahme
+        target_port = acm_devices[0]  # Nutze ersten ACM-Port als Annahme
         data["esp32_chip_info"] = get_esp32_chip_data(target_port)
 
     # udev-Symlinks (stabile Geraete-Pfade)
@@ -294,8 +292,10 @@ def collect_peripherals():
             # Sensor-Info parsen
             for line in cam_output.splitlines():
                 stripped = line.strip()
-                if stripped and (":" in stripped) and any(
-                    s in stripped.lower() for s in ["imx", "ov", "sensor", "mode"]
+                if (
+                    stripped
+                    and (":" in stripped)
+                    and any(s in stripped.lower() for s in ["imx", "ov", "sensor", "mode"])
                 ):
                     cam_data["sensors"].append(stripped)
             # Gesamtausgabe fuer Details
@@ -390,9 +390,9 @@ def collect_software():
 
     esp_gcc = None
     pio_home = Path.home() / ".platformio"
-    toolchain_bins = sorted(pio_home.glob(
-        "packages/toolchain-xtensa-esp32s3/bin/xtensa-esp32s3-elf-gcc"
-    ))
+    toolchain_bins = sorted(
+        pio_home.glob("packages/toolchain-xtensa-esp32s3/bin/xtensa-esp32s3-elf-gcc")
+    )
     if toolchain_bins:
         esp_gcc = run_cmd(f"{toolchain_bins[0]} --version 2>/dev/null")
         if esp_gcc:
@@ -451,9 +451,7 @@ def collect_project_info():
     data["git_branch"] = run_cmd("git rev-parse --abbrev-ref HEAD 2>/dev/null")
     data["git_dirty"] = run_cmd("git status --porcelain 2>/dev/null") not in (None, "")
     if git_hash:
-        data["git_commit_date"] = run_cmd(
-            f"git log -1 --format=%ci {git_hash} 2>/dev/null"
-        )
+        data["git_commit_date"] = run_cmd(f"git log -1 --format=%ci {git_hash} 2>/dev/null")
 
     # --- Docker-Image-Info ---
     docker_image = run_cmd(
@@ -468,13 +466,17 @@ def collect_project_info():
     ros2_pkgs_raw = run_cmd(
         "docker exec amr-docker-ros2-humble-1 "
         "bash -c 'dpkg -l ros-humble-* 2>/dev/null | grep ^ii' 2>/dev/null",
-        timeout=10
+        timeout=10,
     )
     ros2_packages = {}
     if ros2_pkgs_raw:
         key_packages = [
-            "nav2-bringup", "nav2-regulated-pure-pursuit-controller",
-            "slam-toolbox", "rplidar-ros", "cv-bridge", "v4l2-camera",
+            "nav2-bringup",
+            "nav2-regulated-pure-pursuit-controller",
+            "slam-toolbox",
+            "rplidar-ros",
+            "cv-bridge",
+            "v4l2-camera",
         ]
         for line in ros2_pkgs_raw.splitlines():
             parts = line.split()
@@ -490,8 +492,7 @@ def collect_project_info():
     firmware_dir = _find_firmware_dir()
     if firmware_dir:
         pio_pkg_raw = run_cmd(
-            f"cd {firmware_dir} && pio pkg list --only-platforms 2>/dev/null",
-            timeout=15
+            f"cd {firmware_dir} && pio pkg list --only-platforms 2>/dev/null", timeout=15
         )
         if pio_pkg_raw:
             for line in pio_pkg_raw.splitlines():
@@ -565,8 +566,8 @@ def _find_config_h():
     """Sucht config.h relativ zum Skript-Verzeichnis oder im Projektbaum."""
     script_dir = Path(__file__).resolve().parent
     candidates = [
-        script_dir / "../../hardware/config.h",       # amr/scripts/ -> hardware/
-        script_dir / "../../../hardware/config.h",     # my_bot/my_bot/ -> hardware/
+        script_dir / "../../hardware/config.h",  # amr/scripts/ -> hardware/
+        script_dir / "../../../hardware/config.h",  # my_bot/my_bot/ -> hardware/
         Path.home() / "AMR-Bachelorarbeit/hardware/config.h",
     ]
     for c in candidates:
@@ -580,8 +581,8 @@ def _find_firmware_dir():
     """Sucht das ESP32-Firmware-Verzeichnis (mit platformio.ini)."""
     script_dir = Path(__file__).resolve().parent
     candidates = [
-        script_dir / "../esp32_amr_firmware",          # amr/scripts/ -> amr/esp32_amr_firmware/
-        script_dir / "../../amr/esp32_amr_firmware",   # my_bot/my_bot/ -> amr/esp32_amr_firmware/
+        script_dir / "../esp32_amr_firmware",  # amr/scripts/ -> amr/esp32_amr_firmware/
+        script_dir / "../../amr/esp32_amr_firmware",  # my_bot/my_bot/ -> amr/esp32_amr_firmware/
         Path.home() / "AMR-Bachelorarbeit/amr/esp32_amr_firmware",
     ]
     for c in candidates:
@@ -594,6 +595,7 @@ def _find_firmware_dir():
 # ===========================================================================
 # Terminal-Ausgabe
 # ===========================================================================
+
 
 def print_system_resources(data):
     """Gibt Sektion 1: Systemressourcen aus."""
@@ -916,14 +918,15 @@ def print_project_info(data):
 # Export-Formate
 # ===========================================================================
 
+
 def generate_markdown(system, peripherals, software, project=None):
     """Erzeugt einen Markdown-Report."""
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = []
     lines.append("# AMR Hardware-Info Report")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"**Zeitpunkt:** {ts}")
-    lines.append(f"")
+    lines.append("")
 
     # Sektion 1
     lines.append("## 1. Systemressourcen und thermischer Zustand")
@@ -943,12 +946,14 @@ def generate_markdown(system, peripherals, software, project=None):
 
     cpu_count = system.get("cpu_count", "?")
     freqs = system.get("cpu_freq_mhz", [])
-    avg_freq = f"{sum(freqs)/len(freqs):.0f} MHz" if freqs else "-"
+    avg_freq = f"{sum(freqs) / len(freqs):.0f} MHz" if freqs else "-"
     lines.append(f"| CPU | {cpu_count} Kerne @ {avg_freq} |")
 
     load_1 = system.get("load_1m")
     if load_1 is not None:
-        lines.append(f"| Load Average | {system['load_1m']:.2f} / {system['load_5m']:.2f} / {system['load_15m']:.2f} |")
+        lines.append(
+            f"| Load Average | {system['load_1m']:.2f} / {system['load_5m']:.2f} / {system['load_15m']:.2f} |"
+        )
 
     ram = system.get("ram_total_mb")
     if ram:
@@ -956,7 +961,9 @@ def generate_markdown(system, peripherals, software, project=None):
 
     disk = system.get("disk_total_gb")
     if disk:
-        lines.append(f"| Disk (/) | {system['disk_used_gb']} / {disk} GB ({system['disk_usage_pct']}%) |")
+        lines.append(
+            f"| Disk (/) | {system['disk_used_gb']} / {disk} GB ({system['disk_usage_pct']}%) |"
+        )
 
     uptime = software.get("uptime")
     if uptime:
@@ -975,15 +982,19 @@ def generate_markdown(system, peripherals, software, project=None):
     # Chip Info formatieren
     chip_details = ""
     chip_info = peripherals.get("esp32_chip_info")
-    if chip_info and not "error" in chip_info:
+    if chip_info and "error" not in chip_info:
         mac = chip_info.get("mac_address", "?")
         flash = chip_info.get("flash_size", "?")
         chip_details = f" (MAC: {mac}, Flash: {flash})"
 
-    lines.append(f"| ESP32-S3 (303a:1001) | {esp_status}{chip_details} | {', '.join(peripherals.get('tty_acm', ['-']))} |")
+    lines.append(
+        f"| ESP32-S3 (303a:1001) | {esp_status}{chip_details} | {', '.join(peripherals.get('tty_acm', ['-']))} |"
+    )
 
     rp_status = "erkannt" if peripherals.get("rplidar_found") else "nicht erkannt"
-    lines.append(f"| RPLIDAR CP210x (10c4:ea60) | {rp_status} | {', '.join(peripherals.get('tty_usb', ['-']))} |")
+    lines.append(
+        f"| RPLIDAR CP210x (10c4:ea60) | {rp_status} | {', '.join(peripherals.get('tty_usb', ['-']))} |"
+    )
 
     cam = peripherals.get("camera", {})
     cam_status = "erkannt" if cam.get("detected") else "nicht erkannt"
@@ -993,7 +1004,9 @@ def generate_markdown(system, peripherals, software, project=None):
     lines.append(f"| /dev/video10 (v4l2loopback) | {v4l2} | - |")
 
     bridge = peripherals.get("camera_bridge_active")
-    bridge_str = "active" if bridge is True else ("inactive" if bridge is False else "nicht installiert")
+    bridge_str = (
+        "active" if bridge is True else ("inactive" if bridge is False else "nicht installiert")
+    )
     lines.append(f"| camera-v4l2-bridge | {bridge_str} | systemd service |")
 
     hailo = "erkannt" if peripherals.get("hailo_found") else "nicht erkannt"
@@ -1127,18 +1140,13 @@ def generate_json(system, peripherals, software, project=None):
 # Hauptprogramm
 # ===========================================================================
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Hardware-Info fuer Raspberry Pi 5 und AMR-Peripherie"
     )
-    parser.add_argument(
-        "--save", action="store_true",
-        help="Markdown-Report als Datei speichern"
-    )
-    parser.add_argument(
-        "--json", action="store_true",
-        help="JSON-Ausgabe statt Terminal-Report"
-    )
+    parser.add_argument("--save", action="store_true", help="Markdown-Report als Datei speichern")
+    parser.add_argument("--json", action="store_true", help="JSON-Ausgabe statt Terminal-Report")
     args = parser.parse_args()
 
     # Daten sammeln
@@ -1156,8 +1164,8 @@ def main():
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print()
     print(f"{COLOR_BOLD}{'*' * 60}")
-    print(f"  AMR Hardware-Info Report")
-    print(f"  Raspberry Pi 5 + ESP32-S3 + RPLIDAR + IMX296")
+    print("  AMR Hardware-Info Report")
+    print("  Raspberry Pi 5 + ESP32-S3 + RPLIDAR + IMX296")
     print(f"  {ts}")
     print(f"{'*' * 60}{COLOR_RESET}")
 

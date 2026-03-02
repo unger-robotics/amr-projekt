@@ -18,19 +18,19 @@ Verwendung:
     python3 kinematic_test.py kreis        # Nur Kreisfahrt
 """
 
-import sys
-import time
 import json
 import math
+import sys
+import time
 from pathlib import Path
 
 import numpy as np
 
 try:
     import rclpy
-    from rclpy.node import Node
     from geometry_msgs.msg import Twist
     from nav_msgs.msg import Odometry
+    from rclpy.node import Node
 except ImportError:
     print("Fehler: ROS2 (rclpy) nicht verfuegbar.")
     print("Bitte ROS2 Humble installieren und workspace sourcen.")
@@ -40,22 +40,21 @@ except ImportError:
 # ===========================================================================
 # Roboter-Parameter (aus hardware/config.h)
 # ===========================================================================
-from amr_utils import WHEEL_RADIUS, WHEEL_BASE, quaternion_zu_yaw, normalisiere_winkel
+from amr_utils import WHEEL_BASE, WHEEL_RADIUS, normalisiere_winkel, quaternion_zu_yaw
 
 # Odom- und cmd_vel-Topics
 ODOM_TOPIC = "/odom"
 CMD_VEL_TOPIC = "/cmd_vel"
 
 # Akzeptanzkriterien
-AKZEPTANZ_STRECKE_PCT = 5.0     # [%] Streckenabweichung
-AKZEPTANZ_DRIFT_M = 0.05        # [m] Laterale Drift
-AKZEPTANZ_WINKEL_DEG = 5.0      # [Grad] Winkelabweichung
+AKZEPTANZ_STRECKE_PCT = 5.0  # [%] Streckenabweichung
+AKZEPTANZ_DRIFT_M = 0.05  # [m] Laterale Drift
+AKZEPTANZ_WINKEL_DEG = 5.0  # [Grad] Winkelabweichung
 
 # Pause zwischen Tests [s]
 PAUSE_ZWISCHEN_TESTS = 3.0
 # Pause nach Stopp fuer Odometrie-Einschwingen [s]
 PAUSE_NACH_STOPP = 1.0
-
 
 
 class KinematikTestNode(Node):
@@ -64,9 +63,7 @@ class KinematikTestNode(Node):
     def __init__(self):
         super().__init__("kinematik_test")
         self.publisher = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
-        self.subscription = self.create_subscription(
-            Odometry, ODOM_TOPIC, self.odom_callback, 10
-        )
+        self.subscription = self.create_subscription(Odometry, ODOM_TOPIC, self.odom_callback, 10)
         self.letzte_odom = None
         self.odom_aufnahme = []
         self.aufnahme_aktiv = False
@@ -144,21 +141,25 @@ def test_geradeausfahrt(node):
     print("Test A: Geradeausfahrt 1 m")
     print("=" * 60)
 
-    v = 0.2       # [m/s]
-    dauer = 5.0   # [s] -> 1 m Soll-Strecke
+    v = 0.2  # [m/s]
+    dauer = 5.0  # [s] -> 1 m Soll-Strecke
     soll_strecke = v * dauer  # 1.0 m
 
     pos_start = node.hole_position()
     if pos_start is None:
         print("Fehler: Keine Startposition verfuegbar.")
         return None
-    print(f"  Start: x={pos_start[0]:.4f} m, y={pos_start[1]:.4f} m, yaw={math.degrees(pos_start[2]):.2f} deg")
+    print(
+        f"  Start: x={pos_start[0]:.4f} m, y={pos_start[1]:.4f} m, yaw={math.degrees(pos_start[2]):.2f} deg"
+    )
 
     print(f"  Fahre: v={v} m/s, omega=0, Dauer={dauer} s")
     node.fahre_dauer(v, 0.0, dauer)
 
     pos_end = node.hole_position()
-    print(f"  Ende:  x={pos_end[0]:.4f} m, y={pos_end[1]:.4f} m, yaw={math.degrees(pos_end[2]):.2f} deg")
+    print(
+        f"  Ende:  x={pos_end[0]:.4f} m, y={pos_end[1]:.4f} m, yaw={math.degrees(pos_end[2]):.2f} deg"
+    )
 
     # Berechnung in lokalen Koordinaten (Start als Ursprung)
     dx = pos_end[0] - pos_start[0]
@@ -186,10 +187,14 @@ def test_geradeausfahrt(node):
 
     # Sofortige Ausgabe
     print()
-    print(f"  Vorwaerts-Strecke: {d_vorwaerts:.4f} m (Soll: {soll_strecke} m, Fehler: {strecke_fehler_pct:.2f}%)")
+    print(
+        f"  Vorwaerts-Strecke: {d_vorwaerts:.4f} m (Soll: {soll_strecke} m, Fehler: {strecke_fehler_pct:.2f}%)"
+    )
     print(f"  Laterale Drift:    {drift_m:.4f} m (Akzeptanz: < {AKZEPTANZ_DRIFT_M} m)")
-    print(f"  Bewertung: Strecke {'OK' if ergebnis['strecke_ok'] else 'NICHT OK'}, "
-          f"Drift {'OK' if ergebnis['drift_ok'] else 'NICHT OK'}")
+    print(
+        f"  Bewertung: Strecke {'OK' if ergebnis['strecke_ok'] else 'NICHT OK'}, "
+        f"Drift {'OK' if ergebnis['drift_ok'] else 'NICHT OK'}"
+    )
 
     return ergebnis
 
@@ -208,8 +213,8 @@ def test_drehung(node):
     print("=" * 60)
 
     omega = math.pi / 2.0  # [rad/s]
-    dauer = 1.0            # [s] -> 90 Grad
-    soll_winkel = 90.0     # [Grad]
+    dauer = 1.0  # [s] -> 90 Grad
+    soll_winkel = 90.0  # [Grad]
 
     ergebnisse_cw = []
     ergebnisse_ccw = []
@@ -221,7 +226,7 @@ def test_drehung(node):
     for i in range(5):
         pos_start = node.hole_position()
         if pos_start is None:
-            print(f"    CW {i+1}: Fehler - keine Position")
+            print(f"    CW {i + 1}: Fehler - keine Position")
             continue
 
         node.fahre_dauer(0.0, -omega, dauer)  # Negativ = CW
@@ -231,14 +236,16 @@ def test_drehung(node):
         ist_winkel = abs(math.degrees(delta_yaw))
         fehler = ist_winkel - soll_winkel
 
-        ergebnisse_cw.append({
-            "lauf": i + 1,
-            "ist_winkel_deg": ist_winkel,
-            "fehler_deg": fehler,
-            "start_yaw_deg": math.degrees(pos_start[2]),
-            "end_yaw_deg": math.degrees(pos_end[2]),
-        })
-        print(f"    CW {i+1}: {ist_winkel:.2f} deg (Fehler: {fehler:+.2f} deg)")
+        ergebnisse_cw.append(
+            {
+                "lauf": i + 1,
+                "ist_winkel_deg": ist_winkel,
+                "fehler_deg": fehler,
+                "start_yaw_deg": math.degrees(pos_start[2]),
+                "end_yaw_deg": math.degrees(pos_end[2]),
+            }
+        )
+        print(f"    CW {i + 1}: {ist_winkel:.2f} deg (Fehler: {fehler:+.2f} deg)")
         time.sleep(PAUSE_ZWISCHEN_TESTS)
 
     # 5x CCW
@@ -247,7 +254,7 @@ def test_drehung(node):
     for i in range(5):
         pos_start = node.hole_position()
         if pos_start is None:
-            print(f"    CCW {i+1}: Fehler - keine Position")
+            print(f"    CCW {i + 1}: Fehler - keine Position")
             continue
 
         node.fahre_dauer(0.0, omega, dauer)  # Positiv = CCW
@@ -257,14 +264,16 @@ def test_drehung(node):
         ist_winkel = abs(math.degrees(delta_yaw))
         fehler = ist_winkel - soll_winkel
 
-        ergebnisse_ccw.append({
-            "lauf": i + 1,
-            "ist_winkel_deg": ist_winkel,
-            "fehler_deg": fehler,
-            "start_yaw_deg": math.degrees(pos_start[2]),
-            "end_yaw_deg": math.degrees(pos_end[2]),
-        })
-        print(f"    CCW {i+1}: {ist_winkel:.2f} deg (Fehler: {fehler:+.2f} deg)")
+        ergebnisse_ccw.append(
+            {
+                "lauf": i + 1,
+                "ist_winkel_deg": ist_winkel,
+                "fehler_deg": fehler,
+                "start_yaw_deg": math.degrees(pos_start[2]),
+                "end_yaw_deg": math.degrees(pos_end[2]),
+            }
+        )
+        print(f"    CCW {i + 1}: {ist_winkel:.2f} deg (Fehler: {fehler:+.2f} deg)")
         time.sleep(PAUSE_ZWISCHEN_TESTS)
 
     # Auswertung
@@ -275,13 +284,14 @@ def test_drehung(node):
         mittel_cw = np.mean(cw_winkel)
         mittel_ccw = np.mean(ccw_winkel)
         asymmetrie = abs(mittel_cw - mittel_ccw)
-        max_fehler = max(abs(np.mean(cw_winkel) - soll_winkel),
-                         abs(np.mean(ccw_winkel) - soll_winkel))
+        max_fehler = max(
+            abs(np.mean(cw_winkel) - soll_winkel), abs(np.mean(ccw_winkel) - soll_winkel)
+        )
     else:
         mittel_cw = 0
         mittel_ccw = 0
         asymmetrie = 0
-        max_fehler = float('nan')
+        max_fehler = float("nan")
 
     ergebnis = {
         "test": "90-Grad-Drehung",
@@ -318,8 +328,8 @@ def test_kreisfahrt(node):
     print("Test C: Kreisfahrt (1 volle Umdrehung)")
     print("=" * 60)
 
-    v = 0.2         # [m/s]
-    omega = 0.5     # [rad/s]
+    v = 0.2  # [m/s]
+    omega = 0.5  # [rad/s]
     radius = v / omega  # 0.4 m
     umfang = 2.0 * math.pi * radius
     dauer = umfang / v  # Zeit fuer 1 Umdrehung
@@ -332,12 +342,16 @@ def test_kreisfahrt(node):
     if pos_start is None:
         print("Fehler: Keine Startposition verfuegbar.")
         return None
-    print(f"  Start: x={pos_start[0]:.4f} m, y={pos_start[1]:.4f} m, yaw={math.degrees(pos_start[2]):.2f} deg")
+    print(
+        f"  Start: x={pos_start[0]:.4f} m, y={pos_start[1]:.4f} m, yaw={math.degrees(pos_start[2]):.2f} deg"
+    )
 
     node.fahre_dauer(v, omega, dauer)
 
     pos_end = node.hole_position()
-    print(f"  Ende:  x={pos_end[0]:.4f} m, y={pos_end[1]:.4f} m, yaw={math.degrees(pos_end[2]):.2f} deg")
+    print(
+        f"  Ende:  x={pos_end[0]:.4f} m, y={pos_end[1]:.4f} m, yaw={math.degrees(pos_end[2]):.2f} deg"
+    )
 
     # Positionsfehler (Endposition vs. Startposition)
     dx = pos_end[0] - pos_start[0]
@@ -354,17 +368,16 @@ def test_kreisfahrt(node):
         ys = [m.pose.pose.position.y for m in node.odom_aufnahme]
         cx = np.mean(xs)
         cy = np.mean(ys)
-        radien = [math.sqrt((x - cx)**2 + (y - cy)**2) for x, y in zip(xs, ys)]
+        radien = [math.sqrt((x - cx) ** 2 + (y - cy) ** 2) for x, y in zip(xs, ys)]
         ist_radius = np.mean(radien)
         radius_fehler_pct = abs(ist_radius - radius) / radius * 100.0
     else:
-        ist_radius = float('nan')
-        radius_fehler_pct = float('nan')
+        ist_radius = float("nan")
+        radius_fehler_pct = float("nan")
 
     # Akzeptanzkriterium: Kreisradius-Fehler < 20%
     AKZEPTANZ_RADIUS_PCT = 20.0
-    passed = (not math.isnan(radius_fehler_pct)
-              and radius_fehler_pct < AKZEPTANZ_RADIUS_PCT)
+    passed = not math.isnan(radius_fehler_pct) and radius_fehler_pct < AKZEPTANZ_RADIUS_PCT
 
     ergebnis = {
         "test": "Kreisfahrt",
@@ -388,7 +401,9 @@ def test_kreisfahrt(node):
     if not math.isnan(ist_radius):
         print(f"  Kreisradius (soll):      {radius:.3f} m")
         print(f"  Kreisradius (ist):       {ist_radius:.3f} m")
-        print(f"  Radius-Fehler:           {radius_fehler_pct:.1f}% (Akzeptanz: < {AKZEPTANZ_RADIUS_PCT}%)")
+        print(
+            f"  Radius-Fehler:           {radius_fehler_pct:.1f}% (Akzeptanz: < {AKZEPTANZ_RADIUS_PCT}%)"
+        )
     print(f"  Bewertung: {'OK' if passed else 'NICHT OK'}")
 
     return ergebnis
@@ -415,8 +430,12 @@ def ausgabe_protokoll(ergebnisse):
             print()
             print("| Kenngroesse          | Wert          | Akzeptanz        | Bewertung |")
             print("|:--------------------|:--------------|:-----------------|:----------|")
-            print(f"| Streckenabweichung  | {erg['strecke_fehler_pct']:.2f} %       | < {AKZEPTANZ_STRECKE_PCT} %           | {'OK' if erg['strecke_ok'] else 'NICHT OK':9s} |")
-            print(f"| Laterale Drift      | {erg['laterale_drift_m']*1000:.1f} mm      | < {AKZEPTANZ_DRIFT_M*1000:.0f} mm          | {'OK' if erg['drift_ok'] else 'NICHT OK':9s} |")
+            print(
+                f"| Streckenabweichung  | {erg['strecke_fehler_pct']:.2f} %       | < {AKZEPTANZ_STRECKE_PCT} %           | {'OK' if erg['strecke_ok'] else 'NICHT OK':9s} |"
+            )
+            print(
+                f"| Laterale Drift      | {erg['laterale_drift_m'] * 1000:.1f} mm      | < {AKZEPTANZ_DRIFT_M * 1000:.0f} mm          | {'OK' if erg['drift_ok'] else 'NICHT OK':9s} |"
+            )
             print()
 
         elif erg["test"] == "90-Grad-Drehung":
@@ -425,14 +444,16 @@ def ausgabe_protokoll(ergebnisse):
             print("| Lauf | CW [deg] | CCW [deg] |")
             print("|:-----|:---------|:----------|")
             for i in range(5):
-                cw_str = f"{erg['cw'][i]['ist_winkel_deg']:.2f}" if i < len(erg['cw']) else "N/A"
-                ccw_str = f"{erg['ccw'][i]['ist_winkel_deg']:.2f}" if i < len(erg['ccw']) else "N/A"
-                print(f"|  {i+1}   | {cw_str:8s} | {ccw_str:9s} |")
+                cw_str = f"{erg['cw'][i]['ist_winkel_deg']:.2f}" if i < len(erg["cw"]) else "N/A"
+                ccw_str = f"{erg['ccw'][i]['ist_winkel_deg']:.2f}" if i < len(erg["ccw"]) else "N/A"
+                print(f"|  {i + 1}   | {cw_str:8s} | {ccw_str:9s} |")
             print()
             print(f"| Mittelwert CW:  {erg['mittel_cw_deg']:.2f} deg |")
             print(f"| Mittelwert CCW: {erg['mittel_ccw_deg']:.2f} deg |")
             print(f"| Asymmetrie:     {erg['asymmetrie_deg']:.2f} deg |")
-            print(f"| Bewertung:      {'OK' if erg['winkel_ok'] else 'NICHT OK'} (Akzeptanz: < {AKZEPTANZ_WINKEL_DEG} deg) |")
+            print(
+                f"| Bewertung:      {'OK' if erg['winkel_ok'] else 'NICHT OK'} (Akzeptanz: < {AKZEPTANZ_WINKEL_DEG} deg) |"
+            )
             print()
 
         elif erg["test"] == "Kreisfahrt":
@@ -441,13 +462,14 @@ def ausgabe_protokoll(ergebnisse):
             print("| Kenngroesse         | Wert        |")
             print("|:-------------------|:------------|")
             print(f"| Radius (soll)      | {erg['radius_m']:.3f} m    |")
-            print(f"| Positionsfehler    | {erg['positions_fehler_m']*1000:.1f} mm   |")
+            print(f"| Positionsfehler    | {erg['positions_fehler_m'] * 1000:.1f} mm   |")
             print(f"| Winkelfehler       | {erg['winkel_fehler_deg']:.2f} deg |")
             print()
 
 
 def speichere_json(ergebnisse, pfad):
     """Speichert Ergebnisse als JSON-Datei."""
+
     # numpy-Typen konvertieren
     def konvertiere(obj):
         if isinstance(obj, (np.integer,)):

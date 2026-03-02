@@ -21,21 +21,20 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 # ===========================================================================
 # Konfiguration: Erwartete Ergebnis-Dateien
 # ===========================================================================
 
 ERGEBNIS_DATEIEN = {
-    'encoder':   'encoder_results.json',
-    'motor':     'motor_results.json',
-    'umbmark':   'umbmark_results.json',
-    'pid':       'pid_results.json',
-    'kinematic': 'kinematic_results.json',
-    'slam':      'slam_results.json',
-    'nav':       'nav_results.json',
-    'docking':   'docking_results.json',
-    'rplidar':   'rplidar_results.json',
+    "encoder": "encoder_results.json",
+    "motor": "motor_results.json",
+    "umbmark": "umbmark_results.json",
+    "pid": "pid_results.json",
+    "kinematic": "kinematic_results.json",
+    "slam": "slam_results.json",
+    "nav": "nav_results.json",
+    "docking": "docking_results.json",
+    "rplidar": "rplidar_results.json",
 }
 
 # ===========================================================================
@@ -45,172 +44,172 @@ ERGEBNIS_DATEIEN = {
 KRITERIEN = [
     # --- Encoder ---
     {
-        'bereich': 'Encoder',
-        'kriterium': 'Ticks/Rev',
-        'anforderung': '740-760',
-        'datei': 'encoder',
-        'pfad': None,  # Aggregation ueber pruef_fn
-        'pruef_fn': lambda daten: _encoder_ticks_check(daten),
+        "bereich": "Encoder",
+        "kriterium": "Ticks/Rev",
+        "anforderung": "740-760",
+        "datei": "encoder",
+        "pfad": None,  # Aggregation ueber pruef_fn
+        "pruef_fn": lambda daten: _encoder_ticks_check(daten),
     },
     # --- Motor ---
     {
-        'bereich': 'Motor',
-        'kriterium': 'Deadzone (PWM)',
-        'anforderung': '30-40',
-        'datei': 'motor',
-        'pfad': 'config.pwm_deadzone',
-        'pruef': lambda v: 30 <= v <= 40 if v is not None else None,
+        "bereich": "Motor",
+        "kriterium": "Deadzone (PWM)",
+        "anforderung": "30-40",
+        "datei": "motor",
+        "pfad": "config.pwm_deadzone",
+        "pruef": lambda v: 30 <= v <= 40 if v is not None else None,
     },
     {
-        'bereich': 'Safety',
-        'kriterium': 'Failsafe',
-        'anforderung': '400-600 ms',
-        'datei': 'motor',
-        'pfad': 'failsafe.timeout_measured_ms',
-        'pruef': lambda v: 400 <= v <= 600 if v is not None else None,
+        "bereich": "Safety",
+        "kriterium": "Failsafe",
+        "anforderung": "400-600 ms",
+        "datei": "motor",
+        "pfad": "failsafe.timeout_measured_ms",
+        "pruef": lambda v: 400 <= v <= 600 if v is not None else None,
     },
     {
-        'bereich': 'Safety',
-        'kriterium': 'Failsafe ausgeloest',
-        'anforderung': 'true',
-        'datei': 'motor',
-        'pfad': 'failsafe.failsafe_triggered',
-        'pruef': lambda v: v is True if v is not None else None,
+        "bereich": "Safety",
+        "kriterium": "Failsafe ausgeloest",
+        "anforderung": "true",
+        "datei": "motor",
+        "pfad": "failsafe.failsafe_triggered",
+        "pruef": lambda v: v is True if v is not None else None,
     },
     # --- PID ---
     {
-        'bereich': 'PID',
-        'kriterium': 'Anstiegszeit',
-        'anforderung': '< 5000 ms',
-        'datei': 'pid',
-        'pfad': 'rise_time_ms',
-        'pruef': lambda v: v < 5000 if v is not None else None,
+        "bereich": "PID",
+        "kriterium": "Anstiegszeit",
+        "anforderung": "< 5000 ms",
+        "datei": "pid",
+        "pfad": "rise_time_ms",
+        "pruef": lambda v: v < 5000 if v is not None else None,
     },
     {
-        'bereich': 'PID',
-        'kriterium': 'Ueberschwingen',
-        'anforderung': '< 15%',
-        'datei': 'pid',
-        'pfad': 'overshoot_pct',
-        'pruef': lambda v: v < 15.0 if v is not None else None,
+        "bereich": "PID",
+        "kriterium": "Ueberschwingen",
+        "anforderung": "< 15%",
+        "datei": "pid",
+        "pfad": "overshoot_pct",
+        "pruef": lambda v: v < 15.0 if v is not None else None,
     },
     # --- Kinematik ---
     {
-        'bereich': 'Kinematik',
-        'kriterium': 'Geradeaus-Fehler',
-        'anforderung': '< 5%',
-        'datei': 'kinematic',
-        'pfad': None,
-        'pruef_fn': lambda daten: _kinematic_gerade_check(daten),
+        "bereich": "Kinematik",
+        "kriterium": "Geradeaus-Fehler",
+        "anforderung": "< 5%",
+        "datei": "kinematic",
+        "pfad": None,
+        "pruef_fn": lambda daten: _kinematic_gerade_check(daten),
     },
     {
-        'bereich': 'Kinematik',
-        'kriterium': 'Laterale Drift',
-        'anforderung': '< 50 mm',
-        'datei': 'kinematic',
-        'pfad': None,
-        'pruef_fn': lambda daten: _kinematic_drift_check(daten),
+        "bereich": "Kinematik",
+        "kriterium": "Laterale Drift",
+        "anforderung": "< 50 mm",
+        "datei": "kinematic",
+        "pfad": None,
+        "pruef_fn": lambda daten: _kinematic_drift_check(daten),
     },
     {
-        'bereich': 'Kinematik',
-        'kriterium': 'Drehwinkel-Fehler',
-        'anforderung': '< 5 deg',
-        'datei': 'kinematic',
-        'pfad': None,
-        'pruef_fn': lambda daten: _kinematic_drehung_check(daten),
+        "bereich": "Kinematik",
+        "kriterium": "Drehwinkel-Fehler",
+        "anforderung": "< 5 deg",
+        "datei": "kinematic",
+        "pfad": None,
+        "pruef_fn": lambda daten: _kinematic_drehung_check(daten),
     },
     # --- UMBmark ---
     {
-        'bereich': 'UMBmark',
-        'kriterium': 'E_max_syst',
-        'anforderung': '< 50 mm',
-        'datei': 'umbmark',
-        'pfad': 'ergebnisse.E_max_syst_mm',
-        'pruef': lambda v: v < 50.0 if v is not None else None,
+        "bereich": "UMBmark",
+        "kriterium": "E_max_syst",
+        "anforderung": "< 50 mm",
+        "datei": "umbmark",
+        "pfad": "ergebnisse.E_max_syst_mm",
+        "pruef": lambda v: v < 50.0 if v is not None else None,
     },
     # --- SLAM ---
     {
-        'bereich': 'SLAM',
-        'kriterium': 'ATE',
-        'anforderung': '< 0.20 m',
-        'datei': 'slam',
-        'pfad': 'ate_m',
-        'pruef': lambda v: v < 0.20 if v is not None else None,
+        "bereich": "SLAM",
+        "kriterium": "ATE",
+        "anforderung": "< 0.20 m",
+        "datei": "slam",
+        "pfad": "ate_m",
+        "pruef": lambda v: v < 0.20 if v is not None else None,
     },
     # --- Navigation ---
     {
-        'bereich': 'Navigation',
-        'kriterium': 'xy-Genauigkeit',
-        'anforderung': '< 0.10 m',
-        'datei': 'nav',
-        'pfad': None,
-        'pruef_fn': lambda daten: _nav_xy_check(daten),
+        "bereich": "Navigation",
+        "kriterium": "xy-Genauigkeit",
+        "anforderung": "< 0.10 m",
+        "datei": "nav",
+        "pfad": None,
+        "pruef_fn": lambda daten: _nav_xy_check(daten),
     },
     {
-        'bereich': 'Navigation',
-        'kriterium': 'Gier-Genauigkeit',
-        'anforderung': '< 0.15 rad',
-        'datei': 'nav',
-        'pfad': None,
-        'pruef_fn': lambda daten: _nav_yaw_check(daten),
+        "bereich": "Navigation",
+        "kriterium": "Gier-Genauigkeit",
+        "anforderung": "< 0.15 rad",
+        "datei": "nav",
+        "pfad": None,
+        "pruef_fn": lambda daten: _nav_yaw_check(daten),
     },
     # --- Docking ---
     {
-        'bereich': 'Docking',
-        'kriterium': 'Erfolgsquote',
-        'anforderung': '>= 80%',
-        'datei': 'docking',
-        'pfad': 'statistik.erfolgsquote_pct',
-        'pruef': lambda v: v >= 80.0 if v is not None else None,
+        "bereich": "Docking",
+        "kriterium": "Erfolgsquote",
+        "anforderung": ">= 80%",
+        "datei": "docking",
+        "pfad": "statistik.erfolgsquote_pct",
+        "pruef": lambda v: v >= 80.0 if v is not None else None,
     },
     {
-        'bereich': 'Docking',
-        'kriterium': 'Lat. Versatz',
-        'anforderung': '<= 2 cm',
-        'datei': 'docking',
-        'pfad': None,
-        'pruef_fn': lambda daten: _docking_versatz_check(daten),
+        "bereich": "Docking",
+        "kriterium": "Lat. Versatz",
+        "anforderung": "<= 2 cm",
+        "datei": "docking",
+        "pfad": None,
+        "pruef_fn": lambda daten: _docking_versatz_check(daten),
     },
     # --- RPLIDAR ---
     {
-        'bereich': 'RPLIDAR',
-        'kriterium': 'Scan-Rate',
-        'anforderung': '>= 5 Hz (5 min)',
-        'datei': 'rplidar',
-        'pfad': 'scan_rate_stability.mean_rate_hz',
-        'pruef': lambda v: v >= 5.0 if v is not None else None,
+        "bereich": "RPLIDAR",
+        "kriterium": "Scan-Rate",
+        "anforderung": ">= 5 Hz (5 min)",
+        "datei": "rplidar",
+        "pfad": "scan_rate_stability.mean_rate_hz",
+        "pruef": lambda v: v >= 5.0 if v is not None else None,
     },
     {
-        'bereich': 'RPLIDAR',
-        'kriterium': 'Datenqualitaet',
-        'anforderung': 'Noise < 30 mm',
-        'datei': 'rplidar',
-        'pfad': 'data_quality.noise_stddev_m',
-        'pruef': lambda v: v < 0.03 if v is not None else None,
+        "bereich": "RPLIDAR",
+        "kriterium": "Datenqualitaet",
+        "anforderung": "Noise < 30 mm",
+        "datei": "rplidar",
+        "pfad": "data_quality.noise_stddev_m",
+        "pruef": lambda v: v < 0.03 if v is not None else None,
     },
     {
-        'bereich': 'RPLIDAR',
-        'kriterium': 'Static TF',
-        'anforderung': 'Yaw-Fehler < 3 deg',
-        'datei': 'rplidar',
-        'pfad': 'static_tf.yaw_error_deg',
-        'pruef': lambda v: v < 3.0 if v is not None else None,
+        "bereich": "RPLIDAR",
+        "kriterium": "Static TF",
+        "anforderung": "Yaw-Fehler < 3 deg",
+        "datei": "rplidar",
+        "pfad": "static_tf.yaw_error_deg",
+        "pruef": lambda v: v < 3.0 if v is not None else None,
     },
 ]
 
 # Forschungsfragen-Zuordnung
 FF_ZUORDNUNG = {
-    'FF1': {
-        'titel': 'Echtzeit (PID + Safety)',
-        'bereiche': ['PID', 'Safety'],
+    "FF1": {
+        "titel": "Echtzeit (PID + Safety)",
+        "bereiche": ["PID", "Safety"],
     },
-    'FF2': {
-        'titel': 'Praezision (Encoder + Kinematik + UMBmark + SLAM + Navigation)',
-        'bereiche': ['Encoder', 'Kinematik', 'UMBmark', 'SLAM', 'Navigation', 'RPLIDAR'],
+    "FF2": {
+        "titel": "Praezision (Encoder + Kinematik + UMBmark + SLAM + Navigation)",
+        "bereiche": ["Encoder", "Kinematik", "UMBmark", "SLAM", "Navigation", "RPLIDAR"],
     },
-    'FF3': {
-        'titel': 'Docking (ArUco-Marker)',
-        'bereiche': ['Docking'],
+    "FF3": {
+        "titel": "Docking (ArUco-Marker)",
+        "bereiche": ["Docking"],
     },
 }
 
@@ -219,12 +218,13 @@ FF_ZUORDNUNG = {
 # Aggregations-Hilfsfunktionen fuer pruef_fn
 # ===========================================================================
 
+
 def _encoder_ticks_check(daten):
     """Mittelwert aus recommended_ticks_per_rev_left/right, pruefe 740-760."""
     if not isinstance(daten, dict):
         return (None, None)
-    left = daten.get('recommended_ticks_per_rev_left')
-    right = daten.get('recommended_ticks_per_rev_right')
+    left = daten.get("recommended_ticks_per_rev_left")
+    right = daten.get("recommended_ticks_per_rev_right")
     if left is None or right is None:
         return (None, None)
     mittel = (left + right) / 2.0
@@ -234,10 +234,10 @@ def _encoder_ticks_check(daten):
 
 def _kinematic_gerade_check(daten):
     """Strecken-Fehler aus Geradeausfahrt-Test, pruefe < 5%."""
-    erg = _finde_kinematic_test(daten, 'Geradeausfahrt')
+    erg = _finde_kinematic_test(daten, "Geradeausfahrt")
     if erg is None:
         return (None, None)
-    val = erg.get('strecke_fehler_pct')
+    val = erg.get("strecke_fehler_pct")
     if val is None:
         return (None, None)
     return (round(val, 2), val < 5.0)
@@ -245,22 +245,22 @@ def _kinematic_gerade_check(daten):
 
 def _kinematic_drift_check(daten):
     """Laterale Drift aus Geradeausfahrt-Test, pruefe < 50 mm."""
-    erg = _finde_kinematic_test(daten, 'Geradeausfahrt')
+    erg = _finde_kinematic_test(daten, "Geradeausfahrt")
     if erg is None:
         return (None, None)
-    val = erg.get('laterale_drift_m')
+    val = erg.get("laterale_drift_m")
     if val is None:
         return (None, None)
     val_mm = val * 1000.0
-    return (f'{val_mm:.1f} mm', val_mm < 50.0)
+    return (f"{val_mm:.1f} mm", val_mm < 50.0)
 
 
 def _kinematic_drehung_check(daten):
     """Max. Winkelfehler aus 90-Grad-Drehung, pruefe < 5 deg."""
-    erg = _finde_kinematic_test(daten, '90-Grad-Drehung')
+    erg = _finde_kinematic_test(daten, "90-Grad-Drehung")
     if erg is None:
         return (None, None)
-    val = erg.get('max_fehler_deg')
+    val = erg.get("max_fehler_deg")
     if val is None:
         return (None, None)
     return (round(val, 2), val < 5.0)
@@ -271,7 +271,7 @@ def _finde_kinematic_test(daten, testname):
     if not isinstance(daten, list):
         return None
     for eintrag in daten:
-        if isinstance(eintrag, dict) and eintrag.get('test') == testname:
+        if isinstance(eintrag, dict) and eintrag.get("test") == testname:
             return eintrag
     return None
 
@@ -280,64 +280,69 @@ def _nav_xy_check(daten):
     """Max. xy_error ueber alle Waypoints, pruefe < 0.10 m."""
     if not isinstance(daten, dict):
         return (None, None)
-    waypoints = daten.get('waypoints')
+    waypoints = daten.get("waypoints")
     if not waypoints or not isinstance(waypoints, list):
         return (None, None)
-    errors = [w['xy_error'] for w in waypoints
-              if isinstance(w, dict) and 'xy_error' in w
-              and not math.isnan(w['xy_error'])]
+    errors = [
+        w["xy_error"]
+        for w in waypoints
+        if isinstance(w, dict) and "xy_error" in w and not math.isnan(w["xy_error"])
+    ]
     if not errors:
         return (None, None)
     max_err = max(errors)
-    return (f'{max_err:.4f} m', max_err < 0.10)
+    return (f"{max_err:.4f} m", max_err < 0.10)
 
 
 def _nav_yaw_check(daten):
     """Max. abs(yaw_error) ueber alle Waypoints, pruefe < 0.15 rad."""
     if not isinstance(daten, dict):
         return (None, None)
-    waypoints = daten.get('waypoints')
+    waypoints = daten.get("waypoints")
     if not waypoints or not isinstance(waypoints, list):
         return (None, None)
-    errors = [abs(w['yaw_error']) for w in waypoints
-              if isinstance(w, dict) and 'yaw_error' in w
-              and not math.isnan(w['yaw_error'])]
+    errors = [
+        abs(w["yaw_error"])
+        for w in waypoints
+        if isinstance(w, dict) and "yaw_error" in w and not math.isnan(w["yaw_error"])
+    ]
     if not errors:
         return (None, None)
     max_err = max(errors)
-    return (f'{max_err:.4f} rad', max_err < 0.15)
+    return (f"{max_err:.4f} rad", max_err < 0.15)
 
 
 def _docking_versatz_check(daten):
     """Lateraler Versatz: pruefe mittlerer_versatz_cm oder mittlerer_versatz_px <= 2."""
     if not isinstance(daten, dict):
         return (None, None)
-    stat = daten.get('statistik')
+    stat = daten.get("statistik")
     if not isinstance(stat, dict):
         return (None, None)
     # Bevorzuge cm-Key (nach Fix in docking_test.py), Fallback auf px-Key
-    val = stat.get('mittlerer_versatz_cm')
-    einheit = 'cm'
+    val = stat.get("mittlerer_versatz_cm")
+    einheit = "cm"
     if val is None:
-        val = stat.get('mittlerer_versatz_px')
-        einheit = 'px'
+        val = stat.get("mittlerer_versatz_px")
+        einheit = "px"
     if val is None:
         return (None, None)
-    return (f'{val:.1f} {einheit}', val <= 2.0)
+    return (f"{val:.1f} {einheit}", val <= 2.0)
 
 
 # ===========================================================================
 # Hilfsfunktionen
 # ===========================================================================
 
+
 def lade_json(pfad):
     """Laedt eine JSON-Datei. Gibt None zurueck wenn nicht vorhanden."""
     if not pfad.exists():
         return None
     try:
-        with open(pfad, 'r') as f:
+        with open(pfad) as f:
             return json.load(f)
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         return None
 
 
@@ -349,7 +354,7 @@ def wert_aus_pfad(daten, pfad_str):
     """
     if daten is None:
         return None
-    teile = pfad_str.split('.')
+    teile = pfad_str.split(".")
     aktuell = daten
     for teil in teile:
         if isinstance(aktuell, dict) and teil in aktuell:
@@ -371,45 +376,46 @@ def bewerte_kriterium(kriterium, alle_daten):
         wert_str:   Formatierter Messwert oder 'AUSSTEHEND'
         status_str: 'PASS', 'FAIL', oder 'AUSSTEHEND'
     """
-    datei_key = kriterium['datei']
+    datei_key = kriterium["datei"]
     daten = alle_daten.get(datei_key)
 
     if daten is None:
-        return ('AUSSTEHEND', 'AUSSTEHEND')
+        return ("AUSSTEHEND", "AUSSTEHEND")
 
     # Modus 1: pruef_fn (Aggregation ueber gesamtes Dict/Liste)
-    if 'pruef_fn' in kriterium:
-        wert, passed = kriterium['pruef_fn'](daten)
+    if "pruef_fn" in kriterium:
+        wert, passed = kriterium["pruef_fn"](daten)
         if wert is None:
-            return ('N/A', 'AUSSTEHEND')
+            return ("N/A", "AUSSTEHEND")
         if passed is None:
-            return (str(wert), 'AUSSTEHEND')
-        return (str(wert), 'PASS' if passed else 'FAIL')
+            return (str(wert), "AUSSTEHEND")
+        return (str(wert), "PASS" if passed else "FAIL")
 
     # Modus 2: Einfacher pfad + pruef Lambda
-    pfad = kriterium.get('pfad')
+    pfad = kriterium.get("pfad")
     if pfad is None:
-        return ('N/A', 'AUSSTEHEND')
+        return ("N/A", "AUSSTEHEND")
 
     wert = wert_aus_pfad(daten, pfad)
 
     if wert is None:
-        return ('N/A', 'AUSSTEHEND')
+        return ("N/A", "AUSSTEHEND")
 
     # Prueffunktion anwenden
-    ergebnis = kriterium['pruef'](wert)
+    ergebnis = kriterium["pruef"](wert)
 
     if ergebnis is None:
-        return (str(wert), 'AUSSTEHEND')
+        return (str(wert), "AUSSTEHEND")
 
     wert_str = str(wert)
-    status_str = 'PASS' if ergebnis else 'FAIL'
+    status_str = "PASS" if ergebnis else "FAIL"
     return (wert_str, status_str)
 
 
 # ===========================================================================
 # Report-Generierung
 # ===========================================================================
+
 
 def generiere_report(ergebnis_verzeichnis):
     """Generiert den vollstaendigen Validierungsbericht als Markdown-String."""
@@ -421,25 +427,27 @@ def generiere_report(ergebnis_verzeichnis):
 
     # Zeitstempel
     jetzt = datetime.now()
-    ts = jetzt.strftime('%Y-%m-%d %H:%M')
+    ts = jetzt.strftime("%Y-%m-%d %H:%M")
 
     # Kriterien bewerten
     bewertungen = []
     for k in KRITERIEN:
         wert_str, status_str = bewerte_kriterium(k, alle_daten)
-        bewertungen.append({
-            'bereich': k['bereich'],
-            'kriterium': k['kriterium'],
-            'anforderung': k['anforderung'],
-            'wert': wert_str,
-            'status': status_str,
-        })
+        bewertungen.append(
+            {
+                "bereich": k["bereich"],
+                "kriterium": k["kriterium"],
+                "anforderung": k["anforderung"],
+                "wert": wert_str,
+                "status": status_str,
+            }
+        )
 
     # Zaehlung
     gesamt = len(bewertungen)
-    bestanden = sum(1 for b in bewertungen if b['status'] == 'PASS')
-    fehlgeschlagen = sum(1 for b in bewertungen if b['status'] == 'FAIL')
-    ausstehend = sum(1 for b in bewertungen if b['status'] == 'AUSSTEHEND')
+    bestanden = sum(1 for b in bewertungen if b["status"] == "PASS")
+    fehlgeschlagen = sum(1 for b in bewertungen if b["status"] == "FAIL")
+    ausstehend = sum(1 for b in bewertungen if b["status"] == "AUSSTEHEND")
 
     # Geladene / fehlende Dateien
     geladene = [k for k, v in alle_daten.items() if v is not None]
@@ -447,84 +455,86 @@ def generiere_report(ergebnis_verzeichnis):
 
     # Report zusammenbauen
     zeilen = []
-    zeilen.append('# AMR Validierungsbericht')
-    zeilen.append('')
-    zeilen.append(f'**Datum:** {ts}')
-    zeilen.append('**Hardware:** XIAO ESP32-S3 + RPi5 + Cytron MDD3A')
-    zeilen.append(f'**Roboter:** AMR Differentialantrieb, 65 mm Raeder, 178 mm Spurbreite')
-    zeilen.append('')
+    zeilen.append("# AMR Validierungsbericht")
+    zeilen.append("")
+    zeilen.append(f"**Datum:** {ts}")
+    zeilen.append("**Hardware:** XIAO ESP32-S3 + RPi5 + Cytron MDD3A")
+    zeilen.append("**Roboter:** AMR Differentialantrieb, 65 mm Raeder, 178 mm Spurbreite")
+    zeilen.append("")
 
     # Zusammenfassung
-    zeilen.append('## Zusammenfassung')
-    zeilen.append('')
-    zeilen.append(f'Bestanden: {bestanden}/{gesamt} Kriterien')
+    zeilen.append("## Zusammenfassung")
+    zeilen.append("")
+    zeilen.append(f"Bestanden: {bestanden}/{gesamt} Kriterien")
     if fehlgeschlagen > 0:
-        zeilen.append(f'Fehlgeschlagen: {fehlgeschlagen}')
+        zeilen.append(f"Fehlgeschlagen: {fehlgeschlagen}")
     if ausstehend > 0:
-        zeilen.append(f'Ausstehend: {ausstehend}')
-    zeilen.append('')
+        zeilen.append(f"Ausstehend: {ausstehend}")
+    zeilen.append("")
 
     # Datenstatus
-    zeilen.append('### Datenquellen')
-    zeilen.append('')
+    zeilen.append("### Datenquellen")
+    zeilen.append("")
     if geladene:
-        zeilen.append(f'Geladen: {", ".join(geladene)}')
+        zeilen.append(f"Geladen: {', '.join(geladene)}")
     if fehlende:
-        zeilen.append(f'Fehlend: {", ".join(fehlende)}')
-    zeilen.append('')
+        zeilen.append(f"Fehlend: {', '.join(fehlende)}")
+    zeilen.append("")
 
     # Detailergebnisse
-    zeilen.append('## Detailergebnisse')
-    zeilen.append('')
-    zeilen.append('| Testbereich | Kriterium | Anforderung | Ergebnis | Status |')
-    zeilen.append('|-------------|-----------|-------------|----------|--------|')
+    zeilen.append("## Detailergebnisse")
+    zeilen.append("")
+    zeilen.append("| Testbereich | Kriterium | Anforderung | Ergebnis | Status |")
+    zeilen.append("|-------------|-----------|-------------|----------|--------|")
 
     for b in bewertungen:
         zeilen.append(
             f"| {b['bereich']} | {b['kriterium']} | {b['anforderung']} "
-            f"| {b['wert']} | {b['status']} |")
+            f"| {b['wert']} | {b['status']} |"
+        )
 
-    zeilen.append('')
+    zeilen.append("")
 
     # Forschungsfragen-Zuordnung
-    zeilen.append('## Forschungsfragen-Zuordnung')
-    zeilen.append('')
+    zeilen.append("## Forschungsfragen-Zuordnung")
+    zeilen.append("")
 
     for ff_key, ff_info in FF_ZUORDNUNG.items():
-        relevante = [b for b in bewertungen
-                     if b['bereich'] in ff_info['bereiche']]
+        relevante = [b for b in bewertungen if b["bereich"] in ff_info["bereiche"]]
 
         if not relevante:
-            ff_status = 'AUSSTEHEND'
-        elif all(b['status'] == 'PASS' for b in relevante):
-            ff_status = 'PASS'
-        elif any(b['status'] == 'FAIL' for b in relevante):
-            ff_status = 'FAIL'
+            ff_status = "AUSSTEHEND"
+        elif all(b["status"] == "PASS" for b in relevante):
+            ff_status = "PASS"
+        elif any(b["status"] == "FAIL" for b in relevante):
+            ff_status = "FAIL"
         else:
-            ff_status = 'AUSSTEHEND'
+            ff_status = "AUSSTEHEND"
 
-        bereiche_str = ', '.join(
-            f"{b['bereich']}/{b['kriterium']}={b['status']}" for b in relevante)
-        zeilen.append(f'- **{ff_key} ({ff_info["titel"]}):** {ff_status}')
-        zeilen.append(f'  - Kriterien: {bereiche_str}')
+        bereiche_str = ", ".join(
+            f"{b['bereich']}/{b['kriterium']}={b['status']}" for b in relevante
+        )
+        zeilen.append(f"- **{ff_key} ({ff_info['titel']}):** {ff_status}")
+        zeilen.append(f"  - Kriterien: {bereiche_str}")
 
-    zeilen.append('')
+    zeilen.append("")
 
     # Gesamtbewertung
     if fehlgeschlagen == 0 and ausstehend == 0:
-        zeilen.append('## Gesamtbewertung: BESTANDEN')
+        zeilen.append("## Gesamtbewertung: BESTANDEN")
     elif fehlgeschlagen > 0:
-        zeilen.append('## Gesamtbewertung: NICHT BESTANDEN')
+        zeilen.append("## Gesamtbewertung: NICHT BESTANDEN")
     else:
-        zeilen.append('## Gesamtbewertung: UNVOLLSTAENDIG')
-    zeilen.append('')
+        zeilen.append("## Gesamtbewertung: UNVOLLSTAENDIG")
+    zeilen.append("")
 
-    return '\n'.join(zeilen)
+    return "\n".join(zeilen)
 
 
 # ===========================================================================
 # Hauptprogramm
 # ===========================================================================
+
 
 def main():
     """Hauptprogramm: Report generieren und speichern."""
@@ -539,15 +549,15 @@ def main():
     else:
         ergebnis_verzeichnis = skript_verzeichnis
 
-    print(f'Ergebnis-Verzeichnis: {ergebnis_verzeichnis}')
-    print(f'Suche JSON-Dateien...')
+    print(f"Ergebnis-Verzeichnis: {ergebnis_verzeichnis}")
+    print("Suche JSON-Dateien...")
     print()
 
     # Status der Dateien anzeigen
     for key, dateiname in ERGEBNIS_DATEIEN.items():
         pfad = ergebnis_verzeichnis / dateiname
-        status = 'gefunden' if pfad.exists() else 'FEHLT'
-        print(f'  {dateiname:30s} {status}')
+        status = "gefunden" if pfad.exists() else "FEHLT"
+        print(f"  {dateiname:30s} {status}")
 
     print()
 
@@ -558,15 +568,15 @@ def main():
     print(report)
 
     # Als Datei speichern
-    datum = datetime.now().strftime('%Y%m%d')
-    dateiname = f'validation_report_{datum}.md'
+    datum = datetime.now().strftime("%Y%m%d")
+    dateiname = f"validation_report_{datum}.md"
     ausgabe_pfad = skript_verzeichnis / dateiname
 
-    with open(ausgabe_pfad, 'w', encoding='utf-8') as f:
+    with open(ausgabe_pfad, "w", encoding="utf-8") as f:
         f.write(report)
 
-    print(f'Report gespeichert: {ausgabe_pfad}')
+    print(f"Report gespeichert: {ausgabe_pfad}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

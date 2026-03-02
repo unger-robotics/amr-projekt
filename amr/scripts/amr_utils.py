@@ -6,8 +6,8 @@ Spiegel der Hardware-Parameter aus hardware/config.h (Single Source of Truth).
 Aenderungen an Roboter-Parametern muessen hier UND in config.h erfolgen.
 """
 
-import math
 import json
+import math
 import os
 
 # ===========================================================================
@@ -15,9 +15,9 @@ import os
 # ===========================================================================
 
 # Kinematik
-WHEEL_DIAMETER = 0.06567            # [m] kalibriert (Bodentest)
+WHEEL_DIAMETER = 0.06567  # [m] kalibriert (Bodentest)
 WHEEL_RADIUS = WHEEL_DIAMETER / 2.0  # [m]
-WHEEL_BASE = 0.178                  # [m] Spurbreite
+WHEEL_BASE = 0.178  # [m] Spurbreite
 WHEEL_CIRCUMFERENCE = WHEEL_DIAMETER * math.pi  # [m]
 
 # Encoder (2x Quadratur-Zaehlung)
@@ -35,7 +35,7 @@ PWM_DEADZONE = 35
 
 # Safety & Timing
 FAILSAFE_TIMEOUT_MS = 500
-MAX_VELOCITY = 0.4                  # [m/s] Zielgeschwindigkeit
+MAX_VELOCITY = 0.4  # [m/s] Zielgeschwindigkeit
 
 # PID-Regler (main.cpp hardcoded)
 PID_KP = 0.4
@@ -44,8 +44,8 @@ PID_KD = 0.0
 
 # IMU-Parameter
 IMU_PUBLISH_HZ = 20
-IMU_GYRO_DRIFT_MAX = 1.0        # [deg/min] Akzeptanzgrenze
-IMU_ACCEL_BIAS_MAX = 0.6        # [m/s²] Akzeptanzgrenze az-Bias
+IMU_GYRO_DRIFT_MAX = 1.0  # [deg/min] Akzeptanzgrenze
+IMU_ACCEL_BIAS_MAX = 0.6  # [m/s²] Akzeptanzgrenze az-Bias
 IMU_COMPLEMENTARY_ALPHA = 0.02  # Complementary-Filter-Gewicht
 
 # ===========================================================================
@@ -64,13 +64,14 @@ COLOR_RESET = "\033[0m"
 # Geometrie-Funktionen
 # ===========================================================================
 
+
 def quaternion_to_yaw(q):
     """Quaternion -> Yaw-Winkel (rad).
 
     Akzeptiert ROS-Quaternion-Msg (mit .x/.y/.z/.w Attributen)
     oder Liste/Tupel [x, y, z, w].
     """
-    if hasattr(q, 'w'):
+    if hasattr(q, "w"):
         x, y, z, w = q.x, q.y, q.z, q.w
     else:
         x, y, z, w = q[0], q[1], q[2], q[3]
@@ -104,6 +105,7 @@ normalisiere_winkel = normalize_angle
 # JSON-Hilfsfunktionen
 # ===========================================================================
 
+
 def save_json(data, dateiname, verzeichnis=None):
     """Speichert ein Dictionary als JSON-Datei.
 
@@ -124,6 +126,7 @@ def numpy_safe_json(obj):
     """JSON-Serialisierer fuer numpy-Typen."""
     try:
         import numpy as np
+
         if isinstance(obj, (np.integer,)):
             return int(obj)
         if isinstance(obj, (np.floating,)):

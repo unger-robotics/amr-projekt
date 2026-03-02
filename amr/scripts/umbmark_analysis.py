@@ -14,21 +14,21 @@ Verwendung:
     python3 umbmark_analysis.py data.json       # Aus JSON-Datei laden
 """
 
-import sys
 import json
 import math
+import sys
 from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 # ===========================================================================
 # Roboter-Parameter (aus hardware/config.h)
 # ===========================================================================
-L = 16.0                    # Gesamtpfadlaenge 4x4m Quadrat [m]
-B_NOMINAL = 0.178           # WHEEL_BASE [m]
-from amr_utils import WHEEL_RADIUS, TICKS_PER_REV
+L = 16.0  # Gesamtpfadlaenge 4x4m Quadrat [m]
+B_NOMINAL = 0.178  # WHEEL_BASE [m]
+from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
+
 TICKS_PER_REV_NOMINAL = TICKS_PER_REV
 
 
@@ -48,7 +48,7 @@ def eingabe_interaktiv():
     for i in range(5):
         while True:
             try:
-                eingabe = input(f"  CW Lauf {i+1} (x y): ").strip()
+                eingabe = input(f"  CW Lauf {i + 1} (x y): ").strip()
                 x, y = map(float, eingabe.split())
                 cw_positionen.append((x, y))
                 break
@@ -63,7 +63,7 @@ def eingabe_interaktiv():
     for i in range(5):
         while True:
             try:
-                eingabe = input(f"  CCW Lauf {i+1} (x y): ").strip()
+                eingabe = input(f"  CCW Lauf {i + 1} (x y): ").strip()
                 x, y = map(float, eingabe.split())
                 ccw_positionen.append((x, y))
                 break
@@ -87,7 +87,7 @@ def eingabe_json(dateipfad):
         print(f"Fehler: Datei '{dateipfad}' nicht gefunden.")
         sys.exit(1)
 
-    with open(pfad, "r") as f:
+    with open(pfad) as f:
         daten = json.load(f)
 
     cw_positionen = [tuple(p) for p in daten["cw"]]
@@ -134,7 +134,7 @@ def berechne_umbmark(cw_positionen, ccw_positionen):
     beta_rad = math.radians(beta)
     if abs(beta_rad) < 1e-12:
         # Kein Typ-B-Fehler: R -> unendlich
-        R = float('inf')
+        R = float("inf")
         E_d = 1.0
     else:
         R = (L / 2.0) / math.sin(beta_rad / 2.0)
@@ -227,7 +227,7 @@ def ausgabe_markdown(erg):
     print("|:----------------------------|:----------------|")
     print(f"| alpha (Typ-A, E_b)          | {erg['alpha_deg']:+.6f} deg  |")
     print(f"| beta  (Typ-B, E_d)          | {erg['beta_deg']:+.6f} deg  |")
-    if erg['R_m'] != float('inf'):
+    if erg["R_m"] != float("inf"):
         print(f"| Kruemmungsradius R           | {erg['R_m']:.3f} m       |")
     else:
         print("| Kruemmungsradius R           | inf (kein Typ-B-Fehler) |")
@@ -240,9 +240,15 @@ def ausgabe_markdown(erg):
     print()
     print("| Parameter           | Nominal [m]  | Korrigiert [m] | Abweichung  |")
     print("|:--------------------|:-------------|:---------------|:------------|")
-    print(f"| WHEEL_BASE          | {B_NOMINAL:.4f}       | {erg['b_actual_m']:.6f}       | {(erg['b_actual_m'] - B_NOMINAL) * 1000:+.3f} mm |")
-    print(f"| WHEEL_RADIUS_LEFT   | {WHEEL_RADIUS:.4f}      | {erg['r_left_m']:.6f}       | {(erg['r_left_m'] - WHEEL_RADIUS) * 1000:+.3f} mm |")
-    print(f"| WHEEL_RADIUS_RIGHT  | {WHEEL_RADIUS:.4f}      | {erg['r_right_m']:.6f}       | {(erg['r_right_m'] - WHEEL_RADIUS) * 1000:+.3f} mm |")
+    print(
+        f"| WHEEL_BASE          | {B_NOMINAL:.4f}       | {erg['b_actual_m']:.6f}       | {(erg['b_actual_m'] - B_NOMINAL) * 1000:+.3f} mm |"
+    )
+    print(
+        f"| WHEEL_RADIUS_LEFT   | {WHEEL_RADIUS:.4f}      | {erg['r_left_m']:.6f}       | {(erg['r_left_m'] - WHEEL_RADIUS) * 1000:+.3f} mm |"
+    )
+    print(
+        f"| WHEEL_RADIUS_RIGHT  | {WHEEL_RADIUS:.4f}      | {erg['r_right_m']:.6f}       | {(erg['r_right_m'] - WHEEL_RADIUS) * 1000:+.3f} mm |"
+    )
     print()
 
     # Fehlermetrik
@@ -256,33 +262,45 @@ def ausgabe_markdown(erg):
     # Die Rad-Asymmetrie wird ueber TICKS_PER_REV_LEFT/RIGHT korrigiert:
     #   ticks_corrected = ticks_nominal * (r_nominal / r_corrected)
     r_nominal = WHEEL_RADIUS
-    ticks_left = TICKS_PER_REV_NOMINAL * (r_nominal / erg['r_left_m'])
-    ticks_right = TICKS_PER_REV_NOMINAL * (r_nominal / erg['r_right_m'])
+    ticks_left = TICKS_PER_REV_NOMINAL * (r_nominal / erg["r_left_m"])
+    ticks_right = TICKS_PER_REV_NOMINAL * (r_nominal / erg["r_right_m"])
 
     print("### Korrigierte config.h-Werte (Copy-Paste)")
     print()
     print("```c")
     print(f"#define WHEEL_BASE            {erg['b_actual_m']:.6f}f  // [m] UMBmark-korrigiert")
-    print(f"#define TICKS_PER_REV_LEFT    {ticks_left:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})")
-    print(f"#define TICKS_PER_REV_RIGHT   {ticks_right:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})")
-    print(f"// Korrigierte Radradien (zur Referenz, nicht als Define verwendet):")
-    print(f"//   r_left  = {erg['r_left_m']:.6f} m  (Abweichung: {(erg['r_left_m'] - r_nominal) * 1000:+.3f} mm)")
-    print(f"//   r_right = {erg['r_right_m']:.6f} m  (Abweichung: {(erg['r_right_m'] - r_nominal) * 1000:+.3f} mm)")
+    print(
+        f"#define TICKS_PER_REV_LEFT    {ticks_left:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})"
+    )
+    print(
+        f"#define TICKS_PER_REV_RIGHT   {ticks_right:.1f}f    // UMBmark-korrigiert (nominal: {TICKS_PER_REV_NOMINAL:.0f})"
+    )
+    print("// Korrigierte Radradien (zur Referenz, nicht als Define verwendet):")
+    print(
+        f"//   r_left  = {erg['r_left_m']:.6f} m  (Abweichung: {(erg['r_left_m'] - r_nominal) * 1000:+.3f} mm)"
+    )
+    print(
+        f"//   r_right = {erg['r_right_m']:.6f} m  (Abweichung: {(erg['r_right_m'] - r_nominal) * 1000:+.3f} mm)"
+    )
     print("```")
     print()
 
     # Bewertung
     print("### Bewertung")
     print()
-    if erg['E_max_syst_mm'] < 10.0:
+    if erg["E_max_syst_mm"] < 10.0:
         print("ERGEBNIS: E_max,syst < 10 mm - Odometrie bereits sehr gut.")
         print("Kalibrierung bringt voraussichtlich nur marginale Verbesserung.")
-    elif erg['E_max_syst_mm'] > 100.0:
-        print(f"ERGEBNIS: E_max,syst = {erg['E_max_syst_mm']:.1f} mm - Signifikanter systematischer Fehler.")
+    elif erg["E_max_syst_mm"] > 100.0:
+        print(
+            f"ERGEBNIS: E_max,syst = {erg['E_max_syst_mm']:.1f} mm - Signifikanter systematischer Fehler."
+        )
         print("Kalibrierung wird deutliche Verbesserung bringen.")
         print("Erwarteter Reduktionsfaktor: >= 10 (Borenstein 1996).")
     else:
-        print(f"ERGEBNIS: E_max,syst = {erg['E_max_syst_mm']:.1f} mm - Moderater systematischer Fehler.")
+        print(
+            f"ERGEBNIS: E_max,syst = {erg['E_max_syst_mm']:.1f} mm - Moderater systematischer Fehler."
+        )
         print("Kalibrierung empfohlen.")
 
 
@@ -294,33 +312,50 @@ def erstelle_plot(erg, speicherpfad=None):
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
     # Endpositionen
-    ax.scatter(cw[:, 0], cw[:, 1], c="red", s=60, marker="o",
-               label="CW Endpositionen", zorder=3)
-    ax.scatter(ccw[:, 0], ccw[:, 1], c="blue", s=60, marker="s",
-               label="CCW Endpositionen", zorder=3)
+    ax.scatter(cw[:, 0], cw[:, 1], c="red", s=60, marker="o", label="CW Endpositionen", zorder=3)
+    ax.scatter(
+        ccw[:, 0], ccw[:, 1], c="blue", s=60, marker="s", label="CCW Endpositionen", zorder=3
+    )
 
     # Schwerpunkte
-    ax.scatter(erg["x_cg_cw_mm"], erg["y_cg_cw_mm"],
-               c="red", s=200, marker="X", edgecolors="black", linewidths=1.5,
-               label=f"CW Schwerpunkt ({erg['x_cg_cw_mm']:.1f}, {erg['y_cg_cw_mm']:.1f})",
-               zorder=4)
-    ax.scatter(erg["x_cg_ccw_mm"], erg["y_cg_ccw_mm"],
-               c="blue", s=200, marker="X", edgecolors="black", linewidths=1.5,
-               label=f"CCW Schwerpunkt ({erg['x_cg_ccw_mm']:.1f}, {erg['y_cg_ccw_mm']:.1f})",
-               zorder=4)
+    ax.scatter(
+        erg["x_cg_cw_mm"],
+        erg["y_cg_cw_mm"],
+        c="red",
+        s=200,
+        marker="X",
+        edgecolors="black",
+        linewidths=1.5,
+        label=f"CW Schwerpunkt ({erg['x_cg_cw_mm']:.1f}, {erg['y_cg_cw_mm']:.1f})",
+        zorder=4,
+    )
+    ax.scatter(
+        erg["x_cg_ccw_mm"],
+        erg["y_cg_ccw_mm"],
+        c="blue",
+        s=200,
+        marker="X",
+        edgecolors="black",
+        linewidths=1.5,
+        label=f"CCW Schwerpunkt ({erg['x_cg_ccw_mm']:.1f}, {erg['y_cg_ccw_mm']:.1f})",
+        zorder=4,
+    )
 
     # Ursprung
-    ax.scatter(0, 0, c="green", s=150, marker="+", linewidths=2,
-               label="Sollposition (0, 0)", zorder=5)
+    ax.scatter(
+        0, 0, c="green", s=150, marker="+", linewidths=2, label="Sollposition (0, 0)", zorder=5
+    )
 
     # Fehlerkreise
     if erg["r_cg_cw_mm"] > 0:
-        kreis_cw = plt.Circle((0, 0), erg["r_cg_cw_mm"], fill=False,
-                              color="red", linestyle="--", alpha=0.5)
+        kreis_cw = plt.Circle(
+            (0, 0), erg["r_cg_cw_mm"], fill=False, color="red", linestyle="--", alpha=0.5
+        )
         ax.add_patch(kreis_cw)
     if erg["r_cg_ccw_mm"] > 0:
-        kreis_ccw = plt.Circle((0, 0), erg["r_cg_ccw_mm"], fill=False,
-                               color="blue", linestyle="--", alpha=0.5)
+        kreis_ccw = plt.Circle(
+            (0, 0), erg["r_cg_ccw_mm"], fill=False, color="blue", linestyle="--", alpha=0.5
+        )
         ax.add_patch(kreis_ccw)
 
     ax.set_xlabel("x [mm]")

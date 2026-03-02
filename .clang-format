@@ -1,0 +1,29 @@
+# clang-format Konfiguration fuer AMR ESP32 Firmware
+# Stil: LLVM-Basis, angepasst an bestehende Konventionen
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Attach
+NamespaceIndentation: None
+PointerAlignment: Right
+AccessModifierOffset: -2
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+MaxEmptyLinesToKeep: 2
+BreakBeforeBinaryOperators: None
+AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: false
+AlignTrailingComments: true
+Standard: c++11
+---

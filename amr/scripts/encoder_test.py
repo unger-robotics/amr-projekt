@@ -12,23 +12,26 @@ Modi:
 Ergebnis: Empfohlene config.h-Werte + JSON-Protokoll.
 """
 
-import sys
-import os
-import json
-import math
-import select
-import time
 import datetime
-
-from amr_utils import (
-    WHEEL_DIAMETER, WHEEL_RADIUS, WHEEL_BASE, WHEEL_CIRCUMFERENCE,
-    TICKS_PER_REV, METERS_PER_TICK, TICKS_PER_REV_MIN, TICKS_PER_REV_MAX,
-)
+import json
+import os
+import select
+import sys
+import time
 
 import rclpy
-from rclpy.node import Node
 from nav_msgs.msg import Odometry
+from rclpy.node import Node
 
+from amr_utils import (
+    METERS_PER_TICK,
+    TICKS_PER_REV,
+    TICKS_PER_REV_MAX,
+    TICKS_PER_REV_MIN,
+    WHEEL_BASE,
+    WHEEL_CIRCUMFERENCE,
+    WHEEL_DIAMETER,
+)
 
 # ===========================================================================
 # Konstanten
@@ -44,6 +47,7 @@ REPRODUCIBILITY_MAX_TICKS = 2.0  # Maximale Abweichung zwischen Durchgaengen
 # ROS2-Node
 # ===========================================================================
 
+
 class EncoderTestNode(Node):
     """ROS2-Node fuer Encoder-Kalibrierung via /odom-Rueckrechnung."""
 
@@ -51,8 +55,7 @@ class EncoderTestNode(Node):
         super().__init__("encoder_test_node")
 
         # Subscriber auf /odom
-        self.odom_sub = self.create_subscription(
-            Odometry, "/odom", self._odom_callback, 10)
+        self.odom_sub = self.create_subscription(Odometry, "/odom", self._odom_callback, 10)
 
         # Aktuelle Odometrie-Daten
         self.last_odom_time = None
@@ -73,7 +76,7 @@ class EncoderTestNode(Node):
         now = self.get_clock().now()
 
         # Lineare und Winkelgeschwindigkeit aus Odometrie
-        v = msg.twist.twist.linear.x    # [m/s] Roboter-Geschwindigkeit
+        v = msg.twist.twist.linear.x  # [m/s] Roboter-Geschwindigkeit
         omega = msg.twist.twist.angular.z  # [rad/s] Drehrate
 
         # Differentialkinematik: Einzelrad-Geschwindigkeiten
@@ -113,8 +116,7 @@ class EncoderTestNode(Node):
         while not self.odom_received:
             rclpy.spin_once(self, timeout_sec=0.1)
             if time.time() - start > timeout_s:
-                self.get_logger().error(
-                    f"Timeout: Keine /odom nach {timeout_s}s empfangen.")
+                self.get_logger().error(f"Timeout: Keine /odom nach {timeout_s}s empfangen.")
                 return False
         self.get_logger().info("/odom empfangen.")
         return True
@@ -123,6 +125,7 @@ class EncoderTestNode(Node):
 # ===========================================================================
 # Test-Modi
 # ===========================================================================
+
 
 def run_10_rev_test(node):
     """10-Umdrehungen-Test: Bestimmt TICKS_PER_REV fuer beide Raeder."""
@@ -136,8 +139,7 @@ def run_10_rev_test(node):
     results_left = []
     results_right = []
 
-    for rad_name, results_list in [("LINKS", results_left),
-                                    ("RECHTS", results_right)]:
+    for rad_name, results_list in [("LINKS", results_left), ("RECHTS", results_right)]:
         print(f"\n--- Rad {rad_name} ---")
 
         for durchgang in range(1, 4):
@@ -161,7 +163,8 @@ def run_10_rev_test(node):
                     sys.stdout.write(
                         f"\r  Ticks: L={ticks_l:.1f}  R={ticks_r:.1f}  "
                         f"(v_L={node.last_v_left:.4f} m/s, "
-                        f"v_R={node.last_v_right:.4f} m/s)    ")
+                        f"v_R={node.last_v_right:.4f} m/s)    "
+                    )
                     sys.stdout.flush()
 
                     # Pruefen ob Enter gedrueckt (non-blocking)
@@ -183,8 +186,7 @@ def run_10_rev_test(node):
 
             ticks_per_rev = total_ticks / 10.0 if total_ticks > 0 else 0.0
 
-            print(f"  Ergebnis: {total_ticks:.1f} Ticks gesamt, "
-                  f"{ticks_per_rev:.1f} Ticks/Rev")
+            print(f"  Ergebnis: {total_ticks:.1f} Ticks gesamt, {ticks_per_rev:.1f} Ticks/Rev")
             results_list.append(ticks_per_rev)
 
     # Auswertung
@@ -192,8 +194,7 @@ def run_10_rev_test(node):
     print("  AUSWERTUNG 10-UMDREHUNGEN-TEST")
     print("=" * 60)
 
-    for rad_name, results_list in [("LINKS", results_left),
-                                    ("RECHTS", results_right)]:
+    for rad_name, results_list in [("LINKS", results_left), ("RECHTS", results_right)]:
         if not results_list:
             continue
 
@@ -211,18 +212,14 @@ def run_10_rev_test(node):
         reproducible = abweichung <= REPRODUCIBILITY_MAX_TICKS
 
         if in_range:
-            print(f"    Bereich [{TICKS_PER_REV_MIN}-{TICKS_PER_REV_MAX}]: "
-                  f"\033[32mPASS\033[0m")
+            print(f"    Bereich [{TICKS_PER_REV_MIN}-{TICKS_PER_REV_MAX}]: \033[32mPASS\033[0m")
         else:
-            print(f"    Bereich [{TICKS_PER_REV_MIN}-{TICKS_PER_REV_MAX}]: "
-                  f"\033[31mFAIL\033[0m")
+            print(f"    Bereich [{TICKS_PER_REV_MIN}-{TICKS_PER_REV_MAX}]: \033[31mFAIL\033[0m")
 
         if reproducible:
-            print(f"    Reproduzierbarkeit (<{REPRODUCIBILITY_MAX_TICKS}): "
-                  f"\033[32mPASS\033[0m")
+            print(f"    Reproduzierbarkeit (<{REPRODUCIBILITY_MAX_TICKS}): \033[32mPASS\033[0m")
         else:
-            print(f"    Reproduzierbarkeit (<{REPRODUCIBILITY_MAX_TICKS}): "
-                  f"\033[31mFAIL\033[0m")
+            print(f"    Reproduzierbarkeit (<{REPRODUCIBILITY_MAX_TICKS}): \033[31mFAIL\033[0m")
 
     return {
         "left": results_left,
@@ -244,8 +241,7 @@ def run_direction_test(node):
 
     results = {}
 
-    for richtung, soll_vorzeichen in [("VORWAERTS", "positiv"),
-                                       ("RUECKWAERTS", "negativ")]:
+    for richtung, soll_vorzeichen in [("VORWAERTS", "positiv"), ("RUECKWAERTS", "negativ")]:
         input(f"  Drehe beide Raeder {richtung}. [Enter] zum Starten...")
 
         node.reset_ticks()
@@ -259,7 +255,8 @@ def run_direction_test(node):
                 f"\r  v_L={node.last_v_left:+.4f}  "
                 f"v_R={node.last_v_right:+.4f}  "
                 f"ticks_L={node.total_ticks_left:+.1f}  "
-                f"ticks_R={node.total_ticks_right:+.1f}    ")
+                f"ticks_R={node.total_ticks_right:+.1f}    "
+            )
             sys.stdout.flush()
 
         node.recording = False
@@ -271,8 +268,10 @@ def run_direction_test(node):
         ok_l = (v_l_sign == soll_vorzeichen) or abs(node.total_ticks_left) < 1
         ok_r = (v_r_sign == soll_vorzeichen) or abs(node.total_ticks_right) < 1
 
-        print(f"  {richtung}: Links={v_l_sign} ({'OK' if ok_l else 'FALSCH'}), "
-              f"Rechts={v_r_sign} ({'OK' if ok_r else 'FALSCH'})")
+        print(
+            f"  {richtung}: Links={v_l_sign} ({'OK' if ok_l else 'FALSCH'}), "
+            f"Rechts={v_r_sign} ({'OK' if ok_r else 'FALSCH'})"
+        )
 
         results[richtung.lower()] = {
             "ticks_left": node.total_ticks_left,
@@ -304,8 +303,8 @@ def run_asymmetry_test(node):
         tps_l = abs(node.total_ticks_left) / elapsed if elapsed > 0 else 0
         tps_r = abs(node.total_ticks_right) / elapsed if elapsed > 0 else 0
         sys.stdout.write(
-            f"\r  Ticks/s: L={tps_l:.1f}  R={tps_r:.1f}  "
-            f"Diff={abs(tps_l - tps_r):.1f}    ")
+            f"\r  Ticks/s: L={tps_l:.1f}  R={tps_r:.1f}  Diff={abs(tps_l - tps_r):.1f}    "
+        )
         sys.stdout.flush()
 
     node.recording = False
@@ -323,11 +322,11 @@ def run_asymmetry_test(node):
     print(f"  Asymmetrie: {asymmetrie:.1f}%")
 
     if asymmetrie < 5.0:
-        print(f"  Bewertung: \033[32mGUT (< 5%)\033[0m")
+        print("  Bewertung: \033[32mGUT (< 5%)\033[0m")
     elif asymmetrie < 10.0:
-        print(f"  Bewertung: \033[33mAKZEPTABEL (5-10%)\033[0m")
+        print("  Bewertung: \033[33mAKZEPTABEL (5-10%)\033[0m")
     else:
-        print(f"  Bewertung: \033[31mSCHLECHT (> 10%)\033[0m")
+        print("  Bewertung: \033[31mSCHLECHT (> 10%)\033[0m")
 
     return {
         "total_ticks_left": total_l,
@@ -361,7 +360,8 @@ def run_live_display(node):
                 f"v_R={node.last_v_right:+.4f} m/s  |  "
                 f"Ticks/s: L={tps_l:.1f} R={tps_r:.1f}  |  "
                 f"Total: L={node.total_ticks_left:+.0f} "
-                f"R={node.total_ticks_right:+.0f}    ")
+                f"R={node.total_ticks_right:+.0f}    "
+            )
             sys.stdout.flush()
     except KeyboardInterrupt:
         pass
@@ -373,6 +373,7 @@ def run_live_display(node):
 # ===========================================================================
 # config.h Empfehlungen
 # ===========================================================================
+
 
 def print_config_recommendations(rev_results):
     """Gibt empfohlene config.h-Werte aus."""
@@ -405,6 +406,7 @@ def print_config_recommendations(rev_results):
 # ===========================================================================
 # Protokoll speichern
 # ===========================================================================
+
 
 def save_results(rev_results, direction_results, asymmetry_results):
     """Speichert alle Ergebnisse als JSON-Datei."""
@@ -445,6 +447,7 @@ def save_results(rev_results, direction_results, asymmetry_results):
 # Hauptprogramm
 # ===========================================================================
 
+
 def print_menu():
     """Zeigt das Hauptmenue an."""
     print("\n" + "-" * 40)
@@ -474,8 +477,7 @@ def main(args=None):
     print("\n  Warte auf /odom (micro-ROS Agent muss laufen)...")
     if not node.wait_for_odom(timeout_s=15.0):
         print("  FEHLER: /odom nicht empfangen. Ist der micro-ROS Agent aktiv?")
-        print("  Starte mit: ros2 run micro_ros_agent micro_ros_agent serial "
-              "--dev /dev/ttyACM0")
+        print("  Starte mit: ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0")
         node.destroy_node()
         rclpy.shutdown()
         return 1

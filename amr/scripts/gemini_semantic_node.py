@@ -27,14 +27,15 @@ import time
 import cv2
 import numpy as np
 import rclpy
-from rclpy.node import Node
 from cv_bridge import CvBridge
+from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 try:
     from google import genai
     from google.genai import types
+
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
@@ -58,16 +59,14 @@ class GeminiSemanticNode(Node):
     """ROS2-Node fuer semantische Bildanalyse via Gemini."""
 
     def __init__(self):
-        super().__init__('gemini_semantic_node')
+        super().__init__("gemini_semantic_node")
 
         # Parameter
-        self.declare_parameter('model', 'gemini-3-flash-preview')
-        self.declare_parameter('max_tokens', 256)
+        self.declare_parameter("model", "gemini-3-flash-preview")
+        self.declare_parameter("max_tokens", 256)
 
-        model_name = self.get_parameter(
-            'model').get_parameter_value().string_value
-        self.max_tokens = self.get_parameter(
-            'max_tokens').get_parameter_value().integer_value
+        model_name = self.get_parameter("model").get_parameter_value().string_value
+        self.max_tokens = self.get_parameter("max_tokens").get_parameter_value().integer_value
 
         self.bridge = CvBridge()
         self.latest_image = None
@@ -77,31 +76,29 @@ class GeminiSemanticNode(Node):
 
         # Gemini konfigurieren
         if not HAS_GENAI:
-            self.get_logger().error(
-                'google-genai nicht installiert! '
-                'pip3 install google-genai')
+            self.get_logger().error("google-genai nicht installiert! pip3 install google-genai")
             return
 
-        api_key = os.getenv('GEMINI_API_KEY')
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             self.get_logger().error(
-                'GEMINI_API_KEY Umgebungsvariable nicht gesetzt! '
-                'Export oder docker-compose.yml pruefen.')
+                "GEMINI_API_KEY Umgebungsvariable nicht gesetzt! "
+                "Export oder docker-compose.yml pruefen."
+            )
             return
 
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
-        self.get_logger().info(f'Gemini-Modell konfiguriert: {model_name}')
+        self.get_logger().info(f"Gemini-Modell konfiguriert: {model_name}")
 
         # Publisher / Subscriber
-        self.sem_pub = self.create_publisher(
-            String, '/vision/semantics', 10)
-        self.image_sub = self.create_subscription(
-            Image, '/camera/image_raw', self._image_cb, 10)
+        self.sem_pub = self.create_publisher(String, "/vision/semantics", 10)
+        self.image_sub = self.create_subscription(Image, "/camera/image_raw", self._image_cb, 10)
         self.det_sub = self.create_subscription(
-            String, '/vision/detections', self._detection_cb, 10)
+            String, "/vision/detections", self._detection_cb, 10
+        )
 
-        self.get_logger().info('Gemini Semantic Node gestartet')
+        self.get_logger().info("Gemini Semantic Node gestartet")
 
     def _image_cb(self, msg: Image):
         """Aktuellstes Kamerabild zwischenspeichern."""
@@ -120,10 +117,10 @@ class GeminiSemanticNode(Node):
         try:
             det_data = json.loads(msg.data)
         except json.JSONDecodeError:
-            self.get_logger().warn('Ungueltige Detection-JSON empfangen')
+            self.get_logger().warn("Ungueltige Detection-JSON empfangen")
             return
 
-        detections = det_data.get('detections', [])
+        detections = det_data.get("detections", [])
         if not detections:
             return
 
@@ -133,10 +130,9 @@ class GeminiSemanticNode(Node):
             image_msg = self.latest_image
 
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(
-                image_msg, desired_encoding='bgr8')
+            cv_image = self.bridge.imgmsg_to_cv2(image_msg, desired_encoding="bgr8")
         except Exception as e:
-            self.get_logger().warn(f'Bildkonvertierung fehlgeschlagen: {e}')
+            self.get_logger().warn(f"Bildkonvertierung fehlgeschlagen: {e}")
             return
 
         # Asynchron an Gemini senden
@@ -144,9 +140,8 @@ class GeminiSemanticNode(Node):
         self.last_request_time = now
 
         thread = threading.Thread(
-            target=self._send_to_gemini,
-            args=(cv_image, detections),
-            daemon=True)
+            target=self._send_to_gemini, args=(cv_image, detections), daemon=True
+        )
         thread.start()
 
     def _send_to_gemini(self, cv_image: np.ndarray, detections: list):
@@ -160,52 +155,43 @@ class GeminiSemanticNode(Node):
             if max(h, w) > MAX_IMAGE_DIM:
                 scale = MAX_IMAGE_DIM / max(h, w)
                 cv_image = cv2.resize(
-                    cv_image,
-                    (int(w * scale), int(h * scale)),
-                    interpolation=cv2.INTER_AREA)
+                    cv_image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
+                )
 
             # Bild als JPEG kodieren fuer API-Transfer
-            _, jpeg_buf = cv2.imencode(
-                '.jpg', cv_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            _, jpeg_buf = cv2.imencode(".jpg", cv_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
             jpeg_bytes = jpeg_buf.tobytes()
 
             # Detektions-Kontext als Textprompt
-            det_summary = ', '.join(
-                f"{d['label']} ({d['confidence']:.0%})"
-                for d in detections[:5])
-            prompt = (
-                f"{SYSTEM_PROMPT}\n\n"
-                f"Erkannte Objekte (Hailo-8): {det_summary}"
-            )
+            det_summary = ", ".join(f"{d['label']} ({d['confidence']:.0%})" for d in detections[:5])
+            prompt = f"{SYSTEM_PROMPT}\n\nErkannte Objekte (Hailo-8): {det_summary}"
 
             # Gemini API-Aufruf mit Bild
-            image_part = types.Part.from_bytes(
-                data=jpeg_bytes, mime_type='image/jpeg')
+            image_part = types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg")
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=[prompt, image_part],
-                config=types.GenerateContentConfig(
-                    max_output_tokens=self.max_tokens))
+                config=types.GenerateContentConfig(max_output_tokens=self.max_tokens),
+            )
 
             if response and response.text:
                 result = {
-                    'timestamp': time.time(),
-                    'detections_input': detections[:5],
-                    'semantic_analysis': response.text.strip(),
-                    'model': self.model_name,
+                    "timestamp": time.time(),
+                    "detections_input": detections[:5],
+                    "semantic_analysis": response.text.strip(),
+                    "model": self.model_name,
                 }
 
                 msg = String()
                 msg.data = json.dumps(result, ensure_ascii=False)
                 self.sem_pub.publish(msg)
 
-                self.get_logger().info(
-                    f'Gemini-Analyse: {response.text.strip()[:120]}')
+                self.get_logger().info(f"Gemini-Analyse: {response.text.strip()[:120]}")
             else:
-                self.get_logger().warn('Gemini: Leere Antwort erhalten')
+                self.get_logger().warn("Gemini: Leere Antwort erhalten")
 
         except Exception as e:
-            self.get_logger().error(f'Gemini-API-Fehler: {e}')
+            self.get_logger().error(f"Gemini-API-Fehler: {e}")
 
         finally:
             self.pending_request = False
@@ -223,5 +209,5 @@ def main(args=None):
         rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

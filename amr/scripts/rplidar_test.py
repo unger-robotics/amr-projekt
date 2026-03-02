@@ -11,54 +11,63 @@ ROS2-Node: subscribt /scan und prueft TF, fuehrt 4 Tests durch:
 Ergebnis: Terminal-Ausgabe mit PASS/FAIL + JSON-Protokoll.
 """
 
-import sys
-import os
-import math
-import time
 import datetime
+import math
 import statistics
+import sys
+import time
 
 try:
     from amr_utils import (
-        quaternion_to_yaw, save_json,
-        COLOR_GREEN, COLOR_RED, COLOR_CYAN, COLOR_BOLD, COLOR_RESET,
+        COLOR_BOLD,
+        COLOR_CYAN,
+        COLOR_GREEN,
+        COLOR_RED,
+        COLOR_RESET,
+        quaternion_to_yaw,
+        save_json,
     )
 except ImportError:
     from my_bot.amr_utils import (
-        quaternion_to_yaw, save_json,
-        COLOR_GREEN, COLOR_RED, COLOR_CYAN, COLOR_BOLD, COLOR_RESET,
+        COLOR_BOLD,
+        COLOR_CYAN,
+        COLOR_GREEN,
+        COLOR_RED,
+        COLOR_RESET,
+        quaternion_to_yaw,
+        save_json,
     )
 
 import rclpy
+import tf2_ros
 from rclpy.node import Node
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
-import tf2_ros
-
 
 # ===========================================================================
 # Konstanten
 # ===========================================================================
 
-SCAN_RATE_MIN_HZ = 5.0          # [Hz] Minimale Scan-Rate (RPLidar A1: ~7 Hz)
-SCAN_RATE_DURATION_S = 300       # [s] Dauer des Langzeit-Rate-Tests
-RANGE_MIN_M = 0.15              # [m] Minimale RPLidar-Reichweite
-RANGE_MAX_M = 12.0              # [m] Maximale RPLidar-Reichweite
-ANGULAR_RES_MAX_DEG = 1.5       # [deg] Maximale Winkelaufloesung
-NOISE_STDDEV_MAX_M = 0.03       # [m] Maximale Rausch-Std auf statischen Zielen
+SCAN_RATE_MIN_HZ = 5.0  # [Hz] Minimale Scan-Rate (RPLidar A1: ~7 Hz)
+SCAN_RATE_DURATION_S = 300  # [s] Dauer des Langzeit-Rate-Tests
+RANGE_MIN_M = 0.15  # [m] Minimale RPLidar-Reichweite
+RANGE_MAX_M = 12.0  # [m] Maximale RPLidar-Reichweite
+ANGULAR_RES_MAX_DEG = 1.5  # [deg] Maximale Winkelaufloesung
+NOISE_STDDEV_MAX_M = 0.03  # [m] Maximale Rausch-Std auf statischen Zielen
 
 # Erwartete statische TF base_link -> laser
-EXPECTED_TF_X = 0.10            # [m] nach vorne
-EXPECTED_TF_Y = 0.0             # [m] seitlich
-EXPECTED_TF_Z = 0.05            # [m] nach oben
-EXPECTED_TF_YAW = math.pi       # [rad] 180 Grad gedreht
-TF_POS_TOL = 0.01               # [m] Positionstoleranz
-TF_YAW_TOL_DEG = 3.0            # [deg] Yaw-Toleranz
+EXPECTED_TF_X = 0.10  # [m] nach vorne
+EXPECTED_TF_Y = 0.0  # [m] seitlich
+EXPECTED_TF_Z = 0.05  # [m] nach oben
+EXPECTED_TF_YAW = math.pi  # [rad] 180 Grad gedreht
+TF_POS_TOL = 0.01  # [m] Positionstoleranz
+TF_YAW_TOL_DEG = 3.0  # [deg] Yaw-Toleranz
 
 
 # ===========================================================================
 # ROS2-Node
 # ===========================================================================
+
 
 class RplidarTestNode(Node):
     """ROS2-Node fuer RPLidar-Validierung via /scan und TF."""
@@ -67,8 +76,7 @@ class RplidarTestNode(Node):
         super().__init__("rplidar_test_node")
 
         # Subscriber
-        self.scan_sub = self.create_subscription(
-            LaserScan, "/scan", self._scan_callback, 10)
+        self.scan_sub = self.create_subscription(LaserScan, "/scan", self._scan_callback, 10)
 
         # TF2
         self.tf_buffer = tf2_ros.Buffer()
@@ -77,7 +85,7 @@ class RplidarTestNode(Node):
         # Scan-Daten
         self.scan_received = False
         self.scan_timestamps = []
-        self.scan_ranges = []       # Liste von Listen (pro Scan alle Ranges)
+        self.scan_ranges = []  # Liste von Listen (pro Scan alle Ranges)
         self.angle_increment = None
         self.frame_id = None
 
@@ -122,20 +130,18 @@ class RplidarTestNode(Node):
 # Test 1: Konnektivitaet
 # ===========================================================================
 
+
 def test_connectivity(node):
     """Prueft ob Scan-Daten ankommen, misst Rate und prueft frame_id."""
     print(f"\n{COLOR_BOLD}--- Test 1: Konnektivitaet ---{COLOR_RESET}")
     print("  Warte auf /scan Daten (max. 10s)...")
 
     if not node.wait_for_scan(timeout_s=10.0):
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(keine Scan-Daten innerhalb 10s)")
-        return {"pass": False, "rate_hz": 0.0, "frame_id": None,
-                "samples": 0, "reason": "timeout"}
+        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (keine Scan-Daten innerhalb 10s)")
+        return {"pass": False, "rate_hz": 0.0, "frame_id": None, "samples": 0, "reason": "timeout"}
 
     detected_frame = node.frame_id
-    print(f"  /scan empfangen (frame_id: \"{detected_frame}\"). "
-          f"Messe Scan-Rate (5s)...")
+    print(f'  /scan empfangen (frame_id: "{detected_frame}"). Messe Scan-Rate (5s)...')
 
     node.scan_timestamps = []
     node.collecting_rate = True
@@ -158,10 +164,8 @@ def test_connectivity(node):
     passed = rate_ok and frame_ok
 
     status = f"{COLOR_GREEN}PASS{COLOR_RESET}" if passed else f"{COLOR_RED}FAIL{COLOR_RESET}"
-    print(f"  Samples: {n_samples}, Rate: {rate_hz:.1f} Hz "
-          f"(Soll: >= {SCAN_RATE_MIN_HZ} Hz)")
-    print(f"  frame_id: \"{detected_frame}\" "
-          f"({'OK' if frame_ok else 'ERWARTET: laser'})")
+    print(f"  Samples: {n_samples}, Rate: {rate_hz:.1f} Hz (Soll: >= {SCAN_RATE_MIN_HZ} Hz)")
+    print(f'  frame_id: "{detected_frame}" ({"OK" if frame_ok else "ERWARTET: laser"})')
     print(f"  Ergebnis: {status}")
 
     return {
@@ -176,12 +180,15 @@ def test_connectivity(node):
 # Test 2: Scan-Rate-Stabilitaet (300s Langzeittest)
 # ===========================================================================
 
+
 def test_scan_rate_stability(node):
     """300s Langzeittest: Scan-Rate in 30s-Fenstern analysieren."""
-    print(f"\n{COLOR_BOLD}--- Test 2: Scan-Rate-Stabilitaet "
-          f"({SCAN_RATE_DURATION_S}s) ---{COLOR_RESET}")
+    print(
+        f"\n{COLOR_BOLD}--- Test 2: Scan-Rate-Stabilitaet "
+        f"({SCAN_RATE_DURATION_S}s) ---{COLOR_RESET}"
+    )
     print(f"  Sammle Scan-Timestamps fuer {SCAN_RATE_DURATION_S} Sekunden...")
-    print(f"  Analyse in 30s-Fenstern. RPLidar darf nicht bewegt werden.\n")
+    print("  Analyse in 30s-Fenstern. RPLidar darf nicht bewegt werden.\n")
 
     node.scan_timestamps = []
     node.collecting_rate = True
@@ -201,8 +208,10 @@ def test_scan_rate_stability(node):
         elapsed_int = int(elapsed)
         if elapsed_int >= last_print + 30:
             last_print = elapsed_int
-            print(f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
-                  f"Scans bisher: {len(node.scan_timestamps)}")
+            print(
+                f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
+                f"Scans bisher: {len(node.scan_timestamps)}"
+            )
 
     node.collecting_rate = False
 
@@ -210,14 +219,16 @@ def test_scan_rate_stability(node):
     total_scans = len(timestamps)
 
     if total_scans < 20:
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(zu wenige Scans: {total_scans})")
-        return {"pass": False, "mean_rate_hz": 0.0,
-                "reason": "insufficient_scans", "total_scans": total_scans}
+        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (zu wenige Scans: {total_scans})")
+        return {
+            "pass": False,
+            "mean_rate_hz": 0.0,
+            "reason": "insufficient_scans",
+            "total_scans": total_scans,
+        }
 
     # Intervalle berechnen
-    intervals = [timestamps[i+1] - timestamps[i]
-                 for i in range(len(timestamps) - 1)]
+    intervals = [timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)]
     std_interval_ms = statistics.stdev(intervals) * 1000.0 if len(intervals) > 1 else 0.0
 
     # Gesamt-Rate
@@ -250,10 +261,11 @@ def test_scan_rate_stability(node):
     status = f"{COLOR_GREEN}PASS{COLOR_RESET}" if passed else f"{COLOR_RED}FAIL{COLOR_RESET}"
 
     print(f"\n  Gesamtdauer: {total_duration:.1f}s, Scans: {total_scans}")
-    print(f"  Mittlere Rate: {mean_rate_hz:.2f} Hz "
-          f"(Soll: >= {SCAN_RATE_MIN_HZ} Hz)")
-    print(f"  Fenster-Raten (30s): min={min_window:.2f} Hz, "
-          f"max={max_window:.2f} Hz ({len(window_rates)} Fenster)")
+    print(f"  Mittlere Rate: {mean_rate_hz:.2f} Hz (Soll: >= {SCAN_RATE_MIN_HZ} Hz)")
+    print(
+        f"  Fenster-Raten (30s): min={min_window:.2f} Hz, "
+        f"max={max_window:.2f} Hz ({len(window_rates)} Fenster)"
+    )
     print(f"  Intervall-Std: {std_interval_ms:.2f} ms")
     print(f"  Ergebnis: {status}")
 
@@ -271,6 +283,7 @@ def test_scan_rate_stability(node):
 # ===========================================================================
 # Test 3: Datenqualitaet
 # ===========================================================================
+
 
 def test_data_quality(node):
     """Prueft Winkelaufloesung, gueltige Punkte und Rausch-Standardabweichung."""
@@ -295,15 +308,16 @@ def test_data_quality(node):
         elapsed_int = int(elapsed)
         if elapsed_int >= last_print + 10:
             last_print = elapsed_int
-            print(f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
-                  f"Scans: {len(node.scan_ranges)}")
+            print(
+                f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
+                f"Scans: {len(node.scan_ranges)}"
+            )
 
     node.collecting_quality = False
 
     n_scans = len(node.scan_ranges)
     if n_scans < 5:
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(zu wenige Scans: {n_scans})")
+        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (zu wenige Scans: {n_scans})")
         return {"pass": False, "reason": "insufficient_scans", "samples": n_scans}
 
     # Winkelaufloesung
@@ -315,8 +329,7 @@ def test_data_quality(node):
         total = len(ranges)
         if total == 0:
             continue
-        valid = sum(1 for r in ranges
-                    if math.isfinite(r) and RANGE_MIN_M <= r <= RANGE_MAX_M)
+        valid = sum(1 for r in ranges if math.isfinite(r) and RANGE_MIN_M <= r <= RANGE_MAX_M)
         all_valid_pcts.append(100.0 * valid / total)
 
     valid_pct = statistics.mean(all_valid_pcts) if all_valid_pcts else 0.0
@@ -342,7 +355,7 @@ def test_data_quality(node):
     if bin_stddevs:
         noise_stddev = statistics.median(bin_stddevs)
     else:
-        noise_stddev = float('inf')
+        noise_stddev = float("inf")
 
     res_ok = angular_res_deg <= ANGULAR_RES_MAX_DEG
     noise_ok = noise_stddev <= NOISE_STDDEV_MAX_M
@@ -351,13 +364,17 @@ def test_data_quality(node):
     status = f"{COLOR_GREEN}PASS{COLOR_RESET}" if passed else f"{COLOR_RED}FAIL{COLOR_RESET}"
 
     print(f"\n  Scans: {n_scans}, Bins pro Scan: {n_bins}")
-    print(f"  Winkelaufloesung: {angular_res_deg:.3f} deg "
-          f"(Soll: <= {ANGULAR_RES_MAX_DEG} deg) "
-          f"{'OK' if res_ok else 'FAIL'}")
+    print(
+        f"  Winkelaufloesung: {angular_res_deg:.3f} deg "
+        f"(Soll: <= {ANGULAR_RES_MAX_DEG} deg) "
+        f"{'OK' if res_ok else 'FAIL'}"
+    )
     print(f"  Gueltige Punkte: {valid_pct:.1f}%")
-    print(f"  Rausch-Std (Median): {noise_stddev:.4f} m "
-          f"(Soll: <= {NOISE_STDDEV_MAX_M} m) "
-          f"{'OK' if noise_ok else 'FAIL'}")
+    print(
+        f"  Rausch-Std (Median): {noise_stddev:.4f} m "
+        f"(Soll: <= {NOISE_STDDEV_MAX_M} m) "
+        f"{'OK' if noise_ok else 'FAIL'}"
+    )
     print(f"  Bins fuer Noise-Analyse: {len(bin_stddevs)}/{n_bins}")
     print(f"  Ergebnis: {status}")
 
@@ -374,6 +391,7 @@ def test_data_quality(node):
 # Test 4: Statischer TF (base_link -> laser)
 # ===========================================================================
 
+
 def test_static_tf(node):
     """Prueft die statische Transformation base_link -> laser."""
     print(f"\n{COLOR_BOLD}--- Test 4: Statischer TF (base_link -> laser) ---{COLOR_RESET}")
@@ -384,11 +402,12 @@ def test_static_tf(node):
         rclpy.spin_once(node, timeout_sec=0.1)
 
     try:
-        trans = node.tf_buffer.lookup_transform(
-            "base_link", "laser", Time())
-    except (tf2_ros.LookupException,
-            tf2_ros.ConnectivityException,
-            tf2_ros.ExtrapolationException) as e:
+        trans = node.tf_buffer.lookup_transform("base_link", "laser", Time())
+    except (
+        tf2_ros.LookupException,
+        tf2_ros.ConnectivityException,
+        tf2_ros.ExtrapolationException,
+    ) as e:
         print(f"  TF-Lookup fehlgeschlagen: {e}")
         print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET}")
         return {"pass": False, "reason": f"tf_error: {e}"}
@@ -403,7 +422,7 @@ def test_static_tf(node):
     dx = tx - EXPECTED_TF_X
     dy = ty - EXPECTED_TF_Y
     dz = tz - EXPECTED_TF_Z
-    translation_error = math.sqrt(dx*dx + dy*dy + dz*dz)
+    translation_error = math.sqrt(dx * dx + dy * dy + dz * dz)
 
     # Yaw-Fehler: Differenz normalisieren
     yaw_diff = yaw - EXPECTED_TF_YAW
@@ -420,15 +439,18 @@ def test_static_tf(node):
     status = f"{COLOR_GREEN}PASS{COLOR_RESET}" if passed else f"{COLOR_RED}FAIL{COLOR_RESET}"
 
     print(f"  Translation: x={tx:.3f}, y={ty:.3f}, z={tz:.3f} m")
-    print(f"  Erwartet:    x={EXPECTED_TF_X:.3f}, y={EXPECTED_TF_Y:.3f}, "
-          f"z={EXPECTED_TF_Z:.3f} m")
-    print(f"  Translationsfehler: {translation_error:.4f} m "
-          f"(Soll: < {TF_POS_TOL} m) "
-          f"{'OK' if pos_ok else 'FAIL'}")
+    print(f"  Erwartet:    x={EXPECTED_TF_X:.3f}, y={EXPECTED_TF_Y:.3f}, z={EXPECTED_TF_Z:.3f} m")
+    print(
+        f"  Translationsfehler: {translation_error:.4f} m "
+        f"(Soll: < {TF_POS_TOL} m) "
+        f"{'OK' if pos_ok else 'FAIL'}"
+    )
     print(f"  Yaw: {yaw_deg:.1f} deg (Erwartet: {math.degrees(EXPECTED_TF_YAW):.1f} deg)")
-    print(f"  Yaw-Fehler: {yaw_error_deg:.2f} deg "
-          f"(Soll: < {TF_YAW_TOL_DEG} deg) "
-          f"{'OK' if yaw_ok else 'FAIL'}")
+    print(
+        f"  Yaw-Fehler: {yaw_error_deg:.2f} deg "
+        f"(Soll: < {TF_YAW_TOL_DEG} deg) "
+        f"{'OK' if yaw_ok else 'FAIL'}"
+    )
     print(f"  Ergebnis: {status}")
 
     return {
@@ -448,6 +470,7 @@ def test_static_tf(node):
 # Hauptprogramm
 # ===========================================================================
 
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -455,7 +478,7 @@ def main(args=None):
     print("*" * 60)
     print("  AMR RPLidar-Validierungstool")
     print("  ROS2-Node: rplidar_test_node")
-    ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"  Zeitpunkt: {ts}")
     print("*" * 60)
 
@@ -464,8 +487,10 @@ def main(args=None):
     # Test 1: Konnektivitaet (Abbruch bei FAIL)
     result_conn = test_connectivity(node)
     if not result_conn["pass"]:
-        print(f"\n{COLOR_RED}ABBRUCH: RPLidar nicht erreichbar. "
-              f"Weitere Tests uebersprungen.{COLOR_RESET}")
+        print(
+            f"\n{COLOR_RED}ABBRUCH: RPLidar nicht erreichbar. "
+            f"Weitere Tests uebersprungen.{COLOR_RESET}"
+        )
         results = {
             "timestamp": datetime.datetime.now().isoformat(),
             "connectivity": result_conn,
@@ -490,22 +515,24 @@ def main(args=None):
     result_tf = test_static_tf(node)
 
     # Gesamtergebnis
-    all_passed = all([
-        result_conn["pass"],
-        result_rate["pass"],
-        result_quality["pass"],
-        result_tf["pass"],
-    ])
+    all_passed = all(
+        [
+            result_conn["pass"],
+            result_rate["pass"],
+            result_quality["pass"],
+            result_tf["pass"],
+        ]
+    )
 
     print("\n" + "=" * 60)
     if all_passed:
-        print(f"  {COLOR_GREEN}{COLOR_BOLD}GESAMTERGEBNIS: BESTANDEN "
-              f"(4/4 Tests){COLOR_RESET}")
+        print(f"  {COLOR_GREEN}{COLOR_BOLD}GESAMTERGEBNIS: BESTANDEN (4/4 Tests){COLOR_RESET}")
     else:
-        n_pass = sum(1 for r in [result_conn, result_rate,
-                                  result_quality, result_tf] if r["pass"])
-        print(f"  {COLOR_RED}{COLOR_BOLD}GESAMTERGEBNIS: NICHT BESTANDEN "
-              f"({n_pass}/4 Tests){COLOR_RESET}")
+        n_pass = sum(1 for r in [result_conn, result_rate, result_quality, result_tf] if r["pass"])
+        print(
+            f"  {COLOR_RED}{COLOR_BOLD}GESAMTERGEBNIS: NICHT BESTANDEN "
+            f"({n_pass}/4 Tests){COLOR_RESET}"
+        )
     print("=" * 60)
 
     # JSON speichern

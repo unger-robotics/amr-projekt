@@ -1,0 +1,60 @@
+# pre-commit Konfiguration fuer AMR-Bachelorarbeit
+# Installation: pip3 install pre-commit && pre-commit install
+# Manuell: pre-commit run --all-files
+repos:
+  # Ruff: Python Linting + Format-Check
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--config, ruff.toml]
+      - id: ruff-format
+        args: [--config, ruff.toml, --check]
+
+  # Mypy: Type-Checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        args: [--config-file, mypy.ini]
+        pass_filenames: false
+        types: [python]
+        exclude: >-
+          (?x)^(amr/pi5/ros2_ws/src/my_bot/my_bot/(?!odom_to_tf\.py).*
+          |dashboard/.*|suche/.*|bachelorarbeit/.*)$
+
+  # clang-format: C++ Formatierung
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.7
+    hooks:
+      - id: clang-format
+        files: >-
+          (?x)^(amr/esp32_amr_firmware/src/.*\.(cpp|hpp)
+          |hardware/config\.h)$
+        args: [--style=file, --dry-run, --Werror]
+
+  # ESLint: Dashboard TypeScript
+  - repo: local
+    hooks:
+      - id: eslint-dashboard
+        name: eslint-dashboard
+        language: system
+        entry: bash -c 'cd dashboard && npm run lint'
+        files: ^dashboard/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # Allgemeine Hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^(bachelorarbeit|suche|sources)/
+      - id: end-of-file-fixer
+        exclude: ^(bachelorarbeit|suche|sources)/
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-symlinks

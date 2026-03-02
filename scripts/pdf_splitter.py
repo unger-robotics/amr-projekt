@@ -2,13 +2,16 @@
 import os
 import re
 import sys
+
 from pypdf import PdfReader, PdfWriter
+
 
 def sanitize_filename(name):
     """Bereinigt den Titel für Dateinamen."""
     clean_name = re.sub(r'[\\/*?:"<>|]', "_", name)
-    clean_name = clean_name.replace('\n', ' ').replace('\r', '')
+    clean_name = clean_name.replace("\n", " ").replace("\r", "")
     return clean_name.strip()[:100]
+
 
 def split_pdf(input_path):
     """
@@ -23,7 +26,7 @@ def split_pdf(input_path):
     print(f"\n--- Verarbeite: {filename} ---")
 
     if not os.path.exists(input_path):
-        print(f"Fehler: Datei nicht gefunden.")
+        print("Fehler: Datei nicht gefunden.")
         return
 
     try:
@@ -36,12 +39,14 @@ def split_pdf(input_path):
     # Kapitel extrahieren
     chapters = []
     for item in outlines:
-        if isinstance(item, list): continue # Keine Unterkapitel
+        if isinstance(item, list):
+            continue  # Keine Unterkapitel
         try:
             page_num = reader.get_destination_page_number(item)
             if page_num is not None:
                 chapters.append({"title": item.title, "start": page_num})
-        except: pass
+        except:
+            pass
 
     if not chapters:
         print("-> Keine Hauptkapitel gefunden. Überspringe Datei.")
@@ -59,21 +64,23 @@ def split_pdf(input_path):
     # Splitten
     for i, chapter in enumerate(chapters):
         start = chapter["start"]
-        end = chapters[i+1]["start"] if i+1 < len(chapters) else total_pages
+        end = chapters[i + 1]["start"] if i + 1 < len(chapters) else total_pages
 
-        if start >= end: continue
+        if start >= end:
+            continue
 
         writer = PdfWriter()
         for p in range(start, end):
             writer.add_page(reader.pages[p])
 
         safe_title = sanitize_filename(chapter["title"])
-        fname = f"{i+1:02d}_{safe_title}.pdf"
+        fname = f"{i + 1:02d}_{safe_title}.pdf"
 
         with open(os.path.join(output_dir, fname), "wb") as f:
             writer.write(f)
 
     print(f"-> Fertig: {len(chapters)} Kapitel extrahiert.")
+
 
 def process_path(target):
     """Entscheidet, ob Datei oder Verzeichnis verarbeitet wird."""
@@ -98,6 +105,7 @@ def process_path(target):
 
                 full_path = os.path.join(root, file)
                 split_pdf(full_path)
+
 
 if __name__ == "__main__":
     # Standard: Aktuelles Verzeichnis (.), wenn nichts angegeben

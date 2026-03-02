@@ -33,7 +33,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 UDP_PORT = 5005
-UDP_ADDR = '0.0.0.0'
+UDP_ADDR = "0.0.0.0"
 RECV_BUFFER = 65535
 
 
@@ -41,9 +41,9 @@ class HailoUdpReceiverNode(Node):
     """ROS2-Node: Empfaengt Hailo-Detektionen via UDP und publiziert sie."""
 
     def __init__(self):
-        super().__init__('hailo_udp_receiver')
+        super().__init__("hailo_udp_receiver")
 
-        self.det_pub = self.create_publisher(String, '/vision/detections', 10)
+        self.det_pub = self.create_publisher(String, "/vision/detections", 10)
 
         # Non-blocking UDP-Socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,8 +56,9 @@ class HailoUdpReceiverNode(Node):
 
         self.msg_count = 0
         self.get_logger().info(
-            f'Hailo UDP Receiver gestartet auf {UDP_ADDR}:{UDP_PORT} '
-            f'- warte auf host_hailo_runner.py ...')
+            f"Hailo UDP Receiver gestartet auf {UDP_ADDR}:{UDP_PORT} "
+            f"- warte auf host_hailo_runner.py ..."
+        )
 
     def _poll_udp(self):
         """Socket pollen und empfangene JSON-Pakete publizieren."""
@@ -68,12 +69,12 @@ class HailoUdpReceiverNode(Node):
                 break
 
             try:
-                payload = json.loads(data.decode('utf-8'))
+                payload = json.loads(data.decode("utf-8"))
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                self.get_logger().warn(f'Ungueltige JSON-Daten: {e}')
+                self.get_logger().warn(f"Ungueltige JSON-Daten: {e}")
                 continue
 
-            if 'detections' not in payload:
+            if "detections" not in payload:
                 self.get_logger().warn('JSON ohne "detections"-Feld verworfen')
                 continue
 
@@ -83,16 +84,16 @@ class HailoUdpReceiverNode(Node):
 
             self.msg_count += 1
             if self.msg_count == 1:
-                self.get_logger().info('Erste Detektion empfangen!')
+                self.get_logger().info("Erste Detektion empfangen!")
 
-            dets = payload['detections']
+            dets = payload["detections"]
             if dets:
-                labels = [d.get('label', '?') for d in dets]
-                inf_ms = payload.get('inference_ms', 0)
+                labels = [d.get("label", "?") for d in dets]
+                inf_ms = payload.get("inference_ms", 0)
                 self.get_logger().info(
-                    f'{len(dets)} Objekt(e) in {inf_ms:.1f} ms: '
-                    f'{", ".join(labels)}',
-                    throttle_duration_sec=2.0)
+                    f"{len(dets)} Objekt(e) in {inf_ms:.1f} ms: {', '.join(labels)}",
+                    throttle_duration_sec=2.0,
+                )
 
     def destroy_node(self):
         """Socket sauber schliessen."""
@@ -113,5 +114,5 @@ def main(args=None):
         rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

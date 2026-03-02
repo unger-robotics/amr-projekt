@@ -11,30 +11,43 @@ ROS2-Node: subscribt /imu und /odom, fuehrt 4 Tests durch:
 Ergebnis: Terminal-Ausgabe mit PASS/FAIL + JSON-Protokoll.
 """
 
-import sys
-import os
-import math
-import time
 import datetime
+import math
+import sys
+import time
 
 try:
     from amr_utils import (
-        quaternion_to_yaw, save_json, normalize_angle,
-        COLOR_GREEN, COLOR_RED, COLOR_CYAN, COLOR_BOLD, COLOR_RESET,
-        IMU_PUBLISH_HZ, IMU_GYRO_DRIFT_MAX, IMU_ACCEL_BIAS_MAX,
+        COLOR_BOLD,
+        COLOR_CYAN,
+        COLOR_GREEN,
+        COLOR_RED,
+        COLOR_RESET,
+        IMU_ACCEL_BIAS_MAX,
+        IMU_GYRO_DRIFT_MAX,
+        IMU_PUBLISH_HZ,
+        normalize_angle,
+        quaternion_to_yaw,
+        save_json,
     )
 except ImportError:
     from my_bot.amr_utils import (
-        quaternion_to_yaw, save_json, normalize_angle,
-        COLOR_GREEN, COLOR_RED, COLOR_CYAN, COLOR_BOLD, COLOR_RESET,
-        IMU_PUBLISH_HZ, IMU_GYRO_DRIFT_MAX, IMU_ACCEL_BIAS_MAX,
+        COLOR_BOLD,
+        COLOR_CYAN,
+        COLOR_GREEN,
+        COLOR_RED,
+        COLOR_RESET,
+        IMU_ACCEL_BIAS_MAX,
+        IMU_GYRO_DRIFT_MAX,
+        normalize_angle,
+        quaternion_to_yaw,
+        save_json,
     )
 
 import rclpy
+from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
-from nav_msgs.msg import Odometry
-
 
 # ===========================================================================
 # Konstanten
@@ -48,6 +61,7 @@ HEADING_DIFF_MAX = 5.0  # [deg] Akzeptanzgrenze fuer Heading-Vergleich
 # ROS2-Node
 # ===========================================================================
 
+
 class ImuTestNode(Node):
     """ROS2-Node fuer IMU-Validierung via /imu und /odom."""
 
@@ -55,10 +69,8 @@ class ImuTestNode(Node):
         super().__init__("imu_test_node")
 
         # Subscriber
-        self.imu_sub = self.create_subscription(
-            Imu, "/imu", self._imu_callback, 10)
-        self.odom_sub = self.create_subscription(
-            Odometry, "/odom", self._odom_callback, 10)
+        self.imu_sub = self.create_subscription(Imu, "/imu", self._imu_callback, 10)
+        self.odom_sub = self.create_subscription(Odometry, "/odom", self._odom_callback, 10)
 
         # IMU-Daten
         self.imu_received = False
@@ -124,14 +136,14 @@ class ImuTestNode(Node):
 # Test 1: Konnektivitaet
 # ===========================================================================
 
+
 def test_connectivity(node):
     """Prueft ob IMU-Daten ankommen und misst die Sample-Rate."""
     print(f"\n{COLOR_BOLD}--- Test 1: Konnektivitaet ---{COLOR_RESET}")
     print("  Warte auf /imu Daten (max. 5s)...")
 
     if not node.wait_for_imu(timeout_s=5.0):
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(keine IMU-Daten innerhalb 5s)")
+        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (keine IMU-Daten innerhalb 5s)")
         return {"pass": False, "rate_hz": 0.0, "reason": "timeout"}
 
     print("  /imu empfangen. Messe Sample-Rate (3s)...")
@@ -164,6 +176,7 @@ def test_connectivity(node):
 # Test 2: Gyro-Drift
 # ===========================================================================
 
+
 def test_gyro_drift(node):
     """Misst kumulative Gyro-Drift bei Stillstand ueber 60 Sekunden."""
     print(f"\n{COLOR_BOLD}--- Test 2: Gyro-Drift (60s statisch) ---{COLOR_RESET}")
@@ -189,17 +202,24 @@ def test_gyro_drift(node):
         elapsed_int = int(elapsed)
         if elapsed_int >= last_print + 10:
             last_print = elapsed_int
-            print(f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
-                  f"Samples: {len(node.gyro_z_samples)}")
+            print(
+                f"  {COLOR_CYAN}[{int(remaining)}s verbleibend]{COLOR_RESET} "
+                f"Samples: {len(node.gyro_z_samples)}"
+            )
 
     node.collecting_gyro = False
 
     if len(node.gyro_z_samples) < 10:
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(zu wenige Samples: {len(node.gyro_z_samples)})")
-        return {"pass": False, "drift_deg_per_min": 0.0,
-                "reason": "insufficient_samples",
-                "samples": len(node.gyro_z_samples)}
+        print(
+            f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
+            f"(zu wenige Samples: {len(node.gyro_z_samples)})"
+        )
+        return {
+            "pass": False,
+            "drift_deg_per_min": 0.0,
+            "reason": "insufficient_samples",
+            "samples": len(node.gyro_z_samples),
+        }
 
     # Kumulative Drift berechnen: Summe(gz * dt) in rad, dann in deg/min
     # Bei gleichmaessiger Abtastrate: Summe(gz) * dt_avg
@@ -210,17 +230,17 @@ def test_gyro_drift(node):
     drift_deg_per_min = drift_deg  # 60s = 1 Minute
 
     mean_gz = sum(node.gyro_z_samples) / total_samples
-    std_gz = math.sqrt(
-        sum((g - mean_gz) ** 2 for g in node.gyro_z_samples) / total_samples
-    )
+    std_gz = math.sqrt(sum((g - mean_gz) ** 2 for g in node.gyro_z_samples) / total_samples)
 
     passed = drift_deg_per_min < IMU_GYRO_DRIFT_MAX
     status = f"{COLOR_GREEN}PASS{COLOR_RESET}" if passed else f"{COLOR_RED}FAIL{COLOR_RESET}"
 
     print(f"\n  Samples: {total_samples}")
     print(f"  Mittlerer gz: {mean_gz:.6f} rad/s (Std: {std_gz:.6f})")
-    print(f"  Kumulative Drift: {drift_deg_per_min:.3f} deg/min "
-          f"(Grenze: < {IMU_GYRO_DRIFT_MAX} deg/min)")
+    print(
+        f"  Kumulative Drift: {drift_deg_per_min:.3f} deg/min "
+        f"(Grenze: < {IMU_GYRO_DRIFT_MAX} deg/min)"
+    )
     print(f"  Ergebnis: {status}")
 
     return {
@@ -235,6 +255,7 @@ def test_gyro_drift(node):
 # ===========================================================================
 # Test 3: Accelerometer-Bias
 # ===========================================================================
+
 
 def test_accel_bias(node):
     """Misst Abweichung von az gegenueber Schwerkraft bei Stillstand."""
@@ -252,18 +273,22 @@ def test_accel_bias(node):
     node.collecting_accel = False
 
     if len(node.accel_z_samples) < 10:
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(zu wenige Samples: {len(node.accel_z_samples)})")
-        return {"pass": False, "bias_m_s2": 0.0,
-                "reason": "insufficient_samples",
-                "samples": len(node.accel_z_samples)}
+        print(
+            f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
+            f"(zu wenige Samples: {len(node.accel_z_samples)})"
+        )
+        return {
+            "pass": False,
+            "bias_m_s2": 0.0,
+            "reason": "insufficient_samples",
+            "samples": len(node.accel_z_samples),
+        }
 
     mean_az = sum(node.accel_z_samples) / len(node.accel_z_samples)
     bias = abs(mean_az - GRAVITY)
 
     std_az = math.sqrt(
-        sum((a - mean_az) ** 2 for a in node.accel_z_samples)
-        / len(node.accel_z_samples)
+        sum((a - mean_az) ** 2 for a in node.accel_z_samples) / len(node.accel_z_samples)
     )
 
     passed = bias < IMU_ACCEL_BIAS_MAX
@@ -271,8 +296,10 @@ def test_accel_bias(node):
 
     print(f"  Samples: {len(node.accel_z_samples)}")
     print(f"  Mittlerer az: {mean_az:.4f} m/s² (Std: {std_az:.4f})")
-    print(f"  Bias: |{mean_az:.4f} - {GRAVITY}| = {bias:.4f} m/s² "
-          f"(Grenze: < {IMU_ACCEL_BIAS_MAX} m/s²)")
+    print(
+        f"  Bias: |{mean_az:.4f} - {GRAVITY}| = {bias:.4f} m/s² "
+        f"(Grenze: < {IMU_ACCEL_BIAS_MAX} m/s²)"
+    )
     print(f"  Ergebnis: {status}")
 
     return {
@@ -288,6 +315,7 @@ def test_accel_bias(node):
 # Test 4: Heading-Vergleich
 # ===========================================================================
 
+
 def test_heading_comparison(node):
     """Vergleicht IMU-Yaw mit Odom-Yaw bei Stillstand."""
     print(f"\n{COLOR_BOLD}--- Test 4: Heading-Vergleich (5s) ---{COLOR_RESET}")
@@ -299,8 +327,7 @@ def test_heading_comparison(node):
         while not node.odom_received:
             rclpy.spin_once(node, timeout_sec=0.1)
             if time.time() - start > 5.0:
-                print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-                      f"(keine /odom Daten)")
+                print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (keine /odom Daten)")
                 return {"pass": False, "reason": "no_odom"}
 
     print("  Sammle Heading-Daten (5s)...\n")
@@ -321,10 +348,8 @@ def test_heading_comparison(node):
     node.collecting_heading = False
 
     if len(imu_yaws) < 10:
-        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} "
-              f"(zu wenige Samples: {len(imu_yaws)})")
-        return {"pass": False, "reason": "insufficient_samples",
-                "samples": len(imu_yaws)}
+        print(f"  Ergebnis: {COLOR_RED}FAIL{COLOR_RESET} (zu wenige Samples: {len(imu_yaws)})")
+        return {"pass": False, "reason": "insufficient_samples", "samples": len(imu_yaws)}
 
     mean_imu_yaw = sum(imu_yaws) / len(imu_yaws)
     mean_odom_yaw = sum(odom_yaws) / len(odom_yaws)
@@ -354,6 +379,7 @@ def test_heading_comparison(node):
 # Hauptprogramm
 # ===========================================================================
 
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -361,7 +387,7 @@ def main(args=None):
     print("*" * 60)
     print("  AMR IMU-Validierungstool")
     print("  ROS2-Node: imu_test_node")
-    ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"  Zeitpunkt: {ts}")
     print("*" * 60)
 
@@ -370,8 +396,9 @@ def main(args=None):
     # Test 1: Konnektivitaet
     result_conn = test_connectivity(node)
     if not result_conn["pass"]:
-        print(f"\n{COLOR_RED}ABBRUCH: IMU nicht erreichbar. "
-              f"Weitere Tests uebersprungen.{COLOR_RESET}")
+        print(
+            f"\n{COLOR_RED}ABBRUCH: IMU nicht erreichbar. Weitere Tests uebersprungen.{COLOR_RESET}"
+        )
         results = {
             "timestamp": datetime.datetime.now().isoformat(),
             "connectivity": result_conn,
@@ -396,22 +423,26 @@ def main(args=None):
     result_heading = test_heading_comparison(node)
 
     # Gesamtergebnis
-    all_passed = all([
-        result_conn["pass"],
-        result_gyro["pass"],
-        result_accel["pass"],
-        result_heading["pass"],
-    ])
+    all_passed = all(
+        [
+            result_conn["pass"],
+            result_gyro["pass"],
+            result_accel["pass"],
+            result_heading["pass"],
+        ]
+    )
 
     print("\n" + "=" * 60)
     if all_passed:
-        print(f"  {COLOR_GREEN}{COLOR_BOLD}GESAMTERGEBNIS: BESTANDEN "
-              f"(4/4 Tests){COLOR_RESET}")
+        print(f"  {COLOR_GREEN}{COLOR_BOLD}GESAMTERGEBNIS: BESTANDEN (4/4 Tests){COLOR_RESET}")
     else:
-        n_pass = sum(1 for r in [result_conn, result_gyro,
-                                  result_accel, result_heading] if r["pass"])
-        print(f"  {COLOR_RED}{COLOR_BOLD}GESAMTERGEBNIS: NICHT BESTANDEN "
-              f"({n_pass}/4 Tests){COLOR_RESET}")
+        n_pass = sum(
+            1 for r in [result_conn, result_gyro, result_accel, result_heading] if r["pass"]
+        )
+        print(
+            f"  {COLOR_RED}{COLOR_BOLD}GESAMTERGEBNIS: NICHT BESTANDEN "
+            f"({n_pass}/4 Tests){COLOR_RESET}"
+        )
     print("=" * 60)
 
     # JSON speichern

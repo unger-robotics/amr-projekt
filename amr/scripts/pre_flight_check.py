@@ -8,39 +8,40 @@ Prueft: USB-Enumeration, Spannungsversorgung, Pin-Belegung, Firmware-Upload.
 Erzeugt: Markdown-Protokoll mit Timestamp und Pass/Fail pro Pruefpunkt.
 """
 
+import datetime
+import glob
 import os
 import sys
-import glob
-import datetime
 
 # ===========================================================================
 # Konfiguration (aus hardware/config.h)
 # ===========================================================================
 
 PIN_MAPPING = {
-    "PIN_MOTOR_LEFT_A":  ("D0", "GPIO1",  "MDD3A M1A (Vorwaerts-PWM)"),
-    "PIN_MOTOR_LEFT_B":  ("D1", "GPIO2",  "MDD3A M1B (Rueckwaerts-PWM)"),
-    "PIN_MOTOR_RIGHT_A": ("D2", "GPIO3",  "MDD3A M2A (Vorwaerts-PWM)"),
-    "PIN_MOTOR_RIGHT_B": ("D3", "GPIO4",  "MDD3A M2B (Rueckwaerts-PWM)"),
-    "PIN_ENC_LEFT_A":    ("D6", "GPIO43", "Encoder Links (Hall, Interrupt)"),
-    "PIN_ENC_RIGHT_A":   ("D7", "GPIO44", "Encoder Rechts (Hall, Interrupt)"),
-    "PIN_SERVO_PAN":     ("D8", "GPIO7",  "Servo Pan (Signal, Power extern 5V)"),
-    "PIN_SERVO_TILT":    ("D9", "GPIO8",  "Servo Tilt (Signal, Power extern 5V)"),
-    "PIN_LED_MOSFET":    ("D10", "GPIO9", "IRLZ24N Low-Side MOSFET"),
-    "PIN_I2C_SDA":       ("D4", "GPIO5",  "I2C SDA (MPU6050, optional)"),
-    "PIN_I2C_SCL":       ("D5", "GPIO6",  "I2C SCL (MPU6050, optional)"),
+    "PIN_MOTOR_LEFT_A": ("D0", "GPIO1", "MDD3A M1A (Vorwaerts-PWM)"),
+    "PIN_MOTOR_LEFT_B": ("D1", "GPIO2", "MDD3A M1B (Rueckwaerts-PWM)"),
+    "PIN_MOTOR_RIGHT_A": ("D2", "GPIO3", "MDD3A M2A (Vorwaerts-PWM)"),
+    "PIN_MOTOR_RIGHT_B": ("D3", "GPIO4", "MDD3A M2B (Rueckwaerts-PWM)"),
+    "PIN_ENC_LEFT_A": ("D6", "GPIO43", "Encoder Links (Hall, Interrupt)"),
+    "PIN_ENC_RIGHT_A": ("D7", "GPIO44", "Encoder Rechts (Hall, Interrupt)"),
+    "PIN_SERVO_PAN": ("D8", "GPIO7", "Servo Pan (Signal, Power extern 5V)"),
+    "PIN_SERVO_TILT": ("D9", "GPIO8", "Servo Tilt (Signal, Power extern 5V)"),
+    "PIN_LED_MOSFET": ("D10", "GPIO9", "IRLZ24N Low-Side MOSFET"),
+    "PIN_I2C_SDA": ("D4", "GPIO5", "I2C SDA (MPU6050, optional)"),
+    "PIN_I2C_SCL": ("D5", "GPIO6", "I2C SCL (MPU6050, optional)"),
 }
 
 VOLTAGE_SPECS = {
-    "3S Li-Ion Akku":             ("11.1 - 12.6 V", "Messung am Akku-Connector"),
-    "DC/DC USB-C 5V/5A (25W)":   ("5.0 - 5.2 V",   "Ausgang Buck-Converter, RPi5-Versorgung"),
-    "MDD3A VM":                   ("11.1 - 12.6 V",  "Direkt vom Akku, Motortreiber-Eingang"),
-    "ESP32-S3 3.3V Rail":         ("3.2 - 3.4 V",    "Onboard LDO, Logik-Versorgung"),
+    "3S Li-Ion Akku": ("11.1 - 12.6 V", "Messung am Akku-Connector"),
+    "DC/DC USB-C 5V/5A (25W)": ("5.0 - 5.2 V", "Ausgang Buck-Converter, RPi5-Versorgung"),
+    "MDD3A VM": ("11.1 - 12.6 V", "Direkt vom Akku, Motortreiber-Eingang"),
+    "ESP32-S3 3.3V Rail": ("3.2 - 3.4 V", "Onboard LDO, Logik-Versorgung"),
 }
 
 # ===========================================================================
 # Ergebnis-Tracking
 # ===========================================================================
+
 
 class CheckResult:
     """Sammelt alle Pruefergebnisse fuer das Protokoll."""
@@ -51,12 +52,14 @@ class CheckResult:
 
     def add(self, kategorie, pruefpunkt, status, kommentar=""):
         """Fuegt ein Pruefergebnis hinzu. status: True=PASS, False=FAIL, None=SKIP."""
-        self.items.append({
-            "kategorie": kategorie,
-            "pruefpunkt": pruefpunkt,
-            "status": status,
-            "kommentar": kommentar,
-        })
+        self.items.append(
+            {
+                "kategorie": kategorie,
+                "pruefpunkt": pruefpunkt,
+                "status": status,
+                "kommentar": kommentar,
+            }
+        )
 
     def count_pass(self):
         return sum(1 for i in self.items if i["status"] is True)
@@ -70,9 +73,11 @@ class CheckResult:
     def all_passed(self):
         return self.count_fail() == 0
 
+
 # ===========================================================================
 # Hilfsfunktionen
 # ===========================================================================
+
 
 def ask_yes_no(frage):
     """Interaktive Ja/Nein-Abfrage. Gibt True/False/None (Skip) zurueck."""
@@ -115,6 +120,7 @@ def print_result_line(status, text):
 # ===========================================================================
 # Pruef-Abschnitte
 # ===========================================================================
+
 
 def check_usb_enumeration(result):
     """Prueft ob der ESP32-S3 als USB-CDC erkannt wird."""
@@ -175,16 +181,19 @@ def check_spannungsversorgung(result):
     print("  Visuell pruefen: Sicherung nahe Akku vorhanden und korrekt dimensioniert (15 A).")
     fuse_ok = ask_yes_no("Hauptsicherung 15 A vorhanden und korrekt?")
     print_result_line(fuse_ok, "Hauptsicherung 15 A")
-    result.add("Spannung", "Hauptsicherung 15 A", fuse_ok,
-               "Visuelle Pruefung nahe Akku")
+    result.add("Spannung", "Hauptsicherung 15 A", fuse_ok, "Visuelle Pruefung nahe Akku")
     print()
 
     print("  --- Gemeinsame Masse / Sternpunkt-GND ---")
     print("  Pruefen: Pi-GND, Buck-GND, Motortreiber-GND, ESP32-GND an einem Punkt verbunden.")
     gnd_ok = ask_yes_no("Sternpunkt-GND korrekt verdrahtet?")
     print_result_line(gnd_ok, "Gemeinsame Masse / Sternpunkt-GND")
-    result.add("Spannung", "Gemeinsame Masse / Sternpunkt-GND", gnd_ok,
-               "Pi-GND, Buck-GND, MDD3A-GND, ESP32-GND verbunden")
+    result.add(
+        "Spannung",
+        "Gemeinsame Masse / Sternpunkt-GND",
+        gnd_ok,
+        "Pi-GND, Buck-GND, MDD3A-GND, ESP32-GND verbunden",
+    )
     print()
 
 
@@ -221,8 +230,12 @@ def check_pin_belegung(result):
     print("  zur Signalleitung (Phase A). VCC = 3.3 V oder 5 V (mit Pegelanpassung).")
     enc_pwr_ok = ask_yes_no("Encoder VCC und GND an beiden Motoren angeschlossen?")
     print_result_line(enc_pwr_ok, "Encoder VCC/GND Anschluss")
-    result.add("Pins", "Encoder VCC/GND Anschluss", enc_pwr_ok,
-               "VCC + GND fuer Hall-Encoder Links und Rechts")
+    result.add(
+        "Pins",
+        "Encoder VCC/GND Anschluss",
+        enc_pwr_ok,
+        "VCC + GND fuer Hall-Encoder Links und Rechts",
+    )
 
 
 def check_firmware(result):
@@ -272,13 +285,11 @@ def check_micro_ros(result):
         return
 
     odom_ok = ask_yes_no("/odom Topic sichtbar (ros2 topic list)?")
-    result.add("micro-ROS", "/odom Topic", odom_ok,
-               "ros2 topic list | grep odom")
+    result.add("micro-ROS", "/odom Topic", odom_ok, "ros2 topic list | grep odom")
     print_result_line(odom_ok, "/odom Topic")
 
     cmd_ok = ask_yes_no("/cmd_vel Topic sichtbar?")
-    result.add("micro-ROS", "/cmd_vel Topic", cmd_ok,
-               "ros2 topic list | grep cmd_vel")
+    result.add("micro-ROS", "/cmd_vel Topic", cmd_ok, "ros2 topic list | grep cmd_vel")
     print_result_line(cmd_ok, "/cmd_vel Topic")
 
 
@@ -318,6 +329,7 @@ def check_sensoren(result):
 # Protokoll-Erzeugung
 # ===========================================================================
 
+
 def generate_markdown(result):
     """Erzeugt Markdown-Protokoll als String."""
     ts = result.start_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -330,10 +342,10 @@ def generate_markdown(result):
     gesamtergebnis = "PASS" if result.all_passed() else "FAIL"
 
     lines = []
-    lines.append(f"# Pre-Flight Checkliste AMR")
-    lines.append(f"")
-    lines.append(f"| Feld | Wert |")
-    lines.append(f"|---|---|")
+    lines.append("# Pre-Flight Checkliste AMR")
+    lines.append("")
+    lines.append("| Feld | Wert |")
+    lines.append("|---|---|")
     lines.append(f"| Datum/Start | {ts} |")
     lines.append(f"| Datum/Ende | {end_time} |")
     lines.append(f"| Gesamtergebnis | **{gesamtergebnis}** |")
@@ -341,7 +353,7 @@ def generate_markdown(result):
     lines.append(f"| Bestanden | {passed} |")
     lines.append(f"| Fehlgeschlagen | {failed} |")
     lines.append(f"| Uebersprungen | {skipped} |")
-    lines.append(f"")
+    lines.append("")
 
     # Nach Kategorie gruppieren
     kategorien = []
@@ -354,9 +366,9 @@ def generate_markdown(result):
 
     for kat in kategorien:
         lines.append(f"## {kat}")
-        lines.append(f"")
-        lines.append(f"| Pruefpunkt | Ergebnis | Kommentar |")
-        lines.append(f"|---|---|---|")
+        lines.append("")
+        lines.append("| Pruefpunkt | Ergebnis | Kommentar |")
+        lines.append("|---|---|---|")
         for item in result.items:
             if item["kategorie"] != kat:
                 continue
@@ -367,7 +379,7 @@ def generate_markdown(result):
             else:
                 status_str = "SKIP"
             lines.append(f"| {item['pruefpunkt']} | {status_str} | {item['kommentar']} |")
-        lines.append(f"")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -390,6 +402,7 @@ def save_protocol(markdown_content):
 # ===========================================================================
 # Hauptprogramm
 # ===========================================================================
+
 
 def main():
     print()

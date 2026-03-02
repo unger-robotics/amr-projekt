@@ -13,24 +13,23 @@ Sicherheit: Ctrl+C sendet sofort cmd_vel=0.
 Ergebnis: Markdown-Protokoll + JSON.
 """
 
-import sys
-import os
-import json
-import math
-import time
 import datetime
-
-from amr_utils import WHEEL_BASE, FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE
+import json
+import os
+import sys
+import time
 
 import rclpy
-from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from rclpy.node import Node
 
+from amr_utils import FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE, WHEEL_BASE
 
 # ===========================================================================
 # ROS2-Node
 # ===========================================================================
+
 
 class MotorTestNode(Node):
     """ROS2-Node fuer Motor-Tests mit cmd_vel und Odometrie-Feedback."""
@@ -42,14 +41,13 @@ class MotorTestNode(Node):
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
 
         # Subscriber fuer Odometrie-Feedback
-        self.odom_sub = self.create_subscription(
-            Odometry, "/odom", self._odom_callback, 10)
+        self.odom_sub = self.create_subscription(Odometry, "/odom", self._odom_callback, 10)
 
         # Aktuelle Odometrie
-        self.odom_v = 0.0       # [m/s] lineare Geschwindigkeit
-        self.odom_omega = 0.0   # [rad/s] Winkelgeschwindigkeit
-        self.odom_x = 0.0       # [m] Position x
-        self.odom_y = 0.0       # [m] Position y
+        self.odom_v = 0.0  # [m/s] lineare Geschwindigkeit
+        self.odom_omega = 0.0  # [rad/s] Winkelgeschwindigkeit
+        self.odom_x = 0.0  # [m] Position x
+        self.odom_y = 0.0  # [m] Position y
         self.odom_received = False
         self.last_odom_time = None
 
@@ -105,6 +103,7 @@ class MotorTestNode(Node):
 # Test-Modi
 # ===========================================================================
 
+
 def run_deadzone_test(node):
     """
     Deadzone-Test: Erhoehe cmd_vel in kleinen Schritten,
@@ -133,15 +132,17 @@ def run_deadzone_test(node):
             status = "BEWEGT" if moving else "steht"
 
             sys.stdout.write(
-                f"\r  cmd_vel={v:.2f} m/s -> odom_v={node.odom_v:+.4f} m/s  "
-                f"[{status}]          ")
+                f"\r  cmd_vel={v:.2f} m/s -> odom_v={node.odom_v:+.4f} m/s  [{status}]          "
+            )
             sys.stdout.flush()
 
-            results.append({
-                "cmd_vel": round(v, 3),
-                "odom_v": node.odom_v,
-                "moving": moving,
-            })
+            results.append(
+                {
+                    "cmd_vel": round(v, 3),
+                    "odom_v": node.odom_v,
+                    "moving": moving,
+                }
+            )
 
             if moving and deadzone_threshold is None:
                 deadzone_threshold = v
@@ -157,7 +158,7 @@ def run_deadzone_test(node):
     print()
     if deadzone_threshold is not None:
         print(f"\n  Deadzone-Grenze: {deadzone_threshold:.2f} m/s")
-        print(f"  (Motoren laufen erst ab dieser Geschwindigkeit an)")
+        print("  (Motoren laufen erst ab dieser Geschwindigkeit an)")
     else:
         print("\n  WARNUNG: Keine Bewegung erkannt. Motoren pruefen!")
 
@@ -184,12 +185,12 @@ def run_direction_test(node):
     v_test = 0.15  # [m/s] Testgeschwindigkeit pro Rad
 
     tests = [
-        ("Rechts vorwaerts",   v_test / 2.0,  v_test / WHEEL_BASE),
-        ("Rechts rueckwaerts",-v_test / 2.0, -v_test / WHEEL_BASE),
-        ("Links vorwaerts",    v_test / 2.0, -v_test / WHEEL_BASE),
-        ("Links rueckwaerts", -v_test / 2.0,  v_test / WHEEL_BASE),
-        ("Beide vorwaerts",    v_test,         0.0),
-        ("Beide rueckwaerts", -v_test,         0.0),
+        ("Rechts vorwaerts", v_test / 2.0, v_test / WHEEL_BASE),
+        ("Rechts rueckwaerts", -v_test / 2.0, -v_test / WHEEL_BASE),
+        ("Links vorwaerts", v_test / 2.0, -v_test / WHEEL_BASE),
+        ("Links rueckwaerts", -v_test / 2.0, v_test / WHEEL_BASE),
+        ("Beide vorwaerts", v_test, 0.0),
+        ("Beide rueckwaerts", -v_test, 0.0),
     ]
 
     results = {}
@@ -209,8 +210,9 @@ def run_direction_test(node):
             node.spin_for(0.5)  # Auslaufen lassen
 
             status = "\033[32mOK\033[0m" if moving else "\033[31mKEINE BEWEGUNG\033[0m"
-            print(f"  {name}: v={v_measured:+.4f} m/s, "
-                  f"omega={omega_measured:+.4f} rad/s  [{status}]")
+            print(
+                f"  {name}: v={v_measured:+.4f} m/s, omega={omega_measured:+.4f} rad/s  [{status}]"
+            )
 
             results[name] = {
                 "cmd_linear_x": lin_x,
@@ -268,9 +270,7 @@ def run_failsafe_test(node):
             rclpy.spin_once(node, timeout_sec=0.02)
 
             elapsed_ms = (time.time() - stop_time) * 1000.0
-            sys.stdout.write(
-                f"\r  t={elapsed_ms:.0f} ms  "
-                f"odom_v={node.odom_v:+.4f} m/s    ")
+            sys.stdout.write(f"\r  t={elapsed_ms:.0f} ms  odom_v={node.odom_v:+.4f} m/s    ")
             sys.stdout.flush()
 
             if not node.is_moving() and not failsafe_triggered:
@@ -291,13 +291,13 @@ def run_failsafe_test(node):
 
         if deviation <= tolerance:
             print(f"  Abweichung: {deviation:.0f} ms (Toleranz: +/-{tolerance} ms)")
-            print(f"  Bewertung: \033[32mPASS\033[0m")
+            print("  Bewertung: \033[32mPASS\033[0m")
         else:
             print(f"  Abweichung: {deviation:.0f} ms (Toleranz: +/-{tolerance} ms)")
-            print(f"  Bewertung: \033[31mFAIL\033[0m")
+            print("  Bewertung: \033[31mFAIL\033[0m")
     else:
         print("\n  WARNUNG: Failsafe nicht innerhalb 3s ausgeloest!")
-        print(f"  Bewertung: \033[31mFAIL\033[0m")
+        print("  Bewertung: \033[31mFAIL\033[0m")
         timeout_measured = -1
 
     return {
@@ -338,16 +338,17 @@ def run_ramp_test(node):
             node.send_cmd_vel(linear_x=target_v)
             rclpy.spin_once(node, timeout_sec=0.02)
 
-            data_points.append({
-                "time_s": round(elapsed, 3),
-                "cmd_v": round(target_v, 4),
-                "odom_v": round(node.odom_v, 4),
-            })
+            data_points.append(
+                {
+                    "time_s": round(elapsed, 3),
+                    "cmd_v": round(target_v, 4),
+                    "odom_v": round(node.odom_v, 4),
+                }
+            )
 
             sys.stdout.write(
-                f"\r  t={elapsed:.1f}s  "
-                f"cmd={target_v:.3f} m/s  "
-                f"odom={node.odom_v:+.4f} m/s    ")
+                f"\r  t={elapsed:.1f}s  cmd={target_v:.3f} m/s  odom={node.odom_v:+.4f} m/s    "
+            )
             sys.stdout.flush()
 
         # Halte MAX_VELOCITY fuer 2s
@@ -373,11 +374,11 @@ def run_ramp_test(node):
         print(f"  Tracking-Error: {tracking_error:.4f} m/s")
 
         if tracking_error < 0.05:
-            print(f"  Bewertung: \033[32mGUT (< 50 mm/s Abweichung)\033[0m")
+            print("  Bewertung: \033[32mGUT (< 50 mm/s Abweichung)\033[0m")
         elif tracking_error < 0.10:
-            print(f"  Bewertung: \033[33mAKZEPTABEL (50-100 mm/s)\033[0m")
+            print("  Bewertung: \033[33mAKZEPTABEL (50-100 mm/s)\033[0m")
         else:
-            print(f"  Bewertung: \033[31mSCHLECHT (> 100 mm/s)\033[0m")
+            print("  Bewertung: \033[31mSCHLECHT (> 100 mm/s)\033[0m")
 
     return {
         "ramp_duration_s": ramp_duration,
@@ -391,75 +392,80 @@ def run_ramp_test(node):
 # Protokoll
 # ===========================================================================
 
+
 def generate_markdown(test_results):
     """Erzeugt Markdown-Protokoll."""
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = []
     lines.append("# Motor-Test Protokoll AMR")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"Datum: {ts}")
-    lines.append(f"")
+    lines.append("")
 
     # Deadzone
     dz = test_results.get("deadzone")
     if dz:
         lines.append("## Deadzone-Test")
-        lines.append(f"")
+        lines.append("")
         threshold = dz.get("deadzone_threshold_mps")
         if threshold is not None:
             lines.append(f"Deadzone-Grenze: {threshold:.2f} m/s")
         else:
             lines.append("Deadzone-Grenze: Nicht erkannt (keine Bewegung)")
-        lines.append(f"")
+        lines.append("")
         lines.append("| cmd_vel [m/s] | odom_v [m/s] | Bewegt |")
         lines.append("|---|---|---|")
         for step in dz.get("steps", []):
             lines.append(
                 f"| {step['cmd_vel']:.3f} | {step['odom_v']:.4f} | "
-                f"{'ja' if step['moving'] else 'nein'} |")
-        lines.append(f"")
+                f"{'ja' if step['moving'] else 'nein'} |"
+            )
+        lines.append("")
 
     # Richtung
     dr = test_results.get("direction")
     if dr:
         lines.append("## Richtungstest")
-        lines.append(f"")
-        lines.append("| Test | cmd_lin [m/s] | cmd_ang [rad/s] | "
-                      "odom_v [m/s] | odom_omega [rad/s] | Bewegt |")
+        lines.append("")
+        lines.append(
+            "| Test | cmd_lin [m/s] | cmd_ang [rad/s] | "
+            "odom_v [m/s] | odom_omega [rad/s] | Bewegt |"
+        )
         lines.append("|---|---|---|---|---|---|")
         for name, data in dr.items():
             lines.append(
                 f"| {name} | {data['cmd_linear_x']:.3f} | "
                 f"{data['cmd_angular_z']:.3f} | {data['odom_v']:.4f} | "
                 f"{data['odom_omega']:.4f} | "
-                f"{'ja' if data['moving'] else 'nein'} |")
-        lines.append(f"")
+                f"{'ja' if data['moving'] else 'nein'} |"
+            )
+        lines.append("")
 
     # Failsafe
     fs = test_results.get("failsafe")
     if fs:
         lines.append("## Failsafe-Test")
-        lines.append(f"")
-        lines.append(f"| Parameter | Wert |")
-        lines.append(f"|---|---|")
+        lines.append("")
+        lines.append("| Parameter | Wert |")
+        lines.append("|---|---|")
         lines.append(f"| Erwartetes Timeout | {fs.get('expected_timeout_ms')} ms |")
         lines.append(f"| Gemessenes Timeout | {fs.get('timeout_measured_ms', 'N/A')} ms |")
         lines.append(f"| Ausgeloest | {'ja' if fs.get('failsafe_triggered') else 'nein'} |")
-        lines.append(f"")
+        lines.append("")
 
     # Rampe
     ramp = test_results.get("ramp")
     if ramp:
         lines.append("## Rampen-Test")
-        lines.append(f"")
-        lines.append(f"| Parameter | Wert |")
-        lines.append(f"|---|---|")
+        lines.append("")
+        lines.append("| Parameter | Wert |")
+        lines.append("|---|---|")
         lines.append(f"| Zielgeschwindigkeit | {ramp.get('target_velocity_mps')} m/s |")
         lines.append(f"| Rampendauer | {ramp.get('ramp_duration_s')} s |")
-        final_v = ramp.get('final_odom_v_mps')
+        final_v = ramp.get("final_odom_v_mps")
         if final_v is not None:
             lines.append(f"| Endgeschwindigkeit (Odom) | {final_v:.4f} m/s |")
-        lines.append(f"")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -503,6 +509,7 @@ def save_results(test_results):
 # ===========================================================================
 # Hauptprogramm
 # ===========================================================================
+
 
 def print_menu():
     """Zeigt das Hauptmenue an."""

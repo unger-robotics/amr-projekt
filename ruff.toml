@@ -1,0 +1,51 @@
+# Ruff-Konfiguration fuer AMR-Bachelorarbeit
+# Python-Linting + Formatierung (ersetzt Flake8, Black, isort)
+
+target-version = "py310"
+line-length = 100
+
+# Symlink-Verzeichnis + Nicht-Code ausschliessen
+extend-exclude = [
+    "amr/pi5/ros2_ws/src/my_bot/my_bot",
+    ".venv", ".pio", "node_modules", "dashboard",
+    "build", "install", "log",
+    "suche", "sources", "bachelorarbeit",
+]
+
+[lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # Pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # flake8-bugbear
+    "C4",        # flake8-comprehensions
+    "SIM",       # flake8-simplify
+    "C90",       # McCabe complexity
+]
+ignore = [
+    "E501",    # Zeilenlaenge (formatter)
+    "E741",    # Ambiguous variable names (l, r)
+    "SIM108",  # Ternary statt if/else
+    "B008",    # Function call in default arg
+]
+
+[lint.mccabe]
+max-complexity = 15
+
+[lint.isort]
+known-first-party = ["amr_utils"]
+known-third-party = ["rclpy", "geometry_msgs", "nav_msgs", "sensor_msgs",
+    "std_msgs", "tf2_ros", "cv_bridge", "cv2", "numpy", "websockets", "google"]
+
+[lint.per-file-ignores]
+"amr/scripts/dashboard_bridge.py" = ["F401"]
+"amr/scripts/gemini_semantic_node.py" = ["F401"]
+"amr/scripts/hailo_inference_node.py" = ["F401"]
+"amr/scripts/host_hailo_runner.py" = ["F401"]
+"amr/pi5/ros2_ws/src/my_bot/launch/*.py" = ["E501"]
+"amr/pi5/ros2_ws/src/my_bot/setup.py" = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

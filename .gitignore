@@ -61,3 +61,7 @@ hailort.log
 
 # Profiling / Debug
 gstshark_*/
+
+# Linting-Caches
+.ruff_cache/
+.mypy_cache/

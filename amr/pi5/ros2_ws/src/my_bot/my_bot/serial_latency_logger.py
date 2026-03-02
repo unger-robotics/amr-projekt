@@ -1,1 +1,1 @@
-../../../../../amr/scripts/serial_latency_logger.py
+../../../../../scripts/serial_latency_logger.py

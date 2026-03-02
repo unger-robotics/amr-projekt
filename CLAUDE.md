@@ -85,6 +85,30 @@ WebSocket-Protokoll (Custom JSON, kein rosbridge):
 
 Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `ServoControl.tsx` (Pan/Tilt-Slider 0-180° mit Zentrieren-Button, sendet `servo_cmd` via WebSocket, 10 Hz throttled), `HardwareControl.tsx` (Motor-Limit 0-100%, Servo-Speed 1-10, LED-PWM 0-255 Slider mit Reset-Button, sendet `hardware_cmd` via WebSocket, 10 Hz throttled), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte im Saugroboter-Stil: hellblau befahrbar, dunkelgrau Waende, schwarz unbekannt; weisser Roboter-Pfad-Trail max 500 Punkte mit 2cm Deduplizierung, weisser Richtungspfeil, gruener Mittelpunkt, Image-Smoothing, weisse Massstabsleiste), `CameraView.tsx` (MJPEG mit CSS `rotate-180` fuer kopfueber montierte Kamera, Scanline-Overlay, Vision-BBox-Overlay mit deutschen Labels, Gemini-Semantik-Streifen am unteren Bildrand), `StatusPanel.tsx` (Odom/IMU/Connection inkl. WS-Latenz, Serial Avg/P95), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + Batterie-Abschnitt: Spannungs-/SOC-Balken mit Farbverlauf rot→gruen, Strom/Leistung, 3S1P-Label + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo/INA260-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). Hooks (`src/hooks/`): `useWebSocket.ts` (Reconnection-Logik, `sendServoCmd()` und `sendHardwareCmd()` mit 10 Hz Throttling), `useJoystick.ts` (nipplejs + cmd_vel-Mapping), `useImageFit.ts` (object-contain Canvas-Positionierung). State: `telemetryStore.ts` (Zustand, inkl. Battery/Servo/Hardware-Felder). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
 
+### Linting & Statische Analyse (optional)
+
+```bash
+# Installation (einmalig):
+pip3 install --break-system-packages ruff mypy pre-commit
+sudo apt install clang-format clang-tidy  # Optional: C++ Linting
+pre-commit install                         # Git-Hooks aktivieren
+
+# Python-Linting:
+ruff check .                               # Fehler anzeigen
+ruff format --check .                      # Format-Differenzen anzeigen
+mypy --config-file mypy.ini                # Type-Checking
+
+# C++ Linting (optional):
+clang-format --dry-run --Werror amr/esp32_amr_firmware/src/*.cpp amr/esp32_amr_firmware/src/*.hpp hardware/config.h
+cd amr/esp32_amr_firmware && pio run -t compiledb  # compile_commands.json erzeugen
+clang-tidy -p . src/main.cpp                       # Statische Analyse
+
+# Alle Hooks ausfuehren:
+pre-commit run --all-files
+```
+
+Konfigurationsdateien: `ruff.toml` (Python-Linting), `mypy.ini` (Type-Checking), `.clang-format` (C++-Formatierung), `.clang-tidy` (C++-Analyse), `.pre-commit-config.yaml` (Git-Hooks). Symlink-Verzeichnis `my_bot/my_bot/` wird von allen Linting-Tools ausgeschlossen (Doppel-Scan verhindern).
+
 ### Validierungsskripte (Raspberry Pi)
 
 ```bash

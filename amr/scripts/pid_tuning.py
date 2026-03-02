@@ -15,23 +15,22 @@ Verwendung:
 """
 
 import json
+import math
 import sys
 import time
-import math
 from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 # ===========================================================================
 # Roboter-Parameter
 # ===========================================================================
-SOLL_GESCHWINDIGKEIT = 0.4     # [m/s] Zielgeschwindigkeit
-AUFNAHME_DAUER = 10.0          # [s] Aufnahmedauer Live-Modus
-SPRUNG_VERZOEGERUNG = 2.0      # [s] Wartezeit vor Sprung
+SOLL_GESCHWINDIGKEIT = 0.4  # [m/s] Zielgeschwindigkeit
+AUFNAHME_DAUER = 10.0  # [s] Aufnahmedauer Live-Modus
+SPRUNG_VERZOEGERUNG = 2.0  # [s] Wartezeit vor Sprung
 
-from amr_utils import PID_KP, PID_KI, PID_KD
+from amr_utils import PID_KD, PID_KI, PID_KP
 
 # Aktuelle PID-Werte (aus amr_utils / hardware/config.h)
 KP = PID_KP
@@ -40,10 +39,10 @@ KD = PID_KD
 
 # Akzeptanzkriterien
 # Firmware-Rampe (MAX_ACCEL=5.0 rad/s^2) dominiert: ~2.5s theoretisch
-AKZEPTANZ_ANSTIEGSZEIT = 3.0   # [s]
+AKZEPTANZ_ANSTIEGSZEIT = 3.0  # [s]
 AKZEPTANZ_UEBERSCHWINGEN = 15  # [%]
-AKZEPTANZ_EINSCHWINGZEIT = 1.0 # [s]
-AKZEPTANZ_REGELFEHLER = 5      # [%]
+AKZEPTANZ_EINSCHWINGZEIT = 1.0  # [s]
+AKZEPTANZ_REGELFEHLER = 5  # [%]
 
 
 def live_aufnahme():
@@ -55,9 +54,9 @@ def live_aufnahme():
     """
     try:
         import rclpy
-        from rclpy.node import Node
         from geometry_msgs.msg import Twist
         from nav_msgs.msg import Odometry
+        from rclpy.node import Node
     except ImportError:
         print("Fehler: ROS2 (rclpy) nicht verfuegbar.")
         print("Bitte ROS2 Humble installieren oder Rosbag-Modus verwenden.")
@@ -69,9 +68,7 @@ def live_aufnahme():
         def __init__(self):
             super().__init__("pid_sprungantwort")
             self.publisher = self.create_publisher(Twist, "/cmd_vel", 10)
-            self.subscription = self.create_subscription(
-                Odometry, "/odom", self.odom_callback, 10
-            )
+            self.subscription = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
             self.timestamps = []
             self.velocities = []
             self.start_time = None
@@ -144,9 +141,9 @@ def rosbag_analyse(bag_pfad):
         velocities: numpy-Array mit Ist-Geschwindigkeiten [m/s]
     """
     try:
-        from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
-        from rclpy.serialization import deserialize_message
         from nav_msgs.msg import Odometry
+        from rclpy.serialization import deserialize_message
+        from rosbag2_py import ConverterOptions, SequentialReader, StorageOptions
     except ImportError:
         print("Fehler: rosbag2_py nicht verfuegbar.")
         print("Bitte ROS2 Humble installieren.")
@@ -156,8 +153,7 @@ def rosbag_analyse(bag_pfad):
 
     storage_options = StorageOptions(uri=bag_pfad, storage_id="sqlite3")
     converter_options = ConverterOptions(
-        input_serialization_format="cdr",
-        output_serialization_format="cdr"
+        input_serialization_format="cdr", output_serialization_format="cdr"
     )
 
     reader = SequentialReader()
@@ -223,7 +219,7 @@ def analysiere_sprungantwort(timestamps, velocities, soll=SOLL_GESCHWINDIGKEIT):
     if t_10 is not None and t_90 is not None:
         t_rise = t_90 - t_10
     else:
-        t_rise = float('nan')
+        t_rise = float("nan")
 
     # --- Ueberschwingen ---
     v_max = np.max(v)
@@ -235,7 +231,7 @@ def analysiere_sprungantwort(timestamps, velocities, soll=SOLL_GESCHWINDIGKEIT):
 
     # --- Einschwingzeit: dauerhaft innerhalb +/- 5% ---
     toleranz = 0.05 * soll
-    t_settle = float('nan')
+    t_settle = float("nan")
     # Von hinten suchen: letzte Ueberschreitung der Toleranz
     for i in range(len(v) - 1, -1, -1):
         if abs(v[i] - soll) > toleranz:
@@ -314,7 +310,7 @@ def tuning_empfehlungen(erg):
     soll = erg["soll_m_s"]
     nulldurchgaenge = 0
     for i in range(1, len(v)):
-        if (v[i-1] - soll) * (v[i] - soll) < 0:
+        if (v[i - 1] - soll) * (v[i] - soll) < 0:
             nulldurchgaenge += 1
     if nulldurchgaenge > 6:
         empfehlungen.append(
@@ -348,22 +344,34 @@ def ausgabe_markdown(erg):
 
     print("### Kenngroessen der Sprungantwort")
     print()
-    print(f"| Kenngroesse              | Wert          | Akzeptanz     | Bewertung |")
-    print(f"|:-------------------------|:--------------|:--------------|:----------|")
+    print("| Kenngroesse              | Wert          | Akzeptanz     | Bewertung |")
+    print("|:-------------------------|:--------------|:--------------|:----------|")
 
-    t_rise_str = f"{erg['t_rise_s']:.3f} s" if not math.isnan(erg['t_rise_s']) else "N/A"
-    bew_rise = bewertung(erg['t_rise_s'], AKZEPTANZ_ANSTIEGSZEIT)
-    print(f"| Anstiegszeit (10%-90%)   | {t_rise_str:13s} | < {AKZEPTANZ_ANSTIEGSZEIT} s        | {bew_rise:9s} |")
+    t_rise_str = f"{erg['t_rise_s']:.3f} s" if not math.isnan(erg["t_rise_s"]) else "N/A"
+    bew_rise = bewertung(erg["t_rise_s"], AKZEPTANZ_ANSTIEGSZEIT)
+    print(
+        f"| Anstiegszeit (10%-90%)   | {t_rise_str:13s} | < {AKZEPTANZ_ANSTIEGSZEIT} s        | {bew_rise:9s} |"
+    )
 
-    print(f"| Ueberschwingen           | {erg['overshoot_pct']:.1f} %        | < {AKZEPTANZ_UEBERSCHWINGEN} %        | {bewertung(erg['overshoot_pct'], AKZEPTANZ_UEBERSCHWINGEN):9s} |")
+    print(
+        f"| Ueberschwingen           | {erg['overshoot_pct']:.1f} %        | < {AKZEPTANZ_UEBERSCHWINGEN} %        | {bewertung(erg['overshoot_pct'], AKZEPTANZ_UEBERSCHWINGEN):9s} |"
+    )
 
-    t_settle_str = f"{erg['t_settle_s']:.3f} s" if not math.isnan(erg['t_settle_s']) else "N/A"
-    bew_settle = bewertung(erg['t_settle_s'], AKZEPTANZ_EINSCHWINGZEIT)
-    print(f"| Einschwingzeit (+/-5%)   | {t_settle_str:13s} | < {AKZEPTANZ_EINSCHWINGZEIT} s        | {bew_settle:9s} |")
+    t_settle_str = f"{erg['t_settle_s']:.3f} s" if not math.isnan(erg["t_settle_s"]) else "N/A"
+    bew_settle = bewertung(erg["t_settle_s"], AKZEPTANZ_EINSCHWINGZEIT)
+    print(
+        f"| Einschwingzeit (+/-5%)   | {t_settle_str:13s} | < {AKZEPTANZ_EINSCHWINGZEIT} s        | {bew_settle:9s} |"
+    )
 
-    print(f"| Stationaerer Fehler      | {erg['e_ss_pct']:.1f} %        | < {AKZEPTANZ_REGELFEHLER} %         | {bewertung(erg['e_ss_pct'], AKZEPTANZ_REGELFEHLER):9s} |")
-    print(f"| v_max                    | {erg['v_max_m_s']:.4f} m/s   |               |           |")
-    print(f"| v_steady                 | {erg['v_steady_m_s']:.4f} m/s   |               |           |")
+    print(
+        f"| Stationaerer Fehler      | {erg['e_ss_pct']:.1f} %        | < {AKZEPTANZ_REGELFEHLER} %         | {bewertung(erg['e_ss_pct'], AKZEPTANZ_REGELFEHLER):9s} |"
+    )
+    print(
+        f"| v_max                    | {erg['v_max_m_s']:.4f} m/s   |               |           |"
+    )
+    print(
+        f"| v_steady                 | {erg['v_steady_m_s']:.4f} m/s   |               |           |"
+    )
 
     tuning_empfehlungen(erg)
 
@@ -384,8 +392,14 @@ def erstelle_plot(erg, speicherpfad=None):
 
     # Toleranzband (+/- 5%)
     ax.axhline(y=soll * 1.05, color="gray", linestyle=":", linewidth=0.8, alpha=0.7)
-    ax.axhline(y=soll * 0.95, color="gray", linestyle=":", linewidth=0.8, alpha=0.7,
-               label="+/- 5% Toleranz")
+    ax.axhline(
+        y=soll * 0.95,
+        color="gray",
+        linestyle=":",
+        linewidth=0.8,
+        alpha=0.7,
+        label="+/- 5% Toleranz",
+    )
 
     # 10%- und 90%-Schwellen
     ax.axhline(y=soll * 0.1, color="orange", linestyle=":", linewidth=0.8, alpha=0.5)
@@ -396,23 +410,36 @@ def erstelle_plot(erg, speicherpfad=None):
         ax.axvline(x=erg["t_10_s"], color="orange", linestyle="-", linewidth=0.8, alpha=0.5)
         ax.axvline(x=erg["t_90_s"], color="orange", linestyle="-", linewidth=0.8, alpha=0.5)
         t_mitte = (erg["t_10_s"] + erg["t_90_s"]) / 2
-        ax.annotate(f"t_rise = {erg['t_rise_s']:.3f} s",
-                    xy=(t_mitte, soll * 0.5), fontsize=9,
-                    ha="center", bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow"))
+        ax.annotate(
+            f"t_rise = {erg['t_rise_s']:.3f} s",
+            xy=(t_mitte, soll * 0.5),
+            fontsize=9,
+            ha="center",
+            bbox=dict(boxstyle="round,pad=0.3", fc="lightyellow"),
+        )
 
     # Ueberschwingen markieren
     if erg["overshoot_pct"] > 0:
         idx_max = np.argmax(v)
-        ax.annotate(f"OS = {erg['overshoot_pct']:.1f}%",
-                    xy=(t[idx_max], v[idx_max]),
-                    xytext=(t[idx_max] + 0.3, v[idx_max] + 0.02),
-                    arrowprops=dict(arrowstyle="->", color="red"),
-                    fontsize=9, color="red")
+        ax.annotate(
+            f"OS = {erg['overshoot_pct']:.1f}%",
+            xy=(t[idx_max], v[idx_max]),
+            xytext=(t[idx_max] + 0.3, v[idx_max] + 0.02),
+            arrowprops=dict(arrowstyle="->", color="red"),
+            fontsize=9,
+            color="red",
+        )
 
     # Einschwingzeit markieren
     if not math.isnan(erg["t_settle_s"]) and erg["t_settle_s"] > 0:
-        ax.axvline(x=erg["t_settle_s"] + t[0], color="purple", linestyle="-.",
-                   linewidth=1, alpha=0.7, label=f"t_settle = {erg['t_settle_s']:.3f} s")
+        ax.axvline(
+            x=erg["t_settle_s"] + t[0],
+            color="purple",
+            linestyle="-.",
+            linewidth=1,
+            alpha=0.7,
+            label=f"t_settle = {erg['t_settle_s']:.3f} s",
+        )
 
     ax.set_xlabel("Zeit [s]")
     ax.set_ylabel("Geschwindigkeit [m/s]")
@@ -478,9 +505,13 @@ def main():
     # JSON-Export fuer validation_report.py
     json_export = {
         "soll_m_s": SOLL_GESCHWINDIGKEIT,
-        "rise_time_ms": round(ergebnisse["t_rise_s"] * 1000.0, 1) if not math.isnan(ergebnisse["t_rise_s"]) else None,
+        "rise_time_ms": round(ergebnisse["t_rise_s"] * 1000.0, 1)
+        if not math.isnan(ergebnisse["t_rise_s"])
+        else None,
         "overshoot_pct": round(ergebnisse["overshoot_pct"], 2),
-        "settle_time_ms": round(ergebnisse["t_settle_s"] * 1000.0, 1) if not math.isnan(ergebnisse["t_settle_s"]) else None,
+        "settle_time_ms": round(ergebnisse["t_settle_s"] * 1000.0, 1)
+        if not math.isnan(ergebnisse["t_settle_s"])
+        else None,
         "steady_state_error_pct": round(ergebnisse["e_ss_pct"], 2),
         "v_max_m_s": round(float(ergebnisse["v_max_m_s"]), 4),
         "v_steady_m_s": round(float(ergebnisse["v_steady_m_s"]), 4),
