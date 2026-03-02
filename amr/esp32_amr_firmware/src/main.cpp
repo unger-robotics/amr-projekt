@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "config.h"
+#include <algorithm>
 #include <geometry_msgs/msg/twist.h>
 #include <geometry_msgs/msg/point.h>
 #include <micro_ros_platformio.h>
@@ -229,16 +230,10 @@ void servo_cmd_callback(const void *m) {
         return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
     if (pca9685_ok) {
-        float pan = static_cast<float>(msg->x);
-        if (pan < amr::servo::angle_min_deg)
-            pan = amr::servo::angle_min_deg;
-        if (pan > amr::servo::angle_max_deg)
-            pan = amr::servo::angle_max_deg;
-        float tilt = static_cast<float>(msg->y);
-        if (tilt < amr::servo::angle_min_deg)
-            tilt = amr::servo::angle_min_deg;
-        if (tilt > amr::servo::angle_max_deg)
-            tilt = amr::servo::angle_max_deg;
+        float pan = std::clamp(static_cast<float>(msg->x), amr::servo::angle_min_deg,
+                               amr::servo::angle_max_deg);
+        float tilt = std::clamp(static_cast<float>(msg->y), amr::servo::angle_min_deg,
+                                amr::servo::angle_max_deg);
         servo_cmd.pan = pan;
         servo_cmd.tilt = tilt;
         servo_cmd.update_pending = true;
@@ -249,21 +244,9 @@ void hardware_cmd_callback(const void *m) {
     if (m == nullptr)
         return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
-    float motor = static_cast<float>(msg->x);
-    if (motor < 0.0f)
-        motor = 0.0f;
-    if (motor > 100.0f)
-        motor = 100.0f;
-    float speed = static_cast<float>(msg->y);
-    if (speed < 1.0f)
-        speed = 1.0f;
-    if (speed > 10.0f)
-        speed = 10.0f;
-    float led = static_cast<float>(msg->z);
-    if (led < 0.0f)
-        led = 0.0f;
-    if (led > 255.0f)
-        led = 255.0f;
+    float motor = std::clamp(static_cast<float>(msg->x), 0.0f, 100.0f);
+    float speed = std::clamp(static_cast<float>(msg->y), 1.0f, 10.0f);
+    float led = std::clamp(static_cast<float>(msg->z), 0.0f, 255.0f);
     hw_cmd.motor_limit_pct = motor;
     hw_cmd.servo_speed = speed;
     hw_cmd.led_pwm = led;

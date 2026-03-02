@@ -340,7 +340,7 @@ Zentral in `hardware/config.h` v2.4.0 definiert (Single Source of Truth, C++-Nam
 
 ## Firmware-Constraints
 
-- **C++11**: ESP32-Arduino-Toolchain kompiliert mit C++11. Kein `std::clamp` (C++17) – stattdessen `std::max(min, std::min(val, max))`.
+- **C++17**: ESP32-Arduino-Toolchain kompiliert mit `-std=gnu++17` (GCC 8.4.0). `std::clamp` aus `<algorithm>` verfuegbar. `inline constexpr` fuer Header-Konstanten.
 - **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long` (MISRA-inspiriert). Encoder-Zaehler sind `volatile int32_t`.
 - **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren.
 - **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup).

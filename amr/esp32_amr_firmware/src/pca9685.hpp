@@ -5,6 +5,7 @@
  * @details Datenblatt: NXP PCA9685 Rev. 4
  */
 #include <Wire.h>
+#include <algorithm>
 #include "config.h"
 
 class PCA9685 {
@@ -56,10 +57,7 @@ class PCA9685 {
 
     uint16_t angleToPWM(float angle_deg) {
         // Winkel begrenzen
-        if (angle_deg < amr::servo::angle_min_deg)
-            angle_deg = amr::servo::angle_min_deg;
-        if (angle_deg > amr::servo::angle_max_deg)
-            angle_deg = amr::servo::angle_max_deg;
+        angle_deg = std::clamp(angle_deg, amr::servo::angle_min_deg, amr::servo::angle_max_deg);
         // Linear interpolieren: angle -> ticks
         float fraction = (angle_deg - amr::servo::angle_min_deg) / amr::servo::angle_range_deg;
         return amr::servo::ticks_min +
@@ -117,10 +115,7 @@ class PCA9685 {
     }
 
     void setTargetAngle(uint8_t channel, float angle_deg) {
-        if (angle_deg < amr::servo::angle_min_deg)
-            angle_deg = amr::servo::angle_min_deg;
-        if (angle_deg > amr::servo::angle_max_deg)
-            angle_deg = amr::servo::angle_max_deg;
+        angle_deg = std::clamp(angle_deg, amr::servo::angle_min_deg, amr::servo::angle_max_deg);
         if (channel < NUM_SERVO_CH) {
             target_angle_[channel] = angle_deg;
         }
@@ -167,10 +162,7 @@ class PCA9685 {
     }
 
     void setRampSpeed(float deg_per_step) {
-        if (deg_per_step < 0.1f)
-            deg_per_step = 0.1f;
-        if (deg_per_step > 10.0f)
-            deg_per_step = 10.0f;
+        deg_per_step = std::clamp(deg_per_step, 0.1f, 10.0f);
         ramp_deg_per_step_ = deg_per_step;
     }
 };

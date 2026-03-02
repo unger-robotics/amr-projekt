@@ -25,5 +25,5 @@ BreakBeforeBinaryOperators: None
 AlignConsecutiveDeclarations: false
 AlignConsecutiveAssignments: false
 AlignTrailingComments: true
-Standard: c++11
+Standard: c++17
 ---

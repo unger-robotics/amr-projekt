@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <algorithm>
 #include "config.h"
 
 volatile int32_t encoder_left_count = 0;
@@ -36,8 +37,8 @@ class RobotHAL {
             return;
         }
         int16_t duty =
-            constrain(static_cast<int16_t>(fabsf(speed) * amr::pwm::motor_max),
-                      static_cast<int16_t>(0), static_cast<int16_t>(amr::pwm::motor_max));
+            std::clamp(static_cast<int16_t>(fabsf(speed) * amr::pwm::motor_max),
+                       static_cast<int16_t>(0), static_cast<int16_t>(amr::pwm::motor_max));
         if (duty < static_cast<int16_t>(amr::pwm::deadzone)) {
             duty = static_cast<int16_t>(amr::pwm::deadzone);
         }

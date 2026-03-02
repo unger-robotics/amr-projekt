@@ -54,7 +54,7 @@ Alle Parameter zentral in `../../hardware/config.h` (eingebunden via `-I../../ha
 
 ## Firmware-Constraints
 
-- **C++11**: Kein `std::clamp` (C++17) — stattdessen `std::max(min, std::min(val, max))`
+- **C++17**: Kompiliert mit `-std=gnu++17` (GCC 8.4.0). `std::clamp` aus `<algorithm>` verfuegbar. `inline constexpr` fuer Header-Konstanten.
 - **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long`. Encoder-Zaehler sind `volatile int32_t`
 - **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren
 - **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup)

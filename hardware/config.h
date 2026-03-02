@@ -95,8 +95,8 @@
 // --- Richtungsfaktoren ---
 // +1 = Standardrichtung, -1 = invertiert.
 // Ursache Invertierung links: Motor physisch gedreht montiert.
-constexpr int8_t MOTOR_DIRECTION_LEFT = -1;
-constexpr int8_t MOTOR_DIRECTION_RIGHT = +1;
+inline constexpr int8_t MOTOR_DIRECTION_LEFT = -1;
+inline constexpr int8_t MOTOR_DIRECTION_RIGHT = +1;
 
 // --- Encoder Phase A (Hall-Encoder JGA25-370, 11 CPR) ---
 #define PIN_ENC_LEFT_A D6  // GPIO43 – Phase A (Interrupt-faehig)
@@ -130,13 +130,13 @@ constexpr int8_t MOTOR_DIRECTION_RIGHT = +1;
 
 namespace amr::i2c {
 
-constexpr uint8_t addr_ina260 = 0x40;  // Leistungsmonitor (A0=GND, A1=GND)
-constexpr uint8_t addr_pca9685 = 0x41; // Servo-PWM (Loetbruecke A0 geschlossen!)
-constexpr uint8_t addr_mpu6050 = 0x68; // IMU (AD0=GND)
+inline constexpr uint8_t addr_ina260 = 0x40;  // Leistungsmonitor (A0=GND, A1=GND)
+inline constexpr uint8_t addr_pca9685 = 0x41; // Servo-PWM (Loetbruecke A0 geschlossen!)
+inline constexpr uint8_t addr_mpu6050 = 0x68; // IMU (AD0=GND)
 
-constexpr uint32_t master_freq_hz = 400000; // Fast-mode 400 kHz
+inline constexpr uint32_t master_freq_hz = 400000; // Fast-mode 400 kHz
 
-constexpr bool internal_pullup_enabled = false;
+inline constexpr bool internal_pullup_enabled = false;
 
 } // namespace amr::i2c
 
@@ -146,10 +146,10 @@ constexpr bool internal_pullup_enabled = false;
 
 namespace amr::kinematics {
 
-constexpr float wheel_diameter = 0.06567f; // [m] kalibriert: 2x 1m-Bodentest
-constexpr float wheel_radius = wheel_diameter / 2.0f;
-constexpr float wheel_base = 0.178f; // [m] Spurbreite Mitte-Mitte
-constexpr float wheel_circumference = wheel_diameter * 3.14159265359f;
+inline constexpr float wheel_diameter = 0.06567f; // [m] kalibriert: 2x 1m-Bodentest
+inline constexpr float wheel_radius = wheel_diameter / 2.0f;
+inline constexpr float wheel_base = 0.178f; // [m] Spurbreite Mitte-Mitte
+inline constexpr float wheel_circumference = wheel_diameter * 3.14159265359f;
 
 // ------------------------------------------------------------------
 // ENCODER-KALIBRIERUNG (2025-12-12)
@@ -160,13 +160,13 @@ constexpr float wheel_circumference = wheel_diameter * 3.14159265359f;
 // Rekalibrierung empfohlen bei: Riemenwechsel, Getriebetausch,
 // oder wenn Odometrie-Drift in Phase 3 (SLAM) > 5 % ueber 1 m.
 
-constexpr float ticks_per_rev_left = 748.6f;
-constexpr float ticks_per_rev_right = 747.2f;
+inline constexpr float ticks_per_rev_left = 748.6f;
+inline constexpr float ticks_per_rev_right = 747.2f;
 
-constexpr float ticks_per_rev_avg = (ticks_per_rev_left + ticks_per_rev_right) / 2.0f;
+inline constexpr float ticks_per_rev_avg = (ticks_per_rev_left + ticks_per_rev_right) / 2.0f;
 
-constexpr float meters_per_tick_left = wheel_circumference / ticks_per_rev_left;
-constexpr float meters_per_tick_right = wheel_circumference / ticks_per_rev_right;
+inline constexpr float meters_per_tick_left = wheel_circumference / ticks_per_rev_left;
+inline constexpr float meters_per_tick_right = wheel_circumference / ticks_per_rev_right;
 
 } // namespace amr::kinematics
 
@@ -177,46 +177,46 @@ constexpr float meters_per_tick_right = wheel_circumference / ticks_per_rev_righ
 // --- PWM Konfiguration (Motoren) ---
 namespace amr::pwm {
 
-constexpr uint32_t motor_freq_hz = 20000;              // 20 kHz (unhoerbar, MDD3A-Limit)
-constexpr uint8_t motor_bits = 8;                      // 8-bit Aufloesung
-constexpr uint32_t motor_max = (1u << motor_bits) - 1; // 255
+inline constexpr uint32_t motor_freq_hz = 20000;              // 20 kHz (unhoerbar, MDD3A-Limit)
+inline constexpr uint8_t motor_bits = 8;                      // 8-bit Aufloesung
+inline constexpr uint32_t motor_max = (1u << motor_bits) - 1; // 255
 
 // Deadzone: minimaler PWM-Wert, ab dem der Motor anlaeuft.
 // Kalibriert bei 10,8 V (3S-Pack Nennspannung).
 //   12,6 V (voll):  Motor laeuft bei ~30 an
 //   9,5 V (leer):   Motor braucht ~45
-constexpr uint32_t deadzone = 35;
+inline constexpr uint32_t deadzone = 35;
 
 // --- LED-Streifen PWM ---
 // 10-bit (0…1023) fuer glattes Gamma-Dimmen.
-constexpr uint32_t led_freq_hz = 5000;             // 5 kHz
-constexpr uint8_t led_bits = 10;                   // 10-bit
-constexpr uint32_t led_max = (1u << led_bits) - 1; // 1023
-constexpr uint8_t led_channel = 4;                 // LEDC-Kanal
-constexpr float led_gamma = 2.2f;                  // Gamma-Korrektur
+inline constexpr uint32_t led_freq_hz = 5000;             // 5 kHz
+inline constexpr uint8_t led_bits = 10;                   // 10-bit
+inline constexpr uint32_t led_max = (1u << led_bits) - 1; // 1023
+inline constexpr uint8_t led_channel = 4;                 // LEDC-Kanal
+inline constexpr float led_gamma = 2.2f;                  // Gamma-Korrektur
 
 } // namespace amr::pwm
 
 // --- PID-Parameter (getunt via pid_tuning.py Sprungantwort) ---
 namespace amr::pid {
 
-constexpr float kp = 0.4f; // Proportional (getunt)
-constexpr float ki = 0.1f; // Integral (getunt)
-constexpr float kd = 0.0f; // Derivativ (deaktiviert)
+inline constexpr float kp = 0.4f; // Proportional (getunt)
+inline constexpr float ki = 0.1f; // Integral (getunt)
+inline constexpr float kd = 0.0f; // Derivativ (deaktiviert)
 
-constexpr float i_min = -1.0f; // Anti-Windup untere Grenze
-constexpr float i_max = 1.0f;  // Anti-Windup obere Grenze
+inline constexpr float i_min = -1.0f; // Anti-Windup untere Grenze
+inline constexpr float i_max = 1.0f;  // Anti-Windup obere Grenze
 
-constexpr float output_min = -1.0f; // Normierte Stellgroesse
-constexpr float output_max = 1.0f;
+inline constexpr float output_min = -1.0f; // Normierte Stellgroesse
+inline constexpr float output_max = 1.0f;
 
-constexpr float d_filter_tau = 0.02f; // [s] D-Term-Tiefpass (No-Op bei Kd=0)
+inline constexpr float d_filter_tau = 0.02f; // [s] D-Term-Tiefpass (No-Op bei Kd=0)
 
-constexpr float ema_alpha = 0.3f;             // EMA-Filter fuer Encoder-Rauschen
-constexpr float max_accel_rad_s2 = 5.0f;      // Beschleunigungsrampe [rad/s^2]
-constexpr float deadband_threshold = 0.08f;   // Totzonen-Schwelle (PWM)
-constexpr float hard_stop_threshold = 0.01f;  // Rampe umgehen bei ~0 cmd_vel
-constexpr float stillstand_threshold = 0.01f; // PID umgehen bei ~0 Sollwert
+inline constexpr float ema_alpha = 0.3f;             // EMA-Filter fuer Encoder-Rauschen
+inline constexpr float max_accel_rad_s2 = 5.0f;      // Beschleunigungsrampe [rad/s^2]
+inline constexpr float deadband_threshold = 0.08f;   // Totzonen-Schwelle (PWM)
+inline constexpr float hard_stop_threshold = 0.01f;  // Rampe umgehen bei ~0 cmd_vel
+inline constexpr float stillstand_threshold = 0.01f; // PID umgehen bei ~0 Sollwert
 
 } // namespace amr::pid
 
@@ -252,56 +252,56 @@ namespace amr::servo {
 // PRE_SCALE = round(25.000.000 / (4096 * 50)) - 1 = 121
 // Tatsaechliche Frequenz: 50,08 Hz (Periodendauer 19,97 ms)
 // Zeitaufloesung: 19,97 ms / 4096 = 4,88 µs pro Tick
-constexpr uint8_t pca_prescale = 121;      // 50 Hz Servo-PWM
-constexpr uint16_t pca_ticks_total = 4096; // 12-bit Aufloesung
-constexpr float pca_tick_us = 4.88f;       // [µs] pro Tick
+inline constexpr uint8_t pca_prescale = 121;      // 50 Hz Servo-PWM
+inline constexpr uint16_t pca_ticks_total = 4096; // 12-bit Aufloesung
+inline constexpr float pca_tick_us = 4.88f;       // [µs] pro Tick
 
 // Oszillator-Korrektur (optional):
 // Falls gemessene Frequenz != 50 Hz, hier anpassen:
 //   f_osc_real = 25.000.000 * (f_gemessen / 50)
 // Default: Nominalwert 25 MHz
-constexpr uint32_t pca_osc_hz = 25000000;
+inline constexpr uint32_t pca_osc_hz = 25000000;
 
 // --- Servo-Kanalnummern ---
-constexpr uint8_t ch_pan = 0;
-constexpr uint8_t ch_tilt = 1;
+inline constexpr uint8_t ch_pan = 0;
+inline constexpr uint8_t ch_tilt = 1;
 
 // --- MG90S Pulsbreiten ---
 //
 // MG90S und MG996R verwenden identische PWM-Parameter (500…2500 µs).
 // Sicherer Bereich mit 100 µs Marge zu den mechanischen Endanschlaegen.
 // Kalibrierung: Empirisch pro Exemplar bestimmen.
-constexpr uint16_t pulse_min_us = 600;     // [µs] Sicheres Minimum
-constexpr uint16_t pulse_center_us = 1500; // [µs] Mittelstellung (0°)
-constexpr uint16_t pulse_max_us = 2400;    // [µs] Sicheres Maximum
+inline constexpr uint16_t pulse_min_us = 600;     // [µs] Sicheres Minimum
+inline constexpr uint16_t pulse_center_us = 1500; // [µs] Mittelstellung (0°)
+inline constexpr uint16_t pulse_max_us = 2400;    // [µs] Sicheres Maximum
 
 // Tick-Werte (vorberechnet, bei ON=0):
 //   ticks = pulse_us * 4096 / 20000
-constexpr uint16_t ticks_min = 123;    // 600 µs
-constexpr uint16_t ticks_center = 307; // 1500 µs
-constexpr uint16_t ticks_max = 491;    // 2400 µs
+inline constexpr uint16_t ticks_min = 123;    // 600 µs
+inline constexpr uint16_t ticks_center = 307; // 1500 µs
+inline constexpr uint16_t ticks_max = 491;    // 2400 µs
 
 // --- MG90S Stellbereich ---
-constexpr float angle_range_deg = 180.0f; // Gesamtstellbereich
-constexpr float angle_min_deg = 0.0f;     // Entspricht pulse_min_us
-constexpr float angle_max_deg = 180.0f;   // Entspricht pulse_max_us
+inline constexpr float angle_range_deg = 180.0f; // Gesamtstellbereich
+inline constexpr float angle_min_deg = 0.0f;     // Entspricht pulse_min_us
+inline constexpr float angle_max_deg = 180.0f;   // Entspricht pulse_max_us
 
 // --- Bewegungsprofil (Rampe) ---
 //
 // Sanftes Anfahren/Bremsen reduziert Stromspitzen und mechanische
 // Belastung. PCA9685-Doku Abschnitt 12.3: 1°/20 ms empfohlen.
-constexpr float ramp_deg_per_step = 1.0f; // [°] pro PWM-Zyklus
-constexpr uint32_t ramp_step_ms = 20;     // [ms] = ein PWM-Zyklus (50 Hz)
+inline constexpr float ramp_deg_per_step = 1.0f; // [°] pro PWM-Zyklus
+inline constexpr uint32_t ramp_step_ms = 20;     // [ms] = ein PWM-Zyklus (50 Hz)
 // Resultierende Maximalgeschwindigkeit: 50°/s (1°/20ms)
 // Volle Traverse (180°): 3,6 s
 
 // --- MG996R Strombedarf (bei 6 V Versorgung) ---
 // Quelle: TowerPro MG996R Datenblatt, 11 kg*cm @ 6 V
 // Pan=MG996R (verbaut), Tilt=MG996R (nach Upgrade, aktuell MG90S)
-constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
-constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
-constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
-constexpr float torque_kgcm = 11.0f;      // [kg*cm] @ 6 V (MG996R)
+inline constexpr float idle_current_ma = 10.0f;  // [mA] pro Servo, Haltestrom
+inline constexpr float move_current_ma = 900.0f; // [mA] pro Servo, unter Last
+inline constexpr float stall_current_a = 2.5f;   // [A] pro Servo, Blockierung
+inline constexpr float torque_kgcm = 11.0f;      // [kg*cm] @ 6 V (MG996R)
 
 // --- MG90S Referenzwerte (Tilt aktuell, bis MG996R-Upgrade) ---
 // constexpr float mg90s_move_current_ma = 250.0f; // [mA] unter Last
@@ -332,12 +332,12 @@ constexpr float torque_kgcm = 11.0f;      // [kg*cm] @ 6 V (MG996R)
 
 namespace amr::regulator {
 
-constexpr float vout_nominal_v = 6.0f;  // [V] Feste Ausgangsspannung
-constexpr float vout_tolerance = 0.04f; // ±4 %
-constexpr float vin_min_v = 6.5f;       // [V] Minimum (Datenblatt)
-constexpr float vin_max_v = 50.0f;      // [V] Maximum
-constexpr float iout_max_a = 5.5f;      // [A] @ 36 V, Raumtemperatur
-constexpr float efficiency_typ = 0.92f; // 92 % bei 12 V / 3 A
+inline constexpr float vout_nominal_v = 6.0f;  // [V] Feste Ausgangsspannung
+inline constexpr float vout_tolerance = 0.04f; // ±4 %
+inline constexpr float vin_min_v = 6.5f;       // [V] Minimum (Datenblatt)
+inline constexpr float vin_max_v = 50.0f;      // [V] Maximum
+inline constexpr float iout_max_a = 5.5f;      // [A] @ 36 V, Raumtemperatur
+inline constexpr float efficiency_typ = 0.92f; // 92 % bei 12 V / 3 A
 
 // Power-Good-Ausgang (PG)
 //   Open-Drain, Low bei: V_OUT < 90 % (5,4 V) oder V_OUT > 120 % (7,2 V)
@@ -363,26 +363,26 @@ constexpr float efficiency_typ = 0.92f; // 92 % bei 12 V / 3 A
 namespace amr::timing {
 
 // --- Regelschleife ---
-constexpr uint32_t control_loop_hz = 50;
-constexpr uint32_t control_loop_period_ms = 1000 / control_loop_hz; // 20 ms
+inline constexpr uint32_t control_loop_hz = 50;
+inline constexpr uint32_t control_loop_period_ms = 1000 / control_loop_hz; // 20 ms
 
 // --- Publikationsraten ---
-constexpr uint32_t odom_publish_hz = 20;
-constexpr uint32_t odom_publish_period_ms = 1000 / odom_publish_hz; // 50 ms
+inline constexpr uint32_t odom_publish_hz = 20;
+inline constexpr uint32_t odom_publish_period_ms = 1000 / odom_publish_hz; // 50 ms
 
 // IMU: 50 Hz (konsistent mit MPU6050 SMPLRT_DIV=19, DLPF_CFG=3)
-constexpr uint32_t imu_publish_hz = 50;
-constexpr uint32_t imu_publish_period_ms = 1000 / imu_publish_hz; // 20 ms
+inline constexpr uint32_t imu_publish_hz = 50;
+inline constexpr uint32_t imu_publish_period_ms = 1000 / imu_publish_hz; // 20 ms
 
 // Batterie-Monitoring: INA260
-constexpr uint32_t battery_publish_hz = 2;
-constexpr uint32_t battery_publish_period_ms = 1000 / battery_publish_hz; // 500 ms
+inline constexpr uint32_t battery_publish_hz = 2;
+inline constexpr uint32_t battery_publish_period_ms = 1000 / battery_publish_hz; // 500 ms
 
 // --- Failsafe ---
-constexpr uint32_t failsafe_timeout_ms = 500;
+inline constexpr uint32_t failsafe_timeout_ms = 500;
 
 // --- Watchdog ---
-constexpr uint32_t watchdog_miss_limit = 50; // Core 1 Heartbeat-Zyklen ohne Update
+inline constexpr uint32_t watchdog_miss_limit = 50; // Core 1 Heartbeat-Zyklen ohne Update
 
 } // namespace amr::timing
 
@@ -392,16 +392,16 @@ constexpr uint32_t watchdog_miss_limit = 50; // Core 1 Heartbeat-Zyklen ohne Upd
 
 namespace amr::imu {
 
-constexpr uint32_t calibration_samples = 500;
+inline constexpr uint32_t calibration_samples = 500;
 
 // Komplementaerfilter:
 //   theta[k] = alpha * (theta[k-1] + omega_gyro * dt)
 //            + (1 - alpha) * theta_accel
 // alpha = 0.98 -> 98 % Gyro, 2 % Beschleunigungsmesser
-constexpr float complementary_alpha = 0.98f;
+inline constexpr float complementary_alpha = 0.98f;
 
-constexpr float gyro_sensitivity = 131.0f;    // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
-constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
+inline constexpr float gyro_sensitivity = 131.0f;    // [LSB/(°/s)] FS_SEL=0 (±250 °/s)
+inline constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 
 } // namespace amr::imu
 
@@ -415,17 +415,17 @@ constexpr float accel_sensitivity = 16384.0f; // [LSB/g] AFS_SEL=0 (±2 g)
 namespace amr::safety {
 
 // --- DC-Motor Stall-Schutz ---
-constexpr uint32_t motor_stall_timeout_ms = 2000;     // [ms]
-constexpr float motor_stall_velocity = 0.01f;         // [m/s]
-constexpr float motor_stall_current_a = 2.5f;         // [A] INA260
-constexpr float motor_overcurrent_immediate_a = 5.0f; // [A] Sofort-Aus
+inline constexpr uint32_t motor_stall_timeout_ms = 2000;     // [ms]
+inline constexpr float motor_stall_velocity = 0.01f;         // [m/s]
+inline constexpr float motor_stall_current_a = 2.5f;         // [A] INA260
+inline constexpr float motor_overcurrent_immediate_a = 5.0f; // [A] Sofort-Aus
 
 // --- Servo Stall-Schutz ---
 // PCA9685-Doku Abschnitt 12.3: Falls Servo Zielposition nach
 // 2 s nicht erreicht, PWM abschalten (pca9685_all_off).
 // Erkennung: Winkel-Soll vs. Winkel-Ist (falls Feedback vorhanden)
 // oder zeitbasiert (Bewegung gestartet, kein Erreichen der Position).
-constexpr uint32_t servo_stall_timeout_ms = 2000; // [ms]
+inline constexpr uint32_t servo_stall_timeout_ms = 2000; // [ms]
 
 // Software-Not-Aus fuer Servos:
 //   pca9685_all_off() setzt ALL_LED_OFF_H (0xFD) Bit 4 = 1
@@ -445,56 +445,56 @@ constexpr uint32_t servo_stall_timeout_ms = 2000; // [ms]
 namespace amr::battery {
 
 // --- Zellparameter ---
-constexpr uint8_t cell_count = 3;
-constexpr float cell_nominal_v = 3.60f;
-constexpr float cell_charge_max_v = 4.20f;
-constexpr float cell_cutoff_v = 2.65f;
-constexpr float cell_bms_uvp_v = 2.50f;
+inline constexpr uint8_t cell_count = 3;
+inline constexpr float cell_nominal_v = 3.60f;
+inline constexpr float cell_charge_max_v = 4.20f;
+inline constexpr float cell_cutoff_v = 2.65f;
+inline constexpr float cell_bms_uvp_v = 2.50f;
 
 // --- Kapazitaet ---
-constexpr float capacity_min_mah = 3350.0f;
-constexpr float capacity_typ_mah = 3500.0f;
-constexpr float capacity_design_ah = capacity_min_mah / 1000.0f;
+inline constexpr float capacity_min_mah = 3350.0f;
+inline constexpr float capacity_typ_mah = 3500.0f;
+inline constexpr float capacity_design_ah = capacity_min_mah / 1000.0f;
 
 // --- Stromlimits ---
-constexpr float max_continuous_a = 8.0f;
-constexpr float max_pulse_a = 13.0f;
-constexpr float charge_standard_a = 1.7f;
-constexpr float charge_max_a = 2.0f;
+inline constexpr float max_continuous_a = 8.0f;
+inline constexpr float max_pulse_a = 13.0f;
+inline constexpr float charge_standard_a = 1.7f;
+inline constexpr float charge_max_a = 2.0f;
 
 // --- Innenwiderstand ---
 // Datenblatt (AC, 1 kHz): 35 mOhm/Zelle
 // Gemessen (DC-Puls, IMAX B6AC V2, 2026-02-27): 58 / 61 / 64 mOhm
 // DC-Werte enthalten Uebergangs- und Kabelwiderstaende und sind fuer
 // Spannungseinbruch-Abschaetzung unter Last realistischer.
-constexpr float cell_impedance_ac_mohm = 35.0f; // [mOhm] Datenblatt (AC 1 kHz)
-constexpr float pack_impedance_mohm = 183.0f;   // [mOhm] gemessen DC-Puls (58+61+64)
+inline constexpr float cell_impedance_ac_mohm = 35.0f; // [mOhm] Datenblatt (AC 1 kHz)
+inline constexpr float pack_impedance_mohm = 183.0f;   // [mOhm] gemessen DC-Puls (58+61+64)
 
 // --- 3S-Pack ---
-constexpr float pack_nominal_v = cell_nominal_v * cell_count;       // 10,80 V
-constexpr float pack_charge_max_v = cell_charge_max_v * cell_count; // 12,60 V
-constexpr float pack_cutoff_v = cell_cutoff_v * cell_count;         //  7,95 V
+inline constexpr float pack_nominal_v = cell_nominal_v * cell_count;       // 10,80 V
+inline constexpr float pack_charge_max_v = cell_charge_max_v * cell_count; // 12,60 V
+inline constexpr float pack_cutoff_v = cell_cutoff_v * cell_count;         //  7,95 V
 
-constexpr float cell_charge_eco_v = 4.10f;
-constexpr float pack_charge_eco_v = cell_charge_eco_v * cell_count; // 12,30 V
+inline constexpr float cell_charge_eco_v = 4.10f;
+inline constexpr float pack_charge_eco_v = cell_charge_eco_v * cell_count; // 12,30 V
 
 // --- Energie ---
-constexpr float energy_nominal_wh = pack_nominal_v * capacity_design_ah; // 36,18 Wh
-constexpr float soc_usable_fraction = 0.80f;
-constexpr float energy_usable_wh = energy_nominal_wh * soc_usable_fraction; // 28,94 Wh
+inline constexpr float energy_nominal_wh = pack_nominal_v * capacity_design_ah; // 36,18 Wh
+inline constexpr float soc_usable_fraction = 0.80f;
+inline constexpr float energy_usable_wh = energy_nominal_wh * soc_usable_fraction; // 28,94 Wh
 
 // --- Schutzkonzept (Packspannung) ---
-constexpr float threshold_warning_v = 10.0f;
-constexpr float threshold_motor_shutdown_v = 9.5f;
-constexpr float threshold_system_shutdown_v = 9.0f;
-constexpr float threshold_critical_v = 7.5f;
-constexpr float threshold_hysteresis_v = 0.3f;
+inline constexpr float threshold_warning_v = 10.0f;
+inline constexpr float threshold_motor_shutdown_v = 9.5f;
+inline constexpr float threshold_system_shutdown_v = 9.0f;
+inline constexpr float threshold_critical_v = 7.5f;
+inline constexpr float threshold_hysteresis_v = 0.3f;
 
 // --- Temperaturlimits ---
-constexpr float temp_charge_min_c = 0.0f;
-constexpr float temp_charge_max_c = 45.0f;
-constexpr float temp_discharge_min_c = -10.0f;
-constexpr float temp_discharge_max_c = 60.0f;
+inline constexpr float temp_charge_min_c = 0.0f;
+inline constexpr float temp_charge_max_c = 45.0f;
+inline constexpr float temp_discharge_min_c = -10.0f;
+inline constexpr float temp_discharge_max_c = 60.0f;
 
 } // namespace amr::battery
 
@@ -504,21 +504,21 @@ constexpr float temp_discharge_max_c = 60.0f;
 
 namespace amr::ina260 {
 
-constexpr float current_lsb_ma = 1.25f;
-constexpr float voltage_lsb_mv = 1.25f;
-constexpr float power_lsb_mw = 10.0f;
+inline constexpr float current_lsb_ma = 1.25f;
+inline constexpr float voltage_lsb_mv = 1.25f;
+inline constexpr float power_lsb_mw = 10.0f;
 
 // Konfigurationsregister (0x00): 0x6927
 //   CT = 1,1 ms (beide), AVG = 4, MODE = continuous
 //   t_update = 8,8 ms -> ca. 114 Messungen/s
-constexpr uint16_t config_register = 0x6927;
+inline constexpr uint16_t config_register = 0x6927;
 
-constexpr float current_offset_max_ma = 5.0f;
+inline constexpr float current_offset_max_ma = 5.0f;
 
 // Alert bei Unterspannung: 10,0 V / 1,25 mV = 8000 = 0x1F40
-constexpr uint16_t alert_voltage_limit = 0x1F40;
+inline constexpr uint16_t alert_voltage_limit = 0x1F40;
 
-constexpr float coulomb_capacity_mah = amr::battery::capacity_min_mah;
+inline constexpr float coulomb_capacity_mah = amr::battery::capacity_min_mah;
 
 } // namespace amr::ina260
 

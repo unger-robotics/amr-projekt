@@ -21,14 +21,14 @@ class PidController {
     float compute(float setpoint, float measured, float dt) {
         float error = setpoint - measured;
         integral += error * dt * ki;
-        integral = std::max(min_out, std::min(integral, max_out)); // Anti-Windup
+        integral = std::clamp(integral, min_out, max_out); // Anti-Windup
         float derivative = (error - prev_error) / dt;
         // D-Term-Tiefpass: alpha_d = dt / (tau + dt)
         float alpha_d = dt / (amr::pid::d_filter_tau + dt);
         d_filtered_ = alpha_d * derivative + (1.0f - alpha_d) * d_filtered_;
         float output = (kp * error) + integral + (kd * d_filtered_);
         prev_error = error;
-        return std::max(min_out, std::min(output, max_out));
+        return std::clamp(output, min_out, max_out);
     }
 
     void reset() {
