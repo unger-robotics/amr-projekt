@@ -77,6 +77,9 @@ interface TelemetryState {
   hwMotorLimit: number;
   hwServoSpeed: number;
   hwLedPwm: number;
+  // Serial-Transport Latenz (ESP32 → Pi)
+  serialLatencyAvg: number;
+  serialLatencyP95: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -107,6 +110,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   processesRunning: 0, processesTotal: 0, ina260Active: false,
   servoPan: 90, servoTilt: 90,
   hwMotorLimit: 100, hwServoSpeed: 5, hwLedPwm: 0,
+  serialLatencyAvg: 0, serialLatencyP95: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -135,6 +139,10 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
       hwMotorLimit: msg.hardware.motor_limit,
       hwServoSpeed: msg.hardware.servo_speed,
       hwLedPwm: msg.hardware.led_pwm,
+    }),
+    ...(msg.connection.latency && {
+      serialLatencyAvg: msg.connection.latency.avg_ms,
+      serialLatencyP95: msg.connection.latency.p95_ms,
     }),
   }),
 

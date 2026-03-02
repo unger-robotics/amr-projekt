@@ -195,6 +195,7 @@ def generate_launch_description():
             'pixel_format': 'YUYV',
             'output_encoding': 'bgr8',
             'camera_frame_id': 'camera_link',
+            'camera_info_url': '',
         }],
         remappings=[
             ('image_raw', '/camera/image_raw'),

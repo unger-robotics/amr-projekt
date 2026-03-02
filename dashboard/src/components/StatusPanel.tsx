@@ -36,6 +36,8 @@ export function StatusPanel({ connected, latencyMs }: StatusPanelProps) {
   const esp32Active = useTelemetryStore((s) => s.esp32Active);
   const odomHz = useTelemetryStore((s) => s.odomHz);
   const scanHz = useTelemetryStore((s) => s.scanHz);
+  const serialLatencyAvg = useTelemetryStore((s) => s.serialLatencyAvg);
+  const serialLatencyP95 = useTelemetryStore((s) => s.serialLatencyP95);
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 overflow-y-auto hud-glow">
@@ -51,13 +53,15 @@ export function StatusPanel({ connected, latencyMs }: StatusPanelProps) {
               {connected ? 'WebSocket verbunden' : 'Getrennt'}
             </span>
           </div>
-          <Row label="Latenz" value={`${Math.round(latencyMs)} ms`} />
+          <Row label="WS-Latenz" value={`${Math.round(latencyMs)} ms`} />
           <div className="flex items-center gap-2 text-xs">
             <Dot active={esp32Active} />
             <span className={esp32Active ? 'text-hud-green' : 'text-hud-red'}>
               ESP32 {esp32Active ? 'aktiv' : 'inaktiv'}
             </span>
           </div>
+          <Row label="Serial Avg" value={`${serialLatencyAvg.toFixed(0)} ms`} />
+          <Row label="Serial P95" value={`${serialLatencyP95.toFixed(0)} ms`} />
         </div>
       </section>
 

@@ -37,6 +37,7 @@ setup(
             'rotation_test = my_bot.rotation_test:main',
             'straight_drive_test = my_bot.straight_drive_test:main',
             'rplidar_test = my_bot.rplidar_test:main',
+            'serial_latency_logger = my_bot.serial_latency_logger:main',
             'odom_to_tf = my_bot.odom_to_tf:main',
             'dashboard_bridge = my_bot.dashboard_bridge:main',
             'hailo_inference_node = my_bot.hailo_inference_node:main',

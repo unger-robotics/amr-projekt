@@ -32,6 +32,13 @@ export interface TelemetryMsg {
     esp32_active: boolean;
     odom_hz: number;
     scan_hz: number;
+    latency?: {
+      min_ms: number;
+      avg_ms: number;
+      max_ms: number;
+      p95_ms: number;
+      samples: number;
+    };
   };
   battery?: BatteryData;
   servo?: ServoData;

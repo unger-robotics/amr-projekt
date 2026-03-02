@@ -354,6 +354,9 @@ class DashboardBridge(Node):
         self.latest_jpeg = None
         self.odom_times = deque(maxlen=HZ_WINDOW)
         self.scan_times = deque(maxlen=HZ_WINDOW)
+        self.odom_latencies = deque(maxlen=100)
+        self.imu_latencies = deque(maxlen=100)
+        self._last_latency_log = 0.0
         self.last_cmd_time = 0.0
         self.last_heartbeat_time = 0.0
         self.battery_data = None         # dict: voltage, current, power, percentage, runtime_min
@@ -457,10 +460,21 @@ class DashboardBridge(Node):
         with self.lock:
             self.latest_odom = msg
             self.odom_times.append(now)
+            stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+            if stamp_s > 1e9:
+                latency_ms = (now - stamp_s) * 1000.0
+                if -500.0 < latency_ms < 2000.0:
+                    self.odom_latencies.append(latency_ms)
 
     def _imu_cb(self, msg):
+        now = time.time()
         with self.lock:
             self.latest_imu = msg
+            stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+            if stamp_s > 1e9:
+                latency_ms = (now - stamp_s) * 1000.0
+                if -500.0 < latency_ms < 2000.0:
+                    self.imu_latencies.append(latency_ms)
 
     def _scan_cb(self, msg):
         now = time.time()
@@ -714,6 +728,19 @@ class DashboardBridge(Node):
             return 0.0
         return (len(timestamps) - 1) / dt
 
+    def _compute_latency_stats(self, latencies):
+        """Berechnet Latenz-Statistiken aus einer deque (Lock muss gehalten werden)."""
+        if len(latencies) < 5:
+            return None
+        vals = sorted(latencies)
+        return {
+            'min_ms': round(vals[0], 1),
+            'avg_ms': round(sum(vals) / len(vals), 1),
+            'max_ms': round(vals[-1], 1),
+            'p95_ms': round(vals[int(len(vals) * 0.95)], 1),
+            'samples': len(vals),
+        }
+
     def build_telemetry(self):
         """Erstellt das Telemetrie-JSON-Dictionary."""
         with self.lock:
@@ -727,6 +754,7 @@ class DashboardBridge(Node):
             hw_motor_limit = self.hw_motor_limit
             hw_servo_speed = self.hw_servo_speed
             hw_led_pwm = self.hw_led_pwm
+            latency_stats = self._compute_latency_stats(self.odom_latencies)
 
         # Odom-Daten
         odom_data = {
@@ -755,6 +783,16 @@ class DashboardBridge(Node):
         # Verbindungsstatus
         esp32_active = odom_hz > 1.0
 
+        # Periodisches Latenz-Logging
+        now_log = time.time()
+        if now_log - self._last_latency_log > 30.0:
+            self._last_latency_log = now_log
+            if latency_stats:
+                self.get_logger().info(
+                    'Serial-Latenz: avg=%.1f ms, p95=%.1f ms, max=%.1f ms (n=%d)'
+                    % (latency_stats['avg_ms'], latency_stats['p95_ms'],
+                       latency_stats['max_ms'], latency_stats['samples']))
+
         return {
             'op': 'telemetry',
             'ts': round(time.time(), 3),
@@ -774,6 +812,7 @@ class DashboardBridge(Node):
                 'esp32_active': esp32_active,
                 'odom_hz': round(odom_hz, 1),
                 'scan_hz': round(scan_hz, 1),
+                'latency': latency_stats,
             },
         }
 
