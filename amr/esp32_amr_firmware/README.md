@@ -51,6 +51,8 @@ Core 0 (loop)                      Core 1 (controlTask)
 | `pid_controller.hpp` | PID-Regler mit Anti-Windup, Ausgangsbereich [-1.0, 1.0] |
 | `diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik, Odometrie-Integration |
 | `mpu6050.hpp` | MPU6050 I2C-Treiber (±2g Accel, ±250°/s Gyro), Bias-Kalibrierung, Complementary-Filter |
+| `ina260.hpp` | TI INA260 I2C-Leistungsmonitor: Spannung, Strom, Leistung, Unterspannungs-Alert |
+| `pca9685.hpp` | NXP PCA9685 I2C-Servo-PWM: `setTargetAngle()`, nicht-blockierende Rampe, `allOff()` Notaus |
 
 ### Safety-Mechanismen
 
@@ -83,10 +85,10 @@ Alle Hardware-Parameter sind zentral in `../../hardware/config.h` definiert (Sin
 | `CONTROL_LOOP_HZ` | 50 Hz | PID-Regelfrequenz |
 | `ODOM_PUBLISH_HZ` | 20 Hz | Odometrie-Publikationsrate |
 | `FAILSAFE_TIMEOUT_MS` | 500 ms | Timeout bis Motorstopp |
-| `IMU_PUBLISH_HZ` | 20 Hz | IMU-Publikationsrate |
+| `IMU_PUBLISH_HZ` | 50 Hz | IMU-Publikationsrate |
 | `IMU_COMPLEMENTARY_ALPHA` | 0.02 | Complementary-Filter Gewichtung (Accelerometer-Anteil) |
 
-PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `main.cpp` hardcoded.
+PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `config.h` definiert (`amr::pid::kp/ki/kd`).
 
 ### Signalverarbeitung
 
@@ -96,7 +98,7 @@ PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `main.cpp` hardcoded.
 
 ## Hinweise
 
-- **C++11**: Die ESP32-Arduino-Toolchain kompiliert mit C++11. Kein `std::clamp` verfuegbar.
+- **C++17**: Kompiliert mit `-std=gnu++17` (GCC 8.4.0). `std::clamp` und `inline constexpr` verfuegbar.
 - **Kein Reconnect**: Nach Agent-Verlust muss der ESP32 per Reset neu verbunden werden.
 - **Reliable QoS**: Odometrie wird mit Reliable QoS publiziert, da `nav_msgs/Odometry` (~725 Bytes) die XRCE-DDS MTU von 512 Bytes ueberschreitet und Fragmentierung erfordert.
 
