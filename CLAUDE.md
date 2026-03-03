@@ -391,6 +391,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 - `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
 - `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
 - `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
+- `amr/scripts/README.md` – Klassifikationstabelle aller 25 Skripte nach Rolle (Runtime-Nodes, Validierungstests, Standalone-Utils, Host-Only)
 - `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8L (aus Hailo Model Zoo v2.11.0, 25 MB, in `.gitignore`)
 - `Dashboard-Start-Live-Betrieb.md` – Vollstaendige Startanleitung fuer Dashboard + Vision + SLAM Live-Betrieb (3 Terminals, 13 Komponenten, Reihenfolge, Troubleshooting)
 
@@ -405,7 +406,7 @@ Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dat
 
 ## Nicht-getrackte Dateien (.gitignore)
 
-Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`, `amr/docker/.env` (Secrets), `*.log` (Log-Dateien), `gstshark_*/` (Profiling-Daten).
+Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `compile_commands.json` (PlatformIO), `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`, `amr/docker/.env` (Secrets), `*.log` (Log-Dateien), `gstshark_*/` (Profiling-Daten).
 
 `objekterkennung/` ist getrackt: Konzepte und Planungsdokumente fuer Objekterkennung (Hailo-8 AI Accelerator, Pan-Tilt-System, ReSpeaker Mikrofon-Array, Datenblaetter, Rechnungen, TikZ-Diagramme, 16 Komponentendokus in `objekterkennung/docs/`). Die implementierte Vision-Pipeline (`hailo_udp_receiver_node`, `host_hailo_runner.py`, `hailo_inference_node` Legacy, `gemini_semantic_node`) liegt in `amr/scripts/`.
 
