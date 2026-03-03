@@ -5,6 +5,7 @@ __pycache__/
 
 # PlatformIO
 .pio/
+compile_commands.json
 
 # macOS
 .DS_Store
