@@ -15,11 +15,11 @@ Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt (`amr/mcu_firm
 ```bash
 # Drive-Node (Antrieb, PID, Odometrie, LED):
 cd amr/mcu_firmware/drive_node/
-pio run                       # Firmware kompilieren
-pio run -t upload             # Auf ESP32 flashen (921600 Baud, /dev/amr_drive)
-pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
-pio run -t upload -t monitor  # Upload + Monitor kombiniert
-pio run -e led_test -t upload -t monitor  # MOSFET-Diagnose (ohne micro-ROS, ~5s Build)
+pio run -e drive_node              # Firmware kompilieren
+pio run -e drive_node -t upload    # Auf ESP32 flashen (921600 Baud, /dev/amr_drive)
+pio run -e drive_node -t monitor   # Seriellen Monitor starten (115200 Baud)
+pio run -e drive_node -t upload -t monitor  # Upload + Monitor kombiniert
+pio run -e led_test -t upload -t monitor    # MOSFET-Diagnose (ohne micro-ROS, ~5s Build)
 
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
 cd amr/mcu_firmware/sensor_node/
@@ -355,8 +355,8 @@ ros2 topic hz /vision/detections   # ~5 Hz erwartet
 Die ESP32-Ports werden von 3 Projekten geteilt (`selection-panel.service`, `embedded-bridge.service`, AMR Docker). Lockfile: `/var/lock/esp32-serial.lock` (flock-basiert).
 
 **Stabile Device-Pfade (udev):** `host_setup.sh` erstellt udev-Symlinks, die unabhaengig von der USB-Enumerierungsreihenfolge stabil bleiben:
-- `/dev/amr_drive` → XIAO ESP32-S3 #1 Drive-Node (udev via Seriennummer)
-- `/dev/amr_sensor` → XIAO ESP32-S3 #2 Sensor-Node (udev via Seriennummer)
+- `/dev/amr_drive` → XIAO ESP32-S3 Drive-Node (Serial `E8:06:90:9D:9B:A0`)
+- `/dev/amr_sensor` → XIAO ESP32-S3 Sensor-Node (Serial `98:3D:AE:EA:08:1C`)
 - `/dev/amr_lidar` → RPLIDAR A1 (Vendor 10c4, Product ea60)
 
 ```bash
@@ -457,5 +457,5 @@ Die implementierte Vision-Pipeline (`hailo_udp_receiver_node`, `host_hailo_runne
 - **Batterie-Shutdown zu frueh**: `threshold_motor_shutdown_v` (9.5 V) evtl. zu hoch bei hohem Strom (Spannungseinbruch durch Pack-Impedanz 183 mOhm). INA260-Spannung unter Last pruefen: `ros2 topic echo /battery --once`.
 - **PlatformIO penv fehlt (Debian Trixie)**: PEP 668 blockiert `pip install` im micro-ROS Build. Fix: `python3 -m venv /home/pi/.platformio/penv && /home/pi/.platformio/penv/bin/pip install lark-parser importlib-resources pyyaml "markupsafe==2.0.1" "empy==3.3.4" catkin_pkg "colcon-common-extensions>=0.3.0"`. Einmalig, penv bleibt persistent.
 - **Docker: /dev/amr_drive nicht gefunden**: udev-Symlinks existieren nur auf dem Host, NICHT im Container (trotz `privileged: true`). Fix: Launch-Args mit physischen Pfaden verwenden: `drive_serial_port:=/dev/ttyACM0 sensor_serial_port:=/dev/ttyACM1`.
-- **LED-Test ueberschreibt Drive-Firmware**: `pio run -e led_test -t upload` flasht MOSFET-Diagnose (kein micro-ROS). micro-ROS Agent kann keine Session herstellen. Fix: `pio run -e drive_node -t upload` ausfuehren. Pruefen: Serieller Output zeigt binaere XRCE-DDS-Daten statt Text.
+- **LED-Test ueberschreibt Drive-Firmware**: `pio run -t upload` (ohne `-e`) flasht das LETZTE Environment (led_test), nicht drive_node! Immer `pio run -e drive_node -t upload` verwenden. Pruefen: Serieller Output zeigt binaere XRCE-DDS-Daten statt Text-Ausgabe wie `duty= 255/1023`.
 - **SetRemap fehlt in Humble**: `from launch.actions import SetRemap` gibt ImportError — SetRemap existiert erst ab ROS2 Iron. Nav2 cmd_vel-Remap fuer Cliff-Safety bei `use_nav:=True` ist daher nicht implementiert. Workaround: `use_nav:=False` verwenden oder Remap via `launch_arguments` in `navigation_launch.py` konfigurieren.
