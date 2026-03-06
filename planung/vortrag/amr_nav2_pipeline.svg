@@ -1,0 +1,94 @@
+<svg viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .label { font-family: sans-serif; font-size: 14px; font-weight: bold; fill: #333; }
+    .sub-label { font-family: sans-serif; font-size: 11px; fill: #666; }
+    .code-label { font-family: monospace; font-size: 11px; fill: #c51a4a; font-weight: bold; }
+    .box { stroke-width: 2; fill: #fff; rx: 8; }
+
+    .input-box { stroke: #3498db; fill: #ebf5fb; stroke-dasharray: 4,4; }
+    .nav-box { stroke: #c51a4a; fill: #f8e8ec; }
+    .cost-box { stroke: #9b59b6; fill: #f4ecf7; }
+    .plan-box { stroke: #1abc9c; fill: #e8f8f5; }
+    .ctrl-box { stroke: #e67e22; fill: #fdf2e9; }
+    .output-box { stroke: #d35400; fill: #fae5d3; stroke-dasharray: 4,4; }
+
+    .data-line { fill: none; stroke: #bdc3c7; stroke-width: 2; stroke-linecap: round; }
+    .data-line-thick { fill: none; stroke: #7f8c8d; stroke-width: 3; stroke-linecap: round; }
+    marker { fill: #bdc3c7; }
+    marker#arrow-thick { fill: #7f8c8d; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+    <marker id="arrow-thick" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+  </defs>
+
+  <rect width="800" height="550" fill="#fafafa" />
+  <text x="400" y="30" text-anchor="middle" class="label" style="font-size: 16px;">Navigations-Pipeline (ROS 2 Nav2 Stack)</text>
+
+  <g transform="translate(30, 80)">
+    <rect x="0" y="0" width="140" height="50" class="box input-box" />
+    <text x="70" y="20" text-anchor="middle" class="code-label">/scan (LiDAR)</text>
+    <text x="70" y="35" text-anchor="middle" class="sub-label">~7,6 Hz</text>
+
+    <rect x="0" y="80" width="140" height="50" class="box input-box" />
+    <text x="70" y="100" text-anchor="middle" class="code-label">/odom (ESP32)</text>
+    <text x="70" y="115" text-anchor="middle" class="sub-label">20 Hz Odometrie</text>
+
+    <rect x="0" y="160" width="140" height="50" class="box input-box" />
+    <text x="70" y="180" text-anchor="middle" class="code-label">Nav Goal</text>
+    <text x="70" y="195" text-anchor="middle" class="sub-label">Zielkoordinate (RViz)</text>
+  </g>
+
+  <rect x="250" y="80" width="220" height="130" class="box nav-box" />
+  <text x="360" y="105" text-anchor="middle" class="label">SLAM Toolbox &amp; AMCL</text>
+  <text x="360" y="125" text-anchor="middle" class="sub-label">Lokalisierung &amp; Kartierung</text>
+  <text x="360" y="145" text-anchor="middle" class="sub-label">Grid-Auflösung: 5 cm</text>
+  <text x="360" y="165" text-anchor="middle" class="sub-label">Loop Closure aktiv</text>
+  <text x="360" y="190" text-anchor="middle" class="code-label">TF: map -> odom</text>
+
+  <rect x="250" y="250" width="220" height="110" class="box cost-box" />
+  <text x="360" y="275" text-anchor="middle" class="label">Costmap 2D</text>
+  <text x="360" y="295" text-anchor="middle" class="sub-label">Global &amp; Local Layer</text>
+  <text x="360" y="315" text-anchor="middle" class="sub-label">Roboter-Radius: 15 cm</text>
+  <text x="360" y="335" text-anchor="middle" class="sub-label">Inflation: 35 cm</text>
+
+  <rect x="530" y="150" width="220" height="90" class="box plan-box" />
+  <text x="640" y="175" text-anchor="middle" class="label">NavFn Global Planner</text>
+  <text x="640" y="195" text-anchor="middle" class="sub-label">Routenplanung (A* / Dijkstra)</text>
+  <text x="640" y="215" text-anchor="middle" class="code-label">nav_msgs/Path</text>
+
+  <rect x="530" y="300" width="220" height="110" class="box ctrl-box" />
+  <text x="640" y="325" text-anchor="middle" class="label">Pure Pursuit Controller</text>
+  <text x="640" y="345" text-anchor="middle" class="sub-label">Lokale Bahnverfolgung (10 Hz)</text>
+  <text x="640" y="365" text-anchor="middle" class="sub-label">Lookahead: 0.5 m</text>
+  <text x="640" y="385" text-anchor="middle" class="sub-label">v_max: 0.4 m/s</text>
+
+  <rect x="560" y="470" width="160" height="50" class="box output-box" />
+  <text x="640" y="490" text-anchor="middle" class="code-label">/cmd_vel (Twist)</text>
+  <text x="640" y="505" text-anchor="middle" class="sub-label">An ESP32-Steuerung</text>
+
+  <path d="M170 105 L250 105" class="data-line" marker-end="url(#arrow)" />
+  <path d="M170 185 L220 185 L220 150 L250 150" class="data-line" marker-end="url(#arrow)" />
+
+  <path d="M170 115 L190 115 L190 280 L250 280" class="data-line" marker-end="url(#arrow)" />
+
+  <path d="M360 210 L360 250" class="data-line" marker-end="url(#arrow)" />
+  <text x="370" y="235" class="sub-label" text-anchor="start">occupancy grid</text>
+
+  <path d="M470 280 L510 280 L510 180 L530 180" class="data-line" marker-end="url(#arrow)" />
+
+  <path d="M170 265 L210 265 L210 430 L490 430 L490 200 L530 200" class="data-line" marker-end="url(#arrow)" />
+  <text x="350" y="420" class="sub-label" text-anchor="middle">Goal Pose</text>
+
+  <path d="M470 330 L530 330" class="data-line" marker-end="url(#arrow)" />
+
+  <path d="M640 240 L640 300" class="data-line-thick" marker-end="url(#arrow-thick)" />
+  <text x="655" y="275" class="sub-label" style="font-weight:bold;" text-anchor="start">Globaler Pfad</text>
+
+  <path d="M640 410 L640 470" class="data-line-thick" marker-end="url(#arrow-thick)" />
+</svg>

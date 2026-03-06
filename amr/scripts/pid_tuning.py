@@ -32,7 +32,7 @@ SOLL_GESCHWINDIGKEIT = 0.4  # [m/s] Zielgeschwindigkeit
 AUFNAHME_DAUER = 10.0  # [s] Aufnahmedauer Live-Modus
 SPRUNG_VERZOEGERUNG = 2.0  # [s] Wartezeit vor Sprung
 
-# Aktuelle PID-Werte (aus amr_utils / hardware/config.h)
+# Aktuelle PID-Werte (aus amr_utils / mcu_firmware/drive_node/include/config.h)
 KP = PID_KP
 KI = PID_KI
 KD = PID_KD

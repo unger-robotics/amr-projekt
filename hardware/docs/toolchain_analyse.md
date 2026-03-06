@@ -15,7 +15,7 @@
 | C++-Standard | **C++11** (Default: `-std=gnu++11`) |
 | micro-ROS | `board_microros_distro = humble` (Serial Transport) |
 
-Die Firmware (`amr/esp32_amr_firmware/`) nutzt das Arduino-Framework mit micro-ROS ueber UART.
+Die Firmware (`amr/mcu_firmware/drive_node/`) nutzt das Arduino-Framework mit micro-ROS ueber UART.
 Die Toolchain wird durch das Arduino-ESP32 Core-Paket bestimmt -- nicht durch die PlatformIO-Platform-Version.
 
 ## 2. Verfuegbare Toolchain-Versionen

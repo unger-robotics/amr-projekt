@@ -2,28 +2,34 @@
 """
 Kombiniertes ROS2 Launch-File fuer den vollstaendigen AMR-Stack.
 
+Zwei-Node-Architektur: Drive-Node (Motoren, Odometrie, PID, IMU, Batterie, Servo)
+und Sensor-Node (Ultraschall HC-SR04, Cliff-Erkennung MH-B) auf separaten ESP32-S3.
+
 Startet:
-  1. micro-ROS Agent (Serial Transport, UART zu XIAO ESP32-S3)
-  2. SLAM Toolbox (async Online-Modus)
-  3. Nav2 Navigation Stack (RPP Controller, NavFn Planer)
-  4. RViz2 (optional)
+  1. micro-ROS Agent Drive (Serial Transport, UART zu Drive ESP32-S3)
+  2. micro-ROS Agent Sensor (Serial Transport, UART zu Sensor ESP32-S3, optional)
+  3. SLAM Toolbox (async Online-Modus)
+  4. Nav2 Navigation Stack (RPP Controller, NavFn Planer)
+  5. RViz2 (optional)
 
 Verwendung:
   ros2 launch my_bot full_stack.launch.py
   ros2 launch my_bot full_stack.launch.py use_rviz:=False
-  ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0
+  ros2 launch my_bot full_stack.launch.py drive_serial_port:=/dev/ttyACM0
+  ros2 launch my_bot full_stack.launch.py use_sensors:=False  # Ohne Sensor-Node
   ros2 launch my_bot full_stack.launch.py use_slam:=False  # Nur Navigation mit bestehender Karte
 """
 
-from launch import LaunchDescription  # type: ignore[attr-defined]
+from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
+    GroupAction,
     IncludeLaunchDescription,
 )
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -55,10 +61,20 @@ def generate_launch_description():
         default_value="True",
         description="RViz2 Visualisierung starten",
     )
-    declare_serial_port = DeclareLaunchArgument(
-        "serial_port",
-        default_value="/dev/ttyACM0",
-        description="Serieller Port fuer micro-ROS Agent (USB-CDC zum XIAO ESP32-S3)",
+    declare_drive_serial_port = DeclareLaunchArgument(
+        "drive_serial_port",
+        default_value="/dev/amr_drive",
+        description="Serieller Port fuer micro-ROS Agent Drive-Node (USB-CDC zum XIAO ESP32-S3)",
+    )
+    declare_sensor_serial_port = DeclareLaunchArgument(
+        "sensor_serial_port",
+        default_value="/dev/amr_sensor",
+        description="Serieller Port fuer micro-ROS Agent Sensor-Node (USB-CDC zum XIAO ESP32-S3)",
+    )
+    declare_use_sensors = DeclareLaunchArgument(
+        "use_sensors",
+        default_value="True",
+        description="Sensor-Node ESP32-S3 (Ultraschall HC-SR04, Cliff MH-B) starten",
     )
     declare_params_file = DeclareLaunchArgument(
         "params_file",
@@ -90,6 +106,16 @@ def generate_launch_description():
         default_value="False",
         description="Vision-Pipeline starten (Hailo UDP Receiver + Gemini Semantik). "
         "host_hailo_runner.py separat auf dem Host starten!",
+    )
+    declare_use_cliff_safety = DeclareLaunchArgument(
+        "use_cliff_safety",
+        default_value="True",
+        description="Cliff-Safety cmd_vel-Multiplexer",
+    )
+    declare_use_audio = DeclareLaunchArgument(
+        "use_audio",
+        default_value="False",
+        description="Audio-Feedback-Node (MAX98357A)",
     )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
@@ -126,10 +152,10 @@ def generate_launch_description():
         ],
     )
 
-    # --- 1. micro-ROS Agent (Serial Transport) ---
-    # Verbindet XIAO ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
-    # Publiziert /odom, subscribt /cmd_vel.
-    micro_ros_agent = ExecuteProcess(
+    # --- 1a. micro-ROS Agent Drive (Serial Transport) ---
+    # Verbindet Drive ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
+    # Publiziert /odom, /imu, /battery, subscribt /cmd_vel, /servo_cmd, /hardware_cmd.
+    micro_ros_agent_drive = ExecuteProcess(
         cmd=[
             "ros2",
             "run",
@@ -137,15 +163,35 @@ def generate_launch_description():
             "micro_ros_agent",
             "serial",
             "--dev",
-            LaunchConfiguration("serial_port"),
+            LaunchConfiguration("drive_serial_port"),
             "-b",
             "115200",
         ],
-        name="micro_ros_agent",
+        name="micro_ros_agent_drive",
         output="screen",
     )
 
-    # --- 1b. Odom-zu-TF Bridge ---
+    # --- 1b. micro-ROS Agent Sensor (Serial Transport, optional) ---
+    # Verbindet Sensor ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
+    # Publiziert /range/front, /cliff.
+    micro_ros_agent_sensor = ExecuteProcess(
+        cmd=[
+            "ros2",
+            "run",
+            "micro_ros_agent",
+            "micro_ros_agent",
+            "serial",
+            "--dev",
+            LaunchConfiguration("sensor_serial_port"),
+            "-b",
+            "115200",
+        ],
+        name="micro_ros_agent_sensor",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_sensors")),
+    )
+
+    # --- 1c. Odom-zu-TF Bridge ---
     # micro-ROS publiziert nur /odom (Odometry), aber keinen TF.
     # Dieser Node erzeugt den dynamischen TF odom -> base_link.
     odom_to_tf_node = Node(
@@ -166,7 +212,35 @@ def generate_launch_description():
     )
 
     # --- 3. Nav2 Navigation Stack ---
-    nav2_launch = IncludeLaunchDescription(
+    # Nav2 MIT Cliff-Safety: cmd_vel Remapping via launch_arguments
+    # (Humble hat kein SetRemap — erst ab Iron verfuegbar)
+    nav2_with_remap = GroupAction(
+        actions=[
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    PathJoinSubstitution([nav2_bringup_share, "launch", "navigation_launch.py"])
+                ),
+                launch_arguments={
+                    "params_file": LaunchConfiguration("params_file"),
+                    "use_sim_time": "False",
+                }.items(),
+            ),
+        ],
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    LaunchConfiguration("use_cliff_safety"),
+                    "' == 'True' and '",
+                    LaunchConfiguration("use_nav"),
+                    "' == 'True'",
+                ]
+            )
+        ),
+    )
+
+    # Nav2 OHNE Remap (Rueckwaertskompatibel)
+    nav2_without_remap = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([nav2_bringup_share, "launch", "navigation_launch.py"])
         ),
@@ -174,7 +248,17 @@ def generate_launch_description():
             "params_file": LaunchConfiguration("params_file"),
             "use_sim_time": "False",
         }.items(),
-        condition=IfCondition(LaunchConfiguration("use_nav")),
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    LaunchConfiguration("use_cliff_safety"),
+                    "' == 'False' and '",
+                    LaunchConfiguration("use_nav"),
+                    "' == 'True'",
+                ]
+            )
+        ),
     )
 
     # --- 4. RViz2 (optional) ---
@@ -213,7 +297,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_camera")),
     )
 
-    # --- 6. Statischer TF: base_link → camera_link ---
+    # --- 6a. Statischer TF: base_link → camera_link ---
     camera_tf = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -231,13 +315,62 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_camera")),
     )
 
+    # --- 6b. Statischer TF: base_link → ultrasonic_link ---
+    ultrasonic_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="ultrasonic_tf_publisher",
+        arguments=[
+            "0.15",
+            "0.0",
+            "0.10",
+            "0.0",
+            "0.0",
+            "0.0",
+            "base_link",
+            "ultrasonic_link",
+        ],
+        condition=IfCondition(LaunchConfiguration("use_sensors")),
+    )
+
     # --- 7. Dashboard Bridge (WebSocket + MJPEG, optional) ---
-    dashboard_node = Node(
+    # Dashboard MIT Cliff-Safety Remapping (cmd_vel → dashboard_cmd_vel)
+    dashboard_node_with_remap = Node(
         package="my_bot",
         executable="dashboard_bridge",
         name="dashboard_bridge",
         output="screen",
-        condition=IfCondition(LaunchConfiguration("use_dashboard")),
+        remappings=[("/cmd_vel", "/dashboard_cmd_vel")],
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    LaunchConfiguration("use_cliff_safety"),
+                    "' == 'True' and '",
+                    LaunchConfiguration("use_dashboard"),
+                    "' == 'True'",
+                ]
+            )
+        ),
+    )
+
+    # Dashboard OHNE Remap
+    dashboard_node_without_remap = Node(
+        package="my_bot",
+        executable="dashboard_bridge",
+        name="dashboard_bridge",
+        output="screen",
+        condition=IfCondition(
+            PythonExpression(
+                [
+                    "'",
+                    LaunchConfiguration("use_cliff_safety"),
+                    "' == 'False' and '",
+                    LaunchConfiguration("use_dashboard"),
+                    "' == 'True'",
+                ]
+            )
+        ),
     )
 
     # --- 8. Vision Pipeline (Hailo UDP Receiver + Gemini, optional) ---
@@ -258,31 +391,59 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_vision")),
     )
 
+    # --- 9. Cliff-Safety Multiplexer (optional, default an) ---
+    cliff_safety_node = Node(
+        package="my_bot",
+        executable="cliff_safety_node",
+        name="cliff_safety_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_cliff_safety")),
+    )
+
+    # --- 10. Audio-Feedback (MAX98357A, optional) ---
+    audio_feedback_node = Node(
+        package="my_bot",
+        executable="audio_feedback_node",
+        name="audio_feedback_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_audio")),
+    )
+
     return LaunchDescription(
         [
             # Launch Arguments
             declare_use_slam,
             declare_use_nav,
             declare_use_rviz,
-            declare_serial_port,
+            declare_drive_serial_port,
+            declare_sensor_serial_port,
+            declare_use_sensors,
             declare_params_file,
             declare_slam_params_file,
             declare_use_camera,
             declare_camera_device,
             declare_use_dashboard,
             declare_use_vision,
+            declare_use_cliff_safety,
+            declare_use_audio,
             # Nodes / Prozesse
             rplidar_node,
             laser_tf,
-            micro_ros_agent,
+            micro_ros_agent_drive,
+            micro_ros_agent_sensor,
             odom_to_tf_node,
             slam_toolbox_node,
-            nav2_launch,
+            nav2_with_remap,
+            nav2_without_remap,
             rviz_node,
             camera_node,
             camera_tf,
-            dashboard_node,
+            ultrasonic_tf,
+            dashboard_node_with_remap,
+            dashboard_node_without_remap,
             hailo_udp_receiver_node,
             gemini_semantic_node,
+            cliff_safety_node,
+            audio_feedback_node,
         ]
     )

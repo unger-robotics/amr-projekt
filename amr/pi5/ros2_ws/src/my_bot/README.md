@@ -7,7 +7,7 @@ ROS2-Humble-Paket fuer einen autonomen mobilen Roboter (AMR) mit Differentialant
 - **ROS2 Humble** (Ubuntu 22.04 nativ oder via Docker auf Pi 5)
 - **Nav2** (`nav2_bringup`) -- Navigation Stack mit Regulated Pure Pursuit Controller
 - **SLAM Toolbox** (`slam_toolbox`) -- Online Async SLAM mit Ceres-Solver
-- **micro-ROS Agent** (`micro_ros_agent`) -- Serial Transport zum XIAO ESP32-S3
+- **micro-ROS Agent** (`micro_ros_agent`) -- Serial Transport zu zwei XIAO ESP32-S3 (Drive-Node `/dev/amr_drive` + Sensor-Node `/dev/amr_sensor`)
 - **RPLIDAR ROS** (`rplidar_ros`) -- Treiber fuer RPLIDAR A1
 - **v4l2_camera** -- Kamera-Node fuer ArUco-Docking (optional)
 - **cv_bridge**, **tf2_ros**, **rclpy**, **std_msgs**, **geometry_msgs**, **sensor_msgs**, **nav_msgs**
@@ -43,7 +43,13 @@ ros2 launch my_bot full_stack.launch.py
 | `use_nav` | `True` | Nav2 Navigation Stack starten |
 | `use_rviz` | `True` | RViz2 Visualisierung starten |
 | `use_camera` | `False` | Kamera-Node und camera_link TF starten (ArUco-Docking) |
-| `serial_port` | `/dev/ttyACM0` | Serieller Port fuer micro-ROS Agent |
+| `drive_serial_port` | `/dev/amr_drive` | Serieller Port fuer Drive-Node (micro-ROS Agent) |
+| `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port fuer Sensor-Node (micro-ROS Agent) |
+| `use_sensors` | `True` | Sensor-Node micro-ROS Agent starten |
+| `use_dashboard` | `False` | Web-Dashboard (WebSocket :9090, MJPEG :8082) starten |
+| `use_vision` | `False` | Vision-Pipeline (Hailo UDP Receiver + Gemini Semantik) starten |
+| `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer (Notbremse bei Abgrunderkennung) |
+| `use_audio` | `False` | Audio-Feedback-Node (WAV-Wiedergabe via aplay/MAX98357A) |
 | `params_file` | `config/nav2_params.yaml` | Nav2-Parameterdatei |
 | `slam_params_file` | `config/mapper_params_online_async.yaml` | SLAM-Toolbox-Parameterdatei |
 | `camera_device` | `/dev/video10` | Video-Device (v4l2loopback-Bridge) |
@@ -63,8 +69,8 @@ ros2 launch my_bot full_stack.launch.py use_rviz:=False
 # Mit Kamera fuer ArUco-Docking
 ros2 launch my_bot full_stack.launch.py use_camera:=True
 
-# Alternativer Serial-Port
-ros2 launch my_bot full_stack.launch.py serial_port:=/dev/ttyUSB0
+# Alternative Serial-Ports
+ros2 launch my_bot full_stack.launch.py drive_serial_port:=/dev/ttyACM0 sensor_serial_port:=/dev/ttyACM1
 ```
 
 ## Paketstruktur
@@ -75,7 +81,7 @@ my_bot/
     nav2_params.yaml                   # Nav2: AMCL, RPP Controller, Costmaps, Recovery
     mapper_params_online_async.yaml    # SLAM Toolbox: Ceres-Solver, 5 cm Aufloesung
   launch/
-    full_stack.launch.py               # Gesamtsystem (micro-ROS + RPLIDAR + SLAM + Nav2 + RViz2 + Kamera)
+    full_stack.launch.py               # Gesamtsystem (2x micro-ROS Agent + RPLIDAR + SLAM + Nav2 + RViz2 + Kamera)
   my_bot/
     __init__.py
     amr_utils.py                       # Shared Utility-Modul (Symlink -> amr/scripts/amr_utils.py) (*)
@@ -89,6 +95,8 @@ my_bot/
     nav_test.py                        # Waypoint-Navigation (*)
     docking_test.py                    # 10-Versuch Docking-Test (*)
     imu_test.py                        # Gyro-Drift und Accelerometer-Bias Test (*)
+  sounds/
+    alert.wav                          # Cliff-Alarm-Ton (880 Hz, 0.5s)
   scripts/
     aruco_docking.py                   # Standalone-Version des Docking-Skripts
   package.xml
@@ -112,10 +120,12 @@ my_bot/
 | `nav_test` | Waypoint-Navigation mit Positionsfehler-Messung |
 | `docking_test` | 10-Versuch ArUco-Docking-Test |
 | `imu_test` | Gyro-Drift- und Accelerometer-Bias-Test (60s statisch) |
+| `cliff_safety_node` | cmd_vel-Multiplexer mit Cliff-Notbremse (muxed Nav2 + Dashboard) |
+| `audio_feedback_node` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
 
 ## Validierungsskripte
 
-Die Validierungs-Nodes (`encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`) setzen einen laufenden micro-ROS Agent voraus. Ausfuehrung ueber:
+Die Validierungs-Nodes (`encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`) setzen einen laufenden micro-ROS Agent fuer den Drive-Node voraus. Ausfuehrung ueber:
 
 ```bash
 ros2 run my_bot encoder_test

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+  <defs>
+    <style>
+      .bg { fill: #0B131E; }
+      .layer { fill: #111D2B; stroke: #517C96; stroke-width: 2; rx: 10; }
+      .layer-title { font-family: monospace; font-weight: bold; font-size: 20px; fill: #517C96; }
+      .node { fill: #0B131E; stroke: #00E5FF; stroke-width: 1; rx: 5; }
+      .node-text { font-family: sans-serif; font-size: 14px; fill: #00E5FF; text-anchor: middle; }
+      .link { stroke: #517C96; stroke-width: 3; stroke-dasharray: 6,4; }
+    </style>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <g transform="translate(100, 650)">
+    <rect width="800" height="100" class="layer" />
+    <text x="20" y="30" class="layer-title">L0: Energy &amp; Power Routing</text>
+
+    <rect x="50" y="50" width="150" height="30" class="node"/><text x="125" y="70" class="node-text">3S Li-Ion (30 Wh)</text>
+    <rect x="250" y="50" width="150" height="30" class="node"/><text x="325" y="70" class="node-text">12V Raw Bus</text>
+    <rect x="450" y="50" width="120" height="30" class="node"/><text x="510" y="70" class="node-text">5V IP68 Buck</text>
+    <rect x="620" y="50" width="120" height="30" class="node"/><text x="680" y="70" class="node-text">6V Pololu Buck</text>
+  </g>
+
+  <g transform="translate(100, 480)">
+    <rect width="800" height="120" class="layer" />
+    <text x="20" y="30" class="layer-title">L1: Hard-Realtime &amp; Failsafe (ESP32-S3)</text>
+
+    <rect x="20" y="60" width="140" height="40" class="node"/><text x="90" y="85" class="node-text">INA260 Monitor</text>
+    <rect x="175" y="60" width="140" height="40" class="node"/><text x="245" y="85" class="node-text">LED (IRLZ24N)</text>
+    <rect x="330" y="60" width="140" height="40" class="node"/><text x="400" y="85" class="node-text">Cytron MDD3A</text>
+    <rect x="485" y="60" width="140" height="40" class="node"/><text x="555" y="85" class="node-text">Odometrie (Enc)</text>
+    <rect x="640" y="60" width="140" height="40" class="node"/><text x="710" y="85" class="node-text">MPU6050 (IMU)</text>
+  </g>
+
+  <g transform="translate(100, 260)">
+    <rect width="800" height="170" class="layer" />
+    <text x="20" y="30" class="layer-title">L2: Host OS &amp; Sensor Fusion (Raspberry Pi 5)</text>
+
+    <rect x="50" y="60" width="180" height="40" class="node"/><text x="140" y="85" class="node-text">ROS 2 Humble (Docker)</text>
+    <rect x="280" y="60" width="180" height="40" class="node"/><text x="370" y="85" class="node-text">Nav2 / SLAM</text>
+    <rect x="510" y="60" width="180" height="40" class="node"/><text x="600" y="85" class="node-text">PulseAudio Loopback</text>
+
+    <rect x="50" y="110" width="180" height="40" class="node"/><text x="140" y="135" class="node-text">USB-CDC Bridge</text>
+    <rect x="280" y="110" width="180" height="40" class="node"/><text x="370" y="135" class="node-text">v4l2loopback</text>
+    <rect x="510" y="110" width="180" height="40" class="node"/><text x="600" y="135" class="node-text">Hardware Bus I/O</text>
+  </g>
+
+  <g transform="translate(100, 40)">
+    <rect width="800" height="170" class="layer" />
+    <text x="20" y="30" class="layer-title">L3: Perception, AI &amp; Advanced Actuation</text>
+
+    <rect x="50" y="60" width="150" height="40" class="node"/><text x="125" y="85" class="node-text">Hailo-8L (PCIe)</text>
+    <rect x="250" y="60" width="150" height="40" class="node"/><text x="325" y="85" class="node-text">IMX296 (CSI)</text>
+    <rect x="450" y="60" width="150" height="40" class="node"/><text x="525" y="85" class="node-text">RPLIDAR (USB)</text>
+    <rect x="650" y="60" width="120" height="40" class="node"/><text x="710" y="85" class="node-text">ReSpeaker (USB)</text>
+
+    <rect x="250" y="110" width="150" height="40" class="node"/><text x="325" y="135" class="node-text">Pan-Tilt (I2C)</text>
+    <rect x="450" y="110" width="150" height="40" class="node"/><text x="525" y="135" class="node-text">MAX98357A (I2S)</text>
+  </g>
+
+  <g>
+    <line x1="500" y1="210" x2="500" y2="260" class="link" />
+    <line x1="500" y1="430" x2="500" y2="480" class="link" />
+    <line x1="500" y1="600" x2="500" y2="650" class="link" />
+  </g>
+</svg>

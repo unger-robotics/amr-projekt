@@ -2,7 +2,7 @@
 """
 Zentrale Konstanten und Hilfsfunktionen fuer AMR-Validierungsskripte.
 
-Spiegel der Hardware-Parameter aus hardware/config.h (Single Source of Truth).
+Spiegel der Hardware-Parameter aus mcu_firmware/drive_node/include/config.h (Single Source of Truth).
 Aenderungen an Roboter-Parametern muessen hier UND in config.h erfolgen.
 """
 
@@ -11,7 +11,7 @@ import math
 import os
 
 # ===========================================================================
-# Hardware-Parameter (Spiegel von hardware/config.h)
+# Hardware-Parameter (Spiegel von mcu_firmware/drive_node/include/config.h)
 # ===========================================================================
 
 # Kinematik

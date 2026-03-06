@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 900" width="100%" height="100%" style="background-color: #0B131E; font-family: monospace;">
+  <defs>
+    <style>
+      .bg-panel { fill: #111D2B; stroke: #517C96; stroke-width: 2; rx: 8px; }
+      .node { fill: #0B131E; stroke: #00E5FF; stroke-width: 1.5; rx: 6px; }
+      .node-text { font-size: 14px; fill: #00E5FF; font-weight: bold; }
+      .sub-text { font-size: 11px; fill: #517C96; }
+      .status-text { font-size: 11px; fill: #00FF66; }
+      .title { font-family: sans-serif; font-size: 18px; fill: #00E5FF; font-weight: bold; letter-spacing: 1px; }
+      .track { fill: none; stroke: #517C96; stroke-width: 2; opacity: 0.4; }
+
+      .anim-path {
+        fill: none;
+        stroke: #00FF66;
+        stroke-width: 2;
+        stroke-dasharray: 8 8;
+        animation: flow 1.5s linear infinite;
+      }
+      .anim-path-reverse {
+        fill: none;
+        stroke: #00FF66;
+        stroke-width: 2;
+        stroke-dasharray: 8 8;
+        animation: flow-reverse 1.5s linear infinite;
+      }
+      .anim-path-alert {
+        fill: none;
+        stroke: #FF3366;
+        stroke-width: 2;
+        stroke-dasharray: 8 8;
+        animation: flow 1.0s linear infinite;
+      }
+
+      @keyframes flow {
+        from { stroke-dashoffset: 16; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes flow-reverse {
+        from { stroke-dashoffset: 0; }
+        to { stroke-dashoffset: 16; }
+      }
+      .port-label { font-size: 11px; fill: #00E5FF; background: #0B131E; }
+      .alert-label { font-size: 11px; fill: #FF3366; font-weight: bold; }
+    </style>
+  </defs>
+
+  <rect x="20" y="20" width="280" height="860" class="bg-panel" />
+  <text x="40" y="60" class="title">MIKROCONTROLLER (ESP32)</text>
+
+  <rect x="320" y="20" width="560" height="860" class="bg-panel" />
+  <text x="340" y="60" class="title">DOCKER-CONTAINER (ROS2)</text>
+
+  <rect x="900" y="20" width="330" height="860" class="bg-panel" />
+  <text x="920" y="60" class="title">HOST-SYSTEM (PI 5)</text>
+
+
+  <path d="M 260 230 L 340 230" class="track" />
+  <path d="M 260 230 L 340 230" class="anim-path" />
+  <text x="265" y="225" class="port-label">/dev/amr_drive</text>
+
+  <path d="M 340 260 L 260 260" class="track" />
+  <path d="M 340 260 L 260 260" class="anim-path" />
+
+  <path d="M 260 490 L 340 490" class="track" />
+  <path d="M 260 490 L 340 490" class="anim-path" />
+  <text x="265" y="485" class="port-label">/dev/amr_sensor</text>
+
+  <path d="M 540 230 L 570 230 L 570 155 L 600 155" class="track" />
+  <path d="M 540 230 L 570 230 L 570 155 L 600 155" class="anim-path" />
+  <text x="545" y="150" class="port-label">/odom</text>
+
+  <path d="M 540 490 L 570 490 L 570 600 L 600 600" class="track" />
+  <path d="M 540 490 L 570 490 L 570 600 L 600 600" class="anim-path" />
+  <text x="545" y="595" class="port-label">/imu, /battery</text>
+
+  <path d="M 540 460 L 570 460 L 570 335 L 600 335" class="track" />
+  <path d="M 540 460 L 570 460 L 570 335 L 600 335" class="anim-path-alert" />
+  <text x="545" y="330" class="alert-label">/cliff (20Hz)</text>
+
+  <path d="M 600 355 L 440 355 L 440 280" class="track" />
+  <path d="M 600 355 L 440 355 L 440 280" class="anim-path-reverse" />
+  <text x="445" y="350" class="port-label">/cmd_vel</text>
+
+  <path d="M 710 370 L 710 400" class="track" />
+  <path d="M 710 370 L 710 400" class="anim-path-alert" />
+  <text x="715" y="390" class="alert-label">/audio/play</text>
+
+  <path d="M 820 435 L 920 435" class="track" />
+  <path d="M 820 435 L 920 435" class="anim-path" />
+  <text x="835" y="430" class="port-label">aplay (/dev/snd)</text>
+
+  <path d="M 540 120 L 600 120" class="track" />
+  <path d="M 540 120 L 600 120" class="anim-path" />
+  <text x="545" y="115" class="port-label">/scan</text>
+
+  <path d="M 540 570 L 600 570" class="track" />
+  <path d="M 540 570 L 600 570" class="anim-path" />
+  <text x="545" y="565" class="port-label">/camera/image</text>
+
+  <path d="M 820 590 L 920 590" class="track" />
+  <path d="M 820 590 L 920 590" class="anim-path" />
+  <text x="835" y="585" class="port-label">TCP 8082 (MJPEG)</text>
+
+  <path d="M 1040 640 L 1040 715 L 820 715" class="track" />
+  <path d="M 1040 640 L 1040 715 L 820 715" class="anim-path" />
+  <text x="835" y="710" class="port-label">UDP 5005</text>
+
+  <path d="M 710 680 L 710 650" class="track" />
+  <path d="M 710 680 L 710 650" class="anim-path" />
+
+  <path d="M 820 630 L 870 630 L 870 815 L 920 815" class="track" />
+  <path d="M 820 630 L 870 630 L 870 815 L 920 815" class="anim-path" />
+  <text x="825" y="625" class="port-label">TCP 9090 (WS)</text>
+
+  <path d="M 750 650 L 750 780" class="track" />
+  <path d="M 750 650 L 750 780" class="anim-path" />
+  <text x="755" y="730" class="port-label">HTTPS API</text>
+
+
+  <g transform="translate(40, 200)">
+    <rect width="220" height="80" class="node" />
+    <text x="15" y="25" class="node-text">1. ESP32-S3 #1 (Drive)</text>
+    <text x="15" y="45" class="sub-text">Interface: TWAI / USB</text>
+    <text x="15" y="65" class="status-text">50 Hz PID Regelschleife</text>
+  </g>
+
+  <g transform="translate(40, 450)">
+    <rect width="220" height="80" class="node" />
+    <text x="15" y="25" class="node-text">2. ESP32-S3 #2 (Sensor)</text>
+    <text x="15" y="45" class="sub-text">Interface: I2C / GPIO</text>
+    <text x="15" y="65" class="status-text">IMU, US, Cliff, Powermeter</text>
+  </g>
+
+
+  <g transform="translate(340, 85)">
+    <rect width="200" height="70" class="node" />
+    <text x="15" y="25" class="node-text">rplidar_node</text>
+    <text x="15" y="45" class="sub-text">Port: /dev/ttyUSB0</text>
+    <text x="15" y="60" class="status-text">Sensitivity, 10 Hz</text>
+  </g>
+
+  <g transform="translate(340, 200)">
+    <rect width="200" height="80" class="node" />
+    <text x="15" y="25" class="node-text">micro_ros_agent (Drive)</text>
+    <text x="15" y="45" class="sub-text">Port: /dev/amr_drive</text>
+    <text x="15" y="65" class="status-text">Pub: Odom | Sub: cmd_vel</text>
+  </g>
+
+  <g transform="translate(340, 450)">
+    <rect width="200" height="80" class="node" />
+    <text x="15" y="25" class="node-text">micro_ros_agent (Sensor)</text>
+    <text x="15" y="45" class="sub-text">Port: /dev/amr_sensor</text>
+    <text x="15" y="65" class="status-text">Pub: IMU, Bat, Range, Cliff</text>
+  </g>
+
+  <g transform="translate(340, 550)">
+    <rect width="200" height="70" class="node" />
+    <text x="15" y="25" class="node-text">v4l2_camera_node</text>
+    <text x="15" y="45" class="sub-text">Port: /dev/video10</text>
+    <text x="15" y="60" class="status-text">YUYV @ 640x480</text>
+  </g>
+
+
+  <g transform="translate(600, 100)">
+    <rect width="220" height="70" class="node" />
+    <text x="15" y="25" class="node-text">slam_toolbox</text>
+    <text x="15" y="45" class="sub-text">Interface: TF/Topics</text>
+    <text x="15" y="60" class="status-text">Online Async, 0.2m</text>
+  </g>
+
+  <g transform="translate(600, 300)">
+    <rect width="220" height="70" class="node" />
+    <text x="15" y="25" class="node-text" fill="#FF3366">cliff_safety_node</text>
+    <text x="15" y="45" class="sub-text">Multiplexer &amp; Notbremse</text>
+    <text x="15" y="60" class="status-text">Priorisiert /cliff &gt; Nav2</text>
+  </g>
+
+  <g transform="translate(600, 400)">
+    <rect width="220" height="70" class="node" />
+    <text x="15" y="25" class="node-text">audio_feedback_node</text>
+    <text x="15" y="45" class="sub-text">Trigger: /audio/play</text>
+    <text x="15" y="60" class="status-text">Non-blocking subprocess</text>
+  </g>
+
+  <g transform="translate(600, 550)">
+    <rect width="220" height="100" class="node" />
+    <text x="15" y="25" class="node-text">dashboard_bridge</text>
+    <text x="15" y="45" class="sub-text">In: IMU, Bat, Image, Semantics</text>
+    <text x="15" y="65" class="sub-text">Out: TCP 9090 / 8082</text>
+    <text x="15" y="85" class="status-text">WebSocket + MJPEG</text>
+  </g>
+
+  <g transform="translate(600, 680)">
+    <rect width="220" height="70" class="node" />
+    <text x="15" y="25" class="node-text">hailo_udp_receiver</text>
+    <text x="15" y="45" class="sub-text">Port: UDP 5005</text>
+    <text x="15" y="60" class="status-text">BBox &amp; Semantic Injector</text>
+  </g>
+
+  <g transform="translate(600, 780)">
+    <rect width="220" height="70" class="node" />
+    <text x="15" y="25" class="node-text">gemini_semantic_node</text>
+    <text x="15" y="45" class="sub-text">Interface: Cloud API</text>
+    <text x="15" y="60" class="status-text">gemini-3-flash-preview</text>
+  </g>
+
+
+  <g transform="translate(920, 400)">
+    <rect width="240" height="70" class="node" style="stroke: #10b981;" />
+    <text x="15" y="25" class="node-text" fill="#10b981">ALSA Sound Subsystem</text>
+    <text x="15" y="45" class="sub-text">Device: /dev/snd</text>
+    <text x="15" y="60" class="status-text">I2S MAX98357A</text>
+  </g>
+
+  <g transform="translate(920, 550)">
+    <rect width="240" height="90" class="node" style="stroke: #10b981;" />
+    <text x="15" y="25" class="node-text" fill="#10b981">host_hailo_runner</text>
+    <text x="15" y="45" class="sub-text">In: TCP 8082 | Out: UDP 5005</text>
+    <text x="15" y="65" class="sub-text">Hardware: Hailo-8L PCIe</text>
+    <text x="15" y="80" class="status-text">Inference ~34ms</text>
+  </g>
+
+  <g transform="translate(920, 780)">
+    <rect width="240" height="70" class="node" style="stroke: #10b981;" />
+    <text x="15" y="25" class="node-text" fill="#10b981">Frontend (Vite)</text>
+    <text x="15" y="45" class="sub-text">Port: TCP 5173</text>
+    <text x="15" y="60" class="status-text">http://192.168.1.24</text>
+  </g>
+
+</svg>

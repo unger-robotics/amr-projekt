@@ -25,7 +25,7 @@ import numpy as np
 from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
 
 # ===========================================================================
-# Roboter-Parameter (aus hardware/config.h)
+# Roboter-Parameter (aus mcu_firmware/drive_node/include/config.h)
 # ===========================================================================
 L = 16.0  # Gesamtpfadlaenge 4x4m Quadrat [m]
 B_NOMINAL = 0.178  # WHEEL_BASE [m]

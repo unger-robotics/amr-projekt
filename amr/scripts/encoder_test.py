@@ -477,7 +477,7 @@ def main(args=None):
     print("\n  Warte auf /odom (micro-ROS Agent muss laufen)...")
     if not node.wait_for_odom(timeout_s=15.0):
         print("  FEHLER: /odom nicht empfangen. Ist der micro-ROS Agent aktiv?")
-        print("  Starte mit: ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0")
+        print("  Starte mit: ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/amr_drive")
         node.destroy_node()
         rclpy.shutdown()
         return 1

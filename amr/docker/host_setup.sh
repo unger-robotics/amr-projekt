@@ -40,25 +40,23 @@ echo ""
 # 2. udev-Regeln fuer stabile Device-Pfade
 # ---------------------------------------------------------------------------
 echo "--- udev-Regeln einrichten ---"
-UDEV_FILE="/etc/udev/rules.d/99-amr-devices.rules"
+UDEV_MCU="/etc/udev/rules.d/99-amr-mcu.rules"
+UDEV_LEGACY="/etc/udev/rules.d/99-amr-devices.rules"
 
-if [ -f "$UDEV_FILE" ]; then
-    echo "[OK] udev-Regeln existieren bereits: $UDEV_FILE"
+# Entferne alte Single-Node-Regeldatei falls vorhanden
+if [ -f "$UDEV_LEGACY" ]; then
+    echo "[INFO] Entferne veraltete Regeldatei: $UDEV_LEGACY"
+    sudo rm -f "$UDEV_LEGACY"
+fi
+
+if [ -f "$UDEV_MCU" ]; then
+    echo "[OK] udev-Regeln existieren bereits: $UDEV_MCU"
+    echo "     Zum Neuerstellen: sudo bash ../scripts/udev_setup.sh"
 else
-    echo "Erstelle $UDEV_FILE ..."
-    sudo tee "$UDEV_FILE" > /dev/null << 'UDEV_EOF'
-# XIAO ESP32-S3 (micro-ROS, USB-CDC)
-SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", \
-  SYMLINK+="amr_esp32", MODE="0666"
-
-# RPLIDAR A1 (CP2102 USB-Serial)
-SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", \
-  SYMLINK+="amr_lidar", MODE="0666"
-UDEV_EOF
-
-    sudo udevadm control --reload-rules
-    sudo udevadm trigger
-    echo "[OK] udev-Regeln erstellt und aktiviert"
+    echo "[WARNUNG] Keine udev-Regeln fuer ESP32-S3 Nodes gefunden."
+    echo "  Interaktives Setup ausfuehren (erkennt Seriennummern automatisch):"
+    echo "    sudo bash ../scripts/udev_setup.sh"
+    echo "  Erstellt /dev/amr_drive, /dev/amr_sensor und /dev/amr_lidar."
 fi
 echo ""
 

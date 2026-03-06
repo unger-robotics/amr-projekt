@@ -1,0 +1,55 @@
+<svg viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .label { font-family: sans-serif; font-size: 14px; font-weight: bold; fill: #333; }
+    .sub-label { font-family: sans-serif; font-size: 12px; fill: #666; font-style: italic; }
+    .node-box { stroke-width: 2; fill: #fff; rx: 20; }
+    .map-node { stroke: #9b59b6; fill: #f4ecf7; }
+    .odom-node { stroke: #3498db; fill: #ebf5fb; }
+    .base-node { stroke: #e67e22; fill: #fdf2e9; }
+    .sensor-node { stroke: #2ecc71; fill: #eafaf1; }
+    .link-line { fill: none; stroke: #bdc3c7; stroke-width: 3; }
+    .link-text { font-family: monospace; font-size: 11px; fill: #2c3e50; }
+    marker { fill: #bdc3c7; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" />
+    </marker>
+  </defs>
+
+  <rect width="800" height="550" fill="#fafafa" />
+  <text x="400" y="40" text-anchor="middle" class="label" style="font-size: 18px;">TF-Baum (Koordinatensysteme)</text>
+
+  <rect x="325" y="80" width="150" height="50" class="node-box map-node" />
+  <text x="400" y="110" text-anchor="middle" class="label">map</text>
+
+  <rect x="325" y="200" width="150" height="50" class="node-box odom-node" />
+  <text x="400" y="230" text-anchor="middle" class="label">odom</text>
+
+  <rect x="325" y="320" width="150" height="50" class="node-box base-node" />
+  <text x="400" y="350" text-anchor="middle" class="label">base_link</text>
+
+  <rect x="150" y="450" width="150" height="50" class="node-box sensor-node" />
+  <text x="225" y="480" text-anchor="middle" class="label">laser</text>
+
+  <rect x="500" y="450" width="150" height="50" class="node-box sensor-node" />
+  <text x="575" y="480" text-anchor="middle" class="label">camera_link</text>
+
+  <path d="M400 130 L400 200" class="link-line" marker-end="url(#arrow)" />
+  <text x="415" y="160" class="link-text" text-anchor="start">SLAM Toolbox (AMCL)</text>
+  <text x="415" y="175" class="sub-label" text-anchor="start">Dynamisch (Korrektur)</text>
+
+  <path d="M400 250 L400 320" class="link-line" marker-end="url(#arrow)" />
+  <text x="415" y="280" class="link-text" text-anchor="start">odom_to_tf.py</text>
+  <text x="415" y="295" class="sub-label" text-anchor="start">Dynamisch (20 Hz)</text>
+
+  <path d="M350 370 L225 450" class="link-line" marker-end="url(#arrow)" />
+  <text x="200" y="395" class="link-text" text-anchor="middle">static_transform_publisher</text>
+  <text x="200" y="410" class="sub-label" text-anchor="middle">x=0.10m, z=0.05m, yaw=180°</text>
+
+  <path d="M450 370 L575 450" class="link-line" marker-end="url(#arrow)" />
+  <text x="600" y="395" class="link-text" text-anchor="middle">static_transform_publisher</text>
+  <text x="600" y="410" class="sub-label" text-anchor="middle">x=0.10m, z=0.08m (optional)</text>
+
+</svg>

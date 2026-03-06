@@ -58,7 +58,7 @@ docker compose build
 |---|---|---|---|
 | `ros2_ws/src/my_bot` | `/ros2_ws/src/my_bot` | rw | ROS2-Paket (Quellcode) |
 | `amr/scripts` | `/amr_scripts` | ro | Validierungsskripte |
-| `hardware/` | `/hardware` | ro | `config.h` (Hardware-Parameter) |
+| `hardware/` | `/hardware` | ro | HEF-Modelle (`models/`), Dokumentation (`docs/`) |
 | `/tmp/.X11-unix` | `/tmp/.X11-unix` | rw | X11-Socket fuer RViz2 |
 | Docker Volumes | `/ros2_ws/build,install,log` | rw | Persistenter Build-Cache |
 
@@ -70,7 +70,7 @@ docker compose build
 
 **verify.sh** -- Automatischer Verifikationstest: Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
 
-**host_setup.sh** -- Einmalige Host-Konfiguration: Gruppen, udev-Regeln (`/dev/amr_esp32`, `/dev/amr_lidar`), X11-Pakete, v4l2loopback-Installation mit modprobe-Config, IMX296-Kamera-Erkennung, und Installation des systemd-Services fuer die Kamera-Bridge.
+**host_setup.sh** -- Einmalige Host-Konfiguration: Gruppen, udev-Regeln (`/dev/amr_drive`, `/dev/amr_sensor`, `/dev/amr_lidar`), X11-Pakete, v4l2loopback-Installation mit modprobe-Config, IMX296-Kamera-Erkennung, und Installation des systemd-Services fuer die Kamera-Bridge.
 
 ## Kamera-Bridge (IMX296 Global Shutter)
 
@@ -99,7 +99,7 @@ v4l2-ctl -d /dev/video10 --all
 **Serial-Port belegt:** Der ESP32-Port wird von mehreren Projekten geteilt. Vor dem Start pruefen:
 
 ```bash
-sudo fuser -v /dev/ttyACM0
+sudo fuser -v /dev/amr_drive
 sudo systemctl stop embedded-bridge.service   # Falls aktiv
 ```
 

@@ -38,7 +38,7 @@ except ImportError:
 
 
 # ===========================================================================
-# Roboter-Parameter (aus hardware/config.h)
+# Roboter-Parameter (aus mcu_firmware/drive_node/include/config.h)
 # ===========================================================================
 from amr_utils import WHEEL_BASE, WHEEL_RADIUS, normalisiere_winkel, quaternion_zu_yaw
 
@@ -281,11 +281,12 @@ def test_drehung(node):
     ccw_winkel = [e["ist_winkel_deg"] for e in ergebnisse_ccw]
 
     if cw_winkel and ccw_winkel:
-        mittel_cw = np.mean(cw_winkel)
-        mittel_ccw = np.mean(ccw_winkel)
+        mittel_cw = float(np.mean(cw_winkel))
+        mittel_ccw = float(np.mean(ccw_winkel))
         asymmetrie = abs(mittel_cw - mittel_ccw)
         max_fehler = max(
-            abs(np.mean(cw_winkel) - soll_winkel), abs(np.mean(ccw_winkel) - soll_winkel)
+            abs(float(np.mean(cw_winkel)) - soll_winkel),
+            abs(float(np.mean(ccw_winkel)) - soll_winkel),
         )
     else:
         mittel_cw = 0.0
@@ -366,10 +367,10 @@ def test_kreisfahrt(node):
     if len(node.odom_aufnahme) > 2:
         xs = [m.pose.pose.position.x for m in node.odom_aufnahme]
         ys = [m.pose.pose.position.y for m in node.odom_aufnahme]
-        cx = np.mean(xs)
-        cy = np.mean(ys)
+        cx = float(np.mean(xs))
+        cy = float(np.mean(ys))
         radien = [math.sqrt((x - cx) ** 2 + (y - cy) ** 2) for x, y in zip(xs, ys, strict=False)]
-        ist_radius = np.mean(radien)
+        ist_radius = float(np.mean(radien))
         radius_fehler_pct = abs(ist_radius - radius) / radius * 100.0
     else:
         ist_radius = float("nan")

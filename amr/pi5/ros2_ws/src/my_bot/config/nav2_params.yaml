@@ -148,11 +148,19 @@ local_costmap:
       height: 3
       resolution: 0.05
       robot_radius: 0.15 # 15cm Radius -> ANPASSEN AN DEINEN ROBOTER!
-      plugins: ["voxel_layer", "inflation_layer"]
-      inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.35 # Sicherheitsabstand
+      # WICHTIG: Die Reihenfolge der Plugins ist entscheidend!
+      # Sensoren zuerst, Inflation immer als letztes.
+      plugins: ["voxel_layer", "range_layer", "inflation_layer"]
+
+      # --- NEU: Ultraschall-Integration ---
+      range_layer:
+        plugin: "nav2_costmap_2d::RangeSensorLayer"
+        topics: ["/range/front"]
+        phi: 0.26               # 15 Grad Oeffnungswinkel
+        clear_threshold: 0.46   # Wahrscheinlichkeits-Schwelle fuers Loeschen
+        mark_threshold: 0.98    # Wahrscheinlichkeits-Schwelle fuers Eintragen
+        clear_on_max_reading: true # Raeumt die Karte, wenn nichts erkannt wird
+
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -174,6 +182,11 @@ local_costmap:
           obstacle_max_range: 2.5
           obstacle_min_range: 0.2
 
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.35 # Sicherheitsabstand
+
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -185,7 +198,18 @@ global_costmap:
       robot_radius: 0.15 # ANPASSEN!
       resolution: 0.05
       track_unknown_space: true
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      # Auch hier den Range-Sensor fuer die globale Pfadplanung ergaenzen
+      plugins: ["static_layer", "obstacle_layer", "range_layer", "inflation_layer"]
+
+      # --- NEU: Ultraschall-Integration (Global) ---
+      range_layer:
+        plugin: "nav2_costmap_2d::RangeSensorLayer"
+        topics: ["/range/front"]
+        phi: 0.26
+        clear_threshold: 0.46
+        mark_threshold: 0.98
+        clear_on_max_reading: true
+
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
@@ -200,9 +224,11 @@ global_costmap:
           raytrace_min_range: 0.2
           obstacle_max_range: 2.5
           obstacle_min_range: 0.2
+
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0

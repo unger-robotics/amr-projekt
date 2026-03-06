@@ -29,8 +29,8 @@ repos:
     hooks:
       - id: clang-format
         files: >-
-          (?x)^(amr/esp32_amr_firmware/src/.*\.(cpp|hpp)
-          |hardware/config\.h)$
+          (?x)^(amr/mcu_firmware/drive_node/(src|include)/.*\.(cpp|hpp)
+          |amr/mcu_firmware/sensor_node/(src|include)/.*\.(cpp|hpp))$
         args: [--style=file, --dry-run, --Werror]
 
   # ESLint: Dashboard TypeScript
@@ -56,5 +56,6 @@ repos:
         args: [--allow-multiple-documents]
       - id: check-added-large-files
         args: [--maxkb=500]
+        exclude: ^(hardware/(can-bus|schaltplan|akku)/.*\.(pdf|png)|hardware/amr_architecture\.png)$
       - id: check-merge-conflict
       - id: check-symlinks

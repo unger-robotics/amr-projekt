@@ -1,0 +1,86 @@
+\documentclass[tikz]{standalone}
+\usepackage{amr-dashboard} % Nutzt deine zentrale Style-Datei
+
+\begin{document}
+\begin{tikzpicture}[x=1pt, y=-1pt]
+
+  % Hintergrund (Basis: #0B131E)
+  \fill[BgBase] (0,0) rectangle (1200,850);
+
+  % ==========================================
+  % LEGENDE (Keine Überdeckung mehr)
+  % ==========================================
+  \begin{scope}[shift={(20, 20)}]
+    \draw[box] (0,0) rectangle (200,120);
+    \node[titleText] at (10,20) {Legende (Pulsierend)};
+
+    \draw[powerLine] (10,40) -- (40,40);
+    \node[subText] at (50,45) {DC Power (Sekundär: #517C96)};
+
+    \draw[i2cLine] (10,65) -- (40,65);
+    \node[subText] at (50,70) {I2C / I2S Busse};
+
+    \draw[usbLine] (10,90) -- (40,90);
+    \node[subText] at (50,95) {USB / PCIe (Akzent: #00E5FF)};
+
+    \draw[pwmLine] (10,115) -- (40,115);
+    \node[subText] at (50,120) {PWM / Signale (Status: #00FF66)};
+  \end{scope}
+
+  % ==========================================
+  % RECHENEINHEITEN (Zentrum)
+  % ==========================================
+  % Raspberry Pi 5
+  \begin{scope}[shift={(450, 50)}]
+    \draw[box] (0,0) rectangle (300,200);
+    \node[titleText] at (20,30) {Raspberry Pi 5 (Host)};
+    \node[subText] at (20,55) {I2C B (Pin 3/5) $\rightarrow$ PCA9685};
+    \node[subText] at (20,75) {I2S (Pin 12/35/40) $\rightarrow$ MAX98357A};
+    \node[subText] at (20,95) {PCIe $\rightarrow$ Hailo-8L (AI)};
+    \node[subText] at (20,115) {USB $\rightarrow$ RPLIDAR \& ReSpeaker};
+  \end{scope}
+
+  % XIAO ESP32-S3 (Höhe auf 250pt erweitert für LED-Anschluss)
+  \begin{scope}[shift={(450, 450)}]
+    \draw[box] (0,0) rectangle (300,250);
+    \node[titleText] at (20,30) {XIAO ESP32-S3 (Echtzeit)};
+    \node[subText] at (20,55) {I2C A (D4/D5) $\rightarrow$ INA260 \& MPU6050};
+    \node[subText] at (20,75) {PWM (D0-D3) $\rightarrow$ MDD3A};
+    \node[subText] at (20,95) {Interrupts (D6-D9) $\rightarrow$ Encoders};
+    \node[subText] at (20,115) {PWM (D10) $\rightarrow$ LED (IRLZ24N)};
+  \end{scope}
+
+  % ==========================================
+  % PERIPHERIE (Rechts)
+  % ==========================================
+  \peripheryBox{850}{450}{180}{50}{30}{Cytron MDD3A}
+  \peripheryBox{850}{520}{180}{50}{30}{INA260 (0x41)}
+  \peripheryBox{850}{590}{180}{50}{30}{MPU6050 (0x68)}
+  \peripheryBox{850}{660}{180}{50}{30}{LED (IRLZ24N)} % Jetzt auf einer Höhe mit ESP-D10
+
+  % ==========================================
+  % ENERGIEVERSORGUNG (Links, nach unten verschoben)
+  % ==========================================
+  \peripheryBox{50}{340}{180}{60}{35}{12V Akku (3S)}
+  \peripheryBox{50}{180}{180}{50}{30}{5V Buck (Pi 5)}
+  \peripheryBox{50}{500}{180}{50}{30}{6V Pololu (Servos)}
+
+  % ==========================================
+  % VERBINDUNGEN (Pfade)
+  % ==========================================
+  % Power-Verteilung
+  \draw[powerLine] (230,370) -- (350,370) -- (350,205) -- (230,205);
+  \draw[powerLine] (230,370) -- (350,370) -- (350,525) -- (230,525);
+
+  % Daten & PWM ESP32
+  \draw[pwmLine] (750,475) -- (850,475);
+  \draw[i2cLine] (750,545) -- (850,545);
+  \draw[i2cLine] (750,615) -- (850,615);
+  \draw[pwmLine] (750,685) -- (850,685); % PWM LED nun perfekt ausgerichtet
+
+  % Inter-Compute Bridge
+  \draw[usbLine] (600,250) -- (600,450);
+  \node[subText] at (610,350) {USB-CDC (micro-ROS)};
+
+\end{tikzpicture}
+\end{document}

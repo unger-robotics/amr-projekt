@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-opencv \
     # System-Tools
     usbutils \
+    alsa-utils \
     nano \
     iputils-ping \
     git \

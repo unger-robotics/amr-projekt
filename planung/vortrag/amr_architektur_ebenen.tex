@@ -1,0 +1,61 @@
+\documentclass[tikz]{standalone}
+\usepackage{amr-dashboard} % Nutzt die Definitionen aus deiner .sty Datei
+
+\begin{document}
+\begin{tikzpicture}[x=1pt, y=-1pt]
+
+  % Hintergrund
+  \fill[BgBase] (0,0) rectangle (1000,800);
+
+  % L0: Energy \& Power Routing (Maskiert mit \)
+  \begin{scope}[shift={(100,650)}]
+    \draw[layer] (0,0) rectangle (800,100);
+    \node[layerTitle] at (20,30) {L0: Energy \& Power Routing};
+    \sysnode{50}{50}{150}{30}{3S Li-Ion (30 Wh)}{75}{20}
+    \sysnode{250}{50}{150}{30}{12V Raw Bus}{75}{20}
+    \sysnode{450}{50}{120}{30}{5V IP68 Buck}{60}{20}
+    \sysnode{620}{50}{120}{30}{6V Pololu Buck}{60}{20}
+  \end{scope}
+
+  % L1: Hard-Realtime \& Failsafe
+  \begin{scope}[shift={(100,480)}]
+    \draw[layer] (0,0) rectangle (800,120);
+    \node[layerTitle] at (20,30) {L1: Hard-Realtime \& Failsafe (ESP32-S3)};
+    \sysnode{20}{60}{140}{40}{INA260 Monitor}{70}{25}
+    \sysnode{175}{60}{140}{40}{LED (IRLZ24N)}{70}{25}
+    \sysnode{330}{60}{140}{40}{Cytron MDD3A}{70}{25}
+    \sysnode{485}{60}{140}{40}{Odometrie (Enc)}{70}{25}
+    \sysnode{640}{60}{140}{40}{MPU6050 (IMU)}{70}{25}
+  \end{scope}
+
+  % L2: Host OS \& Sensor Fusion
+  \begin{scope}[shift={(100,260)}]
+    \draw[layer] (0,0) rectangle (800,170);
+    \node[layerTitle] at (20,30) {L2: Host OS \& Sensor Fusion (Raspberry Pi 5)};
+    \sysnode{50}{60}{180}{40}{ROS 2 Humble (Docker)}{90}{25}
+    \sysnode{280}{60}{180}{40}{Nav2 / SLAM}{90}{25}
+    \sysnode{510}{60}{180}{40}{PulseAudio Loopback}{90}{25}
+    \sysnode{50}{110}{180}{40}{USB-CDC Bridge}{90}{25}
+    \sysnode{280}{110}{180}{40}{v4l2loopback}{90}{25}
+    \sysnode{510}{110}{180}{40}{Hardware Bus I/O}{90}{25}
+  \end{scope}
+
+  % L3: Perception, AI \& Advanced Actuation
+  \begin{scope}[shift={(100,40)}]
+    \draw[layer] (0,0) rectangle (800,170);
+    \node[layerTitle] at (20,30) {L3: Perception, AI \& Advanced Actuation};
+    \sysnode{50}{60}{150}{40}{Hailo-8L (PCIe)}{75}{25}
+    \sysnode{250}{60}{150}{40}{IMX296 (CSI)}{75}{25}
+    \sysnode{450}{60}{150}{40}{RPLIDAR (USB)}{75}{25}
+    \sysnode{650}{60}{120}{40}{ReSpeaker (USB)}{60}{25}
+    \sysnode{250}{110}{150}{40}{Pan-Tilt (I2C)}{75}{25}
+    \sysnode{450}{110}{150}{40}{MAX98357A (I2S)}{75}{25}
+  \end{scope}
+
+  % Verbindungen
+  \draw[linkLine] (500,210) -- (500,260);
+  \draw[linkLine] (500,430) -- (500,480);
+  \draw[linkLine] (500,600) -- (500,650);
+
+\end{tikzpicture}
+\end{document}

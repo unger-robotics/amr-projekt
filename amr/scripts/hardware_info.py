@@ -278,9 +278,11 @@ def collect_peripherals():
         target_port = acm_devices[0]  # Nutze ersten ACM-Port als Annahme
         data["esp32_chip_info"] = get_esp32_chip_data(target_port)
 
-    # udev-Symlinks (stabile Geraete-Pfade)
+    # udev-Symlinks (stabile Geraete-Pfade, Zwei-Node-Architektur)
     serial_by_id = sorted(glob("/dev/serial/by-id/*"))
     data["serial_by_id"] = serial_by_id
+    data["amr_drive_found"] = os.path.exists("/dev/amr_drive")
+    data["amr_sensor_found"] = os.path.exists("/dev/amr_sensor")
 
     # Kamera (rpicam-hello / libcamera-hello)
     cam_data: dict[str, Any] = {"detected": False, "sensors": []}
@@ -566,9 +568,11 @@ def _find_config_h():
     """Sucht config.h relativ zum Skript-Verzeichnis oder im Projektbaum."""
     script_dir = Path(__file__).resolve().parent
     candidates = [
-        script_dir / "../../hardware/config.h",  # amr/scripts/ -> hardware/
-        script_dir / "../../../hardware/config.h",  # my_bot/my_bot/ -> hardware/
-        Path.home() / "AMR-Bachelorarbeit/hardware/config.h",
+        script_dir
+        / "../mcu_firmware/drive_node/include/config.h",  # amr/scripts/ -> amr/mcu_firmware/
+        script_dir
+        / "../../mcu_firmware/drive_node/include/config.h",  # my_bot/my_bot/ -> amr/mcu_firmware/
+        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node/include/config.h",
     ]
     for c in candidates:
         resolved = c.resolve()
@@ -578,12 +582,13 @@ def _find_config_h():
 
 
 def _find_firmware_dir():
-    """Sucht das ESP32-Firmware-Verzeichnis (mit platformio.ini)."""
+    """Sucht das Drive-Node Firmware-Verzeichnis (mit platformio.ini)."""
     script_dir = Path(__file__).resolve().parent
     candidates = [
-        script_dir / "../esp32_amr_firmware",  # amr/scripts/ -> amr/esp32_amr_firmware/
-        script_dir / "../../amr/esp32_amr_firmware",  # my_bot/my_bot/ -> amr/esp32_amr_firmware/
-        Path.home() / "AMR-Bachelorarbeit/amr/esp32_amr_firmware",
+        script_dir / "../mcu_firmware/drive_node",  # amr/scripts/ -> amr/mcu_firmware/drive_node/
+        script_dir
+        / "../../amr/mcu_firmware/drive_node",  # my_bot/my_bot/ -> amr/mcu_firmware/drive_node/
+        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node",
     ]
     for c in candidates:
         resolved = c.resolve()
@@ -703,7 +708,16 @@ def print_peripherals(data):
     if usb:
         print_info("Serial ttyUSB", ", ".join(usb))
 
-    # udev-Symlinks
+    # udev-Symlinks (Zwei-Node-Architektur)
+    if data.get("amr_drive_found"):
+        print_info("/dev/amr_drive", f"-> {os.path.realpath('/dev/amr_drive')}")
+    else:
+        print_warn("/dev/amr_drive", "nicht vorhanden (udev-Regel konfiguriert?)")
+    if data.get("amr_sensor_found"):
+        print_info("/dev/amr_sensor", f"-> {os.path.realpath('/dev/amr_sensor')}")
+    else:
+        print_warn("/dev/amr_sensor", "nicht vorhanden (udev-Regel konfiguriert?)")
+
     by_id = data.get("serial_by_id", [])
     if by_id:
         for link in by_id:

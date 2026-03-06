@@ -1,0 +1,157 @@
+% =============================================================================
+%  main.tex – Hauptdokument (nutzt wbh-studienheft.cls)
+% =============================================================================
+\documentclass{wbh-studienheft}
+
+% -------------------------  Metadaten  --------------------------------------
+\modulkuerzel{ING01-L}
+\modultitel{Einführungsprojekt für ingenieurwissenschaftliche Studiengänge}
+\modulversion{0721N01}
+\autorname{Unger, Jan}
+\matrikelnr{863514}
+
+% -------------------------  Zusätzliche Pakete  -----------------------------
+% (bei Bedarf ergänzen)
+% \usepackage{listings}     % Quellcode-Listings
+% \usepackage{amsmath}      % erweiterte Mathematik
+% \usepackage{siunitx}      % SI-Einheiten
+
+% =============================================================================
+\begin{document}
+
+% ===========================  Titelei  ======================================
+\maketitlepage
+\makecopyrightpage
+\tableofcontents
+\clearpage
+
+% ===========================  Vorwort  ======================================
+\wbhvorwort{%
+  Mit dem Einführungsprojekt für Erstsemester lernen Sie Ihre Hochschule,
+  Betreuer und Kommilitonen kennen. Sie bekommen einen ersten Einblick in
+  das wissenschaftliche Arbeiten.
+
+  Als Vorbereitung auf diese kleine Projektarbeit sollten Sie dieses
+  Studienheft gelesen haben. Theoretische Grundlagen aus technischen
+  Fachrichtungen müssen Sie keine mitbringen.
+}
+
+% =============================================================================
+%  Kapitel 1
+% =============================================================================
+\chapter{Einführung in die Projekt- und Teamarbeit}
+
+\kapiteleinleitung{In diesem Kapitel erhalten Sie eine Einführung in die
+  Projekt- und Teamarbeit, lernen grundlegende Mechanismen in der
+  Projekt- und Teamarbeit kennen.}
+
+Mit den folgenden Abschnitten werden einige Grundlagen der Projekt- und
+Teamarbeit vorgestellt. Die erfolgreiche Umsetzung eines Projektes in
+einem Team ist immer an bestimmte Randbedingungen, Regeln und
+Vorgehensweisen gekoppelt.
+
+% ---------------------------------------------------------------------------
+\section{Projektdefinition}
+
+Entsprechend DIN~69901 beschreibt man ein Projekt sinngemäß als ein
+Vorhaben, das im Wesentlichen durch seine Einmaligkeit gekennzeichnet
+ist. Diese Einmaligkeit wird vor allem durch die äußeren Randbedingungen
+festgelegt, z.\,B.:
+
+\begin{itemize}[nosep]
+  \item klare Zielvorgabe
+  \item zeitliche, finanzielle und personelle Begrenzungen
+  \item definierter Start- und Endtermin
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Aufgaben bei der Projektbearbeitung}
+
+Projekte lassen sich in einzelne Phasen aufteilen: Problemanalyse,
+Konzepterstellung, Detailplanung, Realisierung, Produkterstellung und
+Abnahme.
+
+\begin{figure}[htbp]
+  \centering
+  % \includegraphics[width=0.6\textwidth]{bilder/projektmodell.pdf}
+  \fbox{\parbox{0.6\textwidth}{\centering\vspace{2cm}%
+    \sffamily\small Platzhalter: Dynamisches Projektmodell%
+    \vspace{2cm}}}
+  \caption{Dynamisches Projektmodell}
+  \label{fig:projektmodell}
+\end{figure}
+
+\Cref{fig:projektmodell} zeigt das dynamische Projektmodell mit den
+Faktoren Qualität, Termine und Kosten.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Phasen einer Präsentation}
+  \label{tab:praesentation}
+  \small\sffamily
+  \begin{tabularx}{\textwidth}{c l X l c}
+    \toprule
+    \textbf{Nr.} & \textbf{Modul} & \textbf{Inhalte} & \textbf{Technik} & \textbf{Min.} \\
+    \midrule
+    1 & Begrüßung   & --                                  & verbal    &  2 \\
+    2 & Einstieg     & Darstellung der Projektziele        & Flipchart &  5 \\
+    3 & Istzustand   & Aufgabenstruktur                    & Pinnwand  &  5 \\
+    4 & Controlling  & Abgearbeitete / offene Aktivitäten  & Pinnwand  & 15 \\
+    5 & Aussprache   & Gesamtsituation                     & verbal    & 15 \\
+    6 & Aktivitäten  & Maßnahmen, Termine, Zuständige      & Flipchart & 15 \\
+    7 & Fazit        & Zusammenfassung                     & verbal    &  5 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\section{Projektmanagement und Teamentwicklung}
+
+Der Teambildungsprozess gliedert sich in fünf Phasen:
+
+\begin{enumerate}[nosep]
+  \item Kennenlernphase – \textit{Forming}
+  \item Konfliktphase – \textit{Storming}
+  \item Stabilisierungsphase – \textit{Norming}
+  \item Produktivphase – \textit{Performing}
+  \item Projektausstieg – \textit{Ending}
+\end{enumerate}
+
+% ---------------------------------------------------------------------------
+\section{Präsentationstechnik}
+
+\subsection{Das magische Dreieck der Präsentation}
+
+Das stimmige Zusammenwirken der drei Faktoren Ich, Thema und Gruppe
+ist ausschlaggebend für eine erfolgreiche Präsentation.
+
+\subsection{Persönliche Wirkung}
+
+Persönliche Wirkung entsteht durch Präsenz. Präsenz entsteht durch die
+glaubwürdige Verkörperung von Extrovertiertheit, Wachsamkeit,
+Überzeugungskraft und guter Vorbereitung.
+
+% =============================================================================
+%  Anhang
+% =============================================================================
+\appendix
+\listoffigures
+\listoftables
+
+% =============================================================================
+%  Literaturverzeichnis
+% =============================================================================
+\begin{thebibliography}{99}
+  \bibitem{klan2007}
+    Klan, J.; Wittmann, M. (2007).
+    \textit{Entwicklung einer Lehrerhandreichung zur Robotertechnik}.
+    Münster: Westfälische Wilhelms-Universität Münster.
+
+  \bibitem{scholz2011}
+    Scholz, M.\,P. (2011).
+    \textit{Roboterwesen bauen und programmieren: Ein Einstieg in
+    Lego\textsuperscript{\textregistered} MINDSTORMS\textsuperscript{\textregistered} NXT}.
+    Auflage~1, Verlagsgruppe Hüthig-Jehle-Rehm.
+\end{thebibliography}
+
+\end{document}

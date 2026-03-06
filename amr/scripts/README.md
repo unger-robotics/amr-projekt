@@ -10,6 +10,8 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `hailo_udp_receiver_node.py` | UDP-Empfaenger fuer Hailo-8 YOLOv8-Detektionen (Port 5005) |
 | `gemini_semantic_node.py` | Gemini Cloud semantische Analyse (`/vision/semantics`) |
 | `hailo_inference_node.py` | (Legacy) Direkter Hailo-8 Zugriff, ersetzt durch UDP-Pattern |
+| `cliff_safety_node.py` | cmd_vel-Multiplexer mit Cliff-Notbremse (subscribt /cliff, muxed Nav2+Dashboard) |
+| `audio_feedback_node.py` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)
 

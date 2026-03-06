@@ -14,6 +14,7 @@ setup(
         ("share/" + package_name, ["package.xml"]),
         (os.path.join("share", package_name, "config"), glob("config/*.yaml")),
         (os.path.join("share", package_name, "launch"), glob("launch/*.launch.py")),
+        (os.path.join("share", package_name, "sounds"), glob("sounds/*.wav")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -41,6 +42,8 @@ setup(
             "hailo_inference_node = my_bot.hailo_inference_node:main",
             "hailo_udp_receiver_node = my_bot.hailo_udp_receiver_node:main",
             "gemini_semantic_node = my_bot.gemini_semantic_node:main",
+            "cliff_safety_node = my_bot.cliff_safety_node:main",
+            "audio_feedback_node = my_bot.audio_feedback_node:main",
         ],
     },
 )

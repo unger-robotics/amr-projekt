@@ -14,7 +14,7 @@ import os
 import sys
 
 # ===========================================================================
-# Konfiguration (aus hardware/config.h)
+# Konfiguration (aus mcu_firmware/drive_node/include/config.h)
 # ===========================================================================
 
 PIN_MAPPING = {
@@ -123,33 +123,44 @@ def print_result_line(status, text):
 
 
 def check_usb_enumeration(result):
-    """Prueft ob der ESP32-S3 als USB-CDC erkannt wird."""
-    print_header("1. USB-Enumeration")
+    """Prueft ob die ESP32-S3 Nodes als USB-CDC erkannt werden (Zwei-Node-Architektur)."""
+    print_header("1. USB-Enumeration (Zwei-Node-Architektur)")
 
-    # Automatisch nach /dev/ttyACM* suchen
-    acm_devices = sorted(glob.glob("/dev/ttyACM*"))
+    # Pruefe udev-Symlinks fuer Drive- und Sensor-Node
+    drive_found = os.path.exists("/dev/amr_drive")
+    sensor_found = os.path.exists("/dev/amr_sensor")
 
-    if acm_devices:
-        print(f"  Gefundene USB-CDC-Geraete: {', '.join(acm_devices)}")
-        status = True
-        kommentar = ", ".join(acm_devices)
+    if drive_found:
+        print(f"  Drive-Node:  /dev/amr_drive -> {os.path.realpath('/dev/amr_drive')}")
+        print_result_line(True, "Drive-Node (/dev/amr_drive)")
+        result.add("USB", "Drive-Node (/dev/amr_drive)", True, os.path.realpath("/dev/amr_drive"))
     else:
-        print("  WARNUNG: Kein /dev/ttyACM* gefunden.")
-        print("  Moegliche Ursachen:")
-        print("    - USB-C Kabel nicht angeschlossen")
-        print("    - ESP32-S3 nicht gestartet / im Bootloader-Modus")
-        print("    - USB-CDC nicht aktiviert (menuconfig)")
-        status = False
-        kommentar = "Kein /dev/ttyACM* gefunden"
+        print("  WARNUNG: /dev/amr_drive nicht gefunden.")
+        print("    - USB-C Kabel angeschlossen?")
+        print("    - udev-Regeln mit Seriennummer konfiguriert?")
+        print("    - Firmware: cd amr/mcu_firmware/drive_node/ && pio run -t upload")
+        print_result_line(False, "Drive-Node (/dev/amr_drive)")
+        result.add("USB", "Drive-Node (/dev/amr_drive)", False, "Nicht gefunden")
 
-        # Zusaetzlich /dev/ttyUSB* pruefen (alternative UART-Bridges)
-        usb_devices = sorted(glob.glob("/dev/ttyUSB*"))
-        if usb_devices:
-            print(f"  Hinweis: /dev/ttyUSB* gefunden: {', '.join(usb_devices)}")
-            kommentar += f"; ttyUSB: {', '.join(usb_devices)}"
+    if sensor_found:
+        print(f"  Sensor-Node: /dev/amr_sensor -> {os.path.realpath('/dev/amr_sensor')}")
+        print_result_line(True, "Sensor-Node (/dev/amr_sensor)")
+        result.add(
+            "USB", "Sensor-Node (/dev/amr_sensor)", True, os.path.realpath("/dev/amr_sensor")
+        )
+    else:
+        print("  WARNUNG: /dev/amr_sensor nicht gefunden.")
+        print("    - USB-C Kabel angeschlossen?")
+        print("    - udev-Regeln mit Seriennummer konfiguriert?")
+        print("    - Firmware: cd amr/mcu_firmware/sensor_node/ && pio run -t upload")
+        print_result_line(False, "Sensor-Node (/dev/amr_sensor)")
+        result.add("USB", "Sensor-Node (/dev/amr_sensor)", False, "Nicht gefunden")
 
-    print_result_line(status, "USB-CDC Enumeration")
-    result.add("USB", "USB-CDC Enumeration (/dev/ttyACM*)", status, kommentar)
+    # Zusaetzlich ttyACM-Geraete anzeigen
+    acm_devices = sorted(glob.glob("/dev/ttyACM*"))
+    if acm_devices:
+        print(f"  Alle USB-CDC-Geraete: {', '.join(acm_devices)}")
+
     return acm_devices
 
 
@@ -245,8 +256,9 @@ def check_firmware(result):
     print()
 
     # 4a: Firmware-Upload
-    print("  4a) Firmware-Upload")
-    print("  Kommando: cd amr/esp32_amr_firmware/ && pio run -t upload")
+    print("  4a) Firmware-Upload (Zwei-Node-Architektur)")
+    print("  Drive:  cd amr/mcu_firmware/drive_node/ && pio run -t upload")
+    print("  Sensor: cd amr/mcu_firmware/sensor_node/ && pio run -t upload")
     upload_ok = ask_yes_no("Wurde die Firmware erfolgreich hochgeladen (SUCCESS)?")
     kommentar_upload = "pio run -t upload"
     if upload_ok is False:

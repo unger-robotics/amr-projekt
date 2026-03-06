@@ -80,16 +80,37 @@ echo ""
 # ---------------------------------------------------------------------------
 # 4. Serial-Device Zugriff
 # ---------------------------------------------------------------------------
-echo "--- 4. Device-Zugriff ---"
-if [ -e /dev/ttyACM0 ] || [ -e /dev/amr_esp32 ]; then
-    DEV=$([ -e /dev/amr_esp32 ] && echo "/dev/amr_esp32" || echo "/dev/ttyACM0")
-    if run_in_container test -r "$DEV" 2>/dev/null; then
-        pass "Serial-Device $DEV lesbar im Container"
+echo "--- 4. Device-Zugriff (Zwei-Node-Architektur) ---"
+DRIVE_DEV="/dev/amr_drive"
+SENSOR_DEV="/dev/amr_sensor"
+DEVICES_FOUND=0
+
+if [ -e "$DRIVE_DEV" ]; then
+    if run_in_container test -r "$DRIVE_DEV" 2>/dev/null; then
+        pass "Drive-Node $DRIVE_DEV lesbar im Container"
     else
-        warn "Serial-Device $DEV existiert, aber Zugriff im Container unklar"
+        warn "Drive-Node $DRIVE_DEV existiert, aber Zugriff im Container unklar"
     fi
+    DEVICES_FOUND=$((DEVICES_FOUND + 1))
 else
-    warn "Kein ESP32 angeschlossen (/dev/ttyACM0 oder /dev/amr_esp32 nicht vorhanden)"
+    warn "Drive-Node nicht gefunden ($DRIVE_DEV). udev-Regeln mit Seriennummer konfiguriert?"
+fi
+
+if [ -e "$SENSOR_DEV" ]; then
+    if run_in_container test -r "$SENSOR_DEV" 2>/dev/null; then
+        pass "Sensor-Node $SENSOR_DEV lesbar im Container"
+    else
+        warn "Sensor-Node $SENSOR_DEV existiert, aber Zugriff im Container unklar"
+    fi
+    DEVICES_FOUND=$((DEVICES_FOUND + 1))
+else
+    warn "Sensor-Node nicht gefunden ($SENSOR_DEV). udev-Regeln mit Seriennummer konfiguriert?"
+fi
+
+if [ "$DEVICES_FOUND" -eq 1 ]; then
+    warn "Nur ein ESP32-S3 Node erkannt. Beide Nodes angeschlossen?"
+elif [ "$DEVICES_FOUND" -eq 0 ]; then
+    warn "Kein ESP32-S3 Node erkannt. USB-Kabel und udev-Regeln pruefen."
 fi
 echo ""
 

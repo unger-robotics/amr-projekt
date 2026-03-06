@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <style>
+      .bg { fill: #0B131E; }
+
+      /* Boxen */
+      .box-sensor { fill: #111D2B; stroke: #517C96; stroke-width: 2; rx: 8; }
+      .box-compute { fill: #111D2B; stroke: #00E5FF; stroke-width: 2; rx: 8; }
+      .box-actuator { fill: #111D2B; stroke: #00FF66; stroke-width: 2; rx: 8; }
+
+      /* Typografie */
+      .txt-title { font-family: sans-serif; font-weight: bold; font-size: 20px; fill: #00E5FF; text-anchor: middle; pointer-events: none; }
+      .txt-sensor { font-family: sans-serif; font-weight: bold; font-size: 14px; fill: #517C96; text-anchor: middle; pointer-events: none; }
+      .txt-compute { font-family: sans-serif; font-weight: bold; font-size: 14px; fill: #00E5FF; text-anchor: middle; pointer-events: none; }
+      .txt-actuator { font-family: sans-serif; font-weight: bold; font-size: 14px; fill: #00FF66; text-anchor: middle; pointer-events: none; }
+      .lbl { font-family: sans-serif; font-size: 11px; fill: #517C96; }
+
+      /* Laufende Daten-Animation */
+      @keyframes data-flow { to { stroke-dashoffset: -40; } }
+      .flow-fast { stroke: #00E5FF; stroke-width: 3; fill: none; stroke-dasharray: 10,10; animation: data-flow 0.5s linear infinite; }
+      .flow-med { stroke: #00FF66; stroke-width: 2; fill: none; stroke-dasharray: 8,8; animation: data-flow 1s linear infinite; }
+      .flow-slow { stroke: #517C96; stroke-width: 2; fill: none; stroke-dasharray: 6,6; animation: data-flow 1.5s linear infinite; }
+    </style>
+  </defs>
+
+  <rect width="100%" height="100%" class="bg" />
+
+  <text x="600" y="40" class="txt-title">Logischer Informationsfluss (Echtzeit &amp; Asynchron)</text>
+
+  <rect x="50" y="100" width="150" height="50" class="box-sensor" /> <text x="125" y="130" class="txt-sensor">IMX296 Kamera</text>
+  <rect x="50" y="200" width="150" height="50" class="box-sensor" /> <text x="125" y="230" class="txt-sensor">RPLIDAR A1</text>
+  <rect x="50" y="300" width="150" height="50" class="box-sensor" /> <text x="125" y="330" class="txt-sensor">ReSpeaker Mic</text>
+  <rect x="50" y="500" width="150" height="50" class="box-sensor" /> <text x="125" y="530" class="txt-sensor">Hall-Encoder (x2)</text>
+  <rect x="50" y="600" width="150" height="50" class="box-sensor" /> <text x="125" y="630" class="txt-sensor">INA260 &amp; MPU6050</text>
+
+  <rect x="400" y="150" width="180" height="80" class="box-compute" />
+  <text x="490" y="190" class="txt-compute">Hailo-8L AI</text><text x="490" y="210" class="txt-compute" style="font-size:10px;">(Object Tracking)</text>
+
+  <rect x="400" y="280" width="180" height="100" class="box-compute" />
+  <text x="490" y="330" class="txt-compute">Raspberry Pi 5</text><text x="490" y="350" class="txt-compute" style="font-size:10px;">(ROS 2 / SLAM / AEC)</text>
+
+  <rect x="400" y="520" width="180" height="100" class="box-compute" />
+  <text x="490" y="560" class="txt-compute">XIAO ESP32-S3</text><text x="490" y="580" class="txt-compute" style="font-size:10px;">(PID / micro-ROS)</text>
+
+  <rect x="800" y="200" width="150" height="50" class="box-actuator" /> <text x="875" y="230" class="txt-actuator">Pan-Tilt Servos</text>
+  <rect x="800" y="300" width="150" height="50" class="box-actuator" /> <text x="875" y="330" class="txt-actuator">Lautsprecher</text>
+  <rect x="800" y="500" width="150" height="50" class="box-actuator" /> <text x="875" y="530" class="txt-actuator">Cytron Motoren</text>
+  <rect x="800" y="600" width="150" height="50" class="box-actuator" /> <text x="875" y="630" class="txt-actuator">LED (IRLZ24N)</text>
+
+  <path d="M 200 125 C 300 125, 300 190, 400 190" class="flow-fast" /> <text x="250" y="145" class="lbl">CSI Video</text>
+  <path d="M 200 225 C 300 225, 300 310, 400 310" class="flow-med" /> <text x="250" y="250" class="lbl">USB /scan</text>
+  <path d="M 200 325 C 300 325, 300 340, 400 340" class="flow-med" /> <text x="250" y="350" class="lbl">USB Audio/DOA</text>
+  <path d="M 200 525 C 300 525, 300 550, 400 550" class="flow-fast" /> <text x="250" y="520" class="lbl">Hardware Interrupts</text>
+  <path d="M 200 625 C 300 625, 300 590, 400 590" class="flow-slow" /> <text x="250" y="620" class="lbl">I2C (INA+MPU)</text>
+
+  <path d="M 490 230 L 490 280" class="flow-fast" /> <text x="500" y="260" class="lbl">PCIe Bounding Boxes</text>
+  <path d="M 490 380 L 490 520" class="flow-med" /> <text x="500" y="450" class="lbl">USB-CDC (cmd_vel)</text>
+
+  <path d="M 580 300 C 650 300, 650 225, 800 225" class="flow-slow" /> <text x="630" y="250" class="lbl">I2C -> PWM (PCA)</text>
+  <path d="M 580 340 C 650 340, 650 325, 800 325" class="flow-med" /> <text x="630" y="340" class="lbl">I2S Digital Audio</text>
+  <path d="M 580 540 C 650 540, 650 525, 800 525" class="flow-fast" /> <text x="630" y="520" class="lbl">PWM (12V Cytron)</text>
+  <path d="M 580 580 C 650 580, 650 625, 800 625" class="flow-med" /> <text x="630" y="620" class="lbl">PWM (Gate LED)</text>
+</svg>
