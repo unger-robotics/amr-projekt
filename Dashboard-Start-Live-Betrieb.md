@@ -18,8 +18,8 @@ Das System besteht im Live-Betrieb aus bis zu 18 interagierenden Komponenten: 13
 | 2  | `laser_tf_publisher`       | Container-Node    | Statischer TF: base_link -> laser                                   |
 | 3  | `camera_tf_publisher`      | Container-Node    | Statischer TF: base_link -> camera_link                             |
 | 4  | `ultrasonic_tf_publisher`  | Container-Node    | Statischer TF: base_link -> ultrasonic_link (bei `use_sensors`)     |
-| 5  | `micro_ros_agent` (drive)  | Container-Prozess | Serial-Bridge Drive-Node <-> ROS2 (`/dev/ttyACM0`)                  |
-| 6  | `micro_ros_agent` (sensor) | Container-Prozess | Serial-Bridge Sensor-Node <-> ROS2 (`/dev/ttyACM1`)                 |
+| 5  | `micro_ros_agent` (drive)  | Container-Prozess | Serial-Bridge Drive-Node <-> ROS2 (`/dev/ttyACM1`)                  |
+| 6  | `micro_ros_agent` (sensor) | Container-Prozess | Serial-Bridge Sensor-Node <-> ROS2 (`/dev/ttyACM0`)                 |
 | 7  | `odom_to_tf`               | Container-Node    | Odometrie -> TF-Broadcast (odom -> base_link)                       |
 | 8  | `slam_toolbox`             | Container-Node    | Async SLAM (Ceres-Solver, 5 cm Aufloesung)                         |
 | 9  | `v4l2_camera_node`         | Container-Node    | IMX296 Kamera via v4l2loopback (640x480, 15 fps, bgr8)             |
@@ -37,10 +37,10 @@ Das System besteht im Live-Betrieb aus bis zu 18 interagierenden Komponenten: 13
 
 | #  | Komponente                | Schnittstelle / Port             | Erwarteter Status                            |
 |----|---------------------------|----------------------------------|----------------------------------------------|
-| 1  | micro_ros_agent_drive     | `/dev/ttyACM0` (Serial)          | session established                          |
-| 2  | micro_ros_agent_sensor    | `/dev/ttyACM1` (Serial)          | session established                          |
-| 3  | drive_node (ESP32-S3 #1)  | Serial 98:3D:AE:EA:08:1C        | 1 Publisher (odom), 3 Subscriber             |
-| 4  | sensor_node (ESP32-S3 #2) | Serial E8:06:90:9D:9B:A0        | 2+ Publisher (range, cliff), 3 Subscriber    |
+| 1  | micro_ros_agent_drive     | `/dev/ttyACM1` (Serial)          | session established                          |
+| 2  | micro_ros_agent_sensor    | `/dev/ttyACM0` (Serial)          | session established                          |
+| 3  | drive_node (ESP32-S3)     | Serial E8:06:90:9D:9B:A0        | 1 Publisher (odom), 3 Subscriber             |
+| 4  | sensor_node (ESP32-S3)    | Serial 98:3D:AE:EA:08:1C        | 2+ Publisher (range, cliff), 3 Subscriber    |
 | 5  | rplidar_node              | /dev/ttyUSB0                     | Sensitivity-Modus, 10 Hz                     |
 | 6  | odom_to_tf                | ROS2 intern (TF)                 | aktiv                                        |
 | 7  | slam_toolbox              | ROS2 intern (TF/Topics)          | Registering sensor                           |
@@ -62,7 +62,7 @@ Das System besteht im Live-Betrieb aus bis zu 18 interagierenden Komponenten: 13
 * Umgebungsvariable `GEMINI_API_KEY` ist in der Datei `amr/docker/.env` gesetzt.
 * Das Docker-Image ist aktuell (`docker compose build`), sodass das `google-genai` SDK integriert ist.
 * Kein anderer Host-Dienst blockiert die ESP32-Ports `/dev/ttyACM0` und `/dev/ttyACM1`.
-* **Drive-Node Firmware korrekt geflasht** (NICHT `led_test`!). Pruefen: `python3 -c "import serial,time; s=serial.Serial('/dev/ttyACM0',115200,timeout=2); time.sleep(2); d=s.read(512); s.close(); print('OK: micro-ROS' if not d.decode('utf-8','replace').startswith('ESP-ROM') else 'FEHLER: LED-Test!')"`.
+* **Drive-Node Firmware korrekt geflasht** (NICHT `led_test`!). Pruefen: `timeout 3 cat /dev/amr_drive | od -A x -t x1z | head -3` — binaere XRCE-DDS-Daten (0x7e Header) = OK. Text-Ausgabe wie `duty= 255/1023` = LED-Test-Firmware! Fix: `cd amr/mcu_firmware/drive_node && pio run -e drive_node -t upload`.
 
 ---
 
@@ -108,7 +108,7 @@ cd ~/AMR-Bachelorarbeit/amr/docker
 ./run.sh ros2 launch my_bot full_stack.launch.py \
     use_slam:=True use_dashboard:=True use_camera:=True use_vision:=True \
     use_rviz:=False use_nav:=False \
-    drive_serial_port:=/dev/ttyACM0 sensor_serial_port:=/dev/ttyACM1
+    drive_serial_port:=/dev/ttyACM1 sensor_serial_port:=/dev/ttyACM0
 
 ```
 
@@ -212,8 +212,8 @@ wget -O hardware/models/yolov8s.hef \
 
 ### micro_ros_agent: "running..." aber kein "session established"
 
-**Ursache 1: LED-Test-Firmware auf Drive-ESP32.** `pio run -e led_test -t upload` ueberschreibt die Drive-Firmware mit einer MOSFET-Diagnose (kein micro-ROS). Serieller Output zeigt "MOSFET-Diagnose" statt binaerer XRCE-DDS-Daten.
-* **Fix:** `cd amr/mcu_firmware/drive_node && pio run -e drive_node -t upload`
+**Ursache 1: LED-Test-Firmware auf Drive-ESP32.** `pio run -t upload` (ohne `-e`) flasht das letzte Environment (`led_test`), nicht `drive_node`! Serieller Output zeigt `duty= 255/1023` statt binaerer XRCE-DDS-Daten.
+* **Fix:** `cd amr/mcu_firmware/drive_node && pio run -e drive_node -t upload` (immer `-e drive_node` angeben!)
 
 **Ursache 2: ESP32 im falschen Zustand.** Nach Container-Neustart ohne Reset wartet der ESP32 nicht mehr auf den Agent.
 * **Fix:** DTR/RTS-Reset ausfuehren (Schritt 3 in Terminal 1), DANN Container starten.
@@ -226,7 +226,7 @@ SLAM Toolbox verwirft Laser-Scans wenn der TF `odom -> base_link` fehlt. Das pas
 ### Docker: "/dev/amr_drive not found"
 
 udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) existieren nur auf dem Host, NICHT im Container.
-* **Fix:** Physische Pfade als Launch-Argumente verwenden: `drive_serial_port:=/dev/ttyACM0 sensor_serial_port:=/dev/ttyACM1`
+* **Fix:** Physische Pfade als Launch-Argumente verwenden: `drive_serial_port:=/dev/ttyACM1 sensor_serial_port:=/dev/ttyACM0`
 
 ### Hailo: "HAILO_OUT_OF_PHYSICAL_DEVICES"
 
