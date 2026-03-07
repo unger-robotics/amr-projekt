@@ -22,7 +22,7 @@ class TwaiCan {
     bool init() {
         twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
             (gpio_num_t)amr::hal::pin_can_tx, (gpio_num_t)amr::hal::pin_can_rx, TWAI_MODE_NORMAL);
-        twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+        twai_timing_config_t t_config = TWAI_TIMING_CONFIG_1MBITS();
         twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
         if (twai_driver_install(&g_config, &t_config, &f_config) != ESP_OK)

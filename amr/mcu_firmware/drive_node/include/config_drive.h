@@ -135,7 +135,7 @@ inline constexpr uint32_t watchdog_miss_limit = 50;
 
 namespace amr::can {
 
-inline constexpr uint32_t bitrate = 500000; // 500 kbit/s (ISO 11898)
+inline constexpr uint32_t bitrate = 1000000; // 1 Mbit/s (ISO 11898)
 inline constexpr uint32_t tx_timeout_ms = 10;
 
 // CAN-IDs (11-Bit Standard-Frame, Bereich 0x200..0x2FF)
@@ -180,4 +180,4 @@ static_assert(amr::timing::failsafe_timeout_ms > amr::timing::control_loop_perio
 // --- CAN-Bus ---
 static_assert(amr::can::id_odom_pos >= 0x200 && amr::can::id_heartbeat <= 0x2FF,
               "Drive CAN-IDs im Bereich 0x200..0x2FF");
-static_assert(amr::can::bitrate == 500000, "CAN-Bitrate 500 kbit/s");
+static_assert(amr::can::bitrate == 1000000, "CAN-Bitrate 1 Mbit/s");

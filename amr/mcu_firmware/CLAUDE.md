@@ -95,7 +95,7 @@ Beide ESP32-S3 haben identische USB VID/PID — die Linux-Enumeration (`/dev/tty
 
 ### CAN-Bus (TWAI, parallel zu micro-ROS, beide Nodes)
 
-Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (500 kbit/s, SN65HVD230 → SBC-CAN01) gesendet. CAN-Fehler sind nicht fatal. Hardware: `../../hardware/can-bus/CAN-Bus.md`.
+Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230 → SBC-CAN01) gesendet. CAN-Fehler sind nicht fatal. Hardware: `../../hardware/can-bus/CAN-Bus.md`.
 
 **Drive-Node (0x200-0x2FF):**
 

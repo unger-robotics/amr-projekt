@@ -117,6 +117,11 @@ def generate_launch_description():
         default_value="False",
         description="Audio-Feedback-Node (MAX98357A)",
     )
+    declare_use_can = DeclareLaunchArgument(
+        "use_can",
+        default_value="False",
+        description="CAN-Bridge Diagnostik-Node (MCP2515/SocketCAN)",
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -409,6 +414,15 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_audio")),
     )
 
+    # --- 11. CAN-Bridge Diagnostik (MCP2515/SocketCAN, optional) ---
+    can_bridge_node = Node(
+        package="my_bot",
+        executable="can_bridge_node",
+        name="can_bridge_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_can")),
+    )
+
     return LaunchDescription(
         [
             # Launch Arguments
@@ -426,6 +440,7 @@ def generate_launch_description():
             declare_use_vision,
             declare_use_cliff_safety,
             declare_use_audio,
+            declare_use_can,
             # Nodes / Prozesse
             rplidar_node,
             laser_tf,
@@ -445,5 +460,6 @@ def generate_launch_description():
             gemini_semantic_node,
             cliff_safety_node,
             audio_feedback_node,
+            can_bridge_node,
         ]
     )

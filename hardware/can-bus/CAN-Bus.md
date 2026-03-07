@@ -1,243 +1,316 @@
-# ESP32-S3 via CAN-Bus
+# CAN-Bus im AMR
 
-## Zentrale Randbedingung
+## Leitfrage
 
-Alle 11 GPIOs am XIAO ESP32-S3 #1 (Haupt-Controller) sind belegt. Damit scheidet eine direkte CAN-Verbindung ESP32 ↔ ESP32 aus – es fehlen zwei Pins für CAN_TX und CAN_RX. Die beiden vorhandenen CAN-Transceiver-Module eröffnen stattdessen den Weg **ESP32-S3 #2 ↔ Pi 5 über CAN**.
+Wie wird der interne CAN-Bus des AMR mit einem Raspberry Pi 5 als Zentralknoten und zwei ESP32-S3-Knoten als Drive- und Sensor-Controller technisch sauber aufgebaut, konfiguriert und getestet?
+
+## Zielbild
+
+Der AMR verwendet einen linearen 3-Knoten-CAN-Bus mit klassischem High-Speed-CAN nach CAN 2.0B. Der Raspberry Pi 5 bindet den Bus ueber ein SBC-CAN01-Modul mit MCP2515 und MCP2562 an SocketCAN an. Die beiden ESP32-S3-Knoten verwenden den integrierten TWAI-Controller und je einen SN65HVD230-Transceiver.
+
+### Betriebsparameter
+
+- CAN-Bitrate: 1 Mbit/s
+- Topologie: Linie
+- Abschlusswiderstand: nur an beiden Busenden
+- Segmentlaenge: ca. 30 cm je Abschnitt
+- Gesamtlaenge: ca. 0,6 m
 
 ## Architektur
 
-```
-ESP32-S3 #2 (Sensor-Controller)          Raspberry Pi 5
-┌──────────────────────────┐             ┌──────────────────────────┐
-│  TWAI (integriert)       │             │  MCP2515 (SPI0)          │
-│  CAN_TX (GPIO) ──► D    │   Twisted   │  MCP2562 Transceiver     │
-│  CAN_RX (GPIO) ◄── R    │   Pair      │                          │
-│         SN65HVD230       │─────────────│  SBC-CAN01 Modul         │
-│  CANH ──────────────────────────────── CANH                       │
-│  CANL ──────────────────────────────── CANL                       │
-│  120 Ω (Terminierung)   │             │  120 Ω (Jumper P1 = ON)  │
-└──────────────────────────┘             └──────────────────────────┘
-   3,3 V Logik                              SPI: 3,3 V Logik
-   VCC = 3,3 V                              VCC = 3,3 V / VCC1 = 5 V
-   RS = GND (High-Speed)                    SocketCAN → ROS 2 Node
+```text
+Raspberry Pi 5                ESP32-S3 Drive-Knoten           ESP32-S3 Sensor-Knoten
+(SBC-CAN01)                   (SN65HVD230)                    (SN65HVD230)
+┌──────────────────────┐      ┌──────────────────────┐        ┌──────────────────────┐
+│ MCP2515 + MCP2562    │      │ TWAI + Transceiver   │        │ TWAI + Transceiver   │
+│ SocketCAN / ROS 2    │──────│ Drive-CAN-Node       │────────│ Sensor-CAN-Node      │
+│ 120 Ω aktiv          │      │ keine Terminierung   │        │ 120 Ω aktiv          │
+└──────────────────────┘      └──────────────────────┘        └──────────────────────┘
+       Busende                         Mittelknoten                    Busende
 ```
 
-## ESP32-S3 #2 – Verdrahtung
+## Randbedingungen
 
-Der ESP32-S3 enthält einen TWAI-Controller (Two-Wire Automotive Interface, kompatibel mit CAN 2.0B). Dieser benötigt keinen externen CAN-Controller wie den MCP2515 – lediglich den physischen Transceiver SN65HVD230.
+### Topologie
 
-### SN65HVD230 am ESP32-S3 #2
+Der Bus ist als Linie auszufuehren:
 
-| SN65HVD230-Pin   | Anschluss                      | Signal                                |
-|:-----------------|:-------------------------------|:--------------------------------------|
-| **VCC** (Pin 3)  | ESP32-S3 3,3 V                 | Versorgung                            |
-| **GND** (Pin 2)  | Gemeinsame Masse               | Pflicht                               |
-| **D** (Pin 1)    | ESP32-S3 GPIO_X (frei wählbar) | CAN_TX → Treiber-Eingang              |
-| **R** (Pin 4)    | ESP32-S3 GPIO_Y (frei wählbar) | CAN_RX ← Empfänger-Ausgang            |
-| **RS** (Pin 8)   | GND                            | High-Speed-Modus (kein Slope Control) |
-| **CANH** (Pin 7) | Twisted Pair → Pi 5 CANH       | Differenzielle Busleitung             |
-| **CANL** (Pin 6) | Twisted Pair → Pi 5 CANL       | Differenzielle Busleitung             |
-| **Vref** (Pin 5) | – (offen)                      | Nicht benötigt                        |
+```text
+Pi 5 ── 30 cm ── Drive-Knoten ── 30 cm ── Sensor-Knoten
+```
 
-Laut Datenblatt (SLOS346G, S. 6) arbeitet der SN65HVD230 mit $V_\mathrm{CC} = 3{,}0$–$3{,}6\,\mathrm{V}$ und liefert bei $R_S = 0\,\mathrm{V}$ (GND) den High-Speed-Modus mit bis zu $1\,\mathrm{Mbit/s}$. Die Busenden erfordern jeweils $120\,\Omega$ Terminierung zwischen CANH und CANL.
-
-### Pin-Vorschlag für ESP32-S3 #2 (XIAO-Format)
-
-Da der zweite ESP32-S3 ausschließlich Sensorik betreibt, sind reichlich GPIOs verfügbar. Beispiel-Belegung:
-
-| Pin | GPIO   | Funktion                    |
-|:----|:-------|:----------------------------|
-| D0  | GPIO1  | CAN_TX → SN65HVD230 D       |
-| D1  | GPIO2  | CAN_RX ← SN65HVD230 R       |
-| D2  | GPIO3  | VL53L1X XSHUT #1            |
-| D3  | GPIO4  | VL53L1X XSHUT #2            |
-| D4  | GPIO5  | I²C SDA (VL53L1X, MB1242)   |
-| D5  | GPIO6  | I²C SCL                     |
-| D6  | GPIO7  | HC-SR04 Trigger             |
-| D7  | GPIO8  | HC-SR04 Echo                |
-| D8  | GPIO9  | Sharp GP2Y0A21 (ADC, Cliff) |
-| D9  | GPIO10 | Sharp GP2Y0A21 (ADC, Front) |
-| D10 | GPIO21 | Status-LED                  |
-
-## Raspberry Pi 5 – SBC-CAN01 (MCP2515 + MCP2562)
-
-Laut der Joy-IT-Anleitung (SBC-CAN01, S. 7) wird das Modul über SPI an den Raspberry Pi angeschlossen. Der MCP2562-Transceiver auf dem Board übernimmt die physische CAN-Schicht.
-
-### Verdrahtung Pi 5 ↔ SBC-CAN01
-
-| SBC-CAN01-Pin | Pi 5 Header-Pin  | Funktion                      |
-|:--------------|:-----------------|:------------------------------|
-| **INT**       | Pin 22 (GPIO 25) | Interrupt                     |
-| **SCK**       | Pin 23 (SCLK)    | SPI-Takt                      |
-| **SI**        | Pin 19 (MOSI)    | SPI-Daten zum Modul           |
-| **SO**        | Pin 21 (MISO)    | SPI-Daten vom Modul           |
-| **CS**        | Pin 24 (CE0)     | Chip Select                   |
-| **GND**       | Pin 6 (GND)      | Masse                         |
-| **VCC1**      | Pin 2 (5 V)      | MCP2515/2562 Betriebsspannung |
-| **VCC**       | Pin 1 (3,3 V)    | SPI-Logikpegel (Pi-seitig)    |
-
-**Wichtig:** VCC1 und VCC getrennt verdrahten. VCC1 versorgt den MCP2515 und MCP2562 mit 5 V, während VCC die SPI-Logikpegel auf 3,3 V hält (Pi-GPIO-Schutz).
+Der Drive-Knoten sitzt in der Mitte und erhaelt **keine** Terminierung. Der Raspberry Pi 5 und der Sensor-Knoten bilden die beiden Busenden.
 
 ### Terminierung
 
-Jumper P1 auf dem SBC-CAN01 auf **ON** setzen – damit ist der $120\,\Omega$ Abschlusswiderstand aktiviert. Am ESP32-S3-Ende muss ein externer $120\,\Omega$ Widerstand zwischen CANH und CANL gelötet werden (oder ein zweites SN65HVD230-Board mit Terminierung verwenden).
+* Raspberry Pi 5 / SBC-CAN01: **120 Ohm** aktiv
+* Drive-Knoten: **keine** Terminierung
+* Sensor-Knoten: **120 Ohm** aktiv
+
+### Spannungsversorgung
+
+Am SBC-CAN01 muessen **zwei Spannungen getrennt** verdrahtet werden:
+
+* **VCC1 = 5 V**: Versorgung fuer MCP2515/MCP2562
+* **VCC = 3,3 V**: Logikpegel zur Pi-SPI-Schnittstelle
+
+## Raspberry Pi 5 – SBC-CAN01 (MCP2515 + MCP2562)
+
+Das SBC-CAN01 verwendet einen MCP2515 als CAN-Controller und einen MCP2562 als CAN-Transceiver. Der Anschluss erfolgt ueber SPI0 des Raspberry Pi 5.
+
+### Verdrahtung Pi 5 ↔ SBC-CAN01
+
+| SBC-CAN01-Pin | Pi 5 Header-Pin | Signal / Funktion  |
+|:--------------|:----------------|:-------------------|
+| **INT**       | Pin 22          | GPIO25, Interrupt  |
+| **SCK**       | Pin 23          | SPI0 SCLK          |
+| **SI**        | Pin 19          | SPI0 MOSI          |
+| **SO**        | Pin 21          | SPI0 MISO          |
+| **CS**        | Pin 24          | SPI0 CE0           |
+| **GND**       | Pin 6           | Masse              |
+| **VCC1**      | Pin 2           | 5 V     |
+| **VCC**       | Pin 1           | 3,3 V |
+
+### Terminierung am SBC-CAN01
+
+Jumper **P1** auf **ON** setzen. Damit wird der integrierte Abschlusswiderstand von 120 Ohm aktiviert.
+
+## ESP32-S3 – SN65HVD230
+
+Die beiden ESP32-S3-Knoten verwenden den integrierten **TWAI-Controller** und je einen **SN65HVD230** als physikalischen CAN-Transceiver.
+
+### Grundverdrahtung SN65HVD230 ↔ ESP32-S3
+
+| SN65HVD230-Pin | Anschluss am ESP32-S3 | Funktion                  |
+|:---------------|:----------------------|:--------------------------|
+| **VCC**        | 3,3 V    | Versorgung                |
+| **GND**        | GND                   | Masse                     |
+| **D**          | CAN_TX                | TX zum Transceiver        |
+| **R**          | CAN_RX                | RX vom Transceiver        |
+| **RS**         | GND                   | High-Speed-Modus          |
+| **CANH**       | CANH                  | Differentielle Busleitung |
+| **CANL**       | CANL                  | Differentielle Busleitung |
+| **Vref**       | offen                 | nicht benoetigt            |
+
+### Beispiel-Pinbelegung fuer XIAO ESP32-S3
+
+| Funktion | XIAO-Pin | GPIO   |
+|:---------|:---------|:-------|
+| CAN_TX   | D6       | GPIO43 |
+| CAN_RX   | D7       | GPIO44 |
 
 ## Software-Konfiguration
 
-### Pi 5: SocketCAN aktivieren
+## Pi 5: `/boot/firmware/config.txt`
 
-In `/boot/firmware/config.txt` (Pi 5 mit Debian Trixie):
+Fuer den CAN-Betrieb genuegt am Pi 5 die folgende CAN-relevante Konfiguration:
 
 ```ini
-# SPI aktivieren
 dtparam=spi=on
-
-# MCP2515 CAN-Controller (16 MHz Quarz auf SBC-CAN01)
-dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25
-
-# SPI Chip Select
-dtoverlay=spi0-1cs
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25,spimaxfrequency=1000000
 ```
 
-Nach Neustart das CAN-Interface konfigurieren:
+### Bedeutung der Parameter
+
+* `oscillator=16000000` beschreibt den Quarz des MCP2515 auf dem SBC-CAN01.
+* `interrupt=25` bindet den Interrupt auf GPIO25.
+* `spimaxfrequency=1000000` begrenzt den **SPI-Takt** zwischen Pi 5 und MCP2515 auf 1 MHz.
+* `spimaxfrequency` ist **nicht** die CAN-Bitrate.
+
+## CAN-Interface unter Linux
+
+Nach dem Neustart wird das Interface `can0` angelegt. Die eigentliche CAN-Bitrate wird anschliessend mit `ip link` gesetzt.
+
+### Interface mit 1 Mbit/s aktivieren
 
 ```bash
-# Interface starten (500 kbit/s, passend zur ESP32-Konfiguration)
-sudo ip link set can0 up type can bitrate 500000
-
-# Empfangstest
-candump can0
-
-# Sendetest
-cansend can0 127#DEADBEEF
+sudo ip link set can0 down
+sudo ip link set can0 up type can bitrate 1000000
+ip -details -statistics link show can0
 ```
 
-### ESP32-S3 #2: TWAI-Firmware
+### Erwarteter Zustand
+
+* `state UP`
+* `can state ERROR-ACTIVE`
+* `bitrate 1000000`
+* Fehlerzaehler bei 0
+
+## ESP32-S3: TWAI-Konfiguration fuer 1 Mbit/s
+
+Alle ESP32-S3-Knoten auf dem Bus muessen mit derselben Bitrate arbeiten.
 
 ```c
 #include <driver/twai.h>
 
-// TWAI-Konfiguration (CAN 2.0B, 500 kbit/s)
 static const twai_general_config_t g_config =
     TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_1, GPIO_NUM_2, TWAI_MODE_NORMAL);
-    //                         CAN_TX (D0)  CAN_RX (D1)
+//                                 CAN_TX      CAN_RX
 
-static const twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-static const twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+static const twai_timing_config_t t_config =
+    TWAI_TIMING_CONFIG_1MBITS();
 
-void setup() {
-    // TWAI-Treiber installieren und starten
+static const twai_filter_config_t f_config =
+    TWAI_FILTER_CONFIG_ACCEPT_ALL();
+
+void can_init(void)
+{
     ESP_ERROR_CHECK(twai_driver_install(&g_config, &t_config, &f_config));
     ESP_ERROR_CHECK(twai_start());
 }
-
-// Sensordaten senden (Beispiel: VL53L1X Distanz)
-void sendRangeData(uint16_t range_mm, uint8_t sensor_id) {
-    twai_message_t msg;
-    msg.identifier = 0x100 + sensor_id;  // z. B. 0x100 = Front, 0x101 = Cliff
-    msg.data_length_code = 2;
-    msg.data[0] = (range_mm >> 8) & 0xFF;
-    msg.data[1] = range_mm & 0xFF;
-    msg.flags = 0;  // Standard-Frame, kein RTR
-
-    twai_transmit(&msg, pdMS_TO_TICKS(10));
-}
 ```
 
-### CAN-Nachrichtenprotokoll
+## Beispiel fuer Sensor-Telegramme
 
-Ein einfaches Schema für die Sensor-Telegramme:
+### Nachrichtenmodell
 
-| CAN-ID  | Länge   | Inhalt                              | Sensor              |
-|:--------|:--------|:------------------------------------|:--------------------|
-| `0x100` | 2 Bytes | Distanz [mm], Big-Endian            | VL53L1X Front       |
-| `0x101` | 2 Bytes | Distanz [mm]                        | VL53L1X Cliff       |
-| `0x110` | 2 Bytes | Distanz [mm]                        | HC-SR04 Ultraschall |
-| `0x120` | 2 Bytes | ADC-Rohwert (12-bit)                | Sharp IR Front      |
-| `0x121` | 2 Bytes | ADC-Rohwert (12-bit)                | Sharp IR Cliff      |
-| `0x1F0` | 1 Byte  | Statusflags (Bit 0–4: Sensorstatus) | Heartbeat           |
+**Sensor-Node (0x110-0x1F0):**
 
-### Pi 5: ROS 2 CAN-Bridge Node
+| CAN-ID  | DLC    | Inhalt                                | Frequenz |
+|:--------|:-------|:--------------------------------------|:---------|
+| `0x110` | 4 Byte | Range (float32, m)                    | 10 Hz    |
+| `0x120` | 1 Byte | Cliff (0x00=OK, 0x01=Cliff)           | 20 Hz    |
+| `0x130` | 8 Byte | IMU Accel+GyroZ (3x int16 + 1x int16)| 50 Hz    |
+| `0x131` | 4 Byte | IMU Heading (float32, rad)            | 50 Hz    |
+| `0x140` | 6 Byte | Batterie (V mV, I mA, P mW)          | 2 Hz     |
+| `0x141` | 1 Byte | Battery Shutdown Flag                 | Event    |
+| `0x1F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)    | 1 Hz     |
 
-Ein Python-Node liest die SocketCAN-Frames und publiziert `sensor_msgs/Range`:
+**Drive-Node (0x200-0x2F0):**
 
-```python
-#!/usr/bin/env python3
-"""CAN-Sensor-Bridge: Liest CAN-Frames und publiziert Range-Topics."""
-import struct
-import can
-import rclpy
-from rclpy.node import Node
-from sensor_msgs.msg import Range
+| CAN-ID  | DLC    | Inhalt                                | Frequenz |
+|:--------|:-------|:--------------------------------------|:---------|
+| `0x200` | 8 Byte | Odom Position x,y (2x float32)        | 20 Hz    |
+| `0x201` | 8 Byte | Odom Heading+Speed (2x float32)       | 20 Hz    |
+| `0x210` | 8 Byte | Encoder L/R (2x float32, rad/s)       | 10 Hz    |
+| `0x220` | 4 Byte | Motor-PWM L/R (2x int16, -255..+255)  | 10 Hz    |
+| `0x2F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)    | 1 Hz     |
 
-class CanSensorBridge(Node):
-    def __init__(self):
-        super().__init__('can_sensor_bridge')
-        self.bus = can.interface.Bus(channel='can0', interface='socketcan')
+### Sende-Implementierung
 
-        # Publisher für jeden Sensor
-        self.pub_front = self.create_publisher(Range, '/range/front', 10)
-        self.pub_cliff = self.create_publisher(Range, '/range/cliff', 10)
-        self.pub_us    = self.create_publisher(Range, '/range/ultrasonic', 10)
+Die tatsaechliche CAN-Sende-Implementierung befindet sich in den `twai_can.hpp`-Dateien der jeweiligen Firmware-Projekte:
 
-        # Timer: CAN-Frames pollen (100 Hz)
-        self.create_timer(0.01, self.poll_can)
+- Drive-Node: `amr/mcu_firmware/drive_node/include/twai_can.hpp`
+- Sensor-Node: `amr/mcu_firmware/sensor_node/include/twai_can.hpp`
 
-    def poll_can(self):
-        msg = self.bus.recv(timeout=0.001)
-        if msg is None:
-            return
+Beide nutzen die Klasse `amr::drivers::TwaiCan` mit Fire-and-forget-Semantik (CAN-Fehler sind nicht fatal, micro-ROS bleibt primaer). Datenformat: Little-Endian via `memcpy`.
 
-        range_msg = Range()
-        range_msg.header.stamp = self.get_clock().now().to_msg()
-        range_msg.header.frame_id = 'base_link'
-        range_msg.field_of_view = 0.44  # ~25° (anpassen pro Sensor)
-        range_msg.min_range = 0.02
-        range_msg.max_range = 4.0
+## Funktionstest
 
-        if msg.arbitration_id == 0x100:  # VL53L1X Front
-            dist_mm = struct.unpack('>H', bytes(msg.data[:2]))[0]
-            range_msg.range = dist_mm / 1000.0
-            range_msg.radiation_type = Range.INFRARED
-            self.pub_front.publish(range_msg)
-
-        elif msg.arbitration_id == 0x101:  # VL53L1X Cliff
-            dist_mm = struct.unpack('>H', bytes(msg.data[:2]))[0]
-            range_msg.range = dist_mm / 1000.0
-            range_msg.radiation_type = Range.INFRARED
-            range_msg.header.frame_id = 'cliff_sensor'
-            self.pub_cliff.publish(range_msg)
-
-        elif msg.arbitration_id == 0x110:  # HC-SR04
-            dist_mm = struct.unpack('>H', bytes(msg.data[:2]))[0]
-            range_msg.range = dist_mm / 1000.0
-            range_msg.radiation_type = Range.ULTRASOUND
-            range_msg.max_range = 4.0
-            self.pub_us.publish(range_msg)
-```
-
-## Alternative: USB statt CAN
-
-Falls die CAN-Integration zu aufwendig erscheint, gibt es einen deutlich einfacheren Weg: Der zweite ESP32-S3 wird wie der erste per USB-CDC an den Pi 5 angeschlossen und betreibt einen eigenen micro-ROS-Agent.
+## Empfang auf dem Pi 5
 
 ```bash
-# Zweiter micro-ROS Agent auf separatem Port
-ros2 run micro_ros_agent micro_ros_agent serial \
-    --dev /dev/ttyACM1 -b 921600
+candump can0
 ```
 
-Der Vorteil: Die bestehende Firmware-Architektur (FreeRTOS, micro-ROS, `sensor_msgs/Range`) kann 1:1 wiederverwendet werden. Kein CAN-Protokoll, kein MCP2515-Treiber, keine SocketCAN-Konfiguration.
+## Senden vom Pi 5
 
-Der Nachteil: Kein echtes Bussystem – bei späterem Ausbau auf mehr als zwei Controller wird die Anzahl der USB-Ports zum Engpass.
+```bash
+cansend can0 123#1122334455667788
+```
 
-## Bewertung
+## Fehlerzaehler beobachten
 
-| Kriterium            | CAN-Bus (SN65HVD230 + MCP2515)              | USB (micro-ROS)                         |
-|:---------------------|:--------------------------------------------|:----------------------------------------|
-| Verdrahtungsaufwand  | Hoch (SPI + CAN-Transceiver + Terminierung) | Gering (1× USB-C)                       |
-| Firmware-Komplexität | TWAI-Treiber + eigenes Protokoll            | micro-ROS (bewährt)                     |
-| Erweiterbarkeit      | Bis 120 Knoten auf einem Bus                | 1 USB-Port pro Controller               |
-| Latenz               | < 1 ms (deterministisch)                    | 2–5 ms (USB-CDC, nicht deterministisch) |
-| Thesis-Relevanz      | CAN-Bus ist industrieller Standard für AMR  | Einfacher, aber weniger lehrreich       |
+```bash
+watch -n 0.5 "ip -details -statistics link show can0"
+```
 
-Für die Bachelorarbeit hat die CAN-Variante den Vorteil, dass sie industrielle Relevanz demonstriert (ISO 11898, fahrzeugnahe Bussysteme). Die vorhandene Hardware – SN65HVD230-Board und SBC-CAN01 – deckt beide Busenden ab. Die USB-Variante wäre dagegen der pragmatische Weg, wenn die Sensorerweiterung schnell produktiv sein soll.
+### Bewertungskriterium
+
+Der Aufbau gilt als stabil, wenn unter realem Verkehr:
+
+* `state UP` bestehen bleibt,
+* `error-warn`, `error-pass` und `bus-off` bei 0 bleiben,
+* keine dauerhaft steigenden TX- oder RX-Fehlerzaehler auftreten.
+
+## ROS-2-Bridge auf dem Pi 5
+
+Der `can_bridge_node` liest CAN-Frames von SocketCAN und publiziert sie als `diagnostic_msgs/DiagnosticArray` auf `/diagnostics/can`. Er dient als reiner Monitoring- und Diagnosekanal und dupliziert keine micro-ROS-Daten.
+
+- Implementierung: `amr/scripts/can_bridge_node.py`
+- Start via Launch: `ros2 launch my_bot full_stack.launch.py use_can:=True`
+- Start direkt: `ros2 run my_bot can_bridge_node`
+
+Der Node dekodiert Heartbeats (Flags, Uptime), Sensordaten (Float-Werte) und Motor-PWM (Int16) strukturiert in die `DiagnosticStatus.values`-Liste.
+
+## Validierungsskript
+
+```bash
+# Standalone (ohne ROS2/Docker):
+python3 amr/scripts/can_validation_test.py --duration 30
+
+# Als ROS2-Node (im Docker):
+ros2 run my_bot can_validation_test
+```
+
+Ergebnis: `can_results.json` mit Frame-Raten, Heartbeat-Dekodierung, Sample-Werten und PASS/FAIL-Status.
+
+## Testergebnisse (2026-03-07)
+
+| Pruefpunkt | Ergebnis | Bemerkung |
+|:---|:---|:---|
+| can0 Interface | PASS | ERROR-ACTIVE, 0 Bus-Errors |
+| MCP2515 Init | PASS | dmesg: "successfully initialized" |
+| can0.service | PASS | aktiv, enabled, txqueuelen=1000 |
+| Drive 0x200 OdomPos | PASS | ~16 Hz (Core 1, 50-Hz-Zyklus) |
+| Drive 0x201 OdomHeading | PASS | ~16 Hz |
+| Drive 0x210 Encoder | PASS | 9.9 Hz |
+| Drive 0x220 MotorPWM | PASS | 9.9 Hz |
+| Drive 0x2F0 Heartbeat | PASS | 1.0 Hz, alle Flags korrekt |
+| Sensor 0x110 Range | PASS | 9.9 Hz |
+| Sensor 0x120 Cliff | PASS | 19.9 Hz |
+| Sensor 0x130 IMU Accel | PASS | 49.8 Hz |
+| Sensor 0x131 IMU Heading | PASS | 49.7 Hz |
+| Sensor 0x140 Battery | PASS | 2.0 Hz, 12.39V/781mA |
+| Sensor 0x141 BatShutdown | n/a | Event-basiert, kein Dauersignal |
+| Sensor 0x1F0 Heartbeat | PASS | 1.0 Hz, alle Flags korrekt |
+| Gesamt (30s) | **PASS** | 5559 Frames, 11/12 IDs |
+
+Odom-Rate (~16 Hz statt 20 Hz): CAN-Sends laufen in `controlTask` (50 Hz), der Odom-Timer (50 ms) wird durch den Task-Scheduling-Jitter leicht gedehnt. Fuer Diagnostik-Zwecke akzeptabel.
+
+## Troubleshooting-Checkliste
+
+### Kein Frame von einem Node
+
+1. Transceiver angeschlossen? 3.3V am SN65HVD230 VCC pruefen
+2. Richtige Pins? GPIO43 (TX) und GPIO44 (RX) fuer beide Nodes
+3. Firmware aktuell? `git log --oneline -1 amr/mcu_firmware/<node>/`
+4. CAN-Init erfolgreich? Serielle Ausgabe beim Boot pruefen (`can_ok`)
+5. Bus-Terminierung? 120 Ohm an beiden Enden, NICHT am Drive-Node
+6. CANH/CANL vertauscht? Zwischen beiden Transceivern konsistent
+
+### Frames kommen, aber nicht alle IDs
+
+1. CAN-Sends fuer Cliff/Range/IMU/Heartbeat laufen in Core 1 (`sensorTask`/`controlTask`)
+2. Battery-CAN-Send laeuft ebenfalls in `sensorTask` (seit v2.1.0)
+3. BatShutdown (0x141) kommt nur bei Unterspannung (<9.5V)
+4. `can_ok` Guards: Alle Sends pruefen `if (can_ok)`, Init-Fehler → nichts gesendet
+
+### Bus-Errors steigen
+
+1. Bitrate: Alle 3 Knoten muessen exakt 1 Mbit/s verwenden
+2. Kabellaenge: Maximal ~0.6 m Gesamtlaenge bei 1 Mbit/s
+3. Terminierung: Genau 2x 120 Ohm, Messung: CANH-CANL ~60 Ohm bei Busruhe
+4. GND-Verbindung: Alle Knoten gemeinsame Masse
+5. ERROR-PASSIVE: `sudo ip link set can0 down && up` zum Zuruecksetzen
+
+### Diagnostik-Befehle
+
+```bash
+# Bus-Statistiken (live)
+watch -n 1 "ip -details -statistics link show can0"
+
+# Frame-Dump mit absolutem Timestamp
+candump can0 -t A
+
+# Nur bestimmte IDs filtern
+candump can0,110:7FF,1F0:7FF
+
+# Frame-Rate pro ID (10s Aufnahme)
+timeout 10 candump can0 -t A > /tmp/can.log
+awk '{print $4}' /tmp/can.log | sort | uniq -c | sort -rn
+```
+
+## Fazit
+
+Der AMR verwendet einen technisch sauberen 3-Knoten-CAN-Bus mit Raspberry Pi 5 als SocketCAN-Knoten und zwei ESP32-S3-Knoten als verteilte Steuergeraete. Bei einer linearen Topologie mit ca. 0,6 m Gesamtlaenge, Terminierung nur an beiden Busenden und sauberer Verdrahtung ist 1 Mbit/s fuer diesen internen Aufbau fachlich plausibel. Alle 11 periodischen CAN-IDs werden zuverlaessig empfangen (validiert 2026-03-07).

@@ -12,6 +12,7 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `hailo_inference_node.py` | (Legacy) Direkter Hailo-8 Zugriff, ersetzt durch UDP-Pattern |
 | `cliff_safety_node.py` | cmd_vel-Multiplexer mit Cliff-Notbremse (subscribt /cliff, muxed Nav2+Dashboard) |
 | `audio_feedback_node.py` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
+| `can_bridge_node.py` | CAN-Bus Diagnostik-Bridge (MCP2515/SocketCAN → /diagnostics/can) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)
 
@@ -29,6 +30,7 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `nav_test.py` | 4-Waypoint-Navigation mit Positionsfehler-Messung |
 | `docking_test.py` | 10-Versuch ArUco-Docking-Test |
 | `serial_latency_logger.py` | Serial-Transport-Latenz ESP32-Pi (CSV-Export) |
+| `can_validation_test.py` | CAN-Bus Frame-Rate, Heartbeat, Daten-Dekodierung (30s, JSON) |
 
 ## Standalone-Utilities (kein ROS2 erforderlich)
 

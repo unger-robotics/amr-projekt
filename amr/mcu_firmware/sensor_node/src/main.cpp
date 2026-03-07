@@ -211,6 +211,8 @@ void sensorTask(void *p) {
                 shared.cliff_detected = cliff;
                 xSemaphoreGive(mutex);
             }
+            if (can_ok)
+                can.sendCliff(cliff);
         }
 
         // 2. Ultraschall HC-SR04 auslesen
@@ -224,6 +226,8 @@ void sensorTask(void *p) {
                 shared.distance_m = dist;
                 xSemaphoreGive(mutex);
             }
+            if (can_ok)
+                can.sendRange(dist);
         }
 
         // 3. IMU lesen (50 Hz, I2C mit Mutex)
@@ -255,6 +259,36 @@ void sensorTask(void *p) {
                     shared.imu_heading = fused;
                     xSemaphoreGive(mutex);
                 }
+                if (can_ok) {
+                    can.sendImuAccel(ax, ay, az, gz);
+                    can.sendImuHeading(fused);
+                }
+            }
+        }
+
+        // 4. Battery lesen + CAN senden (2 Hz, I2C mit Mutex)
+        if (ina260_ok && can_ok) {
+            static uint32_t last_bat_can = 0;
+            if (now - last_bat_can >= amr::timing::battery_publish_period_ms) {
+                last_bat_can = now;
+                float voltage = 0, current = 0, power = 0;
+                if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                    if (ina260.read(voltage, current, power)) {
+                        can.sendBattery(voltage, current, power);
+                    }
+                    xSemaphoreGive(i2c_mutex);
+                }
+            }
+        }
+
+        // CAN Heartbeat (1 Hz, in sensorTask damit unabhaengig von micro-ROS)
+        if (can_ok) {
+            static uint32_t last_can_hb_task = 0;
+            if (now - last_can_hb_task >= amr::can::heartbeat_period_ms) {
+                last_can_hb_task = now;
+                bool core1_ok_flag = true; // Core 1 laeuft offensichtlich
+                can.sendHeartbeat(imu_ok, ina260_ok, pca9685_ok, battery_motor_shutdown,
+                                  core1_ok_flag);
             }
         }
 
@@ -507,8 +541,7 @@ void loop() {
         if (rc != RCL_RET_OK) {
             digitalWrite(amr::hal::pin_led_internal, LOW);
         }
-        if (can_ok)
-            can.sendCliff(cliff_state);
+        // CAN-Send laeuft in sensorTask (Core 1)
     }
 
     // --- 2. Ultraschall publizieren (10 Hz) ---
@@ -531,8 +564,7 @@ void loop() {
         if (rc != RCL_RET_OK) {
             digitalWrite(amr::hal::pin_led_internal, LOW);
         }
-        if (can_ok)
-            can.sendRange(dist);
+        // CAN-Send laeuft in sensorTask (Core 1)
     }
 
     // --- 3. IMU publizieren (50 Hz) ---
@@ -578,10 +610,7 @@ void loop() {
             if (imu_rc != RCL_RET_OK) {
                 digitalWrite(amr::hal::pin_led_internal, LOW);
             }
-            if (can_ok) {
-                can.sendImuAccel(iax, iay, iaz, igz);
-                can.sendImuHeading(ih);
-            }
+            // CAN-Send laeuft in sensorTask (Core 1)
         }
     }
 
@@ -658,13 +687,6 @@ void loop() {
         }
     }
 
-    // --- 5. CAN Heartbeat (1 Hz) ---
-    if (can_ok) {
-        static unsigned long last_can_hb = 0;
-        if (millis() - last_can_hb >= amr::can::heartbeat_period_ms) {
-            last_can_hb = millis();
-            bool core1_ok = (hb_miss_count <= amr::timing::watchdog_miss_limit);
-            can.sendHeartbeat(imu_ok, ina260_ok, pca9685_ok, battery_motor_shutdown, core1_ok);
-        }
-    }
+    // CAN Heartbeat + Cliff/Range/IMU laufen in sensorTask (Core 1)
+    // Battery CAN-Sends bleiben hier (I2C-Read nur in loop())
 }

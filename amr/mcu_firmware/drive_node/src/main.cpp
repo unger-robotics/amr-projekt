@@ -202,16 +202,39 @@ void controlTask(void *p) {
             xSemaphoreGive(mutex);
         }
 
-        // CAN: Encoder-Feedback + Motor-PWM (10 Hz)
+        // CAN: Encoder-Feedback + Motor-PWM (10 Hz) + Odom (20 Hz) + Heartbeat (1 Hz)
+        // Alle CAN-Sends in controlTask (Core 1), damit sie unabhaengig von
+        // micro-ROS-Verbindungsstatus laufen (setup() blockiert bis Agent da).
         if (can_ok) {
-            static uint32_t last_can_ctrl = 0;
             uint32_t now_ms = millis();
+
+            // Encoder + Motor-PWM (10 Hz)
+            static uint32_t last_can_ctrl = 0;
             if (now_ms - last_can_ctrl >= amr::can::encoder_can_period_ms) {
                 last_can_ctrl = now_ms;
                 can.sendEncoder(ml_filt, mr_filt);
                 int16_t duty_l = static_cast<int16_t>(pid_out_l * amr::pwm::motor_max);
                 int16_t duty_r = static_cast<int16_t>(pid_out_r * amr::pwm::motor_max);
                 can.sendMotorPwm(duty_l, duty_r);
+            }
+
+            // Odom Position + Heading (20 Hz)
+            static uint32_t last_can_odom = 0;
+            if (now_ms - last_can_odom >= amr::timing::odom_publish_period_ms) {
+                last_can_odom = now_ms;
+                can.sendOdomPos(s.x, s.y);
+                float v_lin = (ml + mr) * amr::kinematics::wheel_radius / 2;
+                can.sendOdomHeading(s.theta, v_lin);
+            }
+
+            // Heartbeat (1 Hz)
+            static uint32_t last_can_hb_ctrl = 0;
+            if (now_ms - last_can_hb_ctrl >= amr::can::heartbeat_period_ms) {
+                last_can_hb_ctrl = now_ms;
+                bool c1_ok = true; // Core 1 laeuft offensichtlich
+                bool fs = (now_ms - last_cmd_time > amr::timing::failsafe_timeout_ms);
+                bool pid_act = (tv != 0 || tw != 0);
+                can.sendHeartbeat(true, c1_ok, pid_act, battery_motor_shutdown, c1_ok, fs);
             }
         }
 
@@ -450,24 +473,7 @@ void loop() {
         if (pub_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {
             digitalWrite(amr::hal::pin_led_internal, LOW); // Zeige Fehler auf interner LED
         }
-        if (can_ok) {
-            can.sendOdomPos(x, y);
-            can.sendOdomHeading(th, v);
-        }
-
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(5));
     }
-
-    // --- CAN Heartbeat (1 Hz) ---
-    if (can_ok) {
-        static unsigned long last_can_hb = 0;
-        if (millis() - last_can_hb >= amr::can::heartbeat_period_ms) {
-            last_can_hb = millis();
-            bool core1_ok = (hb_miss_count <= amr::timing::watchdog_miss_limit);
-            bool failsafe = (millis() - last_cmd_time > amr::timing::failsafe_timeout_ms);
-            bool pid_active = (shared.tv != 0 || shared.tw != 0);
-            can.sendHeartbeat(true, core1_ok, pid_active, battery_motor_shutdown, core1_ok,
-                              failsafe);
-        }
-    }
+    // CAN-Sends (Odom, Heartbeat) laufen jetzt in controlTask (Core 1)
 }

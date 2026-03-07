@@ -226,6 +226,51 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
+# 6. CAN-Bus (SocketCAN, SBC-CAN01 / MCP2515)
+# ---------------------------------------------------------------------------
+echo "--- CAN-Bus (SocketCAN) pruefen ---"
+if ip link show can0 &> /dev/null; then
+    echo "[OK] can0 Interface vorhanden"
+    # Interface starten falls noch down
+    if ! ip link show can0 | grep -q "UP"; then
+        echo "Starte can0 (1 Mbit/s)..."
+        sudo ip link set can0 up type can bitrate 1000000
+        echo "[OK] can0 gestartet"
+    else
+        echo "[OK] can0 bereits aktiv"
+    fi
+else
+    echo "[INFO] can0 nicht vorhanden — MCP2515-Overlay pruefen:"
+    echo "  In /boot/firmware/config.txt unter [all]:"
+    echo "    dtparam=spi=on"
+    echo "    dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25"
+    echo "  Danach: sudo reboot"
+fi
+
+# can-utils installieren (candump, cansend)
+if command -v candump &> /dev/null; then
+    echo "[OK] can-utils bereits installiert"
+else
+    echo "Installiere can-utils..."
+    sudo apt-get update
+    sudo apt-get install -y can-utils
+    echo "[OK] can-utils installiert"
+fi
+
+# systemd-Service fuer automatischen CAN-Start
+CAN_SERVICE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/can0.service"
+CAN_SERVICE_DST="/etc/systemd/system/can0.service"
+if [ -f "$CAN_SERVICE_SRC" ]; then
+    if [ ! -f "$CAN_SERVICE_DST" ] || ! cmp -s "$CAN_SERVICE_SRC" "$CAN_SERVICE_DST"; then
+        sudo cp "$CAN_SERVICE_SRC" "$CAN_SERVICE_DST"
+        sudo systemctl daemon-reload
+    fi
+    sudo systemctl enable can0.service 2>/dev/null
+    echo "[OK] can0.service aktiviert (Start beim Boot)"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
 # Zusammenfassung
 # ---------------------------------------------------------------------------
 echo "=== Host-Setup abgeschlossen ==="
