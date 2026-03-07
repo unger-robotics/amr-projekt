@@ -36,3 +36,12 @@ ros2 launch my_bot full_stack.launch.py use_respeaker:=True
 - ReSpeaker per USB angeschlossen (Vendor 2886, Product 0018)
 - udev-Regel via `host_setup.sh` installiert (USB-Zugriff ohne sudo)
 - `pyusb` im Docker-Image (wird automatisch installiert)
+
+## Sensor-Topics (Sensor-Node ESP32)
+
+| Topic | Typ | Rate | QoS | Beschreibung |
+|---|---|---|---|---|
+| `/range/front` | `sensor_msgs/Range` | 10 Hz | Reliable | HC-SR04 Ultraschall, frame: `ultrasonic_link` |
+| `/cliff` | `std_msgs/Bool` | 20 Hz | Best-Effort | MH-B IR Cliff (true = Abgrund) |
+
+**Wichtig:** `/cliff` nutzt Best-Effort QoS. Subscriber muessen `ReliabilityPolicy.BEST_EFFORT` verwenden.
