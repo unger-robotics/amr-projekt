@@ -10,7 +10,7 @@ Erfasste Daten:
   1. Systemressourcen (CPU, RAM, Disk, Temperatur, Throttling)
   2. AMR-Peripherie (ESP32, RPLIDAR, Kamera, Hailo, Serial-Ports)
   3. Betriebssystem und Software (OS, Docker, PlatformIO, Toolchains)
-  4. Projekt-Info (Git, Docker-Image, PlatformIO-Plattform, Boot-Config, config.h)
+  4. Projekt-Info (Git, Docker-Image, PlatformIO-Plattform, Boot-Config, config_drive.h)
 """
 
 import argparse
@@ -532,7 +532,7 @@ def collect_project_info():
         pass
     data["boot_overlays"] = boot_overlays
 
-    # --- config.h Parameter (Single Source of Truth) ---
+    # --- config_drive.h Parameter (Single Source of Truth) ---
     config_h_params = {}
     config_h_path = _find_config_h()
     data["config_h_path"] = str(config_h_path) if config_h_path else None
@@ -565,14 +565,14 @@ def collect_project_info():
 
 
 def _find_config_h():
-    """Sucht config.h relativ zum Skript-Verzeichnis oder im Projektbaum."""
+    """Sucht config_drive.h relativ zum Skript-Verzeichnis oder im Projektbaum."""
     script_dir = Path(__file__).resolve().parent
     candidates = [
         script_dir
-        / "../mcu_firmware/drive_node/include/config.h",  # amr/scripts/ -> amr/mcu_firmware/
+        / "../mcu_firmware/drive_node/include/config_drive.h",  # amr/scripts/ -> amr/mcu_firmware/
         script_dir
-        / "../../mcu_firmware/drive_node/include/config.h",  # my_bot/my_bot/ -> amr/mcu_firmware/
-        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node/include/config.h",
+        / "../../mcu_firmware/drive_node/include/config_drive.h",  # my_bot/my_bot/ -> amr/mcu_firmware/
+        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node/include/config_drive.h",
     ]
     for c in candidates:
         resolved = c.resolve()
@@ -900,11 +900,11 @@ def print_project_info(data):
     else:
         print_warn("Boot-Konfiguration", "/boot/firmware/config.txt nicht lesbar")
 
-    # config.h
+    # config_drive.h
     params = data.get("config_h_params", {})
     if params:
         print()
-        print(f"  {COLOR_CYAN}Firmware-Parameter (config.h):{COLOR_RESET}")
+        print(f"  {COLOR_CYAN}Firmware-Parameter (config_drive.h):{COLOR_RESET}")
         # Formatierte Ausgabe der wichtigsten Parameter
         param_labels = {
             "WHEEL_DIAMETER": ("Raddurchmesser", "m"),
@@ -925,7 +925,7 @@ def print_project_info(data):
                 suffix = f" {unit}" if unit else ""
                 print_info(f"  {label}", f"{val}{suffix}")
     else:
-        print_warn("config.h", "nicht gefunden")
+        print_warn("config_drive.h", "nicht gefunden")
 
 
 # ===========================================================================
@@ -1115,10 +1115,10 @@ def generate_markdown(system, peripherals, software, project=None):
             lines.append("```")
             lines.append("")
 
-        # config.h
+        # config_drive.h
         params = project.get("config_h_params", {})
         if params:
-            lines.append("### Firmware-Parameter (config.h)")
+            lines.append("### Firmware-Parameter (config_drive.h)")
             lines.append("")
             lines.append("| Parameter | Wert |")
             lines.append("|---|---|")

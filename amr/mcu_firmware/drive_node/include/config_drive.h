@@ -1,5 +1,5 @@
 /**
- * @file config.h
+ * @file config_drive.h
  * @brief Zentrale Konfiguration fuer AMR Drive-Node (ESP32-S3 #1 - Antriebsebene)
  * @version 4.0.0
  * @date 2026-03-04
@@ -38,10 +38,6 @@ inline constexpr uint8_t pwm_ch_left_a = 0;
 inline constexpr uint8_t pwm_ch_left_b = 1;
 inline constexpr uint8_t pwm_ch_right_a = 2;
 inline constexpr uint8_t pwm_ch_right_b = 3;
-
-// --- Richtungsfaktoren ---
-inline constexpr int8_t motor_direction_left = -1;
-inline constexpr int8_t motor_direction_right = +1;
 
 // --- Encoder (Hall-Encoder JGA25-370, 11 CPR) ---
 inline constexpr uint8_t pin_enc_left_a = 5;  // D4 - Interrupt-faehig (Zuvor D6)
@@ -96,8 +92,6 @@ inline constexpr uint32_t led_freq_hz = 5000;             // 5 kHz
 inline constexpr uint8_t led_bits = 10;                   // 10-bit
 inline constexpr uint32_t led_max = (1u << led_bits) - 1; // 1023
 inline constexpr uint8_t led_channel = 4;                 // LEDC-Kanal
-inline constexpr float led_gamma = 2.2f;                  // Gamma-Korrektur
-
 } // namespace amr::pwm
 
 // --- PID-Parameter ---
@@ -139,15 +133,6 @@ inline constexpr uint32_t watchdog_miss_limit = 50;
 
 } // namespace amr::timing
 
-namespace amr::safety {
-
-inline constexpr uint32_t motor_stall_timeout_ms = 2000;     // [ms]
-inline constexpr float motor_stall_velocity = 0.01f;         // [m/s]
-inline constexpr float motor_stall_current_a = 2.5f;         // [A]
-inline constexpr float motor_overcurrent_immediate_a = 5.0f; // [A]
-
-} // namespace amr::safety
-
 // ==========================================================================
 // 5. COMPILE-TIME VALIDIERUNG
 // ==========================================================================
@@ -172,5 +157,3 @@ static_assert(amr::pid::output_min < amr::pid::output_max, "PID: output_min < ou
 static_assert(amr::timing::control_loop_hz > 0, "control_loop_hz > 0");
 static_assert(amr::timing::failsafe_timeout_ms > amr::timing::control_loop_period_ms,
               "failsafe_timeout > Regelzyklus");
-
-static_assert(amr::safety::motor_stall_timeout_ms > 0, "Motor-Stall-Timeout > 0");

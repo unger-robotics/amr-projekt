@@ -22,7 +22,7 @@
  */
 
 #include <Arduino.h>
-#include "config.h"
+#include "config_drive.h"
 
 // ---------------------------------------------------------------
 // Konstanten

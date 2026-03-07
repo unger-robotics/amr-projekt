@@ -92,14 +92,14 @@ flowchart LR
 
 ---
 
-## 3) Verkabelung: "Single Source of Truth" = `hardware/config.h`
+## 3) Verkabelung: "Single Source of Truth" = `config_drive.h` / `config_sensors.h`
 
 **Regel:** Hardwareverdrahtung und Firmware muessen 1:1 zusammenpassen.
-Wenn du Pins aenderst: **erst config.h anpassen**, dann Kabel.
+Wenn du Pins aenderst: **erst config_drive.h bzw. config_sensors.h anpassen**, dann Kabel.
 
 ### 3.1 Pin-Mapping (XIAO ESP32-S3)
 
-Aus `config.h`:
+Aus `config_drive.h`:
 
 | Funktion        | XIAO Pin | Hinweis                             |
 | --------------- | -------: | ----------------------------------- |
@@ -278,7 +278,7 @@ Aus Schaltplan-Tabelle:
 
 ---
 
-## 11) Firmware-relevante Hardware-Parameter (aus `config.h` und `main.cpp`)
+## 11) Firmware-relevante Hardware-Parameter (aus `config_drive.h` und `main.cpp`)
 
 Diese Werte definieren indirekt Hardware-Annahmen (Tuning/Mechanik).
 
@@ -387,7 +387,7 @@ Empfohlen:
 
 - `hardware/docs/hardware-setup.md` (dieses Dokument)
 - `hardware/schaltplan.pdf` (Schaltplan)
-- `hardware/config.h` (Pin-Mapping + Parameter)
+- `mcu_firmware/drive_node/include/config_drive.h` (Pin-Mapping + Parameter)
 - `hardware/docs/kosten.md` (Kosten/Teileliste)
 
 ---

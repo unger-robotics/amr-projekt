@@ -108,7 +108,7 @@ Dauerbelastung mit 13 A ist **nicht zulässig** und führt zu thermischer
 Degradation der Zelle.
 
 **Konsequenz – Spannungsüberwachung:** Das mehrstufige Schutzkonzept in der
-Firmware (`config.h`, Namespace `amr::battery`) implementiert vier
+Firmware (`config_sensors.h`, Namespace `amr::battery`) implementiert vier
 Abschaltschwellen:
 
 1. Soft-Warnung bei $\leq 10{,}0\,\mathrm{V}$ (Packspannung)

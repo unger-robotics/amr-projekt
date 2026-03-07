@@ -25,7 +25,7 @@ import numpy as np
 from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
 
 # ===========================================================================
-# Roboter-Parameter (aus mcu_firmware/drive_node/include/config.h)
+# Roboter-Parameter (aus mcu_firmware/drive_node/include/config_drive.h)
 # ===========================================================================
 L = 16.0  # Gesamtpfadlaenge 4x4m Quadrat [m]
 B_NOMINAL = 0.178  # WHEEL_BASE [m]
@@ -258,7 +258,7 @@ def ausgabe_markdown(erg):
     print(f"| E_max,syst (vor Kalibrierung) | {erg['E_max_syst_mm']:.1f} mm |")
     print()
 
-    # config.h-Werte
+    # config_drive.h-Werte
     # Die Firmware verwendet einen einzigen WHEEL_RADIUS (symmetrisch).
     # Die Rad-Asymmetrie wird ueber TICKS_PER_REV_LEFT/RIGHT korrigiert:
     #   ticks_corrected = ticks_nominal * (r_nominal / r_corrected)
@@ -266,7 +266,7 @@ def ausgabe_markdown(erg):
     ticks_left = TICKS_PER_REV_NOMINAL * (r_nominal / erg["r_left_m"])
     ticks_right = TICKS_PER_REV_NOMINAL * (r_nominal / erg["r_right_m"])
 
-    print("### Korrigierte config.h-Werte (Copy-Paste)")
+    print("### Korrigierte config_drive.h-Werte (Copy-Paste)")
     print()
     print("```c")
     print(f"#define WHEEL_BASE            {erg['b_actual_m']:.6f}f  // [m] UMBmark-korrigiert")

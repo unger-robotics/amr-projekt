@@ -9,7 +9,7 @@ Modi:
   - Richtungstest: Prueft Vorzeichen-Konvention
   - Asymmetrie-Test: Vergleicht linkes/rechtes Rad
 
-Ergebnis: Empfohlene config.h-Werte + JSON-Protokoll.
+Ergebnis: Empfohlene config_drive.h-Werte + JSON-Protokoll.
 """
 
 import datetime
@@ -371,17 +371,17 @@ def run_live_display(node):
 
 
 # ===========================================================================
-# config.h Empfehlungen
+# config_drive.h Empfehlungen
 # ===========================================================================
 
 
 def print_config_recommendations(rev_results):
-    """Gibt empfohlene config.h-Werte aus."""
+    """Gibt empfohlene config_drive.h-Werte aus."""
     if rev_results is None:
         return
 
     print("\n" + "=" * 60)
-    print("  EMPFOHLENE config.h WERTE")
+    print("  EMPFOHLENE config_drive.h WERTE")
     print("=" * 60)
 
     left_vals = rev_results.get("left", [])

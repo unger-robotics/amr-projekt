@@ -11,7 +11,7 @@ Echtzeit-Firmware fuer den Differentialantrieb eines autonomen mobilen Roboters 
 | Motoren | JGA25-370 DC-Getriebemotoren mit Quadratur-Encoder (Phase A+B, 2x-Zaehlung) |
 | Verbindung zum Pi 5 | USB-CDC (Serial Transport, micro-ROS Humble) |
 
-Pin-Belegung, Encoder-Kalibrierung und alle weiteren Parameter sind in `include/config.h` definiert.
+Pin-Belegung, Encoder-Kalibrierung und alle weiteren Parameter sind in `include/config_drive.h` definiert.
 
 ## Build & Flash
 
@@ -72,9 +72,9 @@ Core 0 (loop)                      Core 1 (controlTask)
 
 **Hinweis:** Die ESP32 Arduino Core 2.x LEDC-API ist kanalbasiert — `ledcWrite(channel, duty)`, nicht `ledcWrite(pin, duty)`. LED-PWM verwendet LEDC-Kanal `amr::pwm::led_channel` (Kanal 4, 5 kHz, 10-bit).
 
-## Konfiguration (`include/config.h`)
+## Konfiguration (`include/config_drive.h`)
 
-Alle Hardware-Parameter sind zentral in `include/config.h` definiert (Single Source of Truth, eingebunden via `-I include` Build-Flag):
+Alle Hardware-Parameter sind zentral in `include/config_drive.h` definiert (Single Source of Truth, eingebunden via `-I include` Build-Flag):
 
 | Parameter | Wert | Beschreibung |
 |---|---|---|
@@ -88,7 +88,7 @@ Alle Hardware-Parameter sind zentral in `include/config.h` definiert (Single Sou
 | `IMU_PUBLISH_HZ` | 50 Hz | IMU-Publikationsrate |
 | `IMU_COMPLEMENTARY_ALPHA` | 0.02 | Complementary-Filter Gewichtung (Accelerometer-Anteil) |
 
-PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `config.h` definiert (`amr::pid::kp/ki/kd`).
+PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0) sind in `config_drive.h` definiert (`amr::pid::kp/ki/kd`).
 
 ### Signalverarbeitung
 

@@ -14,7 +14,7 @@ import os
 import sys
 
 # ===========================================================================
-# Konfiguration (aus mcu_firmware/drive_node/include/config.h)
+# Konfiguration (aus mcu_firmware/drive_node/include/config_drive.h)
 # ===========================================================================
 
 PIN_MAPPING = {
@@ -209,8 +209,8 @@ def check_spannungsversorgung(result):
 
 
 def check_pin_belegung(result):
-    """Interaktive Pruefung der Pin-Belegung gegen config.h."""
-    print_header("3. Pin-Belegung (gegen config.h)")
+    """Interaktive Pruefung der Pin-Belegung gegen config_drive.h."""
+    print_header("3. Pin-Belegung (gegen config_drive.h)")
     print("  Bitte physische Verdrahtung mit Soll-Belegung vergleichen.")
     print()
 

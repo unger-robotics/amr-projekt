@@ -75,7 +75,7 @@ Betroffene Dateien:
 - `pid_controller.hpp:20` -- Output-Begrenzung
 - `robot_hal.hpp:30` -- PWM-Duty (aktuell Arduino-Macro `constrain()` mit Double-Evaluation-Problem)
 
-### 3.2 `constexpr` statt `#define` (28 Defines in config.h)
+### 3.2 `constexpr` statt `#define` (28 Defines in config_drive.h)
 
 MISRA C++:2023 Rule 19.0.1: "The preprocessor shall only be used for inclusion guards,
 conditional compilation, and implementation-defined features."
@@ -142,7 +142,7 @@ inline volatile int32_t encoder_left_count = 0;
 | Rule 6.0.1 | `constexpr` statt `#define` | Verletzt (28 Defines) |
 | Rule 6.2.2 | `[[nodiscard]]` fuer wesentliche Rueckgabewerte | Fehlend (4 Stellen) |
 | Rule 8.2.5 | Keine C-Style Casts | Verletzt (2 Stellen) |
-| Rule 19.0.1 | Praeprozessor nur fuer Includes/Guards | Verletzt (config.h) |
+| Rule 19.0.1 | Praeprozessor nur fuer Includes/Guards | Verletzt (config_drive.h) |
 | Rule 0.1.2 | Keine dynamische Allokation nach Init | Eingehalten |
 
 ## 4. micro-ROS Kompatibilitaet mit neueren Toolchains
@@ -229,7 +229,7 @@ Aenderungen:
 - 5x `ledcSetup()` entfernen, durch `ledcAttach()` ersetzen
 - 5x `ledcAttachPin()` entfernen
 - ~13x `ledcWrite(CHANNEL, duty)` aendern zu `ledcWrite(PIN, duty)`
-- `PWM_CH_*` Konstanten in `config.h` werden obsolet
+- `PWM_CH_*` Konstanten in `config_drive.h` werden obsolet
 
 Quelle: [Arduino-ESP32 Migration Guide 2.x to 3.0](https://docs.espressif.com/projects/arduino-esp32/en/latest/migration_guides/2.x_to_3.0.html)
 
@@ -292,7 +292,7 @@ Fuer eine zukuenftige Migration nach Abschluss der Bachelorarbeit:
 
 4. **C++17-Verbesserungen (priorisiert):**
    - `std::clamp` in PID und HAL (3 Stellen)
-   - `constexpr` Migration in config.h (28 Defines)
+   - `constexpr` Migration in config_drive.h (28 Defines)
    - `[[nodiscard]]` fuer Berechnungsfunktionen (4 Stellen)
    - Structured Bindings fuer Encoder-Lesung (3 Stellen)
    - `inline` Variablen fuer volatile Globals (4 Stellen)
@@ -331,7 +331,7 @@ sind davon betroffen:
 |---|---|---|
 | `robot_hal.hpp` | `pinMode`, `digitalRead`, `attachInterrupt`, `ledcSetup`, `ledcAttachPin`, `ledcWrite` | ~80-100 Zeilen |
 | `main.cpp` | `Serial`, `millis()`, `set_microros_serial_transports()`, `delay()` | ~60-80 Zeilen |
-| `config.h` | Pin-Macros (`D0`-`D10`), PWM-Kanal-Defines | ~30 Zeilen |
+| `config_drive.h` | Pin-Macros (`D0`-`D10`), PWM-Kanal-Defines | ~30 Zeilen |
 | `pid_controller.hpp` | Keine direkte Arduino-Abhaengigkeit | Keine Aenderung |
 | `diff_drive_kinematics.hpp` | Keine direkte Arduino-Abhaengigkeit | Keine Aenderung |
 

@@ -38,7 +38,7 @@ except ImportError:
 
 
 # ===========================================================================
-# Roboter-Parameter (aus mcu_firmware/drive_node/include/config.h)
+# Roboter-Parameter (aus mcu_firmware/drive_node/include/config_drive.h)
 # ===========================================================================
 from amr_utils import WHEEL_BASE, WHEEL_RADIUS, normalisiere_winkel, quaternion_zu_yaw
 

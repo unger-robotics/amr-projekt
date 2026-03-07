@@ -22,7 +22,7 @@ Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publ
 ```
 mcu_firmware/
   drive_node/
-    include/          # Header: config.h, 4 hpp-Module (robot_hal, pid_controller, diff_drive_kinematics, config)
+    include/          # Header: config_drive.h, 3 hpp-Module (robot_hal, pid_controller, diff_drive_kinematics)
     src/              # main.cpp, led_ramp_test.cpp
     platformio.ini
   sensor_node/
@@ -50,7 +50,7 @@ Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecache
 
 Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
-- `drive_node/include/config.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED — kein I2C, keine Batterie/Servo/IMU mehr
+- `drive_node/include/config_drive.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED — kein I2C, keine Batterie/Servo/IMU mehr
 - `sensor_node/include/config_sensors.h` (v3.0.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`)
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung. Keine `#define`-Makros fuer Pins oder PWM-Kanaele — alle in `amr::hal::` als typisierte Konstanten.

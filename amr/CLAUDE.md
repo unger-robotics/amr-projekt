@@ -118,7 +118,7 @@ UDP-Bruecke noetig weil hailort nur mit Host-Python 3.13 kompatibel, ROS2-Contai
 
 Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
-- `mcu_firmware/drive_node/include/config.h` (v4.0.0): Antrieb, PID, Kinematik, LED — Namespaces `amr::pid::`, `amr::pwm::`, `amr::kinematics::`, `amr::timing::` (kein I2C, keine Batterie/Servo/IMU)
+- `mcu_firmware/drive_node/include/config_drive.h` (v4.0.0): Antrieb, PID, Kinematik, LED — Namespaces `amr::pid::`, `amr::pwm::`, `amr::kinematics::`, `amr::timing::` (kein I2C, keine Batterie/Servo/IMU)
 - `mcu_firmware/sensor_node/include/config_sensors.h` (v3.0.0): Ultraschall-Timing, Cliff, Sensorphysik, IMU, Batterie, Servo, I2C — Namespaces `amr::sensor::`, `amr::imu::`, `amr::battery::`, `amr::servo::`, `amr::i2c::`, `amr::ina260::`
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung.

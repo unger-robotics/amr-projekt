@@ -12,7 +12,7 @@ Die Steuerung gliedert sich in drei Ebenen. Die untere Ebene regelt die Gleichst
 
 Der Differentialantrieb basiert auf zwei JGA25-370-Gleichstrommotoren mit integrierten Hall-Encodern. Ein Cytron MDD3A Dual-Motortreiber steuert die Motoren im Dual-PWM-Modus an. Die PWM-Frequenz beträgt $20,\mathrm{kHz}$ bei einer Auflösung von $8,\mathrm{bit}$ mit einem Wertebereich von 0 bis 255. Die empirisch ermittelte PWM-Deadzone liegt bei 35. Unterhalb dieses Werts erzeugt der Antrieb kein ausreichendes Anlaufmoment.
 
-Die kinematischen Parameter sind in `mcu_firmware/drive_node/include/config.h` definiert. Der kalibrierte Raddurchmesser beträgt $65{,}67,\mathrm{mm}$. Grundlage bilden drei Bodentests mit Maßbandvergleich und einem Korrekturfaktor von $98{,}5 / 97{,}55$ gegenüber einem Nennwert von $65{,}0,\mathrm{mm}$. Die Spurbreite beträgt $178,\mathrm{mm}$. Die Encoder liefern im 2x-Quadraturmodus rund 748 Ticks pro Radumdrehung, links $748{,}6$ und rechts $747{,}2$. Daraus ergibt sich eine Wegauflösung von etwa $0{,}276,\mathrm{mm}$ pro Tick.
+Die kinematischen Parameter sind in `mcu_firmware/drive_node/include/config_drive.h` definiert. Der kalibrierte Raddurchmesser beträgt $65{,}67,\mathrm{mm}$. Grundlage bilden drei Bodentests mit Maßbandvergleich und einem Korrekturfaktor von $98{,}5 / 97{,}55$ gegenüber einem Nennwert von $65{,}0,\mathrm{mm}$. Die Spurbreite beträgt $178,\mathrm{mm}$. Die Encoder liefern im 2x-Quadraturmodus rund 748 Ticks pro Radumdrehung, links $748{,}6$ und rechts $747{,}2$. Daraus ergibt sich eine Wegauflösung von etwa $0{,}276,\mathrm{mm}$ pro Tick.
 
 ### 2.2 Sensorik
 
@@ -107,7 +107,7 @@ Für optionales ArUco-Docking steht `aruco_docking.py` bereit. Der Knoten implem
 
 ### 6.1 Zentrale Konfigurationsparameter
 
-Die hardwarenahen Parameter liegen in `mcu_firmware/drive_node/include/config.h` und `mcu_firmware/sensor_node/include/config.h`. `static_assert` sichert die Konfiguration zur Kompilierzeit ab.
+Die hardwarenahen Parameter liegen in `mcu_firmware/drive_node/include/config_drive.h` und `mcu_firmware/sensor_node/include/config_sensors.h`. `static_assert` sichert die Konfiguration zur Kompilierzeit ab.
 
 | Parameter                  |            Wert | Einheit  | Beschreibung                      |
 |----------------------------|----------------:|----------|-----------------------------------|

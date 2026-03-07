@@ -25,7 +25,7 @@ Wir ersetzen den Ordner `esp32_amr_firmware` durch ein übergeordnetes Verzeichn
 │   ├── drive_node/              ◄── ESP32-S3 #1 (Antrieb)
 │   │   ├── platformio.ini       (Bindet nur PID, Cytron, Encoder Libs ein)
 │   │   ├── include/
-│   │   │   └── config.h         (Beinhaltet D0-D10, 50 Hz Loop)
+│   │   │   └── config_drive.h   (Beinhaltet D0-D10, 50 Hz Loop)
 │   │   └── src/
 │   │       └── main.cpp         (micro-ROS pub: /odom, sub: /cmd_vel)
 │   └── sensor_node/             ◄── ESP32-S3 #2 (Sensoren)
