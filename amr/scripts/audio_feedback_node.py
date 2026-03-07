@@ -97,7 +97,7 @@ class AudioFeedbackNode(Node):
 
         try:
             self._current_proc = subprocess.Popen(
-                ["aplay", "-q", filepath],
+                ["aplay", "-q", "-D", "plughw:CARD=sndrpihifiberry", filepath],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

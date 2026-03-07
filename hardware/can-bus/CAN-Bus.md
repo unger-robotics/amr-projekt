@@ -24,7 +24,7 @@ Raspberry Pi 5                ESP32-S3 Drive-Knoten           ESP32-S3 Sensor-Kn
 ┌──────────────────────┐      ┌──────────────────────┐        ┌──────────────────────┐
 │ MCP2515 + MCP2562    │      │ TWAI + Transceiver   │        │ TWAI + Transceiver   │
 │ SocketCAN / ROS 2    │──────│ Drive-CAN-Node       │────────│ Sensor-CAN-Node      │
-│ 120 Ω aktiv          │      │ keine Terminierung   │        │ 120 Ω aktiv          │
+│ 120 Ω aktiv          │      │ keine Terminierung    │        │ 120 Ω aktiv          │
 └──────────────────────┘      └──────────────────────┘        └──────────────────────┘
        Busende                         Mittelknoten                    Busende
 ```
@@ -47,6 +47,9 @@ Der Drive-Knoten sitzt in der Mitte und erhaelt **keine** Terminierung. Der Rasp
 * Drive-Knoten: **keine** Terminierung
 * Sensor-Knoten: **120 Ohm** aktiv
 
+
+**Hardwareanpassung:** Das SN65HVD230-Board des Drive-Knotens besass ab Werk einen festen Abschlusswiderstand von ca. \(120\,\Omega\) zwischen CANH und CANL. Da der Drive-Knoten als Mittelknoten arbeitet, wurde dieser Widerstand entfernt. Der Drive-Knoten ist damit busseitig hochohmig (gemessen ca. \(72\,\mathrm{k\Omega}\)); der Gesamtbus misst stromlos ca. \(59\,\Omega\) zwischen CANH und CANL. Damit terminieren nur noch die beiden Busenden korrekt mit je \(120\,\Omega\).
+
 ### Spannungsversorgung
 
 Am SBC-CAN01 muessen **zwei Spannungen getrennt** verdrahtet werden:
@@ -60,16 +63,16 @@ Das SBC-CAN01 verwendet einen MCP2515 als CAN-Controller und einen MCP2562 als C
 
 ### Verdrahtung Pi 5 ↔ SBC-CAN01
 
-| SBC-CAN01-Pin | Pi 5 Header-Pin | Signal / Funktion  |
-|:--------------|:----------------|:-------------------|
-| **INT**       | Pin 22          | GPIO25, Interrupt  |
-| **SCK**       | Pin 23          | SPI0 SCLK          |
-| **SI**        | Pin 19          | SPI0 MOSI          |
-| **SO**        | Pin 21          | SPI0 MISO          |
-| **CS**        | Pin 24          | SPI0 CE0           |
-| **GND**       | Pin 6           | Masse              |
-| **VCC1**      | Pin 2           | 5 V     |
-| **VCC**       | Pin 1           | 3,3 V |
+| SBC-CAN01-Pin | Pi 5 Header-Pin | Signal / Funktion |
+|:--------------|:----------------|:------------------|
+| **INT**       | Pin 22          | GPIO25, Interrupt |
+| **SCK**       | Pin 23          | SPI0 SCLK         |
+| **SI**        | Pin 19          | SPI0 MOSI         |
+| **SO**        | Pin 21          | SPI0 MISO         |
+| **CS**        | Pin 24          | SPI0 CE0          |
+| **GND**       | Pin 6           | Masse             |
+| **VCC1**      | Pin 2           | 5 V               |
+| **VCC**       | Pin 1           | 3,3 V             |
 
 ### Terminierung am SBC-CAN01
 
@@ -83,14 +86,14 @@ Die beiden ESP32-S3-Knoten verwenden den integrierten **TWAI-Controller** und je
 
 | SN65HVD230-Pin | Anschluss am ESP32-S3 | Funktion                  |
 |:---------------|:----------------------|:--------------------------|
-| **VCC**        | 3,3 V    | Versorgung                |
+| **VCC**        | 3,3 V                 | Versorgung                |
 | **GND**        | GND                   | Masse                     |
 | **D**          | CAN_TX                | TX zum Transceiver        |
 | **R**          | CAN_RX                | RX vom Transceiver        |
 | **RS**         | GND                   | High-Speed-Modus          |
 | **CANH**       | CANH                  | Differentielle Busleitung |
 | **CANL**       | CANL                  | Differentielle Busleitung |
-| **Vref**       | offen                 | nicht benoetigt            |
+| **Vref**       | offen                 | nicht benoetigt           |
 
 ### Beispiel-Pinbelegung fuer XIAO ESP32-S3
 
@@ -170,21 +173,21 @@ void can_init(void)
 |:--------|:-------|:--------------------------------------|:---------|
 | `0x110` | 4 Byte | Range (float32, m)                    | 10 Hz    |
 | `0x120` | 1 Byte | Cliff (0x00=OK, 0x01=Cliff)           | 20 Hz    |
-| `0x130` | 8 Byte | IMU Accel+GyroZ (3x int16 + 1x int16)| 50 Hz    |
+| `0x130` | 8 Byte | IMU Accel+GyroZ (3x int16 + 1x int16) | 50 Hz    |
 | `0x131` | 4 Byte | IMU Heading (float32, rad)            | 50 Hz    |
-| `0x140` | 6 Byte | Batterie (V mV, I mA, P mW)          | 2 Hz     |
+| `0x140` | 6 Byte | Batterie (V mV, I mA, P mW)           | 2 Hz     |
 | `0x141` | 1 Byte | Battery Shutdown Flag                 | Event    |
 | `0x1F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)    | 1 Hz     |
 
 **Drive-Node (0x200-0x2F0):**
 
-| CAN-ID  | DLC    | Inhalt                                | Frequenz |
-|:--------|:-------|:--------------------------------------|:---------|
-| `0x200` | 8 Byte | Odom Position x,y (2x float32)        | 20 Hz    |
-| `0x201` | 8 Byte | Odom Heading+Speed (2x float32)       | 20 Hz    |
-| `0x210` | 8 Byte | Encoder L/R (2x float32, rad/s)       | 10 Hz    |
-| `0x220` | 4 Byte | Motor-PWM L/R (2x int16, -255..+255)  | 10 Hz    |
-| `0x2F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)    | 1 Hz     |
+| CAN-ID  | DLC    | Inhalt                               | Frequenz |
+|:--------|:-------|:-------------------------------------|:---------|
+| `0x200` | 8 Byte | Odom Position x,y (2x float32)       | 20 Hz    |
+| `0x201` | 8 Byte | Odom Heading+Speed (2x float32)      | 20 Hz    |
+| `0x210` | 8 Byte | Encoder L/R (2x float32, rad/s)      | 10 Hz    |
+| `0x220` | 4 Byte | Motor-PWM L/R (2x int16, -255..+255) | 10 Hz    |
+| `0x2F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)   | 1 Hz     |
 
 ### Sende-Implementierung
 
@@ -247,24 +250,24 @@ Ergebnis: `can_results.json` mit Frame-Raten, Heartbeat-Dekodierung, Sample-Wert
 
 ## Testergebnisse (2026-03-07)
 
-| Pruefpunkt | Ergebnis | Bemerkung |
-|:---|:---|:---|
-| can0 Interface | PASS | ERROR-ACTIVE, 0 Bus-Errors |
-| MCP2515 Init | PASS | dmesg: "successfully initialized" |
-| can0.service | PASS | aktiv, enabled, txqueuelen=1000 |
-| Drive 0x200 OdomPos | PASS | ~16 Hz (Core 1, 50-Hz-Zyklus) |
-| Drive 0x201 OdomHeading | PASS | ~16 Hz |
-| Drive 0x210 Encoder | PASS | 9.9 Hz |
-| Drive 0x220 MotorPWM | PASS | 9.9 Hz |
-| Drive 0x2F0 Heartbeat | PASS | 1.0 Hz, alle Flags korrekt |
-| Sensor 0x110 Range | PASS | 9.9 Hz |
-| Sensor 0x120 Cliff | PASS | 19.9 Hz |
-| Sensor 0x130 IMU Accel | PASS | 49.8 Hz |
-| Sensor 0x131 IMU Heading | PASS | 49.7 Hz |
-| Sensor 0x140 Battery | PASS | 2.0 Hz, 12.39V/781mA |
-| Sensor 0x141 BatShutdown | n/a | Event-basiert, kein Dauersignal |
-| Sensor 0x1F0 Heartbeat | PASS | 1.0 Hz, alle Flags korrekt |
-| Gesamt (30s) | **PASS** | 5559 Frames, 11/12 IDs |
+| Pruefpunkt               | Ergebnis | Bemerkung                         |
+|:-------------------------|:---------|:----------------------------------|
+| can0 Interface           | PASS     | ERROR-ACTIVE, 0 Bus-Errors        |
+| MCP2515 Init             | PASS     | dmesg: "successfully initialized" |
+| can0.service             | PASS     | aktiv, enabled, txqueuelen=1000   |
+| Drive 0x200 OdomPos      | PASS     | ~16 Hz (Core 1, 50-Hz-Zyklus)     |
+| Drive 0x201 OdomHeading  | PASS     | ~16 Hz                            |
+| Drive 0x210 Encoder      | PASS     | 9.9 Hz                            |
+| Drive 0x220 MotorPWM     | PASS     | 9.9 Hz                            |
+| Drive 0x2F0 Heartbeat    | PASS     | 1.0 Hz, alle Flags korrekt        |
+| Sensor 0x110 Range       | PASS     | 9.9 Hz                            |
+| Sensor 0x120 Cliff       | PASS     | 19.9 Hz                           |
+| Sensor 0x130 IMU Accel   | PASS     | 49.8 Hz                           |
+| Sensor 0x131 IMU Heading | PASS     | 49.7 Hz                           |
+| Sensor 0x140 Battery     | PASS     | 2.0 Hz, 12.39V/781mA              |
+| Sensor 0x141 BatShutdown | n/a      | Event-basiert, kein Dauersignal   |
+| Sensor 0x1F0 Heartbeat   | PASS     | 1.0 Hz, alle Flags korrekt        |
+| Gesamt (30s)             | **PASS** | 5559 Frames, 11/12 IDs            |
 
 Odom-Rate (~16 Hz statt 20 Hz): CAN-Sends laufen in `controlTask` (50 Hz), der Odom-Timer (50 ms) wird durch den Task-Scheduling-Jitter leicht gedehnt. Fuer Diagnostik-Zwecke akzeptabel.
 
