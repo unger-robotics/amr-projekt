@@ -89,7 +89,8 @@ pre-commit run --all-files     # Alle Hooks
 Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
 - **Core 0** (`loop()`): micro-ROS Executor (Publisher/Subscriber), Deferred I2C (nur Sensor-Node)
-- **Core 1** (FreeRTOS Task): Echtzeit-Datenerfassung (Drive: 50 Hz PID + Encoder, Sensor: 50 Hz IMU + 10/20 Hz Ultraschall/Cliff)
+- **Core 1** (FreeRTOS Task): Echtzeit-Datenerfassung + CAN-Bus-Sends (Drive: 50 Hz PID + Encoder + CAN, Sensor: 50 Hz IMU + 10/20 Hz Ultraschall/Cliff + CAN)
+- CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden)
 - Zwei Mutexe: `mutex` (SharedData), `i2c_mutex` (alle I2C-Zugriffe MPU6050/INA260/PCA9685, 5 ms Timeout, nur Sensor-Node)
 - **Kritisch:** Kein I2C in Subscriber-Callbacks! Deferred-Pattern verwenden (Callback → RAM struct → loop() → I2C)
 

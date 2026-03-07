@@ -10,7 +10,7 @@ Kurzarchitektur:
 - Raspberry Pi 5 als ROS2-, SLAM-, Navigation- und Integrationsrechner
 - XIAO ESP32-S3 Drive-Node fuer Antrieb, PID, Odometrie und LED
 - XIAO ESP32-S3 Sensor-Node fuer Ultraschall, Cliff, IMU, Batterie und Servo
-- Verbindung zwischen Pi 5 und MCU-Nodes ueber micro-ROS/UART
+- Verbindung zwischen Pi 5 und MCU-Nodes ueber micro-ROS/UART und CAN-Bus (Dual-Path)
 
 ## Arbeitsregeln
 

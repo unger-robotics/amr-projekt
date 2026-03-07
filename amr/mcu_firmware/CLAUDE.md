@@ -15,7 +15,7 @@ Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS 
 | **Drive-Node** (#1) | `drive_node/` | `/dev/amr_drive` | Antrieb, PID, Odometrie, LED | 50 Hz |
 | **Sensor-Node** (#2) | `sensor_node/` | `/dev/amr_sensor` | Ultraschall, Cliff, IMU (MPU6050), Batterie (INA260), Servo (PCA9685) | 50 Hz (IMU), 10/20 Hz (Sonar/Cliff), 2 Hz (Bat) |
 
-Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung (FreeRTOS Task, Mutex-geschuetzt). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
 
 ## Verzeichnisstruktur
 
