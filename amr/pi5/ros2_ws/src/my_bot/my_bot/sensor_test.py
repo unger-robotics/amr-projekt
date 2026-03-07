@@ -1,0 +1,1 @@
+../../../../../scripts/sensor_test.py

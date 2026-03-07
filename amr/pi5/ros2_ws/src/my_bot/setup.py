@@ -47,6 +47,7 @@ setup(
             "can_bridge_node = my_bot.can_bridge_node:main",
             "can_validation_test = my_bot.can_validation_test:main",
             "respeaker_doa_node = my_bot.respeaker_doa_node:main",
+            "sensor_test = my_bot.sensor_test:main",
         ],
     },
 )

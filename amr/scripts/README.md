@@ -32,6 +32,7 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `docking_test.py` | 10-Versuch ArUco-Docking-Test |
 | `serial_latency_logger.py` | Serial-Transport-Latenz ESP32-Pi (CSV-Export) |
 | `can_validation_test.py` | CAN-Bus Frame-Rate, Heartbeat, Daten-Dekodierung (30s, JSON) |
+| `sensor_test.py` | Ultraschall (HC-SR04) + Cliff (MH-B) Konnektivitaet, Genauigkeit, Sicherheit |
 
 ## Standalone-Utilities (kein ROS2 erforderlich)
 

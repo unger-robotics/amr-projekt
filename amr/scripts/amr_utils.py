@@ -48,6 +48,16 @@ IMU_GYRO_DRIFT_MAX = 1.0  # [deg/min] Akzeptanzgrenze
 IMU_ACCEL_BIAS_MAX = 0.6  # [m/s²] Akzeptanzgrenze az-Bias
 IMU_COMPLEMENTARY_ALPHA = 0.02  # Complementary-Filter-Gewicht
 
+# Ultraschall-Parameter (Spiegel von sensor_node/include/config_sensors.h)
+US_PUBLISH_HZ = 10
+US_MIN_RANGE_M = 0.02  # [m] HC-SR04 Mindestreichweite
+US_MAX_RANGE_M = 4.00  # [m] HC-SR04 Maximalreichweite
+US_FIELD_OF_VIEW = 0.26  # [rad] ~15 Grad Kegelwinkel
+US_ACCURACY_MAX_PCT = 5.0  # [%] Max. Abweichung Soll/Ist
+
+# Cliff-Parameter (Spiegel von sensor_node/include/config_sensors.h)
+CLIFF_PUBLISH_HZ = 20
+
 # ===========================================================================
 # ANSI-Farben fuer Terminal-Ausgabe
 # ===========================================================================

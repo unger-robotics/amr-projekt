@@ -36,6 +36,7 @@ ERGEBNIS_DATEIEN = {
     "nav": "nav_results.json",
     "docking": "docking_results.json",
     "rplidar": "rplidar_results.json",
+    "sensor": "sensor_results.json",
 }
 
 # ===========================================================================
@@ -196,13 +197,54 @@ KRITERIEN: list[dict[str, Any]] = [
         "pfad": "static_tf.yaw_error_deg",
         "pruef": lambda v: v < 3.0 if v is not None else None,
     },
+    # --- Sensor (Ultraschall + Cliff) ---
+    {
+        "bereich": "Sensor",
+        "kriterium": "US Rate",
+        "anforderung": ">= 7 Hz",
+        "datei": "sensor",
+        "pfad": "us_connectivity.rate_hz",
+        "pruef": lambda v: v >= 7.0 if v is not None else None,
+    },
+    {
+        "bereich": "Sensor",
+        "kriterium": "US Genauigkeit",
+        "anforderung": "< 5%",
+        "datei": "sensor",
+        "pfad": "us_static.fehler_pct",
+        "pruef": lambda v: v < 5.0 if v is not None else None,
+    },
+    {
+        "bereich": "Sensor",
+        "kriterium": "US Wiederholgenauigkeit",
+        "anforderung": "Std < 15 mm",
+        "datei": "sensor",
+        "pfad": "us_repeatability.std_m",
+        "pruef": lambda v: v < 0.015 if v is not None else None,
+    },
+    {
+        "bereich": "Sensor",
+        "kriterium": "Cliff Rate",
+        "anforderung": ">= 15 Hz",
+        "datei": "sensor",
+        "pfad": "cliff_connectivity.rate_hz",
+        "pruef": lambda v: v >= 15.0 if v is not None else None,
+    },
+    {
+        "bereich": "Sensor",
+        "kriterium": "Cliff Boden",
+        "anforderung": "0 Fehlalarme",
+        "datei": "sensor",
+        "pfad": "cliff_ground.cliff_false_alarms",
+        "pruef": lambda v: v == 0 if v is not None else None,
+    },
 ]
 
 # Forschungsfragen-Zuordnung
 FF_ZUORDNUNG = {
     "FF1": {
         "titel": "Echtzeit (PID + Safety)",
-        "bereiche": ["PID", "Safety"],
+        "bereiche": ["PID", "Safety", "Sensor"],
     },
     "FF2": {
         "titel": "Praezision (Encoder + Kinematik + UMBmark + SLAM + Navigation)",
