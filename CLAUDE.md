@@ -1,461 +1,81 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Projektuebersicht
-
-Bachelorarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik (KLT-Transport). Differentialantrieb-Roboter mit zwei XIAO ESP32-S3 (Drive-Node + Sensor-Node, Low-Level-Steuerung) und Raspberry Pi 5 (Navigation/SLAM) ueber micro-ROS/UART verbunden. Sprache: Deutsch (wissenschaftlicher Stil, keine UTF-8-Umlaute in Markdown-Dateien – ae/oe/ue/ss verwenden).
-
-## Build & Deployment
-
-### Zwei-Node Firmware (PlatformIO)
-
-Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt (`amr/mcu_firmware/`), da micro-ROS statische Libraries erzeugt, die an die Node-Konfiguration gebunden sind. Geteilte `.pio`-Caches wuerden sich gegenseitig ueberschreiben.
-
-```bash
-# Drive-Node (Antrieb, PID, Odometrie, LED):
-cd amr/mcu_firmware/drive_node/
-pio run -e drive_node              # Firmware kompilieren
-pio run -e drive_node -t upload    # Auf ESP32 flashen (921600 Baud, /dev/amr_drive)
-pio run -e drive_node -t monitor   # Seriellen Monitor starten (115200 Baud)
-pio run -e drive_node -t upload -t monitor  # Upload + Monitor kombiniert
-pio run -e led_test -t upload -t monitor    # MOSFET-Diagnose (ohne micro-ROS, ~5s Build)
-
-# Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
-cd amr/mcu_firmware/sensor_node/
-pio run                       # Firmware kompilieren
-pio run -t upload             # Auf ESP32 flashen (921600 Baud, /dev/amr_sensor)
-pio run -t monitor            # Seriellen Monitor starten (115200 Baud)
-pio run -t upload -t monitor  # Upload + Monitor kombiniert
-```
-
-Wichtige Build-Flags in `platformio.ini`: `-DARDUINO_USB_CDC_ON_BOOT=1` (USB-CDC als Serial), `-I include` (lokale Config pro Node). `build_src_filter` im Drive-Node trennt Haupt-Firmware (`-<led_ramp_test.cpp>`) und Diagnose-Env (`+<led_ramp_test.cpp>`). micro-ROS-Konfiguration: `board_microros_transport = serial`, `board_microros_distro = humble`. Upload-Ports via stabile udev-Symlinks: `/dev/amr_drive` (Drive-Node), `/dev/amr_sensor` (Sensor-Node).
-
-### ROS2 via Docker (Raspberry Pi 5)
-
-Der Pi 5 laeuft auf Debian Trixie – ROS2 Humble ist nur via Docker (Ubuntu 22.04) verfuegbar. Basis-Image: `ros:humble-ros-base` (arm64). `osrf/ros:humble-desktop` ist amd64-only. micro-ROS Agent wird aus Source gebaut (kein apt-Paket fuer arm64).
-
-```bash
-# Im Verzeichnis: amr/docker/
-sudo bash host_setup.sh           # Einmalig: udev-Regeln, Gruppen, X11
-docker compose build               # Image bauen (~15-20 Min, danach gecached)
-./run.sh                           # Interaktive Container-Shell
-./run.sh colcon build --packages-select my_bot --symlink-install  # Workspace bauen
-./run.sh ros2 launch my_bot full_stack.launch.py                  # Full-Stack starten
-./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false   # Nur SLAM
-./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True # Mit Kamera (ArUco-Docking)
-./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_nav:=False use_slam:=False use_rviz:=False  # Nur Kamera
-./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True use_vision:=True use_dashboard:=True use_rviz:=False  # Kamera + Vision + Dashboard
-./run.sh exec bash                 # Zweites Terminal im laufenden Container
-./verify.sh                        # Gesamttest: Image, ROS_DISTRO, Pakete (nav2, slam_toolbox, rplidar, cv_bridge, micro_ros_agent), colcon, Serial-Device, Kamera-Bridge, Workspace-Build, Node-Count
-```
-
-Container-Konfiguration: `network_mode: host` (DDS Multicast), `privileged: true` (Serial/Kamera), Volume-Mounts fuer `ros2_ws` (rw), `amr/scripts` (ro, Dual-Mount auf `/amr_scripts` und `/scripts` fuer Symlink-Kompatibilitaet), `hardware/` (ro). Build-Artefakte in Docker-Volumes persistiert. `entrypoint.sh` sourced automatisch alle Workspaces -- kein manuelles `source setup.bash` noetig. `./run.sh exec` erfordert einen bereits laufenden Container (gestartet via `./run.sh` oder `./run.sh ros2 launch ...`). Environment: `ROS_DOMAIN_ID=0`, `DISPLAY=${DISPLAY:-:0}`, `QT_X11_NO_MITSHM=1`, `GEMINI_API_KEY` (aus `amr/docker/.env`, fuer Gemini Semantic Node).
-
-RViz2 benoetigt X11 auf dem Host: `export DISPLAY=:0 && xhost +local:docker`. Alternativ RViz2 auf separatem PC ausfuehren und per ROS2 DDS verbinden (`ROS_DOMAIN_ID=0`).
-
-### Web Dashboard (optional)
-
-```bash
-# Backend starten (im Docker-Container):
-./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_rviz:=False
-
-# Frontend entwickeln (auf beliebigem Rechner):
-cd dashboard && npm install && npm run dev
-# Oeffnet http://localhost:5173, WebSocket verbindet zum Pi
-
-# Frontend bauen und als statische Dateien servieren:
-cd dashboard && npm run build
-python3 -m http.server 3000 -d dashboard/dist/
-# Oeffnet http://<PI_IP>:3000 auf iPhone/Tablet/Mac
-```
-
-Dashboard-Ports: WebSocket 9090, MJPEG 8082, Vite Dev 5173, Hailo UDP 5005. Tech-Stack: React 19 + TypeScript + Vite 7.3 + Tailwind CSS 4.2 + nipplejs (Joystick) + Zustand (State-Management). `dashboard_bridge` Node verbindet ROS2 Topics (/odom, /imu, /scan, /camera/image_raw, /map, /tf, /battery) mit dem Browser via WebSocket (JSON) und MJPEG (HTTP, `ThreadingHTTPServer` fuer parallele Clients — noetig weil Hailo-Runner ebenfalls MJPEG liest). Empfaengt Servo-Befehle vom Browser und publiziert auf `/servo_cmd`. Misst Serial-Transport-Latenz (ESP32→Pi) via `header.stamp` Vergleich mit Pi-Systemzeit und bettet Statistiken (avg/p95/max) in `telemetry.connection.latency` ein (30s-Intervall-Logging). Sicherheit: 3-Schicht-Deadman (Frontend 0ms, Backend 300ms, ESP32 500ms), Velocity-Clamping (0.4 m/s, 1.0 rad/s). Vollstaendige Startanleitung: `Dashboard-Start-Live-Betrieb.md`.
-
-WebSocket-Protokoll (Custom JSON, kein rosbridge):
-- **Server→Client**: `telemetry` (10 Hz, Odom+IMU+Battery+Servo+Hardware+Connection inkl. Serial-Latenz avg/p95/max via header.stamp), `scan` (2 Hz, LiDAR-Ranges), `system` (1 Hz, CPU/RAM/Disk/Devices/IP, inkl. INA260-Indikator), `map` (0.5 Hz, SLAM-Karte als Base64-PNG + Roboterposition), `vision_detections` (5 Hz, Hailo-8 BBoxen + Inference-Zeit), `vision_semantics` (0.5 Hz, Gemini-Analyse)
-- **Client→Server**: `cmd_vel` (Joystick-Steuerung), `servo_cmd` (Pan/Tilt-Servo, 10 Hz throttled), `hardware_cmd` (Motor-Limit/Servo-Speed/LED-PWM, 10 Hz throttled), `heartbeat` (Deadman-Switch)
-- Typdefinitionen: `dashboard/src/types/ros.ts` (`ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg`, `ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg`)
-
-Komponenten: `Dashboard.tsx` (Layout+WebSocket, responsive: untereinander auf Mobile/Tablet, nebeneinander auf Desktop), `Joystick.tsx` (nipplejs), `ServoControl.tsx` (Pan/Tilt-Slider 0-180° mit Zentrieren-Button, sendet `servo_cmd` via WebSocket, 10 Hz throttled), `HardwareControl.tsx` (Motor-Limit 0-100%, Servo-Speed 1-10, LED-PWM 0-255 Slider mit Reset-Button, sendet `hardware_cmd` via WebSocket, 10 Hz throttled), `LidarView.tsx` (Canvas-Radar + kinematisches Modell: Cyan-Chassis, dunkle Raeder, orange LiDAR-Ring, rote Laser-Emitter, cyan Kamera-FOV, statisch egozentrisch), `MapView.tsx` (allozentrische SLAM-Karte im Saugroboter-Stil: hellblau befahrbar, dunkelgrau Waende, schwarz unbekannt; weisser Roboter-Pfad-Trail max 500 Punkte mit 2cm Deduplizierung, weisser Richtungspfeil, gruener Mittelpunkt, Image-Smoothing, weisse Massstabsleiste), `CameraView.tsx` (MJPEG mit CSS `rotate-180` fuer kopfueber montierte Kamera, Scanline-Overlay, Vision-BBox-Overlay mit deutschen Labels, Gemini-Semantik-Streifen am unteren Bildrand), `StatusPanel.tsx` (Odom/IMU/Connection inkl. WS-Latenz, Serial Avg/P95), `EmergencyStop.tsx` (Nothalt), `SystemMetrics.tsx` (Netzwerk-IP + Batterie-Abschnitt: Spannungs-/SOC-Balken mit Farbverlauf rot→gruen, Strom/Leistung, 3S1P-Label + CPU/RAM/Disk-Balken + ESP32/LiDAR/Kamera/Hailo/INA260-Indikatoren + Vision-Section: Inference-Zeit/Det.Hz/Objektanzahl). Hooks (`src/hooks/`): `useWebSocket.ts` (Reconnection-Logik, `sendServoCmd()` und `sendHardwareCmd()` mit 10 Hz Throttling), `useJoystick.ts` (nipplejs + cmd_vel-Mapping), `useImageFit.ts` (object-contain Canvas-Positionierung). State: `telemetryStore.ts` (Zustand, inkl. Battery/Servo/Hardware-Felder). HUD-Aesthetik: Cyan/Dark-Farbschema, JetBrains Mono, definiert in `index.css` (@theme Block).
-
-### Linting & Statische Analyse (optional)
-
-```bash
-# Installation (einmalig):
-pip3 install --break-system-packages ruff mypy pre-commit
-sudo apt install clang-format clang-tidy  # Optional: C++ Linting
-pre-commit install                         # Git-Hooks aktivieren
-
-# Python-Linting:
-ruff check .                               # Fehler anzeigen
-ruff format --check .                      # Format-Differenzen anzeigen
-mypy --config-file mypy.ini                # Type-Checking
-
-# C++ Formatierung:
-clang-format --dry-run --Werror amr/mcu_firmware/drive_node/src/*.cpp amr/mcu_firmware/drive_node/include/*.hpp amr/mcu_firmware/sensor_node/src/*.cpp amr/mcu_firmware/sensor_node/include/*.hpp
-
-# Dashboard (TypeScript/React):
-cd dashboard && npx tsc --noEmit           # TypeScript Type-Check
-cd dashboard && npm run build              # Build-Fehler pruefen (Vite + tsc)
-
-# Alle Hooks ausfuehren:
-pre-commit run --all-files
-
-# Auto-Fix (aendert Dateien!):
-ruff check --fix .                         # Auto-fixbare Fehler beheben
-ruff format .                              # Dateien formatieren
-```
-
-Konfigurationsdateien: `ruff.toml` (Python-Linting), `mypy.ini` (Type-Checking), `.clang-format` (C++-Formatierung), `.clang-tidy` (C++-Analyse, Config only), `.pre-commit-config.yaml` (Git-Hooks). Symlink-Verzeichnis `my_bot/my_bot/` wird von allen Linting-Tools ausgeschlossen (Doppel-Scan verhindern). **clang-tidy** ist NICHT ausfuehrbar: Xtensa ESP32-S3 Toolchain hat kein Clang-Backend (`unknown target triple 'xtensa-esp32s3-unknown-elf'`). Nur die Config-Datei ist vorhanden; `compile_commands.json` laesst sich via `pio run -t compiledb` in jedem Node-Verzeichnis generieren, aber clang-tidy kann damit nicht arbeiten.
-
-### Validierungsskripte (Raspberry Pi)
-
-```bash
-# Standalone-Skripte (kein ROS2 noetig):
-python3 amr/scripts/pre_flight_check.py    # Interaktive Hardware-Checkliste
-python3 amr/scripts/hardware_info.py        # Hardware-Report generieren (Zeitstempel-Markdown, z.B. hardware_info_20260215_180556.md)
-python3 amr/scripts/umbmark_analysis.py     # UMBmark-Auswertung (numpy/matplotlib)
-python3 amr/scripts/validation_report.py    # Gesamt-Report aus JSON-Ergebnissen
-
-# ROS2-Nodes (micro-ROS Agent muss laufen):
-ros2 run my_bot encoder_test      # Encoder-Kalibrierung (10-Umdrehungen-Test)
-ros2 run my_bot motor_test        # Motor-Deadzone und Richtungstest
-ros2 run my_bot pid_tuning        # PID-Sprungantwort-Analyse
-ros2 run my_bot kinematic_test    # Geradeaus-/Dreh-/Kreisfahrt-Verifikation
-ros2 run my_bot slam_validation   # ATE-Berechnung und TF-Ketten-Check
-ros2 run my_bot nav_test          # Waypoint-Navigation mit Positionsfehler-Messung
-ros2 run my_bot docking_test      # 10-Versuch ArUco-Docking-Test
-ros2 run my_bot imu_test         # Gyro-Drift und Accelerometer-Bias Test (60s statisch)
-ros2 run my_bot rotation_test    # Closed-Loop 360°-Drehung mit IMU-Feedback
-ros2 run my_bot straight_drive_test  # Geradeausfahrt mit IMU-Heading-Korrektur
-ros2 run my_bot rplidar_test     # RPLidar A1 Scan-Rate, Datenqualitaet, TF-Check (5 min)
-ros2 run my_bot serial_latency_logger  # Serial-Transport-Latenz ESP32→Pi (CSV-Export, header.stamp vs Pi-Systemzeit)
-```
-
-**Symlink-Muster:** Die ROS2-Nodes erfordern, dass die Skripte aus `amr/scripts/` als Symlinks im Paketverzeichnis `my_bot/my_bot/` liegen (siehe `09_umsetzungsanleitung.md`, Abschnitt 2.2.5). Konkret: `encoder_test.py`, `motor_test.py`, `pid_tuning.py`, `kinematic_test.py`, `slam_validation.py`, `nav_test.py`, `docking_test.py`, `imu_test.py`, `rotation_test.py`, `straight_drive_test.py`, `rplidar_test.py`, `dashboard_bridge.py`, `hailo_inference_node.py`, `hailo_udp_receiver_node.py`, `gemini_semantic_node.py`, `serial_latency_logger.py`, `cliff_safety_node.py`, `audio_feedback_node.py` und `amr_utils.py` sind Symlinks von `my_bot/my_bot/` → `amr/scripts/`. `aruco_docking.py` ist ein Symlink innerhalb des Pakets (`my_bot/my_bot/` → `my_bot/scripts/`). Nur `odom_to_tf.py` lebt nativ in `my_bot/my_bot/` (kein Symlink).
-
-**Docker Dual-Mount-Pattern:** Die relativen Symlinks (`../../../../../amr/scripts/`) loesen im Container anders auf als auf dem Host. Daher mountet `docker-compose.yml` das Skript-Verzeichnis doppelt: `../scripts:/amr_scripts:ro` und `../scripts:/scripts:ro`. Beide Pfade sind noetig, damit die Symlinks sowohl im Host-Kontext als auch im Container korrekt aufloesen.
-
-### Deployment auf Raspberry Pi
-
-```bash
-# Gesamtes Projekt auf den Pi5 synchronisieren (~2-3 MB statt 1.2 GB):
-rsync -avz --delete \
-  --exclude='.git/' \
-  --exclude='.pio/' \
-  --exclude='.venv/' \
-  --exclude='.DS_Store' \
-  --exclude='.claude/' \
-  --exclude='__pycache__/' \
-  --exclude='*.pyc' \
-  --exclude='sources/' \
-  --exclude='hardware/media/' \
-  --exclude='hardware/datasheet/' \
-  --exclude='node_modules/' \
-  --exclude='dashboard/dist/' \
-  <lokaler-projekt-pfad>/AMR-Bachelorarbeit/ pi@rover:~/AMR-Bachelorarbeit
-# Literatur-PDFs herunterladen (virtuelle Umgebung .venv/ im Projekt-Root):
-source .venv/bin/activate && python suche/download_sources.py
-```
-
-## Architektur
-
-### Zwei-Node Firmware-Architektur (`amr/mcu_firmware/`)
-
-Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS statische Libraries erzeugt, die an die Node-Konfiguration (Anzahl Publisher/Subscriber) gebunden sind. Beide XIAO ESP32-S3 nutzen dasselbe Dual-Core-Pattern.
-
-#### Drive-Node (`mcu_firmware/drive_node/`)
-
-- **Core 0** (`loop()`): micro-ROS Agent – empfaengt `cmd_vel` (Twist), `hardware_cmd` (Point, x=Motor-Limit, z=LED-PWM) und `battery_shutdown` (Bool), publiziert `Odometry` (20 Hz), Watchdog-Ueberwachung, LED-Heartbeat
-- **Core 1** (`controlTask`): PID-Regelschleife bei 50 Hz (20 ms Takt via `vTaskDelayUntil`)
-- **Thread-Safety**: `mutex` (FreeRTOS, SharedData zwischen Cores), kein I2C (alle I2C-Geraete auf Sensor-Node umgezogen)
-
-Datenfluss: `cmd_vel` → inverse Kinematik → Motor-Limit-Skalierung → PID → Cytron MDD3A (Dual-PWM) → Encoder-Feedback (Hall, Quadratur A+B) → Vorwaertskinematik → Odometrie-Publish. Hardware-Pfad: `hardware_cmd` (Point) → Callback speichert Motor-Limit/LED-PWM → `loop()` wendet Werte an. Batterie-Shutdown: `battery_shutdown` (Bool) → Callback setzt Shutdown-Flag → Motoren werden abgeschaltet.
-
-#### Sensor-Node (`mcu_firmware/sensor_node/`)
-
-- **Core 0** (`loop()`): micro-ROS Agent – publiziert `Range` (10 Hz, Ultraschall HC-SR04), `Bool` (20 Hz, Cliff-Erkennung MH-B), `Imu` (50 Hz), `BatteryState` (2 Hz, INA260), `Bool` (`/battery_shutdown`). Empfaengt `servo_cmd` (Point), `hardware_cmd` (Point, y=Servo-Speed), `/odom` (fuer Heading-Fusion). Deferred Servo-I2C, Servo-Rampenfahrt
-- **Core 1** (`sensorTask`): Sensor-Datenerfassung (Trigger/Echo-Timing, Cliff-Digitaleingaenge, IMU-Read mit `i2c_mutex`)
-- **Thread-Safety**: `mutex` (FreeRTOS, SharedData zwischen Cores), `i2c_mutex` (5 ms Timeout, schuetzt alle I2C-Zugriffe Cross-Core: MPU6050, INA260, PCA9685)
-
-### Firmware-Module (Header-only Pattern)
-
-#### Drive-Node (`mcu_firmware/drive_node/`)
-
-| Datei | Funktion |
-|---|---|
-| `src/main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Odom Publisher, `/cmd_vel` + `/hardware_cmd` + `/battery_shutdown` Subscriber, LED-Heartbeat, Inter-Core-Watchdog, Motor-Limit-Skalierung |
-| `include/robot_hal.hpp` | Hardware-Abstraktion: GPIO, Encoder-ISR (Quadratur A+B, Richtung aus Phasenversatz), PWM-Steuerung, Deadzone (`amr::pid::deadband_threshold`), LED-MOSFET-PWM |
-| `include/pid_controller.hpp` | PID-Regler mit Anti-Windup und D-Term-Tiefpass (`amr::pid::d_filter_tau`), Ausgang [-1.0, 1.0] |
-| `include/diff_drive_kinematics.hpp` | Vorwaerts-/Inverskinematik (Parameter via Konstruktor) |
-| `src/led_ramp_test.cpp` | MOSFET-Diagnose ohne micro-ROS (4 Phasen: digitalWrite, LEDC-Rampe, Stufen, Blinken). Nur in `[env:led_test]` kompiliert |
-
-#### Sensor-Node (`mcu_firmware/sensor_node/`)
-
-| Datei | Funktion |
-|---|---|
-| `src/main.cpp` | FreeRTOS-Tasks, micro-ROS Setup, Range/Cliff/IMU/Battery/BatteryShutdown Publisher, `/servo_cmd` + `/hardware_cmd` + `/odom` Subscriber (Deferred-I2C), `i2c_mutex` Cross-Core, INA260/PCA9685 Init, Batterie-Unterspannungsabschaltung, Heading-Fusion |
-| `include/range_sensor.hpp` | HC-SR04 Ultraschall-Treiber: Trigger/Echo-Timing, Median-Filter, Temperaturkompensation |
-| `include/cliff_sensor.hpp` | MH-B IR-Cliff-Sensor: Digitaleingaenge, Entprellungslogik |
-| `include/mpu6050.hpp` | MPU6050 I2C-Treiber (±2g/±250°/s), Gyro-Bias-Kalibrierung, Komplementaerfilter (`amr::imu::complementary_alpha`) |
-| `include/ina260.hpp` | TI INA260 I2C-Leistungsmonitor: Spannung/Strom/Leistung, Unterspannungs-Alert (`amr::ina260::`) |
-| `include/pca9685.hpp` | NXP PCA9685 I2C-Servo-PWM: `setAngle()`, `setTargetAngle()`, `updateRamp()` (nicht-blockierend), `setRampSpeed()` (Runtime-konfigurierbar), `allOff()` Notaus, `NUM_SERVO_CH` Bounds-Check (`amr::servo::`) |
-
-Regelparameter in `mcu_firmware/drive_node/include/config.h` (v4.0.0, Namespaces `amr::pid::`, `amr::pwm::`, `amr::kinematics::` etc.): PID-Gains (Kp=0.4, Ki=0.1, Kd=0.0), EMA-Filter (`ema_alpha=0.3`), Beschleunigungsrampe (`max_accel_rad_s2=5.0`), Dead-Band (`deadband_threshold=0.08`), Stillstand-Bypass (`stillstand_threshold=0.01`). Sensorparameter in `mcu_firmware/sensor_node/include/config_sensors.h` (v3.0.0, Namespaces `amr::sensor::`, `amr::imu::`, `amr::battery::`, `amr::servo::`, `amr::i2c::`, `amr::ina260::`). Rohdaten fuer Odometrie, gefilterte Werte fuer PID. Kommunikation mit dem Pi 5: micro-ROS ueber UART (Serial Transport, USB-CDC, Humble-Distribution) — zwei separate Agents fuer Drive-Node (`/dev/amr_drive`) und Sensor-Node (`/dev/amr_sensor`).
-
-**Batterie-Ueberwachung (INA260, Sensor-Node):** Bei Packspannung < 9.5 V (`amr::battery::threshold_motor_shutdown_v`): Sensor-Node publiziert `/battery_shutdown` (Bool, true) → Drive-Node empfaengt und schaltet Motoren ab. Servos werden lokal abgeschaltet (PCA9685 `allOff()`). Hysterese 0.3 V fuer Wiederaktivierung. SOC-Schaetzung per linearer Interpolation. BatteryState-Topic `/battery` @ 2 Hz.
-
-**Servo-Steuerung (PCA9685, Sensor-Node, Deferred-I2C + Rampe):** Pan=MG996R (CH0, verbaut), Tilt=MG90S (CH1, unterdimensioniert fuer CS-Mount-Objektiv PT361060M3MP12 mit 53 g — MG996R-Upgrade geplant). Mittelstellung (90°) bei Startup. Deferred-I2C-Pattern mit Rampenfahrt: Subscriber-Callback speichert Zielwinkel in `ServoCommand` struct (RAM-only, kein I2C), `loop()` setzt `pca9685.setTargetAngle()` nach `spin_some()`, danach `pca9685.updateRamp()` (nicht-blockierend, 1 Schritt pro Zyklus, I2C in `i2c_mutex`). Rampengeschwindigkeit Runtime-konfigurierbar via `setRampSpeed()` (0.1-10.0 deg/step, Default aus `amr::servo::ramp_deg_per_step`). Alle I2C-Zugriffe (IMU, INA260, PCA9685) mit `i2c_mutex` (5 ms Timeout) geschuetzt — Arduino Wire ist NICHT thread-safe zwischen Cores. Fernsteuerung via `/servo_cmd` Topic (Point: x=Pan, y=Tilt, 0-180°). I2C-Bus: 400 kHz, Adressen 0x40 (INA260), 0x41 (PCA9685), 0x68 (MPU6050).
-
-**Hardware-Fernsteuerung (`/hardware_cmd`):** Dashboard-Slider fuer Motor-Limit (0-100%, skaliert PID-Sollwerte), Servo-Speed (1-10, setzt `pca9685.setRampSpeed()`), LED-PWM (0-255, 0 = Auto-Heartbeat, >0 = manueller Duty-Cycle). Drive-Node liest x (Motor-Limit) und z (LED-PWM), Sensor-Node liest y (Servo-Speed). Deferred-Pattern: Callback speichert in `HardwareCommand` struct, `loop()` wendet Werte an.
-
-**LED-Status (D10/GPIO9, IRLZ24N Low-Side MOSFET, LEDC-Kanal 4, 5 kHz, 10-bit):** Langsames Blinken = Agent-Suche, schnelles Blinken = Init-Fehler, LED-Ramp-Test (0→100→0%) bei Setup, gedimmt = Setup OK, Heartbeat-Toggle = `loop()` laeuft, Dauer-An = Publish-Fehler (nur im Auto-Modus, led_pwm=0). Bei led_pwm > 0: Manueller Duty-Cycle (0-255) via `/hardware_cmd`. **LEDC-API (ESP32 Arduino Core 2.x):** `ledcWrite()` erwartet **LEDC-Kanal** als erstes Argument, NICHT GPIO-Pin. Korrekt: `ledcWrite(amr::pwm::led_channel, duty)`. **MOSFET-Diagnose:** `pio run -e led_test -t upload -t monitor` (4 Phasen: digitalWrite, LEDC-Rampe, Stufen, Blinken).
-
-**Encoder-Hinweis**: Firmware nutzt Quadratur-Dekodierung (Phase A + B). Phase A (D6/D7) als CHANGE-Interrupt, Phase B (D8/D9) fuer Richtungserkennung. 2x-Zaehlung (~748 Ticks/Rev). D8/D9 sind nicht fuer Servos verfuegbar.
-
-### ROS2 Navigation Stack (Raspberry Pi)
-
-Konfiguration in `amr/pi5/ros2_ws/src/my_bot/config/`:
-
-- **nav2_params.yaml**: Nav2-Stack – AMCL, Regulated Pure Pursuit Controller (0.4 m/s), Navfn-Planer, Costmaps (raytrace/obstacle_min_range 0.2 m fuer RPLidar-Blindzone), Recovery-Behaviors
-- **mapper_params_online_async.yaml**: SLAM Toolbox – Ceres-Solver, 5 cm Aufloesung, Loop Closure, minimum_laser_range 0.2 m, transform_timeout 0.5 s (erhoet von 0.2 fuer ESP32-Zeitsync-Toleranz), throttle_scans 1 (Integer, NICHT bool — sonst Node-Crash)
-- **aruco_docking.py** (`scripts/`): Visual Servoing mit ArUco-Markern (OpenCV `cv2.aruco.ArucoDetector`-API >= 4.7)
-- **full_stack.launch.py** (`launch/`): Kombiniertes Launch-File fuer micro-ROS Agent + SLAM + Nav2 + RViz2 + Kamera (optional)
-- **package.xml/setup.py/setup.cfg**: ament_python-Paketstruktur mit 20 entry_points (console_scripts): `aruco_docking`, `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `slam_validation`, `nav_test`, `docking_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `dashboard_bridge`, `odom_to_tf`, `hailo_inference_node`, `hailo_udp_receiver_node`, `gemini_semantic_node`, `serial_latency_logger`, `cliff_safety_node`, `audio_feedback_node` (alle aus `my_bot.<name>:main`)
-
-**Launch-Parameter (vollstaendig):**
-
-| Parameter | Default | Beschreibung |
-|---|---|---|
-| `use_slam` | True | SLAM Toolbox starten |
-| `use_nav` | True | Nav2 Navigation Stack |
-| `use_rviz` | True | RViz2 Visualisierung |
-| `drive_serial_port` | /dev/amr_drive | Serial-Port fuer Drive-Node micro-ROS Agent |
-| `sensor_serial_port` | /dev/amr_sensor | Serial-Port fuer Sensor-Node micro-ROS Agent |
-| `use_sensors` | True | Sensor-Node micro-ROS Agent starten (Ultraschall + Cliff) |
-| `params_file` | nav2_params.yaml | Nav2 Parameterdatei (Pfad relativ zu config/) |
-| `slam_params_file` | mapper_params_online_async.yaml | SLAM Parameterdatei (Pfad relativ zu config/) |
-| `use_camera` | False | Kamera und ArUco-Docking aktivieren |
-| `camera_device` | /dev/video10 | v4l2loopback-Device fuer Kamera-Bridge |
-| `use_dashboard` | False | Web-Dashboard (WebSocket + MJPEG) starten |
-| `use_vision` | False | Vision-Pipeline (Hailo UDP Receiver + Gemini Semantik, host_hailo_runner.py separat starten!) |
-| `use_cliff_safety` | True | Cliff-Safety cmd_vel-Multiplexer |
-| `use_audio` | False | Audio-Feedback-Node (MAX98357A/aplay) |
-
-### ROS2 Topics und Nodes
-
-| Topic | Typ | Quelle | Beschreibung |
-|---|---|---|---|
-| `/cmd_vel` | `geometry_msgs/Twist` | Nav2 / Teleop / Dashboard → Drive-Node ESP32 | Geschwindigkeitskommandos |
-| `/servo_cmd` | `geometry_msgs/Point` | Dashboard-Bridge → Sensor-Node ESP32 | Pan/Tilt-Servo-Winkel (x=Pan, y=Tilt, 0-180°) |
-| `/hardware_cmd` | `geometry_msgs/Point` | Dashboard-Bridge → Drive-Node (x=Motor-Limit, z=LED-PWM) + Sensor-Node (y=Servo-Speed) | Hardware-Parameter (x=Motor-Limit 0-100%, y=Servo-Speed 1-10, z=LED-PWM 0-255) |
-| `/odom` | `nav_msgs/Odometry` | Drive-Node ESP32 (20 Hz), auch von Sensor-Node gelesen (Heading-Fusion) | Rad-Odometrie |
-| `/scan` | `sensor_msgs/LaserScan` | RPLidar A1 | 2D-Laserscan |
-| `/camera/image_raw` | `sensor_msgs/Image` | v4l2_camera_node | Kamerabild (optional) |
-| `/imu` | `sensor_msgs/Imu` | Sensor-Node ESP32 (50 Hz) | IMU-Daten (Beschleunigung, Drehrate, fusionierte Orientierung) |
-| `/map` | `nav_msgs/OccupancyGrid` | SLAM Toolbox | Belegungskarte (5 cm Aufloesung, via dashboard_bridge als PNG zum Browser) |
-| `/tf`, `/tf_static` | TF2 | odom_to_tf, static_transform_publisher, slam_toolbox | TF-Baum (inkl. map→odom von SLAM) |
-| `/battery` | `sensor_msgs/BatteryState` | Sensor-Node ESP32 (2 Hz, INA260) | Packspannung, Strom, SOC-Schaetzung |
-| `/battery_shutdown` | `std_msgs/Bool` | Sensor-Node ESP32 → Drive-Node ESP32 | Unterspannungs-Notaus (true = Motoren abschalten) |
-| `/range/front` | `sensor_msgs/Range` | Sensor-Node ESP32 (10 Hz, HC-SR04) | Ultraschall-Distanz frontal |
-| `/cliff` | `std_msgs/Bool` | Sensor-Node ESP32 (20 Hz, MH-B) | Cliff-Erkennung (true = Abgrund erkannt) |
-| `/nav_cmd_vel` | `geometry_msgs/Twist` | Nav2 (remapped bei use_cliff_safety) | Internes Topic fuer Cliff-Safety-Mux |
-| `/dashboard_cmd_vel` | `geometry_msgs/Twist` | Dashboard (remapped bei use_cliff_safety) | Internes Topic fuer Cliff-Safety-Mux |
-| `/audio/play` | `std_msgs/String` | cliff_safety_node / andere Nodes | Audio-Trigger (Schluesselwort → WAV) |
-| `/vision/detections` | `std_msgs/String` | hailo_udp_receiver_node (5 Hz, via UDP von host_hailo_runner.py) | JSON-kodierte YOLOv8-Detektionen (Hailo-8) |
-| `/vision/semantics` | `std_msgs/String` | gemini_semantic_node | JSON-kodierte semantische Analyse (Gemini Cloud) |
-
-Zentrale Nodes (Full-Stack mit Vision+SLAM+Sensors: 16 ROS2-Nodes + 1 Host-Prozess + 2 ESP32-Nodes = 19 Komponenten): `micro_ros_agent_drive` (Drive-Node Serial-Bridge, `/dev/amr_drive`), `micro_ros_agent_sensor` (Sensor-Node Serial-Bridge, `/dev/amr_sensor`), `drive_node` (micro-ROS auf Drive-ESP32), `sensor_node` (micro-ROS auf Sensor-ESP32), `odom_to_tf` (Odom→TF, siehe TF-Baum), `rplidar_node`, `slam_toolbox`, `laser_tf_publisher`, `ultrasonic_tf_publisher` (optional bei `use_sensors`), `camera_tf_publisher`, `v4l2_camera_node` (optional), `dashboard_bridge` (WebSocket+MJPEG), `hailo_udp_receiver_node` (UDP-Empfaenger fuer Objekterkennung), `gemini_semantic_node` (semantische Analyse, optional), `cliff_safety_node` (cmd_vel-Multiplexer mit Cliff-Notbremse), `audio_feedback_node` (WAV-Wiedergabe via aplay/MAX98357A), `host_hailo_runner.py` (Host-seitig, kein ROS2). Ohne Vision/Kamera/Sensors reduziert sich die Anzahl entsprechend. Vollstaendige Komponentenliste: `Dashboard-Start-Live-Betrieb.md`.
-
-Debug-Kommandos (im Container via `./run.sh exec bash`): `ros2 topic echo /odom --once`, `ros2 topic hz /scan`, `ros2 topic echo /battery --once`, `ros2 topic echo /servo_cmd --once`, `ros2 topic pub /servo_cmd geometry_msgs/msg/Point "{x: 45.0, y: 90.0}" --once`, `ros2 run tf2_ros tf2_echo base_link laser`, `ros2 run tf2_ros tf2_echo odom base_link`.
-
-### micro-ROS / XRCE-DDS Constraints
-
-- **Zwei Agents**: Drive-Node und Sensor-Node benoetigen jeweils einen eigenen micro-ROS Agent auf separaten Serial-Ports (`/dev/amr_drive`, `/dev/amr_sensor`).
-- **MTU-Limit**: `UXR_CONFIG_CUSTOM_TRANSPORT_MTU = 512` Bytes (Standard in micro_ros_platformio). Konfiguration in `.pio/libdeps/seeed_xiao_esp32s3/micro_ros_platformio/libmicroros/include/uxr/client/config.h`.
-- **Best-Effort Streams haben KEINE Fragmentierung**. Nachrichten > 512 Bytes schlagen still fehl. `nav_msgs/Odometry` serialisiert ~725 Bytes (2x36 doubles Kovarianz = 576 Bytes).
-- **Loesung (Drive-Node)**: `rclc_publisher_init_default()` (Reliable QoS) statt `rmw_qos_profile_sensor_data` (Best-Effort). Reliable Streams unterstuetzen Fragmentierung (max `MTU * STREAM_HISTORY_OUTPUT` = 512 * 4 = 2048 Bytes). Sensor-Node Topics (`Range`, `Bool`) sind klein genug fuer Best-Effort.
-- **Output-Buffer**: `RMW_UXRCE_MAX_OUTPUT_BUFFER_SIZE = MTU * STREAM_HISTORY_OUTPUT` (2048 Bytes). Konfiguriert in `rmw_microxrcedds_c/config.h`.
-- MTU aendern erfordert Neuaufbau der micro-ROS-Libraries (`board_microros_user_meta` in platformio.ini) — pro Node separat.
-
-### TF-Baum
-
-```
-odom → base_link → laser (statisch, 180° Yaw)
-  (dynamisch)    → camera_link (statisch, optional bei use_camera:=True)
-                 → ultrasonic_link (statisch, optional bei use_sensors:=True)
-```
-
-Statische TFs via `static_transform_publisher` im Launch-File:
-- **laser**: x=0.10m, y=0.0, z=0.05m, roll=π, pitch=0, yaw=0 (Sensor 180° gedreht montiert)
-- **camera_link**: x=0.10m, y=0.0, z=0.08m, roll=0, pitch=0, yaw=0 (nur bei `use_camera:=True`)
-- **ultrasonic_link**: x=0.15m, y=0.0, z=0.10m, roll=0, pitch=0, yaw=0 (nur bei `use_sensors:=True`)
-
-Dynamische TF `odom → base_link` wird von `odom_to_tf` erzeugt (`my_bot/odom_to_tf.py`): abonniert `/odom` und broadcastet den entsprechenden TF, da micro-ROS selbst keinen TF publiziert.
-
-### Kamera-Pipeline (IMX296 Global Shutter)
-
-Die Sony IMX296 CSI-Kamera wird ueber eine v4l2loopback-Bridge in den Docker-Container gebracht:
-
-```
-IMX296 (CSI) → rpicam-vid (Host) → ffmpeg → /dev/video10 (v4l2loopback) → v4l2_camera_node (Docker/ROS2)
-```
-
-- **Host-seitig**: `camera-v4l2-bridge.service` (systemd) startet die Pipeline (`rpicam-vid --codec mjpeg | ffmpeg -f v4l2 -pix_fmt yuyv422 /dev/video10`). Aufloesung: 640x480 @ 15fps (VGA genuegt fuer YOLOv8 640x640 Tensor, -80% Pixel vs. vorherige 1456x1088).
-- **Container-seitig**: `v4l2_camera_node` liest `/dev/video10` (YUYV), konvertiert zu `bgr8` (`output_encoding` Parameter) und publiziert auf `/camera/image_raw`.
-- **Setup**: `host_setup.sh` installiert v4l2loopback-dkms, modprobe-Config und den systemd-Service. `run.sh` prueft automatisch ob die Bridge aktiv ist bei `use_camera:=True`.
-- **180°-Drehung**: Kamera ist kopfueber montiert. `/camera/image_raw` liefert das Rohbild (ungedreht). Drehung erfolgt an 3 Stellen: CSS `rotate-180` (Dashboard), `cv2.rotate()` (host_hailo_runner.py vor Inference), `cv2.rotate()` (gemini_semantic_node.py vor API-Aufruf).
-
-```bash
-# Kamera-Bridge starten/pruefen (Host):
-sudo systemctl start camera-v4l2-bridge.service
-sudo systemctl status camera-v4l2-bridge.service
-v4l2-ctl -d /dev/video10 --all   # Pruefen ob Frames ankommen
-```
-
-### Vision-Pipeline (Objekterkennung)
-
-Hybride KI-Pipeline: Lokale Echtzeit-Inference (Hailo-8) + Cloud-Semantik (Google Gemini). UDP-Bruecke zwischen Host (Python 3.13 + hailort) und Docker-Container (Python 3.10 + ROS2).
-
-```
-Host (Python 3.13):                    Docker (Python 3.10, ROS2):
-
-host_hailo_runner.py                   hailo_udp_receiver_node
-  │ MJPEG von :8082/stream               │ UDP 0.0.0.0:5005
-  │ Hailo-8 YOLOv8 @ 5 Hz                │ Publiziert /vision/detections
-  └── UDP 127.0.0.1:5005 ──────────────▶│
-                                          ▼
-                                   gemini_semantic_node (unveraendert)
-                                   dashboard_bridge (unveraendert)
-```
-
-- **host_hailo_runner.py** (`amr/scripts/`, Host-seitig, kein ROS2): Liest MJPEG-Stream von `http://127.0.0.1:8082/stream` (dashboard_bridge), dreht Bild 180° (Kamera kopfueber montiert), fuehrt YOLOv8-Inference auf Hailo-8 PCIe aus (640x640, COCO 80 Klassen, 5 Hz), sendet Detektionen mit deutschen Labels (`COCO_LABELS_DE`) als JSON via UDP an `127.0.0.1:5005`. Startup-Retry: 10 Versuche mit exponentiellem Backoff (2s→30s) falls MJPEG-Stream noch nicht bereit. Parameter: `--model` (HEF-Pfad), `--threshold` (0.35), `--fallback` (Dummy-Detektionen ohne Hailo-Hardware).
-- **hailo_udp_receiver_node** (Docker/ROS2): Empfaengt JSON-Detektionen via UDP (Port 5005), validiert und publiziert auf `/vision/detections`. Identisches JSON-Schema wie `hailo_inference_node`.
-- **hailo_inference_node** (Legacy): Direkter Hailo-8 Zugriff aus dem Container – bleibt als Datei/Entry-Point fuer Rueckwaertskompatibilitaet, wird aber nicht mehr gelauncht.
-- **gemini_semantic_node**: Subscribt `/camera/image_raw` + `/vision/detections`, dreht Bild 180° (Kamera kopfueber montiert), verkleinert auf max 640px (bei 640x480 Kamera kein Resize noetig), sendet an Gemini API (`gemini-3-flash-preview`), publiziert Schluesselwort-Analyse auf `/vision/semantics` (z.B. "Gerolsteiner Medium, klare Glasflasche"). Benoetigt `GEMINI_API_KEY` Umgebungsvariable. Rate-Limiting: min. 4s zwischen API-Aufrufen. SDK: `google.genai` (neues SDK, `pip3 install google-genai`).
-- **Modell**: YOLOv8s als HEF (Hailo Executable Format), vorkompiliert aus Hailo Model Zoo v2.11.0 fuer **Hailo-8L** (`hardware/models/yolov8s.hef`, 25 MB, in `.gitignore`). Download: `wget -O hardware/models/yolov8s.hef "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/v2.11.0/hailo8l/yolov8s.hef"`. **Achtung**: Hailo-8 und Hailo-8L HEFs sind inkompatibel (Device-Arch-Pruefung). Das HEF enthaelt integriertes NMS — Output-Shape `(80, N, 5)` mit `[y_min, x_min, y_max, x_max, confidence]` normalisiert, NICHT das Software-Format `[num_boxes, 84]`. Inference ~36 ms/Frame.
-- **Python-Deps**: Docker: `pip3 install google-genai` (Gemini, neues SDK). Host: `hailort` + `opencv-python` + `numpy` (auf Pi 5 vorinstalliert). `PYTHONUNBUFFERED=1` setzen beim Host-Runner (stdout-Pufferung bei Nicht-TTY).
-
-```bash
-# 1. Container: Vision-Pipeline starten (use_dashboard fuer MJPEG noetig):
-./run.sh ros2 launch my_bot full_stack.launch.py use_vision:=True use_dashboard:=True use_camera:=True use_rviz:=False use_nav:=False
-
-# 2. Host: Hailo-Runner starten (separates Terminal):
-python3 ~/AMR-Bachelorarbeit/amr/scripts/host_hailo_runner.py --model hardware/models/yolov8s.hef
-python3 ~/AMR-Bachelorarbeit/amr/scripts/host_hailo_runner.py --fallback   # Ohne Hailo-Hardware
-
-# 3. Container: Detektionen pruefen:
-ros2 topic echo /vision/detections --once
-ros2 topic hz /vision/detections   # ~5 Hz erwartet
-```
-
-### Serial-Port-Management (3 Projekte teilen ESP32)
-
-Die ESP32-Ports werden von 3 Projekten geteilt (`selection-panel.service`, `embedded-bridge.service`, AMR Docker). Lockfile: `/var/lock/esp32-serial.lock` (flock-basiert).
-
-**Stabile Device-Pfade (udev):** `host_setup.sh` erstellt udev-Symlinks, die unabhaengig von der USB-Enumerierungsreihenfolge stabil bleiben:
-- `/dev/amr_drive` → XIAO ESP32-S3 Drive-Node (Serial `E8:06:90:9D:9B:A0`)
-- `/dev/amr_sensor` → XIAO ESP32-S3 Sensor-Node (Serial `98:3D:AE:EA:08:1C`)
-- `/dev/amr_lidar` → RPLIDAR A1 (Vendor 10c4, Product ea60)
-
-```bash
-# Vor micro-ROS Agent Start sicherstellen, dass kein anderer Prozess den Port haelt:
-sudo systemctl stop embedded-bridge.service   # Falls aktiv
-sudo fuser -v /dev/amr_drive                  # Pruefen ob Port frei
-sudo fuser -v /dev/amr_sensor                 # Pruefen ob Port frei
-sudo lslocks | grep esp32-serial              # Lock-Status pruefen
-```
-
-## Roboter-Parameter
-
-Definiert in lokalen Configs pro Node: `amr/mcu_firmware/drive_node/include/config.h` v4.0.0 (Drive-Node, nur Motor/PID/Kinematik/LED) und `amr/mcu_firmware/sensor_node/include/config_sensors.h` v3.0.0 (Sensor-Node, inkl. IMU/Batterie/Servo/I2C). C++-Namespaces statt flache `#define`s, `inline constexpr` mit `static_assert` Compile-Time-Validierung. Code-relevante Werte (Drive-Node):
-
-- **Kinematik** (`amr::kinematics::`): Raddurchmesser 65.67 mm (kalibriert), Spurbreite 178 mm, Encoder ~748 Ticks/Rev (2x Quadratur)
-- **PWM** (`amr::pwm::`): Motor-Deadzone 35, 20 kHz/8-bit (Motoren), 5 kHz/10-bit (LED-Kanal 4)
-- **PID** (`amr::pid::`): Kp=0.4, Ki=0.1, Kd=0.0, EMA alpha=0.3, Rampe 5.0 rad/s², Deadband 0.08, D-Term-Tiefpass tau=0.02s
-- **Timing** (`amr::timing::`): Regelschleife 50 Hz, Odom 20 Hz, IMU 50 Hz, Batterie 2 Hz, Failsafe 500 ms, Watchdog 50 Zyklen
-- **IMU** (`amr::imu::`): Komplementaerfilter alpha=0.98 (98% Gyro), Gyro-Sensitivity 131.0 (±250°/s), 500 Kalibrierproben
-- **Batterie** (`amr::battery::`): Samsung INR18650-35E 3S1P, 10.80 V nominal, Warnung 10.0 V, Motor-Shutdown 9.5 V, System-Shutdown 9.0 V
-- **Servo** (`amr::servo::`): PCA9685 50 Hz, 600-2400 µs, Pan=MG996R CH0, Tilt=MG90S CH1 (MG996R-Upgrade geplant), Stall 2.5 A, Torque 11 kg*cm @ 6 V
-- **I2C** (`amr::i2c::`): 400 kHz, INA260=0x40, PCA9685=0x41, MPU6050=0x68
-
-Sensor-Node-Parameter (`config_sensors.h`):
-- **Ultraschall** (`amr::sensor::`): HC-SR04, Messbereich 2-400 cm, Median-Filter (5 Samples), Temperaturkompensation
-- **Cliff** (`amr::sensor::`): MH-B IR-Sensor, Digitaleingaenge, Entprellungszeit
-
-## Firmware-Constraints
-
-- **C++17**: ESP32-Arduino-Toolchain kompiliert mit `-std=gnu++17` (GCC 8.4.0). `std::clamp` aus `<algorithm>` verfuegbar. `inline constexpr` fuer Header-Konstanten.
-- **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long` (MISRA-inspiriert). Encoder-Zaehler sind `volatile int32_t`.
-- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren.
-- **Speicher**: Keine dynamische Allokation zur Laufzeit (nur beim Startup).
-
-## Validierung
-
-- Keine automatisierten Unit-Tests – Validierung erfolgt experimentell ueber V-Modell-Phasenplan (Akzeptanzkriterien in `hardware/docs/umsetzungsanleitung.md`, Anhang A)
-- 24 Dateien in `amr/scripts/` (21 Skripte + `host_hailo_runner.py` Host-Skript + `hardware_info.py` + `amr_utils.py` Shared-Modul, alle `py_compile`-validiert)
-- Ergebnisse werden als JSON gespeichert und mit `validation_report.py` zu einem Gesamt-Report aggregiert
-- Methoden: UMBmark (Borenstein 1996), PID-Sprungantwort, rosbag2-Aufzeichnung
-
-## Bachelorarbeit (Markdown-Dokument)
-
-Die Arbeit folgt dem V-Modell nach VDI 2206. Expose und Gliederung in `suche/amr_expose_literaturstrategie.md`. 7 Kapitel, ~46.000 Woerter. Kapitel als kombinierte Dateien: `bachelorarbeit/kapitel_XX_name.md` (z.B. `kapitel_04_systemkonzept.md`).
-
-### Schreibkonventionen
-
-- Umlaute als ae, oe, ue, ss (kein UTF-8-Umlaut in Kapitel-Dateien)
-- Zitationen: `(vgl. Nachname et al. Jahr, S. X)`
-- Gleichungen als Code-Bloecke mit erklaerenden Variablendefinitionen
-- Keine Bullet-Point-Listen im Fliesstext – vollstaendige Saetze und Absaetze
-- Jeder Abschnitt beginnt mit einem kontextualisierenden Einleitungssatz
-
-## Literaturverwaltung
-
-Kernaussagen mit Seitenzahlen fuer Zitationen in `sources/kernaussagen/` (16 Dateien + Querverweismatrix `00_Uebersicht_Querverweise.md`). PDFs in `sources/`.
-
-## Wichtige Pfade (nicht offensichtlich)
-
-- `amr/mcu_firmware/drive_node/include/config.h` – Drive-Node Hardware-Parameter (v4.0.0, C++-Namespaces `amr::*`, nur Motor/PID/Kinematik/LED), eingebunden via `-I include`
-- `amr/mcu_firmware/sensor_node/include/config_sensors.h` – Sensor-Node Parameter (v3.0.0, Namespaces `amr::hal::`, `amr::sensor::`, `amr::imu::`, `amr::battery::`, `amr::servo::`, `amr::i2c::`, `amr::ina260::`), eingebunden via `-I include`
-- `hardware/docs/umsetzungsanleitung.md` – Schrittweise Inbetriebnahme-Anleitung (v3.0, Docker-basiert)
-- `hardware/docs/kalibrierung_anleitung.md` – Encoder-Kalibrierung und UMBmark-Prozedur
-- `suche/amr_expose_literaturstrategie.md` – Expose, Gliederung und Literaturstrategie
-- `scripts/` (Projekt-Root) – Thesis-Hilfsskripte: `md_to_html_converter.py` (Markdown→HTML), `pdf_splitter.py`/`pdf_splitter_manuell.py` (PDF-Aufteilung, Anleitung in `pdf_splitter_anleitung.md`), `optimize_project_images.sh` (Bildoptimierung), `convert_mov_to_mp4.sh` (Video-Konvertierung) – NICHT verwechseln mit `amr/scripts/` (ROS2-Validierungsskripte)
-- `amr/scripts/README.md` – Klassifikationstabelle aller 27 Skripte nach Rolle (Runtime-Nodes, Validierungstests, Standalone-Utils, Host-Only)
-- `hardware/models/yolov8s.hef` – Vorkompiliertes YOLOv8s-Modell fuer Hailo-8L (aus Hailo Model Zoo v2.11.0, 25 MB, in `.gitignore`)
-- `Dashboard-Start-Live-Betrieb.md` – Vollstaendige Startanleitung fuer Dashboard + Vision + SLAM Live-Betrieb (3 Terminals, 15 Komponenten, Reihenfolge, Troubleshooting)
-- `planung/DoD-checkliste-phasen.md` – Definition of Done fuer 6 Phasen (V-Modell), Akzeptanzkriterien mit Messgroessen
-- `hardware/AMR_Hardware-Spezifikationen_und_Daten.md` – Hardware-Master-Referenz (19+ Komponenten, Pinouts, CAN-Topologie, I2C-Analyse)
-- `hardware/amr_architecture.svg` – Animierte Systemarchitektur (3-Spalten, 15 Knoten)
-- `amr/scripts/udev_setup.sh` – Interaktiver udev-Regel-Generator fuer ESP32-Seriennummern
-
-## Nicht-getrackte Dateien (.gitignore)
-
-Folgende Muster werden von Git ignoriert: `.venv/`, `.pio/`, `compile_commands.json` (PlatformIO), `__pycache__/`, `.claude/`, `build/`/`install/`/`log/` (colcon), `*.db3`/`metadata.yaml` (rosbag-Aufzeichnungen), `*_map.pgm`/`*_map.yaml`/`*_map_img.*` (lokal generierte SLAM-Karten), `node_modules/`, `dashboard/dist/` (Frontend-Build), `.vscode/`, `.idea/`, `.DS_Store`, `amr/docker/.env` (Secrets), `*.log` (Log-Dateien), `gstshark_*/` (Profiling-Daten).
-
-Die implementierte Vision-Pipeline (`hailo_udp_receiver_node`, `host_hailo_runner.py`, `hailo_inference_node` Legacy, `gemini_semantic_node`) liegt in `amr/scripts/`.
-
-## Troubleshooting
-
-- **Permission denied auf /dev/amr_drive oder /dev/amr_sensor**: `sudo usermod -aG dialout $USER` (ab- und wieder anmelden)
-- **Docker-Image ohne Cache neu bauen**: `docker compose build --no-cache` (in `amr/docker/`)
-- **Docker-Build-Cache loeschen**: `docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log`
-- **Odom-Topic leer trotz Session**: XRCE-DDS MTU-Problem – siehe Abschnitt "micro-ROS / XRCE-DDS Constraints".
-- **PlatformIO flasht falschen Port**: Beide ESP32-S3 haben identische VID/PID. Fix: Stabile udev-Symlinks verwenden — `upload_port = /dev/amr_drive` bzw. `/dev/amr_sensor` in der jeweiligen `platformio.ini`. Setup via `scripts/udev_setup.sh`.
-- **Serial-Port belegt**: Siehe Abschnitt "Serial-Port-Management". Kurzfassung: `sudo fuser -v /dev/amr_drive` und ggf. `sudo systemctl stop embedded-bridge.service`.
-- **Kamera nicht erkannt (IMX296)**: `camera_auto_detect=1` erkennt IMX296 nicht automatisch. Explizit `dtoverlay=imx296` in `/boot/firmware/config.txt` unter `[all]` eintragen. Reboot erforderlich. Bei I2C-Fehler -121: CSI-Kabel pruefen (Standard-auf-Mini, Kontakte fest).
-- **rpicam-hello statt libcamera-hello**: Debian Trixie / Pi OS Bookworm verwendet `rpicam-hello --list-cameras` statt `libcamera-hello`.
-- **ESP32 USB-CDC haengt**: `Serial.setTxTimeoutMs(50)` in `setup()` setzen und `delay(1)` nach `rclc_executor_spin_some()` fuer Buffer-Flush einfuegen.
-- **Kamera-Bridge: /dev/video10 fehlt**: `sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1`. Falls Modul mit falschen Optionen geladen: `sudo modprobe -r v4l2loopback` zuerst.
-- **Kamera-Bridge-Service haengt**: `journalctl -u camera-v4l2-bridge.service -f` pruefen. Haeufige Ursache: rpicam-vid verliert CSI-Verbindung nach Suspend. Fix: `sudo systemctl restart camera-v4l2-bridge.service`.
-- **IMU nicht erkannt (MPU6050)**: WHO_AM_I Register (0x75) gibt nicht 0x68 zurueck. I2C-Verbindung pruefen: SDA=D4, SCL=D5. Pullup-Widerstaende (4.7k Ohm) vorhanden? Wire.begin() erfolgreich?
-- **IMU Gyro-Drift hoch**: Kalibrierung laeuft 500 Samples beim Startup. Roboter muss waehrend der ersten ~5s nach Power-On still stehen.
-- **INA260 nicht erkannt**: Manufacturer-ID (0xFE) gibt nicht 0x5449 zurueck. I2C-Adresse pruefen: Default 0x40 (A0=GND, A1=GND). `i2cdetect -y 1` auf dem ESP32 nicht verfuegbar — stattdessen Serial-Monitor-Output pruefen.
-- **PCA9685 Prescaler falsch**: Prescaler-Verifizierung in `init()` schlaegt fehl. PCA9685 muss im Sleep-Modus sein vor Prescaler-Aenderung. Bei Loetbruecke A0 offen: Adresse ist 0x40 (Kollision mit INA260!) — A0 muss geschlossen sein fuer 0x41.
-- **Servos zittern**: MG90S/MG996R brummt am Endanschlag. Sicheren Pulsbereich (600-2400 µs) einhalten. `pca9685.allOff()` bei Nichtgebrauch aufrufen. **Tilt-Servo (MG90S) zittert unter Last**: CS-Mount-Objektiv PT361060M3MP12 (53 g, langer Hebelarm) uebersteigt MG90S-Drehmoment (1.8 kg*cm). Kein Softwarefehler — MG996R-Upgrade (11 kg*cm) erforderlich.
-- **Batterie-Shutdown zu frueh**: `threshold_motor_shutdown_v` (9.5 V) evtl. zu hoch bei hohem Strom (Spannungseinbruch durch Pack-Impedanz 183 mOhm). INA260-Spannung unter Last pruefen: `ros2 topic echo /battery --once`.
-- **PlatformIO penv fehlt (Debian Trixie)**: PEP 668 blockiert `pip install` im micro-ROS Build. Fix: `python3 -m venv /home/pi/.platformio/penv && /home/pi/.platformio/penv/bin/pip install lark-parser importlib-resources pyyaml "markupsafe==2.0.1" "empy==3.3.4" catkin_pkg "colcon-common-extensions>=0.3.0"`. Einmalig, penv bleibt persistent.
-- **Docker: /dev/amr_drive nicht gefunden**: udev-Symlinks existieren nur auf dem Host, NICHT im Container (trotz `privileged: true`). Fix: Launch-Args mit physischen Pfaden verwenden: `drive_serial_port:=/dev/ttyACM0 sensor_serial_port:=/dev/ttyACM1`.
-- **LED-Test ueberschreibt Drive-Firmware**: `pio run -t upload` (ohne `-e`) flasht das LETZTE Environment (led_test), nicht drive_node! Immer `pio run -e drive_node -t upload` verwenden. Pruefen: Serieller Output zeigt binaere XRCE-DDS-Daten statt Text-Ausgabe wie `duty= 255/1023`.
-- **SetRemap fehlt in Humble**: `from launch.actions import SetRemap` gibt ImportError — SetRemap existiert erst ab ROS2 Iron. Nav2 cmd_vel-Remap fuer Cliff-Safety bei `use_nav:=True` ist daher nicht implementiert. Workaround: `use_nav:=False` verwenden oder Remap via `launch_arguments` in `navigation_launch.py` konfigurieren.
+This file provides guidance to Claude Code when working in this repository.
+
+## Projektziel
+
+Bachelorarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik mit KLT-Transport.
+
+Kurzarchitektur:
+- Raspberry Pi 5 als ROS2-, SLAM-, Navigation- und Integrationsrechner
+- XIAO ESP32-S3 Drive-Node fuer Antrieb, PID, Odometrie und LED
+- XIAO ESP32-S3 Sensor-Node fuer Ultraschall, Cliff, IMU, Batterie und Servo
+- Verbindung zwischen Pi 5 und MCU-Nodes ueber micro-ROS/UART
+
+## Arbeitsregeln
+
+- Sprache: Deutsch im wissenschaftlich-technischen Stil
+- In Markdown-Dateien keine UTF-8-Umlaute, sondern ae, oe, ue, ss
+- Terminologie konsistent beibehalten
+- Keine Annahmen ueber ungelesene Dateien, Messwerte oder Hardware-Zustaende treffen
+- Kleine, pruefbare Aenderungen bevorzugen
+- Folgen fuer Architektur, Schnittstellen und Sicherheit explizit beachten
+
+## Zentrale Begriffe
+
+- Drive-Node: ESP32-S3 fuer Motorregelung, Encoder, Odometrie, LED
+- Sensor-Node: ESP32-S3 fuer Sensorik, Batterie, IMU, Servo und Naeherungssensoren
+- Pi 5: zentrale ROS2- und Docker-Laufzeit
+- micro-ROS Agent: Serial-Bridge zwischen ROS2 und den ESP32-Nodes
+- Dashboard: Weboberflaeche fuer Telemetrie und Fernsteuerung
+
+## Feste Architekturregeln
+
+- Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten
+- Drive-Node und Sensor-Node werden getrennt gebaut, geflasht und betrieben
+- ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
+- Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Node
+- Dashboard, Kamera, Vision und Audio sind optionale Teilsysteme
+- Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
+
+## Relevante Projektpfade
+
+- `amr/mcu_firmware/drive_node/`
+- `amr/mcu_firmware/sensor_node/`
+- `amr/docker/`
+- `amr/scripts/`
+- `dashboard/`
+- `my_bot/`
+- `bachelorarbeit/`
+- `sources/`
+
+## Typische Arbeitsreihenfolge
+
+1. Aufgabenbereich identifizieren
+2. Nur fachlich passende Dateien lesen
+3. Betroffene Schnittstellen und Abhaengigkeiten bestimmen
+4. Aenderung mit minimalem Umfang umsetzen
+5. Build-, Start- oder Pruefpfad angeben
+6. Auswirkungen auf Architektur, Topics, Parameter und Dokumentation benennen
+
+## Harte Randbedingungen
+
+- Serielle Geraetepfade und Parallelzugriffe vorsichtig behandeln
+- micro-ROS-Konfigurationen sind node-spezifisch
+- Schnittstellen zwischen ESP32, ROS2 und Dashboard nur konsistent aendern
+- Hardware-nahe Parameter nicht ohne Begruendung umbenennen oder verschieben
+- Bei Launch-, Topic- oder TF-Aenderungen immer Folgeeffekte auf Navigation, Dashboard und Validierung beachten
+
+## Detaildokumente
+
+- `docs/architecture.md`
+- `docs/build_and_deploy.md`
+- `docs/ros2_system.md`
+- `docs/dashboard.md`
+- `docs/vision_pipeline.md`
+- `docs/serial_port_management.md`
+- `docs/robot_parameters.md`
+- `docs/validation.md`
+- `docs/quality_checks.md`
+- `docs/bachelorarbeit_style.md`
+- `docs/literature_workflow.md`
