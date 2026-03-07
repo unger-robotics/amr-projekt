@@ -157,12 +157,6 @@ class PCA9685 {
     // Alle Ausgaenge wieder aktivieren (Full-OFF zuruecksetzen)
     void clearAllOff() { writeRegister(REG_ALL_LED_OFF_H, 0x00); }
 
-    float getCurrentAngle(uint8_t channel) const {
-        if (channel >= NUM_SERVO_CH)
-            return 0.0f;
-        return current_angle_[channel];
-    }
-
     void setRampSpeed(float deg_per_step) {
         deg_per_step = std::clamp(deg_per_step, 0.1f, 10.0f);
         ramp_deg_per_step_ = deg_per_step;

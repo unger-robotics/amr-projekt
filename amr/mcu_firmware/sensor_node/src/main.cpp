@@ -600,6 +600,14 @@ void loop() {
                                          amr::battery::threshold_hysteresis_v) {
                     if (battery_motor_shutdown) {
                         battery_motor_shutdown = false;
+                        if (pca9685_ok) {
+                            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                                pca9685.clearAllOff();
+                                xSemaphoreGive(i2c_mutex);
+                            } else {
+                                i2c_contention_errors++;
+                            }
+                        }
                         msg_bat_shutdown.data = false;
                         rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
                     }

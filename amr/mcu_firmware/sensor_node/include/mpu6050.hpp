@@ -150,10 +150,6 @@ class MPU6050 {
         heading_ = alpha_ * (heading_ + gz * dt) + (1.0f - alpha_) * encoder_heading;
         return heading_;
     }
-
-    float getHeading() const { return heading_; }
-
-    void resetHeading(float h = 0.0f) { heading_ = h; }
 };
 
 } // namespace amr::drivers

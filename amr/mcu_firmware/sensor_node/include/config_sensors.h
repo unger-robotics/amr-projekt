@@ -54,8 +54,7 @@ inline constexpr uint8_t addr_ina260 = 0x40;  // Leistungsmonitor (A0=GND, A1=GN
 inline constexpr uint8_t addr_pca9685 = 0x41; // Servo-PWM (Loetbruecke A0 geschlossen)
 inline constexpr uint8_t addr_mpu6050 = 0x68; // IMU (AD0=GND)
 
-inline constexpr uint32_t master_freq_hz = 400000;     // Fast-mode 400 kHz
-inline constexpr bool internal_pullup_enabled = false; // Externe 2.42 kOhm Pullups vorhanden
+inline constexpr uint32_t master_freq_hz = 400000; // Fast-mode 400 kHz
 
 } // namespace amr::i2c
 
@@ -78,9 +77,7 @@ inline constexpr uint16_t calibration_samples = 500;
 
 namespace amr::battery {
 
-inline constexpr float threshold_warning_v = 10.0f;
 inline constexpr float threshold_motor_shutdown_v = 9.5f;
-inline constexpr float threshold_system_shutdown_v = 9.0f;
 inline constexpr float threshold_hysteresis_v = 0.3f;
 inline constexpr float pack_charge_max_v = 12.60f;
 inline constexpr float pack_cutoff_v = 7.95f;

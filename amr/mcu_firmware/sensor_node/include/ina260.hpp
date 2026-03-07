@@ -82,11 +82,6 @@ class INA260 {
 
         return true;
     }
-
-    bool isAlertActive() {
-        uint16_t mask = readRegister16(REG_MASK_ENABLE);
-        return (mask & 0x0010) != 0; // Alert Function Flag (Bit 4)
-    }
 };
 
 } // namespace amr::drivers
