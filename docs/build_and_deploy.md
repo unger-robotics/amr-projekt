@@ -22,6 +22,21 @@ ROS2 Humble laeuft auf dem Pi 5 im Docker-Container.
 
 Lange Kommandoablaeufe bleiben hier und nicht in `CLAUDE.md`.
 
+## CAN-Bus (SocketCAN)
+
+`host_setup.sh` Sektion 6 installiert `can-utils` und den `can0.service` (systemd, 1 Mbit/s, txqueuelen=1000). Nach Aenderungen an `/boot/firmware/config.txt` ist ein Reboot noetig.
+
+```bash
+# CAN-Status pruefen
+ip -details link show can0
+
+# CAN-Bridge Diagnostik-Node (im Docker)
+ros2 launch my_bot full_stack.launch.py use_can:=True
+
+# Standalone CAN-Validierung (ohne Docker)
+python3 amr/scripts/can_validation_test.py --duration 30
+```
+
 ## Live-Betrieb: Dashboard + Vision + SLAM
 
 Dieser Ablauf startet das Gesamtsystem fuer den Live-Betrieb mit SLAM, Kamera, Dashboard, Hailo-basierter Objekterkennung und semantischer Auswertung. Die Startreihenfolge ist kritisch, weil die ESP32-Nodes keine eigenstaendige Reconnection-Logik fuer den micro-ROS-Agent besitzen.
