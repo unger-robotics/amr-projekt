@@ -9,7 +9,7 @@
  * - Core 1 (FreeRTOS Task "Ctrl", 50 Hz): Encoder-Auswertung, EMA-Filter,
  *   Beschleunigungsrampe, PID-Regelung, Odometrie.
  * - Core 0 (Arduino loop): micro-ROS Executor (3 Subscriber, 1 Publisher),
- *   LED-Heartbeat, Inter-Core-Watchdog.
+ *   LED-Heartbeat, Inter-Core-Watchdog, CAN-Bus Dual-Path (TWAI, parallel zu micro-ROS).
  *
  * Antrieb, PID, Odometrie, LED. Kein I2C — alle Sensoren/Aktoren auf Sensor-Node.
  *
@@ -32,9 +32,11 @@
 #include "diff_drive_kinematics.hpp"
 #include "pid_controller.hpp"
 #include "robot_hal.hpp"
+#include "twai_can.hpp"
 
 // --- Namespace-Aliase ---
 using amr::control::PidController;
+using amr::drivers::TwaiCan;
 using amr::hardware::RobotHAL;
 using amr::kinematics::DiffDriveKinematics;
 using amr::kinematics::RobotState;
@@ -47,6 +49,10 @@ PidController pid_l(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_m
                     amr::pid::output_max);
 PidController pid_r(amr::pid::kp, amr::pid::ki, amr::pid::kd, amr::pid::output_min,
                     amr::pid::output_max);
+
+// --- CAN-Bus (TWAI) ---
+TwaiCan can;
+bool can_ok = false;
 
 /** Mutex-geschuetzter Datenaustausch zwischen Core 0 und Core 1.
  *  Core 1 schreibt: Odometrie (ox/oy/oth/ov/ow).
@@ -173,14 +179,16 @@ void controlTask(void *p) {
         }
 
         // Bei Zielgeschwindigkeit ~0: PID umgehen, Motoren direkt stoppen
+        float pid_out_l = 0.0f, pid_out_r = 0.0f;
         if (fabsf(last_sp_l) < amr::pid::stillstand_threshold &&
             fabsf(last_sp_r) < amr::pid::stillstand_threshold) {
             hal.setMotors(0, 0);
             pid_l.reset();
             pid_r.reset();
         } else {
-            hal.setMotors(pid_l.compute(last_sp_l, ml_filt, dt),
-                          pid_r.compute(last_sp_r, mr_filt, dt));
+            pid_out_l = pid_l.compute(last_sp_l, ml_filt, dt);
+            pid_out_r = pid_r.compute(last_sp_r, mr_filt, dt);
+            hal.setMotors(pid_out_l, pid_out_r);
         }
 
         RobotState s = kinematics.updateOdometry(ml, mr, dt);
@@ -192,6 +200,19 @@ void controlTask(void *p) {
             shared.ov = (ml + mr) * amr::kinematics::wheel_radius / 2;
             shared.ow = (mr - ml) * amr::kinematics::wheel_radius / amr::kinematics::wheel_base;
             xSemaphoreGive(mutex);
+        }
+
+        // CAN: Encoder-Feedback + Motor-PWM (10 Hz)
+        if (can_ok) {
+            static uint32_t last_can_ctrl = 0;
+            uint32_t now_ms = millis();
+            if (now_ms - last_can_ctrl >= amr::can::encoder_can_period_ms) {
+                last_can_ctrl = now_ms;
+                can.sendEncoder(ml_filt, mr_filt);
+                int16_t duty_l = static_cast<int16_t>(pid_out_l * amr::pwm::motor_max);
+                int16_t duty_r = static_cast<int16_t>(pid_out_r * amr::pwm::motor_max);
+                can.sendMotorPwm(duty_l, duty_r);
+            }
         }
 
         core1_heartbeat++;
@@ -248,6 +269,9 @@ void setup() {
     digitalWrite(amr::hal::pin_led_internal, HIGH); // Schalte interne LED aus
 
     hal.init();
+
+    // CAN-Bus (TWAI) initialisieren — Fehlschlag nicht fatal
+    can_ok = can.init();
 
     mutex = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(controlTask, "Ctrl", 10000, NULL, 1, NULL, 1);
@@ -426,7 +450,24 @@ void loop() {
         if (pub_rc != RCL_RET_OK && hw_cmd.led_pwm < 0.5f) {
             digitalWrite(amr::hal::pin_led_internal, LOW); // Zeige Fehler auf interner LED
         }
+        if (can_ok) {
+            can.sendOdomPos(x, y);
+            can.sendOdomHeading(th, v);
+        }
 
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(5));
+    }
+
+    // --- CAN Heartbeat (1 Hz) ---
+    if (can_ok) {
+        static unsigned long last_can_hb = 0;
+        if (millis() - last_can_hb >= amr::can::heartbeat_period_ms) {
+            last_can_hb = millis();
+            bool core1_ok = (hb_miss_count <= amr::timing::watchdog_miss_limit);
+            bool failsafe = (millis() - last_cmd_time > amr::timing::failsafe_timeout_ms);
+            bool pid_active = (shared.tv != 0 || shared.tw != 0);
+            can.sendHeartbeat(true, core1_ok, pid_active, battery_motor_shutdown, core1_ok,
+                              failsafe);
+        }
     }
 }

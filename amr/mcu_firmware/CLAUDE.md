@@ -22,7 +22,7 @@ Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publ
 ```
 mcu_firmware/
   drive_node/
-    include/          # Header: config_drive.h, 3 hpp-Module (robot_hal, pid_controller, diff_drive_kinematics)
+    include/          # Header: config_drive.h, 4 hpp-Module (robot_hal, pid_controller, diff_drive_kinematics, twai_can)
     src/              # main.cpp, led_ramp_test.cpp
     platformio.ini
   sensor_node/
@@ -50,7 +50,7 @@ Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecache
 
 Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
-- `drive_node/include/config_drive.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED — kein I2C, keine Batterie/Servo/IMU mehr
+- `drive_node/include/config_drive.h` (v4.1.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED, CAN-Bus (`amr::can::`) — kein I2C
 - `sensor_node/include/config_sensors.h` (v3.1.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung. Keine `#define`-Makros fuer Pins oder PWM-Kanaele — alle in `amr::hal::` als typisierte Konstanten.
@@ -65,13 +65,13 @@ Beide Nodes nutzen konsistente C++-Namespaces:
 | `amr::hardware` | Sensor-/Aktor-Klassen (RobotHAL, RangeSensor, CliffSensor) | Beide |
 | `amr::control` | PidController | Drive |
 | `amr::kinematics` | DiffDriveKinematics, WheelTargets, RobotState | Drive |
-| `amr::drivers` | I2C-Treiber (MPU6050, INA260, PCA9685), TWAI CAN-Bus (TwaiCan) | Sensor |
+| `amr::drivers` | I2C-Treiber (MPU6050, INA260, PCA9685), TWAI CAN-Bus (TwaiCan) | Beide |
 | `amr::pid`, `amr::pwm`, `amr::timing` | Regelparameter | Drive |
 | `amr::imu` | IMU-Parameter | Sensor |
 | `amr::battery`, `amr::servo`, `amr::i2c`, `amr::ina260` | Geraeteparameter | Sensor |
 | `amr::safety`, `amr::regulator` | Sicherheitsschwellen | Drive |
 | `amr::sensor` | Physikalische Sensorparameter (Schall, Bereiche) | Sensor |
-| `amr::can` | CAN-Bus Konfiguration (IDs, Bitrate, Heartbeat) | Sensor |
+| `amr::can` | CAN-Bus Konfiguration (IDs, Bitrate, Heartbeat) | Beide |
 
 `main.cpp` beider Nodes verwendet `using`-Deklarationen fuer Klassen aus diesen Namespaces.
 
@@ -93,9 +93,21 @@ Beide ESP32-S3 haben identische USB VID/PID — die Linux-Enumeration (`/dev/tty
 | `/range/front` | `sensor_msgs/Range` | Sensor | 10 Hz |
 | `/cliff` | `std_msgs/Bool` | Sensor | 20 Hz |
 
-### CAN-Bus (Sensor-Node, TWAI, parallel zu micro-ROS)
+### CAN-Bus (TWAI, parallel zu micro-ROS, beide Nodes)
 
-Sensor-Daten werden zusaetzlich via CAN 2.0B (500 kbit/s, SN65HVD230 → SBC-CAN01) gesendet. CAN-Fehler sind nicht fatal. Protokoll: `sensor_node/README.md`, Hardware: `../../hardware/can-bus/CAN-Bus.md`.
+Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (500 kbit/s, SN65HVD230 → SBC-CAN01) gesendet. CAN-Fehler sind nicht fatal. Hardware: `../../hardware/can-bus/CAN-Bus.md`.
+
+**Drive-Node (0x200-0x2FF):**
+
+| CAN-ID | Inhalt | Rate |
+|---|---|---|
+| `0x200` | Odom Position x,y [2x float32] | 20 Hz |
+| `0x201` | Odom Heading+Speed [2x float32] | 20 Hz |
+| `0x210` | Encoder L/R [2x float32 rad/s] | 10 Hz |
+| `0x220` | Motor-PWM L/R [2x int16] | 10 Hz |
+| `0x2F0` | Heartbeat [2 B] | 1 Hz |
+
+**Sensor-Node (0x110-0x1F0):**
 
 | CAN-ID | Inhalt | Rate |
 |---|---|---|

@@ -66,12 +66,8 @@ inline constexpr float wheel_radius = wheel_diameter / 2.0f;
 inline constexpr float wheel_base = 0.178f; // [m] Spurbreite Mitte-Mitte
 inline constexpr float wheel_circumference = wheel_diameter * 3.14159265359f;
 
-inline constexpr float ticks_per_rev_left = 748.6f;
-inline constexpr float ticks_per_rev_right = 747.2f;
-inline constexpr float ticks_per_rev_avg = (ticks_per_rev_left + ticks_per_rev_right) / 2.0f;
-
-inline constexpr float meters_per_tick_left = wheel_circumference / ticks_per_rev_left;
-inline constexpr float meters_per_tick_right = wheel_circumference / ticks_per_rev_right;
+inline constexpr float ticks_per_rev_left = 748.6f;  // kalibriert
+inline constexpr float ticks_per_rev_right = 747.2f; // kalibriert
 
 } // namespace amr::kinematics
 
@@ -134,7 +130,30 @@ inline constexpr uint32_t watchdog_miss_limit = 50;
 } // namespace amr::timing
 
 // ==========================================================================
-// 5. COMPILE-TIME VALIDIERUNG
+// 5. CAN-BUS KONFIGURATION (TWAI, SN65HVD230)
+// ==========================================================================
+
+namespace amr::can {
+
+inline constexpr uint32_t bitrate = 500000; // 500 kbit/s (ISO 11898)
+inline constexpr uint32_t tx_timeout_ms = 10;
+
+// CAN-IDs (11-Bit Standard-Frame, Bereich 0x200..0x2FF)
+// Kein Overlap mit Sensor-Node (0x110..0x1F0)
+inline constexpr uint32_t id_odom_pos = 0x200;
+inline constexpr uint32_t id_odom_heading = 0x201;
+inline constexpr uint32_t id_encoder = 0x210;
+inline constexpr uint32_t id_motor_pwm = 0x220;
+inline constexpr uint32_t id_heartbeat = 0x2F0;
+
+inline constexpr uint32_t heartbeat_period_ms = 1000;
+inline constexpr uint32_t encoder_can_period_ms = 100; // 10 Hz
+inline constexpr uint32_t motor_can_period_ms = 100;   // 10 Hz
+
+} // namespace amr::can
+
+// ==========================================================================
+// 6. COMPILE-TIME VALIDIERUNG
 // ==========================================================================
 
 static_assert(amr::kinematics::wheel_radius > 0, "wheel_radius > 0");
@@ -157,3 +176,8 @@ static_assert(amr::pid::output_min < amr::pid::output_max, "PID: output_min < ou
 static_assert(amr::timing::control_loop_hz > 0, "control_loop_hz > 0");
 static_assert(amr::timing::failsafe_timeout_ms > amr::timing::control_loop_period_ms,
               "failsafe_timeout > Regelzyklus");
+
+// --- CAN-Bus ---
+static_assert(amr::can::id_odom_pos >= 0x200 && amr::can::id_heartbeat <= 0x2FF,
+              "Drive CAN-IDs im Bereich 0x200..0x2FF");
+static_assert(amr::can::bitrate == 500000, "CAN-Bitrate 500 kbit/s");
