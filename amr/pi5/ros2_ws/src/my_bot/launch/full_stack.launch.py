@@ -122,6 +122,11 @@ def generate_launch_description():
         default_value="False",
         description="CAN-Bridge Diagnostik-Node (MCP2515/SocketCAN)",
     )
+    declare_use_respeaker = DeclareLaunchArgument(
+        "use_respeaker",
+        default_value="False",
+        description="ReSpeaker Mic Array v2.0 DoA/VAD-Node (USB, pyusb)",
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -423,6 +428,15 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_can")),
     )
 
+    # --- 12. ReSpeaker DoA/VAD (USB Mic Array, optional) ---
+    respeaker_doa_node = Node(
+        package="my_bot",
+        executable="respeaker_doa_node",
+        name="respeaker_doa_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_respeaker")),
+    )
+
     return LaunchDescription(
         [
             # Launch Arguments
@@ -441,6 +455,7 @@ def generate_launch_description():
             declare_use_cliff_safety,
             declare_use_audio,
             declare_use_can,
+            declare_use_respeaker,
             # Nodes / Prozesse
             rplidar_node,
             laser_tf,
@@ -461,5 +476,6 @@ def generate_launch_description():
             cliff_safety_node,
             audio_feedback_node,
             can_bridge_node,
+            respeaker_doa_node,
         ]
     )

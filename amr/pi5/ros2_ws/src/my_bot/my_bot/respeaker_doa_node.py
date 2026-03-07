@@ -1,0 +1,1 @@
+../../../../../scripts/respeaker_doa_node.py

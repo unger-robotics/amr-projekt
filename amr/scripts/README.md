@@ -13,6 +13,7 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `cliff_safety_node.py` | cmd_vel-Multiplexer mit Cliff-Notbremse (subscribt /cliff, muxed Nav2+Dashboard) |
 | `audio_feedback_node.py` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
 | `can_bridge_node.py` | CAN-Bus Diagnostik-Bridge (MCP2515/SocketCAN → /diagnostics/can) |
+| `respeaker_doa_node.py` | ReSpeaker DoA/VAD (USB, `/sound_direction`, `/is_voice`) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)
 

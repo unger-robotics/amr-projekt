@@ -46,6 +46,7 @@ setup(
             "audio_feedback_node = my_bot.audio_feedback_node:main",
             "can_bridge_node = my_bot.can_bridge_node:main",
             "can_validation_test = my_bot.can_validation_test:main",
+            "respeaker_doa_node = my_bot.respeaker_doa_node:main",
         ],
     },
 )

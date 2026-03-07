@@ -109,7 +109,8 @@ RUN echo "# ROS2 Humble" >> /root/.bashrc && \
 RUN pip3 install --no-cache-dir \
     websockets \
     google-genai \
-    python-can
+    python-can \
+    pyusb
 
 WORKDIR /ros2_ws
 

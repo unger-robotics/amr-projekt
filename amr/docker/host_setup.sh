@@ -199,7 +199,32 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# 5. Docker pruefen
+# 5. ReSpeaker Mic Array (USB Vendor Control fuer DoA/VAD)
+# ---------------------------------------------------------------------------
+echo "--- ReSpeaker Mic Array ---"
+UDEV_RESPEAKER="/etc/udev/rules.d/99-amr-respeaker.rules"
+RESPEAKER_RULE='SUBSYSTEM=="usb", ATTR{idVendor}=="2886", ATTR{idProduct}=="0018", MODE="0666", GROUP="plugdev"'
+
+if [ -f "$UDEV_RESPEAKER" ] && grep -q "2886" "$UDEV_RESPEAKER"; then
+    echo "[OK] ReSpeaker udev-Regel existiert: $UDEV_RESPEAKER"
+else
+    echo "Erstelle ReSpeaker udev-Regel..."
+    echo "# ReSpeaker 4 Mic Array v2.0 (XMOS XVF-3000)" | sudo tee "$UDEV_RESPEAKER" > /dev/null
+    echo "$RESPEAKER_RULE" | sudo tee -a "$UDEV_RESPEAKER" > /dev/null
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger -s usb
+    echo "[OK] ReSpeaker udev-Regel erstellt (DoA/VAD ohne sudo)"
+fi
+
+if lsusb | grep -q "2886:0018"; then
+    echo "[OK] ReSpeaker 4 Mic Array erkannt"
+else
+    echo "[INFO] ReSpeaker nicht angeschlossen"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# 6. Docker pruefen (war 5)
 # ---------------------------------------------------------------------------
 echo "--- Docker pruefen ---"
 if command -v docker &> /dev/null; then
@@ -226,7 +251,7 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# 6. CAN-Bus (SocketCAN, SBC-CAN01 / MCP2515)
+# 7. CAN-Bus (SocketCAN, SBC-CAN01 / MCP2515)
 # ---------------------------------------------------------------------------
 echo "--- CAN-Bus (SocketCAN) pruefen ---"
 if ip link show can0 &> /dev/null; then
