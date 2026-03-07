@@ -28,4 +28,4 @@ Zeitkritische Low-Level-Funktionen bleiben auf den MCU-Nodes. Koordination, Mapp
 
 - Datenflussdiagramm Pi 5 <-> micro-ROS Agent <-> Drive-/Sensor-Node
 - Modulgrenzen pro Node
-- optionale Teilsysteme: Dashboard, Kamera, Vision, Audio
+- optionale Teilsysteme: Dashboard, Kamera, Vision, Audio, ReSpeaker (DoA/VAD)

@@ -35,7 +35,7 @@ Kurzarchitektur:
 - Drive-Node und Sensor-Node werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Node
-- Dashboard, Kamera, Vision und Audio sind optionale Teilsysteme
+- Dashboard, Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
 
 ## Relevante Projektpfade

@@ -33,6 +33,9 @@ ip -details link show can0
 # CAN-Bridge Diagnostik-Node (im Docker)
 ros2 launch my_bot full_stack.launch.py use_can:=True
 
+# ReSpeaker DoA/VAD-Node (im Docker)
+ros2 launch my_bot full_stack.launch.py use_respeaker:=True
+
 # Standalone CAN-Validierung (ohne Docker)
 python3 amr/scripts/can_validation_test.py --duration 30
 ```
