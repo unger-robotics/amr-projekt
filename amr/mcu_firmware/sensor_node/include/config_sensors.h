@@ -118,6 +118,28 @@ inline constexpr float ramp_deg_per_step = 2.0f;
 } // namespace amr::servo
 
 // ==========================================================================
+// 1.6 CAN-BUS KONFIGURATION (TWAI, SN65HVD230)
+// ==========================================================================
+
+namespace amr::can {
+
+inline constexpr uint32_t bitrate = 500000; // 500 kbit/s (ISO 11898)
+inline constexpr uint32_t tx_timeout_ms = 10;
+
+// CAN-IDs (11-Bit Standard-Frame, Bereich 0x110..0x1FF)
+inline constexpr uint32_t id_range = 0x110;
+inline constexpr uint32_t id_cliff = 0x120;
+inline constexpr uint32_t id_imu_accel = 0x130;
+inline constexpr uint32_t id_imu_heading = 0x131;
+inline constexpr uint32_t id_battery = 0x140;
+inline constexpr uint32_t id_battery_shutdown = 0x141;
+inline constexpr uint32_t id_heartbeat = 0x1F0;
+
+inline constexpr uint32_t heartbeat_period_ms = 1000;
+
+} // namespace amr::can
+
+// ==========================================================================
 // 2. TIMING & PUBLISHING RATEN
 // ==========================================================================
 
@@ -200,3 +222,8 @@ static_assert(amr::battery::threshold_motor_shutdown_v > amr::battery::pack_cuto
 // --- Servo ---
 static_assert(amr::servo::ticks_min < amr::servo::ticks_max, "Servo Ticks: Min < Max");
 static_assert(amr::servo::angle_min_deg < amr::servo::angle_max_deg, "Servo: 0 < 180 deg");
+
+// --- CAN-Bus ---
+static_assert(amr::can::id_range >= 0x100 && amr::can::id_range <= 0x7FF, "CAN-ID 11-Bit");
+static_assert(amr::can::id_heartbeat >= 0x100 && amr::can::id_heartbeat <= 0x7FF, "CAN-ID 11-Bit");
+static_assert(amr::can::bitrate == 500000, "CAN-Bitrate 500 kbit/s");

@@ -11,7 +11,7 @@
  *   IMU-Read (50 Hz, I2C mit i2c_mutex).
  * - Core 0 (Arduino loop): micro-ROS Executor (2 Publisher + 3 Subscriber +
  *   IMU/Battery Publisher), Deferred Servo I2C (Rampe), LED-Heartbeat,
- *   Inter-Core-Watchdog.
+ *   Inter-Core-Watchdog, CAN-Bus Dual-Path (TWAI, parallel zu micro-ROS).
  *
  * Thread-Safety: `mutex` schuetzt SharedSensorData zwischen Cores,
  * `i2c_mutex` (5 ms Timeout) arbitriert alle I2C-Zugriffe — Arduino Wire
@@ -29,6 +29,7 @@
 #include "mpu6050.hpp"
 #include "ina260.hpp"
 #include "pca9685.hpp"
+#include "twai_can.hpp"
 #include <algorithm>
 #include <cmath>
 #include <micro_ros_platformio.h>
@@ -47,6 +48,7 @@
 using amr::drivers::INA260;
 using amr::drivers::MPU6050;
 using amr::drivers::PCA9685;
+using amr::drivers::TwaiCan;
 using amr::hardware::CliffSensor;
 using amr::hardware::RangeSensor;
 
@@ -61,6 +63,10 @@ INA260 ina260;
 bool ina260_ok = false;
 PCA9685 pca9685;
 bool pca9685_ok = false;
+
+// --- CAN-Bus (TWAI) ---
+TwaiCan can;
+bool can_ok = false;
 
 // --- I2C Thread-Safety (Cross-Core Mutex) ---
 SemaphoreHandle_t i2c_mutex;
@@ -297,6 +303,9 @@ void setup() {
         pca9685.setAngle(amr::servo::ch_tilt, 90.0f);
     }
 
+    // CAN-Bus (TWAI) initialisieren — fehlschlag nicht fatal
+    can_ok = can.init();
+
     // Multithreading vorbereiten
     mutex = xSemaphoreCreateMutex();
     i2c_mutex = xSemaphoreCreateMutex();
@@ -498,6 +507,8 @@ void loop() {
         if (rc != RCL_RET_OK) {
             digitalWrite(amr::hal::pin_led_internal, LOW);
         }
+        if (can_ok)
+            can.sendCliff(cliff_state);
     }
 
     // --- 2. Ultraschall publizieren (10 Hz) ---
@@ -520,6 +531,8 @@ void loop() {
         if (rc != RCL_RET_OK) {
             digitalWrite(amr::hal::pin_led_internal, LOW);
         }
+        if (can_ok)
+            can.sendRange(dist);
     }
 
     // --- 3. IMU publizieren (50 Hz) ---
@@ -565,6 +578,10 @@ void loop() {
             if (imu_rc != RCL_RET_OK) {
                 digitalWrite(amr::hal::pin_led_internal, LOW);
             }
+            if (can_ok) {
+                can.sendImuAccel(iax, iay, iaz, igz);
+                can.sendImuHeading(ih);
+            }
         }
     }
 
@@ -596,6 +613,8 @@ void loop() {
                     // Shutdown-Status publizieren
                     msg_bat_shutdown.data = true;
                     rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                    if (can_ok)
+                        can.sendBatteryShutdown(true);
                 } else if (voltage > amr::battery::threshold_motor_shutdown_v +
                                          amr::battery::threshold_hysteresis_v) {
                     if (battery_motor_shutdown) {
@@ -610,6 +629,8 @@ void loop() {
                         }
                         msg_bat_shutdown.data = false;
                         rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                        if (can_ok)
+                            can.sendBatteryShutdown(false);
                     }
                 }
 
@@ -631,7 +652,19 @@ void loop() {
                 if (bat_rc != RCL_RET_OK) {
                     digitalWrite(amr::hal::pin_led_internal, LOW);
                 }
+                if (can_ok)
+                    can.sendBattery(voltage, current, power);
             }
+        }
+    }
+
+    // --- 5. CAN Heartbeat (1 Hz) ---
+    if (can_ok) {
+        static unsigned long last_can_hb = 0;
+        if (millis() - last_can_hb >= amr::can::heartbeat_period_ms) {
+            last_can_hb = millis();
+            bool core1_ok = (hb_miss_count <= amr::timing::watchdog_miss_limit);
+            can.sendHeartbeat(imu_ok, ina260_ok, pca9685_ok, battery_motor_shutdown, core1_ok);
         }
     }
 }

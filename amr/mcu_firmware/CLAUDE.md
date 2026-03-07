@@ -26,7 +26,7 @@ mcu_firmware/
     src/              # main.cpp, led_ramp_test.cpp
     platformio.ini
   sensor_node/
-    include/          # Header: config_sensors.h, 5 hpp-Module (range_sensor, cliff_sensor, mpu6050, ina260, pca9685)
+    include/          # Header: config_sensors.h, 6 hpp-Module (range_sensor, cliff_sensor, mpu6050, ina260, pca9685, twai_can)
     src/              # main.cpp
     platformio.ini
 ```
@@ -51,7 +51,7 @@ Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecache
 Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
 - `drive_node/include/config_drive.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED — kein I2C, keine Batterie/Servo/IMU mehr
-- `sensor_node/include/config_sensors.h` (v3.0.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`)
+- `sensor_node/include/config_sensors.h` (v3.1.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung. Keine `#define`-Makros fuer Pins oder PWM-Kanaele — alle in `amr::hal::` als typisierte Konstanten.
 
@@ -65,12 +65,13 @@ Beide Nodes nutzen konsistente C++-Namespaces:
 | `amr::hardware` | Sensor-/Aktor-Klassen (RobotHAL, RangeSensor, CliffSensor) | Beide |
 | `amr::control` | PidController | Drive |
 | `amr::kinematics` | DiffDriveKinematics, WheelTargets, RobotState | Drive |
-| `amr::drivers` | I2C-Treiber (MPU6050, INA260, PCA9685) | Sensor |
+| `amr::drivers` | I2C-Treiber (MPU6050, INA260, PCA9685), TWAI CAN-Bus (TwaiCan) | Sensor |
 | `amr::pid`, `amr::pwm`, `amr::timing` | Regelparameter | Drive |
 | `amr::imu` | IMU-Parameter | Sensor |
 | `amr::battery`, `amr::servo`, `amr::i2c`, `amr::ina260` | Geraeteparameter | Sensor |
 | `amr::safety`, `amr::regulator` | Sicherheitsschwellen | Drive |
 | `amr::sensor` | Physikalische Sensorparameter (Schall, Bereiche) | Sensor |
+| `amr::can` | CAN-Bus Konfiguration (IDs, Bitrate, Heartbeat) | Sensor |
 
 `main.cpp` beider Nodes verwendet `using`-Deklarationen fuer Klassen aus diesen Namespaces.
 
@@ -91,6 +92,20 @@ Beide ESP32-S3 haben identische USB VID/PID — die Linux-Enumeration (`/dev/tty
 | `/battery_shutdown` | `std_msgs/Bool` | Sensor (Pub) → Drive (Sub), Unterspannungs-Notaus | — |
 | `/range/front` | `sensor_msgs/Range` | Sensor | 10 Hz |
 | `/cliff` | `std_msgs/Bool` | Sensor | 20 Hz |
+
+### CAN-Bus (Sensor-Node, TWAI, parallel zu micro-ROS)
+
+Sensor-Daten werden zusaetzlich via CAN 2.0B (500 kbit/s, SN65HVD230 → SBC-CAN01) gesendet. CAN-Fehler sind nicht fatal. Protokoll: `sensor_node/README.md`, Hardware: `../../hardware/can-bus/CAN-Bus.md`.
+
+| CAN-ID | Inhalt | Rate |
+|---|---|---|
+| `0x110` | Range [float32 m] | 10 Hz |
+| `0x120` | Cliff [1 B] | 20 Hz |
+| `0x130` | IMU Accel+GyroZ [8 B] | 50 Hz |
+| `0x131` | IMU Heading [float32 rad] | 50 Hz |
+| `0x140` | Batterie V/I/P [6 B] | 2 Hz |
+| `0x141` | Battery Shutdown [1 B] | Event |
+| `0x1F0` | Heartbeat [2 B] | 1 Hz |
 
 ## Firmware-Constraints
 
