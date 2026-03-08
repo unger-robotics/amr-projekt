@@ -32,7 +32,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `gemini_semantic_node` | `my_bot` | `gemini_semantic_node` | `use_vision` | Gemini-Cloud-Semantik aus Kamerabild und Detektionen |
 | `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff-Sicherheits-Multiplexer, blockiert `/cmd_vel` bei Abgrund |
 | `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/MAX98357A I2S |
-| `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-Bus Diagnostik (MCP2515/SocketCAN → `/diagnostics/can`) |
+| `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN, publiziert /imu, /cliff, /range, /battery via CAN) |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD via USB (pyusb) |
 
 ---
@@ -112,7 +112,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_vision` | `False` | Vision-Pipeline starten (Hailo UDP Receiver + Gemini Semantik) |
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer aktivieren |
 | `use_audio` | `False` | Audio-Feedback-Knoten (MAX98357A I2S) |
-| `use_can` | `False` | CAN-Bridge Diagnostik-Knoten (MCP2515/SocketCAN) |
+| `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN → /imu, /cliff, /range, /battery) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array v2.0 DoA/VAD-Knoten (USB, pyusb) |
 
 **Beispiele:**
@@ -213,7 +213,7 @@ self.create_subscription(Bool, "/cliff", self.cliff_callback, qos_sensor)
 ### 7.2 micro-ROS QoS-Regeln
 
 - **Reliable** (`rclc_publisher_init_default()`): Pflicht fuer Nachrichten > 512 Bytes (XRCE-DDS MTU), da Best-Effort keine Fragmentierung unterstuetzt. Betrifft `/odom` (~725 Bytes), `/imu`, `/battery`.
-- **Best-Effort** (`rclc_publisher_init_best_effort()`): Fuer kleine Nachrichten wie `/cliff` (Bool) und `/range/front` (Range).
+- **Best-Effort** (`rclc_publisher_init_best_effort()`): Fuer kleine Nachrichten wie `/cliff` (Bool).
 - Maximale Nachrichtengroesse: 2048 Bytes (MTU * STREAM_HISTORY).
 
 ---

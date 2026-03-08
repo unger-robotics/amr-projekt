@@ -62,7 +62,7 @@ Encoder: Hall-Encoder JGA25-370 (11 CPR, Uebersetzung 1:34).
 | Cliff-Publish | 20 Hz (50 ms) |
 | IMU-Abtastung | 50 Hz (20 ms) |
 | Batterie-Publish | 2 Hz (500 ms) |
-| US-Timeout | 25.000 µs (~4.3 m) |
+| US-Timeout | 20.000 µs (~3.4 m) |
 | Watchdog-Limit | 50 Zyklen |
 
 ## I2C-Bus (amr::i2c, nur Sensor-Knoten)
@@ -121,7 +121,7 @@ Ansteuerung ueber PCA9685 (I2C-PWM-Treiber).
 
 ## CAN-Bus (amr::can)
 
-Bitrate: 1 Mbit/s (ISO 11898), Transceiver: SN65HVD230, TX-Timeout: 10 ms.
+Bitrate: 1 Mbit/s (ISO 11898), Transceiver: SN65HVD230, TX-Timeout: 10 ms (Drive-Knoten) / 3 ms (Sensor-Knoten).
 
 Drive-Knoten CAN-IDs: 0x200-0x2FF. Sensor-Knoten CAN-IDs: 0x110-0x1FF. Heartbeat-Periode: 1000 ms (beide Knoten).
 

@@ -37,7 +37,7 @@ Docker (Python 3.10, ROS2 Humble):
 
 | Komponente | Laufzeitumgebung | Aufgabe |
 |---|---|---|
-| `v4l2_camera_node` | Docker (ROS2) | USB-Kamera-Treiber, publiziert `/image_raw` |
+| `v4l2_camera_node` | Docker (ROS2) | USB-Kamera-Treiber, publiziert `/camera/image_raw` |
 | `dashboard_bridge` | Docker (ROS2) | MJPEG-Stream auf Port 8082 |
 | `host_hailo_runner.py` | Host (Python 3.13) | YOLOv8-Inferenz via Hailo-8 NPU, sendet Detektionen per UDP |
 | `hailo_udp_receiver_node` | Docker (ROS2) | Empfaengt UDP-JSON, publiziert `/vision/detections` |

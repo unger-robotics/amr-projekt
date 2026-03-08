@@ -4,7 +4,7 @@
 
 Der autonome mobile Roboter ist als zweistufiges Echtzeitsystem aufgebaut. Das System verbindet einen Differentialantrieb mit SLAM-basierter Navigation. Die Architektur trennt die hardwarenahe Steuerung auf zwei Seeed Studio XIAO ESP32-S3 strikt von der Navigations- und Missionslogik auf einem Raspberry Pi 5. Der Drive-Knoten und der Sensor-Knoten bilden die hardwarenahe Ebene. Der Raspberry Pi 5 bildet die Bedien- und Leitstandsebene. Die Kommunikation zwischen beiden Ebenen erfolgt über micro-ROS per UART/USB-CDC über stabile udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`). XRCE-DDS übernimmt die Middleware-Funktion.
 
-Die Steuerung gliedert sich in drei Ebenen. Der Fahrkern (Ebene A) regelt die Gleichstrommotoren mit PID-Reglern bei $50,\mathrm{Hz}$ auf dem ESP32-S3. Die Sensor- und Sicherheitsbasis (Ebene A) verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner. Die Bedien- und Leitstandsebene (Ebene B) realisiert Lokalisierung und Kartierung sowie Navigation mit SLAM Toolbox und Nav2 auf dem Raspberry Pi 5. Diese Struktur sichert deterministische Motorsteuerung und entkoppelt sie von den rechenintensiven Navigationsalgorithmen.
+Die Steuerung gliedert sich in drei Ebenen. Der Fahrkern (Ebene A) regelt die Gleichstrommotoren mit PID-Reglern bei $50,\mathrm{Hz}$ auf dem ESP32-S3. Die Sensor- und Sicherheitsbasis (Ebene A) verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner. Die Bedien- und Leitstandsebene (Ebene B) realisiert Lokalisierung und Kartierung sowie Navigation mit SLAM Toolbox und Nav2 auf dem Raspberry Pi 5. Die intelligente Interaktion (Ebene C) umfasst Sprachschnittstelle, Vision und semantische Interpretation auf dem Raspberry Pi 5 mit optionalem Beschleuniger. Diese Struktur sichert deterministische Motorsteuerung und entkoppelt sie von den rechenintensiven Navigationsalgorithmen.
 
 ## 2. Hardware-Komponenten
 
@@ -129,11 +129,11 @@ Die hardwarenahen Parameter liegen in `mcu_firmware/drive_node/include/config_dr
 
 ### 6.2 Serielle Schnittstellen
 
-Die ESP32-S3 sind über stabile udev-Symlinks angebunden: `/dev/amr_drive` für den Drive-Knoten und `/dev/amr_sensor` für den Sensor-Knoten, jeweils über USB-CDC mit $115200,\mathrm{Bd}`. Der RPLIDAR A1 ist über `/dev/amr_lidar`mit derselben Baudrate erreichbar. Ein`flock`-basierter Sperrmechanismus unter `/var/lock/esp32-serial.lock` verhindert parallelen Zugriff konkurrierender Anwendungen. Vor dem Start der micro-ROS Agents müssen konkurrierende Dienste gestoppt werden.
+Die ESP32-S3 sind über stabile udev-Symlinks angebunden: `/dev/amr_drive` für den Drive-Knoten und `/dev/amr_sensor` für den Sensor-Knoten, jeweils über USB-CDC mit $921600\,\mathrm{Bd}$. Der RPLIDAR A1 ist über `/dev/amr_lidar` mit $115200\,\mathrm{Bd}$ erreichbar. Vor dem Start der micro-ROS Agents müssen konkurrierende Dienste gestoppt werden.
 
 ### 6.3 Launch-Argumente
 
-`full_stack.launch.py` unterstützt die Argumente `use_slam`, `use_nav`, `use_rviz`, `use_camera`, `serial_port`, `sensor_serial_port` und `camera_device`. Standardwerte sind `True` für `use_slam`, `use_nav` und `use_rviz`, `False` für `use_camera`, `/dev/amr_drive` für `serial_port`, `/dev/amr_sensor` für `sensor_serial_port` und `/dev/video10` für `camera_device`. Damit lassen sich Betriebsarten vom reinen Mapping bis zum vollständigen Stack mit kameragestütztem Docking konfigurieren.
+`full_stack.launch.py` unterstützt 16 Argumente: `use_slam` (True), `use_nav` (True), `use_rviz` (True), `use_sensors` (True), `use_cliff_safety` (True), `use_camera` (False), `use_dashboard` (False), `use_vision` (False), `use_audio` (False), `use_can` (False), `use_respeaker` (False), `drive_serial_port` (/dev/amr_drive), `sensor_serial_port` (/dev/amr_sensor), `camera_device` (/dev/video10), `params_file` (config/nav2_params.yaml) und `slam_params_file` (config/mapper_params_online_async.yaml). Damit lassen sich Betriebsarten vom reinen Mapping bis zum vollständigen Stack mit Vision, Audio und CAN-Bridge konfigurieren.
 
 ## 7. Erweiterte Module: Vision, Audio und Bedien- und Leitstandsebene
 
