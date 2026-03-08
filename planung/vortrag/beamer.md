@@ -121,8 +121,8 @@ V-Modell nach VDI 2206
 
 **Firmware auf den ESP32-S3**
 
-- Der Drive-Knoten führt die PID-Regelschleife mit $50\,\mathrm{Hz}$ aus und publiziert `/odom`.
-- Der Sensor-Knoten erfasst IMU-, Batterie- und Kanten-Signale und publiziert `/imu` sowie `/cliff`.
+- Der Fahrkern führt die PID-Regelschleife mit $50\,\mathrm{Hz}$ aus und publiziert `/odom`.
+- Die Sensor- und Sicherheitsbasis erfasst IMU-, Batterie- und Kanten-Signale und publiziert `/imu` sowie `/cliff`.
 - Ein Komplementärfilter fusioniert Gyro- und Encoder-Anteile für die Heading-Schätzung.
 
 **ROS 2 auf dem Raspberry Pi 5**
@@ -200,7 +200,7 @@ map -> odom -> base_link -> laser
 
 **FF1 bestätigt**
 
-- Die Trennung in Drive-Knoten und Sensor-Knoten stabilisiert die Echtzeitfähigkeit.
+- Die Trennung in Fahrkern und Sensor- und Sicherheitsbasis stabilisiert die Echtzeitfähigkeit.
 - Fahrkern und Sensor- und Sicherheitsbasis blockieren sich nicht gegenseitig.
 - Die serielle Kopplung über UART liefert deterministischere Laufzeiten als WLAN.
 

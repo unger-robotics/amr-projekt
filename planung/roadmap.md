@@ -90,7 +90,7 @@ Die Phase liefert einen charakterisierten Fahrkern.
 
 #### Ziel
 
-Pose und Nahbereichserfassung müssen ausreichend zuverlässig arbeiten, damit Lokalisierung, Kartierung und Navigation belastbar werden.
+Pose und Nahbereichserfassung müssen ausreichend zuverlässig arbeiten, damit Lokalisierung und Kartierung sowie Navigation belastbar werden.
 
 #### Module
 

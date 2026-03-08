@@ -5,9 +5,9 @@
 **Problem:** Unkalibrierte Motoren erzeugen asymmetrische Fahrbewegungen und verfälschen die Odometrie.
 **Messgröße / Modell:** Encoder-Ticks der Räder und berechnete Pose über der Zeit.
 
-* **Dateien:** `drive_firmware.ino`, `micro_ros_agent.launch.py`
-* **ROS-2-Knoten:** `drive_esp32_node`, `micro_ros_agent`, `teleop_twist_keyboard` für Tests
-* **Topics:** `/cmd_vel` (Sub), `/odom` (Pub), `/motor_ticks` (Pub)
+* **Dateien:** `mcu_firmware/drive_node/src/main.cpp`, `full_stack.launch.py`
+* **ROS-2-Knoten:** `micro_ros_agent_drive` (ESP32 publiziert via micro-ROS Agent), `teleop_twist_keyboard` für Tests
+* **Topics:** `/cmd_vel` (Sub), `/odom` (Pub)
 * **Testfall 1:** Geradeausfahrt über $1\,\mathrm{m}$ auf hartem Boden per Kommando
 * **Kriterium 1:** Seitenabweichung am Zielpunkt kleiner als $5\,\mathrm{cm}$
 * **Testfall 2:** Rotation um $360^\circ$ um die Hochachse
@@ -18,9 +18,9 @@
 **Problem:** Sensor- oder Versorgungsausfälle können unkontrolliertes Verhalten auslösen.
 **Messgröße / Modell:** Latenz zwischen Sensortrigger und Motorstopp.
 
-* **Dateien:** `sensor_firmware.ino`, `safety_mux.launch.py`
-* **ROS-2-Knoten:** `sensor_esp32_node`, `imu_filter_madgwick`, `cliff_safety_node`
-* **Topics:** `/imu/data` (Pub), `/cliff` (Pub), `/battery_voltage` (Pub), `/range/front` (Pub)
+* **Dateien:** `mcu_firmware/sensor_node/src/main.cpp`, `full_stack.launch.py` (mit `use_cliff_safety`) + `scripts/cliff_safety_node.py`
+* **ROS-2-Knoten:** `micro_ros_agent_sensor` (ESP32 publiziert via micro-ROS Agent), `cliff_safety_node`
+* **Topics:** `/imu` (Pub), `/cliff` (Pub), `/battery` (Pub, `sensor_msgs/BatteryState`), `/range/front` (Pub)
 * **Testfall 1:** Auslösen des Kanten-Sensors während der Vorwärtsfahrt mit $0{,}2\,\mathrm{m/s}$
 * **Kriterium 1:** Die Motoren stoppen in weniger als $50\,\mathrm{ms}$ nach Signaleingang; der Sicherheitsknoten überschreibt `/cmd_vel` mit einem Nullvektor
 * **Testfall 2:** IMU-Gierratenmessung bei einer manuellen Drehung um $90^\circ$
@@ -31,8 +31,8 @@
 **Problem:** Fehlerhafte Extrinsik-Kalibrierung oder unsauberes Scan-Matching erzeugen Kartendrift.
 **Messgröße / Modell:** Konsistenz der erzeugten Belegungskarte und TF-Frequenz.
 
-* **Dateien:** `lidar.launch.py`, `mapper_params_online_async.yaml`
-* **ROS-2-Knoten:** `sllidar_node`, `slam_toolbox`, `robot_state_publisher`
+* **Dateien:** `full_stack.launch.py`, `mapper_params_online_async.yaml`
+* **ROS-2-Knoten:** `rplidar_node`, `slam_toolbox`, `odom_to_tf`
 * **Topics:** `/scan` (Pub), `/tf`, `/tf_static`, `/map` (Pub)
 * **Testfall:** Manuelle Rundfahrt durch einen Raum mit $15\,\mathrm{m^2}$ und Rückkehr zum Startpunkt für einen Loop-Closure-Test
 * **Kriterium:** Die generierte Karte zeigt nach dem Loop Closure keine doppelten Wandlinien; der TF-Baum publiziert die Transformation `map` nach `odom` mit mindestens $20\,\mathrm{Hz}$
@@ -42,7 +42,7 @@
 **Problem:** Der Roboter bleibt an Hindernissen hängen oder plant ineffiziente Pfade.
 **Messgröße / Modell:** Erfolgsquote der Zielerreichung und Positionstoleranz.
 
-* **Dateien:** `nav2_params.yaml`, `navigation_stack.launch.py`
+* **Dateien:** `nav2_params.yaml`, `full_stack.launch.py` (mit `use_nav`)
 * **ROS-2-Knoten:** `controller_server`, `planner_server`, `amcl`, `bt_navigator`
 * **Topics:** `/goal_pose` (Sub), `/nav_cmd_vel` (Pub), `/local_plan` (Pub)
 * **Testfall:** Vorgabe von 10 verschiedenen Zielen innerhalb der kartierten Wohnung
@@ -53,9 +53,9 @@
 **Problem:** Fehlende Transparenz über den internen Zustand erschwert die Fehlersuche.
 **Messgröße / Modell:** Systemlatenz der Benutzeroberfläche und Vollständigkeit der Telemetrie.
 
-* **Dateien:** `rosbridge.launch.py`, `dashboard_app.js`
-* **ROS-2-Knoten:** `rosbridge_websocket`, `audio_feedback_node`
-* **Topics:** `/dashboard_cmd_vel` (Pub), `/audio/play` (Sub), `/diagnostics` (Pub)
+* **Dateien:** `full_stack.launch.py` (mit `use_dashboard`), `dashboard/src/App.tsx`
+* **ROS-2-Knoten:** `dashboard_bridge`, `audio_feedback_node`
+* **Topics:** `/dashboard_cmd_vel` (Pub), `/audio/play` (Sub)
 * **Testfall:** Eingabe eines manuellen Fahrbefehls über das Browser-Dashboard
 * **Kriterium:** Die Latenz zwischen Klick im Browser und Motoranlauf, sichtbar im Topic `/cmd_vel`, liegt unter $100\,\mathrm{ms}$
 

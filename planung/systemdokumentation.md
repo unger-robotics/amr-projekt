@@ -18,7 +18,7 @@ Die kinematischen Parameter sind in `mcu_firmware/drive_node/include/config_driv
 
 Der RPLIDAR A1 ist rückwärts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von $180^\circ$ relativ zu `base_link`. Der Scanner liefert Laserdaten mit etwa $7{,}6,\mathrm{Hz}$ über `/dev/ttyUSB0` bei $115200,\mathrm{Bd}`. Die maximale Reichweite beträgt $12,\mathrm{m}$.
 
-Eine MPU6050-IMU ist über I2C an den ESP32-S3 angebunden. Der Bus nutzt SDA an D4, SCL an D5 und arbeitet mit $400,\mathrm{kHz}`im Fast-Mode. Die IMU misst im Bereich von $\pm 2\,g$ für die Beschleunigung und $\pm 250\,^\circ/\mathrm{s}$ für die Drehrate. Beim Systemstart kalibriert die Firmware den Gyro-Bias über 500 Samples. Ein Komplementärfilter mit $\alpha = 0{,}02$ fusioniert die Daten. Der Filter gewichtet das Gyroskop mit 98 Prozent und das aus den Encodern abgeleitete Heading mit 2 Prozent. Der Knoten publiziert die IMU-Daten mit $20\,\mathrm{Hz}$ auf`/imu`.
+Eine MPU6050-IMU ist über I2C an den ESP32-S3 angebunden. Der Bus nutzt SDA an D4, SCL an D5 und arbeitet mit $400,\mathrm{kHz}`im Fast-Mode. Die IMU misst im Bereich von $\pm 2\,g$ für die Beschleunigung und $\pm 250\,^\circ/\mathrm{s}$ für die Drehrate. Beim Systemstart kalibriert die Firmware den Gyro-Bias über 500 Samples. Ein Komplementärfilter mit $\alpha = 0{,}02$ fusioniert die Daten. Der Filter gewichtet das Gyroskop mit 98 Prozent und das aus den Encodern abgeleitete Heading mit 2 Prozent. Der Knoten publiziert die IMU-Daten mit $50\,\mathrm{Hz}$ auf`/imu`.
 
 Optional steht eine Sony-IMX296-Global-Shutter-Kamera für ArUco-basiertes visuelles Docking bereit. Die Kamera arbeitet über CSI mit $1456 \times 1088$ Pixeln bei $15,\mathrm{fps}`. Eine `v4l2loopback`-Bridge überträgt das Bildsignal per `rpicam-vid`, `ffmpeg`und`/dev/video10` in den Container.
 
@@ -34,7 +34,7 @@ Der Raspberry Pi 5 mit Debian Trixie und `aarch64` übernimmt Lokalisierung und 
 
 Die Firmware ist modular aufgebaut und verwendet das FreeRTOS-Betriebssystem des ESP32-S3 zur Trennung der Aufgaben auf zwei Kerne.
 
-**Core 0** betreibt den micro-ROS-Executor. Er empfängt `geometry_msgs/Twist` auf `/cmd_vel` und publiziert `nav_msgs/Odometry` auf `/odom` mit $20,\mathrm{Hz}`. Zusätzlich überwacht Core 0 den Heartbeat von Core 1. Der Sensor-Knoten publiziert `sensor_msgs/Imu` auf `/imu` mit $20,\mathrm{Hz}$. Fällt der Heartbeat aus, löst Core 0 einen Notfall-Stopp der Motoren aus. Ein Failsafe stoppt die Motoren außerdem nach $500,\mathrm{ms}$ ohne eingehende Geschwindigkeitskommandos.
+**Core 0** betreibt den micro-ROS-Executor. Er empfängt `geometry_msgs/Twist` auf `/cmd_vel` und publiziert `nav_msgs/Odometry` auf `/odom` mit $20,\mathrm{Hz}`. Zusätzlich überwacht Core 0 den Heartbeat von Core 1. Der Sensor-Knoten publiziert `sensor_msgs/Imu` auf `/imu` mit $50\,\mathrm{Hz}$. Fällt der Heartbeat aus, löst Core 0 einen Notfall-Stopp der Motoren aus. Ein Failsafe stoppt die Motoren außerdem nach $500,\mathrm{ms}$ ohne eingehende Geschwindigkeitskommandos.
 
 **Core 1** führt die PID-Regelschleife mit $50,\mathrm{Hz}$ aus. Die Kette lautet: Encoder lesen, Radgeschwindigkeiten per EMA mit $\alpha = 0{,}3$ filtern, Differentialkinematik berechnen, PID-Regelung mit $K_p = 0{,}4$, $K_i = 0{,}1$ und $K_d = 0{,}0$ anwenden, Anti-Windup berücksichtigen, Beschleunigungsrampe mit `MAX_ACCEL = 5{,}0\,\mathrm{rad/s^2}` anwenden und schließlich die PWM mit Deadzone-Kompensation ausgeben. Die Odometrie verwendet die ungefilterten Encoder-Rohdaten. Der PID-Regler verwendet gefilterte Werte, um Quantisierungsrauschen zu mindern.
 
@@ -90,11 +90,11 @@ Die Kommunikation zwischen ESP32-S3 und Raspberry Pi nutzt XRCE-DDS mit einer MT
 |---------------------|-------------------------|------------------------:|----------------------|----------------------------------------------------|
 | `/cmd_vel`          | `geometry_msgs/Twist`   |                variabel | Nav2 / Teleoperation | Geschwindigkeitskommandos                          |
 | `/odom`             | `nav_msgs/Odometry`     |        $20,\mathrm{Hz}$ | ESP32-S3             | Rad-Odometrie mit Quaternion                       |
-| `/imu`              | `sensor_msgs/Imu`       |        $20,\mathrm{Hz}$ | ESP32-S3             | Beschleunigung, Drehrate, fusionierte Orientierung |
+| `/imu`              | `sensor_msgs/Imu`       |        $50\,\mathrm{Hz}$ | ESP32-S3             | Beschleunigung, Drehrate, fusionierte Orientierung |
 | `/scan`             | `sensor_msgs/LaserScan` | ca. $7{,}6,\mathrm{Hz}$ | RPLIDAR A1           | 2D-Laserscandaten                                  |
 | `/cliff`            | `std_msgs/Bool`         |        $20,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Kanten-Erkennung, Best-Effort QoS                  |
 | `/range/front`      | `sensor_msgs/Range`     |        $10,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Ultraschall-Entfernung                             |
-| `/battery_voltage`  | `std_msgs/Float32`      |         $2,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Akkuspannung via INA260                            |
+| `/battery`          | `sensor_msgs/BatteryState` |      $2\,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Batteriestatus (Spannung, Strom, Ladung) via INA260 |
 | `/camera/image_raw` | `sensor_msgs/Image`     |        $15,\mathrm{Hz}$ | `v4l2_camera_node`   | Kamerabild, optional                               |
 
 Die Topic-Struktur trennt Fahrkommandos, Odometrie, IMU, Laserscan und Kameradaten klar. Damit lässt sich der Datenfluss zwischen Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung sowie Navigation sauber nachvollziehen.
@@ -121,7 +121,7 @@ Die hardwarenahen Parameter liegen in `mcu_firmware/drive_node/include/config_dr
 | PID-Parameter              | 0,4 / 0,1 / 0,0 | –        | $K_p / K_i / K_d$                 |
 | Regelfrequenz              |              50 | Hz       | Core 1                            |
 | Odometrie-Rate             |              20 | Hz       | Core 0                            |
-| IMU-Rate                   |              20 | Hz       | Core 0                            |
+| IMU-Rate                   |              50 | Hz       | Core 0                            |
 | Failsafe-Timeout           |             500 | ms       | Motorstopp bei Verbindungsverlust |
 | PWM-Deadzone               |              35 | PWM-Wert | minimale Anlauf-PWM               |
 | maximale Beschleunigung    |             5,0 | rad/s²   | Sollwertrampe                     |
