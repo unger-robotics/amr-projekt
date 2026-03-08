@@ -15,7 +15,16 @@ Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS 
 | **Drive-Node** (#1) | `drive_node/` | `/dev/amr_drive` | Antrieb, PID, Odometrie, LED | 50 Hz |
 | **Sensor-Node** (#2) | `sensor_node/` | `/dev/amr_sensor` | Ultraschall, Cliff, IMU (MPU6050), Batterie (INA260), Servo (PCA9685) | 50 Hz (IMU), 10/20 Hz (Sonar/Cliff), 2 Hz (Bat) |
 
-Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Deferred I2C (Sensor-Node), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+
+### Sensor-Node: ISR-basierter Ultraschall + I2C-Contention-Fixes
+
+- **Ultraschall**: ISR-basiert (nicht blockierend), `trigger()` + `tryRead()` Pattern statt `pulseIn()`
+- **ISR**: Volatile Globals in `main.cpp` (nicht im Namespace — IRAM_ATTR Linker-Constraint), GPIO-Register-Zugriff `(GPIO.in >> pin) & 0x1`
+- **I2C-Contention**: Alle I2C-Reads (MPU6050, INA260) laufen in Core 1 (`sensorTask`), Core 0 liest nur aus `SharedSensorData` via `mutex`
+- **Batterie**: `SharedSensorData` enthaelt `bat_voltage/bat_current/bat_power/bat_read_ok`, Core 0 kopiert und publiziert
+- **Servo-Ramp**: Rate-limitiert auf 20 Hz mit `needsRamp()` Early-Return (I2C-freie Pruefung vor Mutex-Acquire)
+- **UART-Baudrate**: 921600 Baud (micro-ROS Agent + Firmware)
 
 ## Verzeichnisstruktur
 
@@ -123,7 +132,7 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 
 - **C++17** (`-std=gnu++17`, GCC 8.4.0), `std::clamp` und `inline constexpr` verfuegbar
 - **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long`, Encoder-Zaehler `volatile int32_t`
-- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren, globaler Scope (kein Namespace)
+- **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren, globaler Scope (kein Namespace). Volatile ISR-Variablen als Globals in `main.cpp` (nicht `inline constexpr` im Header — verursacht "dangerous relocation: l32r" Linker-Fehler). GPIO-Pin-Zustand via `GPIO.in >> pin & 0x1` lesen (nicht `digitalRead()` in ISR)
 - **Speicher**: Keine dynamische Allokation zur Laufzeit
 - **I2C in Callbacks**: Wire-Operationen schlagen STILL FEHL in `rclc_executor_spin_some()` — Deferred-Pattern verwenden (Sensor-Node betroffen: MPU6050, INA260, PCA9685 via `i2c_mutex`)
 - **micro-ROS QoS**: `rclc_publisher_init_default()` (Reliable) fuer Nachrichten > 512 Bytes (XRCE-DDS MTU), da Best-Effort keine Fragmentierung unterstuetzt

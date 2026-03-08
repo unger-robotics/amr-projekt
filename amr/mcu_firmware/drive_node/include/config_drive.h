@@ -150,6 +150,10 @@ inline constexpr uint32_t heartbeat_period_ms = 1000;
 inline constexpr uint32_t encoder_can_period_ms = 100; // 10 Hz
 inline constexpr uint32_t motor_can_period_ms = 100;   // 10 Hz
 
+// Empfangs-IDs (Sensor-Node → Drive-Node, Sicherheitspfad)
+inline constexpr uint32_t id_cliff_rx = 0x120;           // Cliff-Signal vom Sensor-Node
+inline constexpr uint32_t id_battery_shutdown_rx = 0x141; // Battery-Shutdown vom Sensor-Node
+
 } // namespace amr::can
 
 // ==========================================================================

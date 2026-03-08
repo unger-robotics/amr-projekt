@@ -123,6 +123,13 @@ class PCA9685 {
         }
     }
 
+    // Prueft ob ein Kanal eine Rampenfahrt benoetigt (kein I2C, kein Mutex noetig)
+    bool needsRamp(uint8_t channel) const {
+        if (channel >= NUM_SERVO_CH)
+            return false;
+        return fabsf(target_angle_[channel] - current_angle_[channel]) >= 0.5f;
+    }
+
     // Nicht-blockierende Rampenfahrt: 1 Schritt pro Aufruf
     // Rueckgabe: true wenn Ziel erreicht
     // WICHTIG: Nutzt setPWM() direkt statt setAngle(), da setAngle()

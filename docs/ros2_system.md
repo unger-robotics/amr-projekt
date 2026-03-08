@@ -18,8 +18,8 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 |---|---|---|---|---|
 | `rplidar_node` | `rplidar_ros` | `rplidar_node` | immer | RPLidar A1 Laserscanner, `/dev/ttyUSB0`, 115200 Baud |
 | `laser_tf_publisher` | `tf2_ros` | `static_transform_publisher` | immer | Statischer TF `base_link` → `laser` (180° Yaw) |
-| `micro_ros_agent_drive` | `micro_ros_agent` | `micro_ros_agent` | immer | Serial-Bridge zum Drive-Node ESP32-S3 (`/dev/amr_drive`) |
-| `micro_ros_agent_sensor` | `micro_ros_agent` | `micro_ros_agent` | `use_sensors` | Serial-Bridge zum Sensor-Node ESP32-S3 (`/dev/amr_sensor`) |
+| `micro_ros_agent_drive` | `micro_ros_agent` | `micro_ros_agent` | immer | Serial-Bridge zum Drive-Node ESP32-S3 (`/dev/amr_drive`), 921600 Baud |
+| `micro_ros_agent_sensor` | `micro_ros_agent` | `micro_ros_agent` | `use_sensors` | Serial-Bridge zum Sensor-Node ESP32-S3 (`/dev/amr_sensor`), 921600 Baud |
 | `odom_to_tf` | `my_bot` | `odom_to_tf` | immer | Dynamischer TF `odom` → `base_link` aus `/odom` |
 | `slam_toolbox` | `slam_toolbox` | `async_slam_toolbox_node` | `use_slam` | SLAM Toolbox im async Online-Modus |
 | Nav2-Stack | `nav2_bringup` | `navigation_launch.py` | `use_nav` | Navigation (RPP Controller, NavFn Planer, 10 Hz) |

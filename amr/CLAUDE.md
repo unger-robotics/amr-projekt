@@ -75,13 +75,16 @@ pre-commit run --all-files     # Alle Hooks
 ### Zwei-Ebenen-System
 
 ```
-[Drive-Node ESP32-S3]  <-- micro-ROS/UART (/dev/amr_drive) -->  [Raspberry Pi 5 (Docker)]
-  50 Hz PID, Odometrie, LED                                       Navigation, SLAM, Vision
-  Kein I2C                                                        Nav2, SLAM Toolbox
+[Drive-Node ESP32-S3]  <-- micro-ROS/UART 921600 (/dev/amr_drive) -->  [Raspberry Pi 5 (Docker)]
+  50 Hz PID, Odometrie, LED                                             Navigation, SLAM, Vision
+  Kein I2C                                                              Nav2, SLAM Toolbox
 
-[Sensor-Node ESP32-S3] <-- micro-ROS/UART (/dev/amr_sensor) -->  Dashboard, Hailo-8 AI
-  IMU (50 Hz), Batterie (2 Hz), Servos                            /battery_shutdown → Drive-Node
-  Ultraschall (10 Hz), Cliff (20 Hz)
+[Sensor-Node ESP32-S3] <-- micro-ROS/UART 921600 (/dev/amr_sensor) --> Dashboard, Hailo-8 AI
+  IMU (50 Hz), Batterie (2 Hz), Servos                                  /battery_shutdown → Drive-Node
+  Ultraschall (10 Hz ISR), Cliff (20 Hz)
+
+[Beide ESP32-S3]       <-- CAN-Bus 1 Mbit/s (can0) -->  can_bridge_node (optional, use_can:=True)
+  Dual-Path: Sensor-Daten via CAN parallel zu micro-ROS   Publiziert /imu, /cliff, /range, /battery
 ```
 
 ### MCU Dual-Core (mcu_firmware/)
@@ -96,7 +99,7 @@ Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
 ### ROS2 Stack (pi5/ros2_ws/src/my_bot/)
 
-Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. Audio-Feedback-Node (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker.
+Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Node (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker.
 
 TF-Baum: `odom → base_link → laser (180° Yaw) / camera_link (optional) / ultrasonic_link (optional)`
 
@@ -130,7 +133,7 @@ Validierung erfolgt experimentell ueber ROS2-Nodes auf dem Pi 5 (V-Modell-Phasen
 
 ## micro-ROS Constraints
 
-- Zwei separate micro-ROS Agents: `/dev/amr_drive` (Drive-Node) und `/dev/amr_sensor` (Sensor-Node)
+- Zwei separate micro-ROS Agents: `/dev/amr_drive` (Drive-Node) und `/dev/amr_sensor` (Sensor-Node), 921600 Baud
 - XRCE-DDS MTU = 512 Bytes. Best-Effort hat KEINE Fragmentierung
 - Odometrie (~725 Bytes, Drive-Node) MUSS mit Reliable QoS publiziert werden (`rclc_publisher_init_default()`)
 - Sensor-Node Topics (`Range`, `Bool`) sind klein genug fuer Best-Effort. `Imu` und `BatteryState` vom Sensor-Node nutzen ebenfalls Reliable QoS

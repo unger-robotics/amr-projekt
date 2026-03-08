@@ -52,8 +52,8 @@ setDTR(False)
 Zwei separate Agents laufen im Docker-Container, jeweils auf einem eigenen seriellen Pfad:
 
 ```
-micro_ros_agent serial --dev /dev/amr_drive -b 115200
-micro_ros_agent serial --dev /dev/amr_sensor -b 115200
+micro_ros_agent serial --dev /dev/amr_drive -b 921600
+micro_ros_agent serial --dev /dev/amr_sensor -b 921600
 ```
 
 Agent-Workspace: `source /opt/microros_ws/install/setup.bash` (nicht `/opt/ros/humble/`).

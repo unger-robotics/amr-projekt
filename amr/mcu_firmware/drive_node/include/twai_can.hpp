@@ -109,6 +109,13 @@ class TwaiCan {
         transmit(msg);
     }
 
+    /** Non-blocking CAN-Empfang. Gibt true zurueck wenn eine Nachricht empfangen wurde. */
+    bool receiveMessage(twai_message_t &rx_msg) {
+        if (!initialized_)
+            return false;
+        return twai_receive(&rx_msg, pdMS_TO_TICKS(0)) == ESP_OK;
+    }
+
   private:
     bool initialized_ = false;
 

@@ -82,6 +82,10 @@ rcl_node_t node;
 // Batterie-Unterspannungs-Flag (gesteuert via /battery_shutdown Topic vom Sensor-Node)
 volatile bool battery_motor_shutdown = false;
 
+// CAN-Notstopp-Flags (Sensor-Node → Drive-Node, Hardware-Redundanzpfad)
+volatile bool can_cliff_stop = false;
+volatile bool can_battery_stop = false;
+
 /** Deferred Hardware: Callback schreibt Werte (RAM), loop() wendet sie an.
  *  motor_limit_pct skaliert PID-Sollwerte, led_pwm=0 aktiviert Auto-Heartbeat. */
 struct HardwareCommand {
@@ -142,8 +146,8 @@ void controlTask(void *p) {
             tw = 0;
         }
 
-        // Batterie-Unterspannung: Motoren stoppen
-        if (battery_motor_shutdown) {
+        // Batterie-Unterspannung oder CAN-Notstopp: Motoren stoppen
+        if (battery_motor_shutdown || can_cliff_stop || can_battery_stop) {
             tv = 0;
             tw = 0;
         }
@@ -202,6 +206,19 @@ void controlTask(void *p) {
             xSemaphoreGive(mutex);
         }
 
+        // CAN-Empfang: Cliff + Battery-Shutdown vom Sensor-Node (Notstopp-Redundanzpfad)
+        if (can_ok) {
+            twai_message_t rx_msg;
+            while (can.receiveMessage(rx_msg)) {
+                if (rx_msg.identifier == amr::can::id_cliff_rx) {
+                    can_cliff_stop = (rx_msg.data[0] == 0x01);
+                }
+                if (rx_msg.identifier == amr::can::id_battery_shutdown_rx) {
+                    can_battery_stop = (rx_msg.data[0] == 0x01);
+                }
+            }
+        }
+
         // CAN: Encoder-Feedback + Motor-PWM (10 Hz) + Odom (20 Hz) + Heartbeat (1 Hz)
         // Alle CAN-Sends in controlTask (Core 1), damit sie unabhaengig von
         // micro-ROS-Verbindungsstatus laufen (setup() blockiert bis Agent da).
@@ -234,7 +251,8 @@ void controlTask(void *p) {
                 bool c1_ok = true; // Core 1 laeuft offensichtlich
                 bool fs = (now_ms - last_cmd_time > amr::timing::failsafe_timeout_ms);
                 bool pid_act = (tv != 0 || tw != 0);
-                can.sendHeartbeat(true, c1_ok, pid_act, battery_motor_shutdown, c1_ok, fs);
+                can.sendHeartbeat(true, c1_ok, pid_act, battery_motor_shutdown || can_battery_stop,
+                                  c1_ok, fs || can_cliff_stop);
             }
         }
 
@@ -283,7 +301,7 @@ void battery_shutdown_callback(const void *m) {
  * Bei Init-Fehler: Endlosschleife mit schnellem Blinken.
  */
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(921600);
     Serial.setTxTimeoutMs(50);
     set_microros_serial_transports(Serial);
 

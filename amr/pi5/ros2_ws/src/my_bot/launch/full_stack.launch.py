@@ -120,7 +120,8 @@ def generate_launch_description():
     declare_use_can = DeclareLaunchArgument(
         "use_can",
         default_value="False",
-        description="CAN-Bridge Diagnostik-Node (MCP2515/SocketCAN)",
+        description="CAN-to-ROS2 Bridge: Sensor-Topics via SocketCAN statt micro-ROS "
+        "(IMU 50 Hz, kein XRCE-DDS Overhead). Erfordert Sensor-Node CAN-Transceiver.",
     )
     declare_use_respeaker = DeclareLaunchArgument(
         "use_respeaker",
@@ -175,7 +176,7 @@ def generate_launch_description():
             "--dev",
             LaunchConfiguration("drive_serial_port"),
             "-b",
-            "115200",
+            "921600",
         ],
         name="micro_ros_agent_drive",
         output="screen",
@@ -194,7 +195,7 @@ def generate_launch_description():
             "--dev",
             LaunchConfiguration("sensor_serial_port"),
             "-b",
-            "115200",
+            "921600",
         ],
         name="micro_ros_agent_sensor",
         output="screen",
@@ -419,7 +420,11 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_audio")),
     )
 
-    # --- 11. CAN-Bridge Diagnostik (MCP2515/SocketCAN, optional) ---
+    # --- 11. CAN-to-ROS2 Bridge (SocketCAN, optional) ---
+    # Publiziert Sensor-Topics (/imu, /cliff, /range/front, /battery,
+    # /battery_shutdown) via CAN statt micro-ROS Serial.
+    # micro-ROS Sensor-Agent bleibt aktiv fuer Subscriber
+    # (/servo_cmd, /hardware_cmd, /odom).
     can_bridge_node = Node(
         package="my_bot",
         executable="can_bridge_node",

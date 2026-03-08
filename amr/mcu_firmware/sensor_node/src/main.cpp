@@ -52,6 +52,27 @@ using amr::drivers::TwaiCan;
 using amr::hardware::CliffSensor;
 using amr::hardware::RangeSensor;
 
+// --- Ultraschall ISR-Variablen (DRAM, nicht IRAM) ---
+volatile uint32_t us_echo_start = 0;
+volatile uint32_t us_echo_end = 0;
+volatile bool us_meas_ready = false;
+volatile bool us_echo_active = false;
+
+// ISR: Direkter GPIO-Register-Zugriff (kein digitalRead, flash-sicher)
+#include <soc/gpio_struct.h>
+void IRAM_ATTR us_echo_isr() {
+    // Pin 2 (echo) direkt aus GPIO-Input-Register lesen (pin < 32)
+    bool pin_high = (GPIO.in >> amr::hal::pin_us_echo) & 0x1;
+    if (pin_high) {
+        us_echo_start = micros();
+        us_echo_active = true;
+    } else {
+        us_echo_end = micros();
+        us_echo_active = false;
+        us_meas_ready = true;
+    }
+}
+
 // --- Sensor-Objekte instanziieren ---
 RangeSensor sonar(amr::hal::pin_us_trig, amr::hal::pin_us_echo);
 CliffSensor cliff_sensor(amr::hal::pin_ir_cliff);
@@ -85,6 +106,11 @@ struct SharedSensorData {
     float imu_gx = 0, imu_gy = 0, imu_gz = 0;
     float imu_heading = 0;
     float encoder_heading = 0;
+    // Batterie (Core 1 schreibt, Core 0 liest)
+    float bat_voltage = 0;
+    float bat_current = 0;
+    float bat_power = 0;
+    bool bat_read_ok = false;
 };
 SharedSensorData shared;
 SemaphoreHandle_t mutex;
@@ -186,16 +212,15 @@ void odom_callback(const void *m) {
  * Sensorerfassung auf Core 1 (10 ms Basistakt via vTaskDelayUntil).
  *
  * Cliff-Sensor (20 Hz): digitalRead, nicht-blockierend (~1 us).
- * Ultraschall (10 Hz): pulseIn blockiert bis zu 25 ms (Timeout aus Config).
+ * Ultraschall (10 Hz): ISR-basiert, non-blocking (Trigger ~12 us, Echo via Interrupt).
  * IMU (50 Hz): I2C-Read mit i2c_mutex, Komplementaerfilter-Fusion.
  *
- * Hinweis: pulseIn-Blockierung kann den 10 ms Basistakt ueberschreiten.
- * vTaskDelayUntil kompensiert dies automatisch (naechster Tick sofort).
- * Die millis()-basierten Rate-Checks stellen die Publish-Raten sicher.
+ * Kein blockierender pulseIn mehr — alle Operationen kehren sofort zurueck.
+ * Der 10 ms Basistakt wird zuverlaessig eingehalten.
  */
 void sensorTask(void *p) {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    uint32_t last_us_time = 0;
+    uint32_t last_us_trigger = 0;
     uint32_t last_cliff_time = 0;
     uint32_t last_imu_time = 0;
 
@@ -215,19 +240,23 @@ void sensorTask(void *p) {
                 can.sendCliff(cliff);
         }
 
-        // 2. Ultraschall HC-SR04 auslesen
-        if (now - last_us_time >= amr::timing::us_publish_period_ms) {
-            last_us_time = now;
-            float dist =
-                sonar.readDistance(amr::timing::us_timeout_us, amr::sensor::us_to_meters_factor,
-                                   amr::sensor::us_max_range_m);
-
-            if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {
-                shared.distance_m = dist;
-                xSemaphoreGive(mutex);
+        // 2. Ultraschall HC-SR04: non-blocking Trigger + ISR-Echo
+        if (now - last_us_trigger >= amr::timing::us_publish_period_ms) {
+            last_us_trigger = now;
+            sonar.trigger(); // ~12 us, kehrt sofort zurueck
+        }
+        // Echo-Ergebnis abholen (non-blocking)
+        {
+            float dist;
+            if (sonar.tryRead(amr::sensor::us_to_meters_factor, amr::sensor::us_max_range_m,
+                              amr::timing::us_timeout_us, dist)) {
+                if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {
+                    shared.distance_m = dist;
+                    xSemaphoreGive(mutex);
+                }
+                if (can_ok)
+                    can.sendRange(dist);
             }
-            if (can_ok)
-                can.sendRange(dist);
         }
 
         // 3. IMU lesen (50 Hz, I2C mit Mutex)
@@ -266,15 +295,24 @@ void sensorTask(void *p) {
             }
         }
 
-        // 4. Battery lesen + CAN senden (2 Hz, I2C mit Mutex)
-        if (ina260_ok && can_ok) {
+        // 4. Battery lesen + SharedData + CAN senden (2 Hz, I2C mit Mutex)
+        // Einziger INA260-Read im System — Core 0 liest aus SharedData
+        if (ina260_ok) {
             static uint32_t last_bat_can = 0;
             if (now - last_bat_can >= amr::timing::battery_publish_period_ms) {
                 last_bat_can = now;
                 float voltage = 0, current = 0, power = 0;
                 if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
                     if (ina260.read(voltage, current, power)) {
-                        can.sendBattery(voltage, current, power);
+                        if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {
+                            shared.bat_voltage = voltage;
+                            shared.bat_current = current;
+                            shared.bat_power = power;
+                            shared.bat_read_ok = true;
+                            xSemaphoreGive(mutex);
+                        }
+                        if (can_ok)
+                            can.sendBattery(voltage, current, power);
                     }
                     xSemaphoreGive(i2c_mutex);
                 }
@@ -307,7 +345,7 @@ void sensorTask(void *p) {
  * Bei Init-Fehler: Endlosschleife mit schnellem Blinken.
  */
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(921600);
     Serial.setTxTimeoutMs(50);
     set_microros_serial_transports(Serial);
 
@@ -316,7 +354,7 @@ void setup() {
     digitalWrite(amr::hal::pin_led_internal, HIGH);
 
     // GPIO-Sensoren initialisieren
-    sonar.init();
+    sonar.init(us_echo_isr, &us_echo_start, &us_echo_end, &us_meas_ready, &us_echo_active);
     cliff_sensor.init();
 
     // I2C-Bus explizit initialisieren (fuer alle I2C-Geraete)
@@ -508,13 +546,25 @@ void loop() {
         pca9685.setTargetAngle(amr::servo::ch_tilt, servo_cmd.tilt);
     }
 
+    // Servo-Ramp: 20 Hz Rate-Limit + Early-Return wenn kein Servo sich bewegt
     if (pca9685_ok) {
-        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-            pca9685.updateRamp(amr::servo::ch_pan);
-            pca9685.updateRamp(amr::servo::ch_tilt);
-            xSemaphoreGive(i2c_mutex);
-        } else {
-            i2c_contention_errors++;
+        static uint32_t last_ramp = 0;
+        uint32_t now_ramp = millis();
+        if (now_ramp - last_ramp >= 50) { // 20 Hz
+            last_ramp = now_ramp;
+            bool pan_needs = pca9685.needsRamp(amr::servo::ch_pan);
+            bool tilt_needs = pca9685.needsRamp(amr::servo::ch_tilt);
+            if (pan_needs || tilt_needs) {
+                if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                    if (pan_needs)
+                        pca9685.updateRamp(amr::servo::ch_pan);
+                    if (tilt_needs)
+                        pca9685.updateRamp(amr::servo::ch_tilt);
+                    xSemaphoreGive(i2c_mutex);
+                } else {
+                    i2c_contention_errors++;
+                }
+            }
         }
     }
 
@@ -614,18 +664,19 @@ void loop() {
         }
     }
 
-    // --- 4. Battery publizieren (2 Hz, INA260) ---
+    // --- 4. Battery publizieren (2 Hz, aus SharedData — I2C-Read in Core 1) ---
     if (ina260_ok) {
         static unsigned long last_bat = 0;
         if (millis() - last_bat >= amr::timing::battery_publish_period_ms) {
             last_bat = millis();
             float voltage = 0, current = 0, power = 0;
             bool bat_read_ok = false;
-            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-                bat_read_ok = ina260.read(voltage, current, power);
-                xSemaphoreGive(i2c_mutex);
-            } else {
-                i2c_contention_errors++;
+            if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {
+                voltage = shared.bat_voltage;
+                current = shared.bat_current;
+                power = shared.bat_power;
+                bat_read_ok = shared.bat_read_ok;
+                xSemaphoreGive(mutex);
             }
             if (bat_read_ok) {
                 // Batterie-Unterspannungsabschaltung
@@ -681,12 +732,10 @@ void loop() {
                 if (bat_rc != RCL_RET_OK) {
                     digitalWrite(amr::hal::pin_led_internal, LOW);
                 }
-                if (can_ok)
-                    can.sendBattery(voltage, current, power);
+                // CAN-Send laeuft in sensorTask (Core 1)
             }
         }
     }
 
-    // CAN Heartbeat + Cliff/Range/IMU laufen in sensorTask (Core 1)
-    // Battery CAN-Sends bleiben hier (I2C-Read nur in loop())
+    // CAN Heartbeat + alle CAN-Sends laufen in sensorTask (Core 1)
 }
