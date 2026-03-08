@@ -1,0 +1,542 @@
+% =============================================================================
+% AMR-Vortrag: Beamer-Präsentation
+% Quellen: beamer.md, amr_sprechernotizen.md, amr_handout.md
+% Build:   pdflatex amr_vortrag.tex  (oder: make amr_vortrag.pdf)
+% =============================================================================
+\documentclass[aspectratio=169]{beamer}
+\usetheme{metropolis}
+
+% -- Pakete ------------------------------------------------------------------
+\usepackage{amr-dashboard}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\usepackage{pgfpages}
+
+% Sprechernotizen aktivieren (auskommentieren fuer Handout/Druck):
+% \setbeameroption{show notes on second screen=right}
+
+% -- Metadaten ---------------------------------------------------------------
+\title{Effizienz auf der letzten Meile}
+\subtitle{Konzeption und Validierung eines Navigationssystems\\
+          für einen autonomen Kleinladungsträger-Transporter mit ROS~2}
+\author{[Autor]}
+\date{[Datum]}
+\institute{[Hochschule / Fachbereich]}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% -- Titelfolie --------------------------------------------------------------
+\maketitle
+
+\note{%
+  Begrüßung des Publikums. Betonen, dass die Präsentation den
+  kompletten Datenfluss vom physischen Sensorwert bis zur strategischen
+  Cloud-Entscheidung verfolgt. Ziel: Zeigen, wie komplexe
+  Logistikaufgaben mit einer stark partitionierten Hardware-Architektur
+  gelöst werden können.%
+}
+
+% -- Gliederung --------------------------------------------------------------
+\begin{frame}{Gliederung}
+  \tableofcontents
+\end{frame}
+
+% =============================================================================
+\section{Motivation und Problemstellung}
+% =============================================================================
+
+\begin{frame}{Motivation und Problemstellung}
+
+  \textbf{Ausgangslage: Intralogistik im Wandel}
+  \begin{itemize}
+    \item Industrie~4.0 erhöht die Anforderungen an flexible Materialflüsse.
+    \item Der Transport von Kleinladungsträgern bindet Personal ohne
+          direkte Wertschöpfung.
+    \item Autonome mobile Roboter arbeiten ohne Leitlinien oder Reflektoren.
+  \end{itemize}
+
+  \vspace{0.5em}
+  \textbf{Problemstellung}
+  \begin{itemize}
+    \item Industrielle AMR wie der MiR100 liegen bei mehr als
+          $25\,000\,\mathrm{EUR}$ und sind für einfache KLT-Transporte
+          oft überdimensioniert.
+    \item Für kostengünstige Open-Source-Systeme fehlen belastbare
+          Referenzarchitekturen.
+    \item Die zentrale technische Herausforderung besteht in der Kopplung
+          von echtzeitfähiger Antriebsregelung und autonomer Navigation
+          auf kostengünstiger Hardware.
+  \end{itemize}
+
+  \note{%
+    Industrielle AMR kosten oft über 25.000~EUR und sind für einfache
+    Aufgaben überdimensioniert. Unser Modell: Prototyp für rund 513~EUR
+    Materialkosten. Die Kostenreduktion erfordert eine strikte
+    Systemtrennung -- harte Echtzeit für Motorregelung und
+    rechenintensive SLAM-Navigation dürfen sich nicht gegenseitig
+    blockieren.%
+  }
+\end{frame}
+
+% =============================================================================
+\section{Zielsetzung und Forschungsfragen}
+% =============================================================================
+
+\begin{frame}{Zielsetzung und Forschungsfragen}
+
+  \textbf{Hauptziel}\\
+  Entwicklung und Validierung eines ROS-2-basierten Navigationssystems
+  für einen kostengünstigen AMR mit Gesamtkosten von rund
+  $500\,\mathrm{EUR}$.
+
+  \vspace{0.5em}
+  \textbf{Forschungsfragen}
+  \begin{itemize}
+    \item \textbf{FF1 -- Echtzeitarchitektur:} Wie lässt sich auf einer
+          Dual-Knoten-Architektur mit zwei ESP32-S3 eine echtzeitfähige
+          Regelung bei gleichzeitiger Sensorerfassung mit micro-ROS
+          realisieren?
+    \item \textbf{FF2 -- Navigationsgenauigkeit:} Welchen Einfluss haben
+          UMBmark-Kalibrierung, IMU-Fusion und hardwarenahe
+          Sicherheitslogik auf die Navigationsgenauigkeit?
+    \item \textbf{FF3 -- Visuelle Wahrnehmung und Docking:} Erreicht ein
+          monokulares Kamerasystem mit Edge-Inferenz und Cloud-Semantik
+          eine ausreichende Präzision und Kontextsensitivität?
+  \end{itemize}
+
+  \vspace{0.3em}
+  \textbf{Methodik:} V-Modell nach VDI~2206
+
+\end{frame}
+
+% =============================================================================
+\section{Systemarchitektur}
+% =============================================================================
+
+\begin{frame}[fragile]{Systemarchitektur}
+
+  \textbf{Verteilte Drei-Ebenen-Architektur}
+
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      {\small\ttfamily
+      \begin{tabbing}
+        xxxx\=xxxxxxxxxxxxxxxxx\=\kill
+        Drive-Knoten ESP32 \> $\longleftrightarrow$ \> Raspberry Pi~5\\
+        \> Core~1: PID 50\,Hz \> Bedien- und\\
+        \> Core~0: /odom \> Leitstandsebene\\[4pt]
+        Sensor-Knoten ESP32 \> $\longleftrightarrow$ \> Lokalisierung und\\
+        \> Core~1: I2C-Sensorik \> Kartierung\\
+        \> Core~0: /cliff \> Navigation\\
+        \> \> Sicherheitslogik
+      \end{tabbing}}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      {\small\ttfamily
+      \begin{tabbing}
+        xxx\=\kill
+        Intelligente Interaktion\\
+        \> Hailo-8L Edge-Inferenz\\
+        \> Gemini-Semantik
+      \end{tabbing}}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.5em}
+  \begin{itemize}
+    \item \textbf{Kommunikation:} micro-ROS über UART (USB-CDC) mit
+          Reliable QoS
+    \item \textbf{Synchronisation:} FreeRTOS-Mutex zwischen Core~0 und
+          Core~1 auf beiden ESP32-S3
+  \end{itemize}
+
+  \note{%
+    Bildführung: Von links nach rechts durch das Diagramm führen.
+    Kernelement: Datenfluss Sensorik $\rightarrow$ Bildverarbeitung
+    (Hailo) $\rightarrow$ Strategie (Cloud~AI) $\rightarrow$ Handlung
+    (ESP32/Servos). Zeitkritische Notfallreaktionen (Stopp vor Wand)
+    bleiben lokal auf dem Pi~5, semantische Entscheidungen gehen an die
+    Cloud.%
+  }
+\end{frame}
+
+% =============================================================================
+\section{Hardware-Plattform}
+% =============================================================================
+
+\begin{frame}{Hardware-Plattform}
+
+  \textbf{Komponenten mit Gesamtkosten von rund $500\,\mathrm{EUR}$}
+
+  \vspace{0.3em}
+  {\small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Komponente} & \textbf{Funktion} \\
+    \midrule
+    Raspberry Pi~5           & Bedien- und Leitstandsebene \\
+    Hailo-8L (PCIe)          & Edge-Inferenz für Objekterkennung \\
+    Drive-Knoten (ESP32-S3)  & Fahrkern: PID-Regelung und Rad-Odometrie \\
+    Sensor-Knoten (ESP32-S3) & Sensor- und Sicherheitsbasis: IMU, Batterie, Kanten \\
+    Cytron MDD3A             & Dual-Motortreiber im PWM-Betrieb \\
+    2\,$\times$\,JGA25-370   & Getriebemotoren mit Hall-Encoder \\
+    RPLIDAR A1               & 2D-LiDAR für Lokalisierung und Kartierung \\
+    IMX296                   & Global-Shutter-Kamera \\
+    \bottomrule
+  \end{tabular}}
+
+  \vspace{0.5em}
+  \textbf{Zentrale Parameter:}
+  Raddurchmesser $65{,}67\,\mathrm{mm}$,\;
+  Spurbreite $178\,\mathrm{mm}$,\;
+  Encoder ${\sim}\,748$ Ticks/Umdrehung,\;
+  $K_p = 0{,}4$,\; $K_i = 0{,}1$,\;
+  Zielgeschwindigkeit $0{,}4\,\mathrm{m/s}$
+
+  \note{%
+    RPLIDAR~A1: 360°-Abtastung bei 7,6~Hz bis 12~m Reichweite -- Basis
+    für SLAM. IMX296: optische Daten für ArUco-Docking und
+    YOLOv8-Erkennung. Hall-Encoder: Quadraturmodus, ${\sim}\,748$~Ticks
+    pro Radumdrehung. Hier entsteht die reine Rohdaten-Grundlage ohne
+    Interpretation.%
+  }
+\end{frame}
+
+% =============================================================================
+\section{Software-Stack}
+% =============================================================================
+
+\begin{frame}{Software-Stack}
+
+  \textbf{Firmware auf den ESP32-S3}
+  \begin{itemize}
+    \item Der Fahrkern führt die PID-Regelschleife mit $50\,\mathrm{Hz}$
+          aus und publiziert \texttt{/odom}.
+    \item Die Sensor- und Sicherheitsbasis erfasst IMU-, Batterie- und
+          Kanten-Signale und publiziert \texttt{/imu} sowie \texttt{/cliff}.
+    \item Ein Komplementärfilter fusioniert Gyro- und Encoder-Anteile
+          für die Heading-Schätzung.
+  \end{itemize}
+
+  \vspace{0.5em}
+  \textbf{ROS~2 auf dem Raspberry Pi~5}
+  \begin{itemize}
+    \item ROS~2 Humble läuft containerisiert in Docker
+          (\texttt{ros:humble-ros-base}, \texttt{arm64}).
+    \item Der micro-ROS Agent wird aus dem Quellcode gebaut.
+    \item \texttt{network\_mode: host} und \texttt{privileged: true}
+          sichern den Zugriff auf DDS, serielle Schnittstellen und Geräte.
+  \end{itemize}
+
+  \vspace{0.5em}
+  \textbf{Zentrale ROS-2-Knoten:}
+  \texttt{micro\_ros\_agent},
+  \texttt{cliff\_safety\_node},
+  \texttt{dashboard\_bridge},
+  \texttt{slam\_toolbox},
+  \texttt{nav2}
+
+  \note{%
+    ROS~2 auf dem Pi~5: High-Level-Navigationsrechner, Docker-Container.
+    Nav2 und SLAM: 5~cm genaue Occupancy Grid Map. Hailo-8L: NPU ist
+    zwingend -- YOLOv8 würde CPU des Pi~5 blockieren. PCIe-Beschleuniger
+    verarbeitet Videostream latenzfrei.%
+  }
+\end{frame}
+
+% =============================================================================
+\section{Navigation und hybride Vision}
+% =============================================================================
+
+\begin{frame}{Navigation und hybride Vision}
+
+  \textbf{TF-Baum}
+
+  {\ttfamily\small
+    map $\rightarrow$ odom $\rightarrow$ base\_link $\rightarrow$ laser\\
+    \hspace*{12.5em}$\rightarrow$ camera\_link\\
+    \hspace*{12.5em}$\rightarrow$ ultrasonic\_link
+  }
+
+  \vspace{0.5em}
+  \textbf{Lokalisierung und Kartierung sowie Navigation}
+  \begin{itemize}
+    \item \texttt{slam\_toolbox}: Ceres-Solver, Loop Closure,
+          Rasterauflösung $5\,\mathrm{cm}$.
+    \item Nav2: Zielanfahrt mit Regulated Pure Pursuit.
+    \item Costmaps: \texttt{StaticLayer}, \texttt{ObstacleLayer},
+          \texttt{InflationLayer}.
+    \item Recovery: Drehen, Rücksetzen und Warten.
+  \end{itemize}
+
+  \vspace{0.5em}
+  \textbf{Hybride Vision}
+  \begin{itemize}
+    \item \texttt{host\_hailo\_runner}: Bounding Boxes, Inferenzlatenz
+          ${\sim}\,34\,\mathrm{ms}$.
+    \item \texttt{gemini\_semantic\_node}: kontextbezogene Szenenanalyse.
+    \item Docking: ArUco-Marker, SolvePnP-Pose, P-Regler zur
+          Feinpositionierung.
+  \end{itemize}
+
+  \note{%
+    Schnittstelle: Das System sendet vorverarbeitete JSON-Pakete an
+    Gemini API oder Claude AI. Keine rohen Videostreams in die Cloud,
+    sondern nur semantische Metadaten. Beispiel: LiDAR meldet Hindernis
+    (lokaler Stopp), Kamera+Hailo erkennen ``Mensch'', Cloud-KI
+    entscheidet strategisch (Warnung per Speaker statt Umplanung).%
+  }
+\end{frame}
+
+% =============================================================================
+\section{Validierung und Ergebnisse}
+% =============================================================================
+
+\begin{frame}{Validierung und Ergebnisse}
+
+  \textbf{Verifikation der Subsysteme}
+
+  \vspace{0.3em}
+  {\small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Test} & \textbf{Ergebnis} & \textbf{Kriterium} \\
+    \midrule
+    PID-Regelfrequenz    & $50\,\mathrm{Hz}$, Jitter $< 2\,\mathrm{ms}$ & erfüllt \\
+    Kanten-Stopp-Latenz  & $< 50\,\mathrm{ms}$                          & erfüllt \\
+    Hailo-8L-Inferenz    & ${\sim}\,34\,\mathrm{ms}$/Frame              & erfüllt \\
+    Odometrie-Rate       & stabile $20\,\mathrm{Hz}$                    & erfüllt \\
+    Geradeausfahrt-Drift & $1{,}5\,\mathrm{cm}$ mit IMU-Fusion          & erfüllt \\
+    \bottomrule
+  \end{tabular}}
+
+  \vspace{0.5em}
+  \textbf{Validierung der Navigation}
+
+  \vspace{0.3em}
+  {\small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Test} & \textbf{Ergebnis} & \textbf{Kriterium} \\
+    \midrule
+    ATE bei Kartierung   & $0{,}16\,\mathrm{m}$ & $< 0{,}20\,\mathrm{m}$ \\
+    Positionsgenauigkeit & $6{,}4\,\mathrm{cm}$  & $< 10\,\mathrm{cm}$    \\
+    Winkelgenauigkeit    & $4{,}2^{\circ}$        & $< 8{,}6^{\circ}$      \\
+    \bottomrule
+  \end{tabular}}
+
+  \note{%
+    UMBmark-Kalibrierung hat systematische Odometriefehler um Faktor
+    10--20 reduziert. Präzise Mechanik-Messungen sind essenziell.
+    micro-ROS: MTU 512~Bytes, Reliable QoS ermöglicht Fragmentierung bis
+    2048~Bytes -- zwingend für große Odometrie-Nachrichten. Ausblick:
+    EKF-Sensorfusion (IMU + Encoder) für bessere Schlupfkompensation.%
+  }
+\end{frame}
+
+% -- Docking-Ergebnisse (eigene Folie wegen Platzbedarf) --------------------
+\begin{frame}{Validierung -- Docking}
+
+  \textbf{Validierung des Dockings}
+
+  \vspace{0.5em}
+  {\small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Test} & \textbf{Ergebnis} & \textbf{Kriterium} \\
+    \midrule
+    Lateraler Versatz   & $1{,}3\,\mathrm{cm}$             & $< 2\,\mathrm{cm}$  \\
+    Orientierungsfehler & $2{,}8^{\circ}$                   & $< 5^{\circ}$        \\
+    Erfolgsquote        & $80\,\%$ (8 von 10 Versuchen)     & erfüllt              \\
+    \bottomrule
+  \end{tabular}}
+
+\end{frame}
+
+% =============================================================================
+\section{Kernergebnisse}
+% =============================================================================
+
+\begin{frame}{Kernergebnisse}
+
+  \textbf{FF1 bestätigt}
+  \begin{itemize}
+    \item Trennung in Fahrkern und Sensor- und Sicherheitsbasis
+          stabilisiert die Echtzeitfähigkeit.
+    \item Serielle Kopplung über UART liefert deterministischere
+          Laufzeiten als WLAN.
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{FF2 bestätigt}
+  \begin{itemize}
+    \item UMBmark-Kalibrierung korrigiert Raddurchmesser von
+          $65{,}00$ auf $65{,}67\,\mathrm{mm}$.
+    \item Systematische Odometriefehler sinken um Faktor 10--20.
+    \item Sicherheitslogik stoppt zuverlässig vor Navigation.
+  \end{itemize}
+
+  \vspace{0.4em}
+  \textbf{FF3 bedingt bestätigt}
+  \begin{itemize}
+    \item Hybride Vision erreicht beim Docking $80\,\%$ Erfolgsquote.
+    \item Edge-Inferenz schnell genug für laufende Eingriffe.
+    \item Grenzen bei Beleuchtung, Sichtfeld und Marker-Sichtbarkeit.
+  \end{itemize}
+
+  \vspace{0.3em}
+  \textbf{Status:} Alle Muss-Anforderungen sind erfüllt.
+
+\end{frame}
+
+% =============================================================================
+\section{Live-Demo}
+% =============================================================================
+
+\begin{frame}[fragile]{Live-Demo}
+
+  \textbf{Demonstrationsszenario: KLT-Transport}
+  \begin{enumerate}
+    \item Lokalisierung und Kartierung der Umgebung
+    \item Autonome Punkt-zu-Punkt-Navigation mit Objekterkennung
+    \item Reaktion der Sicherheitslogik auf eine simulierte Kante
+    \item ArUco-basiertes Docking an einer Ladestation
+  \end{enumerate}
+
+  \vspace{0.5em}
+  \textbf{Systemstart}
+
+  {\small\ttfamily
+  ./run.sh ros2 launch my\_bot full\_stack.launch.py \textbackslash\\
+  \quad use\_dashboard:=True use\_vision:=True use\_audio:=True
+  }
+
+  \vspace{0.5em}
+  \textbf{Beobachtbare Topics}
+  \begin{itemize}
+    \item \texttt{/odom} -- Rad-Odometrie mit $20\,\mathrm{Hz}$
+    \item \texttt{/cliff} -- Kanten-Erkennung mit $20\,\mathrm{Hz}$
+    \item \texttt{/map} -- Belegungskarte aus \texttt{slam\_toolbox}
+  \end{itemize}
+
+\end{frame}
+
+% =============================================================================
+\section{Zusammenfassung und Ausblick}
+% =============================================================================
+
+\begin{frame}{Zusammenfassung und Ausblick}
+
+  \textbf{Zusammenfassung}
+  \begin{itemize}
+    \item Vollständiger Entwicklungszyklus nach VDI~2206
+    \item Verteilte Drei-Ebenen-Architektur mit zwei ESP32-S3 und einem
+          Raspberry Pi~5
+    \item Positive Beantwortung aller drei Forschungsfragen mit
+          abgestuftem Ergebnis für FF3
+    \item Erfüllung aller Muss-Anforderungen des Lastenhefts
+  \end{itemize}
+
+  \vspace{0.5em}
+  \textbf{Ausblick}
+  \begin{itemize}
+    \item \textbf{Hardware:} Eigene Leiterplatte statt freier
+          Verdrahtung, robustes Gehäuse
+    \item \textbf{Sensorfusion:} EKF-Integration mit
+          \texttt{robot\_localization}
+    \item \textbf{Flottenmanagement:} Einbindung in Open-RMF
+    \item \textbf{Sicherheit:} Weitere Annäherung an ISO~3691-4 und
+          CE-Konformität
+  \end{itemize}
+
+\end{frame}
+
+% =============================================================================
+% Schlussfolie
+% =============================================================================
+
+\begin{frame}[standout]
+  Fragen?
+\end{frame}
+
+% =============================================================================
+% Appendix: Handout-Material
+% =============================================================================
+
+\appendix
+
+\begin{frame}{Appendix -- Kinematik und Regelung}
+
+  Inverskinematik des Differentialantriebs:
+  \begin{align}
+    \omega_l &= \frac{v - \omega \cdot \tfrac{L}{2}}{r} \\[4pt]
+    \omega_r &= \frac{v + \omega \cdot \tfrac{L}{2}}{r}
+  \end{align}
+
+  \textbf{Systemparameter:}
+  \begin{itemize}
+    \item Zielgeschwindigkeit ($v$): $0{,}4\,\mathrm{m/s}$
+          (Regulated Pure Pursuit Controller)
+    \item Spurbreite ($L$): $178\,\mathrm{mm}$
+    \item Radradius ($r$): $32{,}835\,\mathrm{mm}$
+          (kalibrierter Raddurchmesser $65{,}67\,\mathrm{mm}$)
+  \end{itemize}
+
+  \note{%
+    Herleitung über Inverskinematik. Ohne exakte, empirisch ermittelte
+    Werte produziert der Nav2-Stack fehlerhafte Befehle, da Translation
+    und Rotation physikalisch falsch auf die Räder abgebildet werden.%
+  }
+\end{frame}
+
+\begin{frame}{Appendix -- Randbedingungen und Limitierungen}
+
+  \begin{itemize}
+    \item \textbf{Kommunikationsbandbreite:}
+          Serielle UART-Verbindung ($921\,600\,\mathrm{Baud}$) nutzt
+          XRCE-DDS-Protokoll. MTU auf $512\,\mathrm{Bytes}$ limitiert.
+          Fragmentierung über Reliable QoS zwingend erforderlich für
+          größere Pakete (z.\,B.\ Odometrie-Kovarianzmatrizen).
+
+    \item \textbf{Cloud-Abhängigkeit:}
+          Die strategische Objektauswertung setzt eine lückenlose
+          Netzwerkverbindung voraus. Bei Verbindungsabbruch greift das
+          System auf die rein lokale, reaktive Hindernisvermeidung des
+          Nav2-Stacks zurück.
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Appendix -- Datenfluss-Ebenen (Handout)}
+
+  {\small
+  \begin{enumerate}
+    \item \textbf{Sensorik (Datenerfassung):}
+          RPLIDAR A1 ($7{,}6\,\mathrm{Hz}$, $12\,\mathrm{m}$),
+          IMX296 Kamera ($1456 \times 1088$\,px, $15\,\mathrm{fps}$),
+          Hall-Encoder (${\sim}\,748\,\mathrm{Ticks/Umdrehung}$)
+
+    \item \textbf{Edge-Computing (Lokale Verarbeitung):}
+          Raspberry Pi~5 mit ROS~2 (Nav2, SLAM Toolbox),
+          Hailo-8L NPU für YOLOv8-Objekterkennung
+
+    \item \textbf{Cloud-KI (Strategische Entscheidung):}
+          Gemini API / Claude AI empfängt aggregierte, semantische
+          JSON-Daten
+
+    \item \textbf{Aktorik (Physische Ausführung):}
+          XIAO ESP32-S3 -- Core~1: PID bei $50\,\mathrm{Hz}$,
+          Core~0: micro-ROS-Kommunikation.
+          Cytron MDD3A: $20\,\mathrm{kHz}$ PWM
+  \end{enumerate}}
+
+\end{frame}
+
+% =============================================================================
+\end{document}
