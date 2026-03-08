@@ -57,6 +57,7 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - `dashboard/`
 - `my_bot/`
 - `bachelorarbeit/`
+- `planung/vortrag/`
 - `sources/`
 
 ## Typische Arbeitsreihenfolge
