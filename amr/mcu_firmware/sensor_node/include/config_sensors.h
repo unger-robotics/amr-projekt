@@ -124,7 +124,7 @@ inline constexpr float ramp_deg_per_step = 2.0f;
 namespace amr::can {
 
 inline constexpr uint32_t bitrate = 1000000; // 1 Mbit/s (ISO 11898)
-inline constexpr uint32_t tx_timeout_ms = 10;
+inline constexpr uint32_t tx_timeout_ms = 3; // Kurz halten: 1-Mbit/s Frame ~130 us
 
 // CAN-IDs (11-Bit Standard-Frame, Bereich 0x110..0x1FF)
 inline constexpr uint32_t id_range = 0x110;
@@ -151,10 +151,9 @@ inline constexpr uint32_t us_publish_period_ms = 1000 / us_publish_hz; // 100 ms
 inline constexpr uint32_t cliff_publish_hz = 20;
 inline constexpr uint32_t cliff_publish_period_ms = 1000 / cliff_publish_hz; // 50 ms
 
-// Timeout fuer blockierendes Lesen (pulseIn)
-// 25.000 µs entsprechen ca. 4,3 m Hin- und Rueckweg des Schalls.
-// Verhindert Blockaden in der micro-ROS Executor-Schleife.
-inline constexpr uint32_t us_timeout_us = 25000;
+// ISR-Echo-Timeout: maximale Laufzeit bis Echo-Puls als ungueltig gilt.
+// 20.000 µs entsprechen ca. 3,4 m Hin- und Rueckweg (> us_max_range_m).
+inline constexpr uint32_t us_timeout_us = 20000;
 
 // IMU-Timing (50 Hz)
 inline constexpr uint32_t imu_sample_hz = 50;
