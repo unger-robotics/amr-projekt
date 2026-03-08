@@ -52,11 +52,43 @@ if [ "$1" = "exec" ]; then
     exec docker exec -it amr_ros2 /entrypoint.sh "$@"
 fi
 
-# Normaler Modus: Container starten mit uebergebenem Befehl
+# --- Container sicherstellen (up -d statt run) ---
+# docker compose up -d wendet devices:, device_cgroup_rules: und volumes: korrekt an.
+# docker compose run ignoriert devices:-Mappings, was zu "Serial port not found" fuehrt.
+_ensure_container() {
+    if ! docker ps --format '{{.Names}}' | grep -q '^amr_ros2$'; then
+        echo "Container amr_ros2 wird gestartet..."
+        docker compose up -d
+        # udev-Symlinks existieren im Container nicht — manuell anlegen
+        sleep 1
+        _setup_serial_symlinks
+    fi
+}
+
+# Serielle Symlinks im Container anlegen (Host-udev greift dort nicht)
+_setup_serial_symlinks() {
+    for dev in /dev/amr_drive /dev/amr_sensor; do
+        if [ -L "$dev" ]; then
+            target=$(readlink -f "$dev")
+            target_name=$(basename "$target")
+            docker exec amr_ros2 ln -sf "/dev/$target_name" "$dev" 2>/dev/null || true
+        fi
+    done
+}
+
+# Normaler Modus: Container starten, Befehl ausfuehren
+_ensure_container
+
+# TTY-Flags: -it nur wenn stdin ein Terminal ist
+DOCKER_FLAGS="-i"
+if [ -t 0 ]; then
+    DOCKER_FLAGS="-it"
+fi
+
 if [ $# -eq 0 ]; then
-    echo "Starte ROS2 Humble Container (interaktive Shell)..."
-    exec docker compose run --rm amr
+    echo "Oeffne interaktive Shell im Container..."
+    exec docker exec $DOCKER_FLAGS amr_ros2 /entrypoint.sh bash
 else
-    echo "Starte ROS2 Humble Container: $*"
-    exec docker compose run --rm amr "$@"
+    echo "Starte im Container: $*"
+    exec docker exec $DOCKER_FLAGS amr_ros2 /entrypoint.sh "$@"
 fi
