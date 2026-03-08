@@ -50,8 +50,8 @@ Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecache
 
 Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
-- `drive_node/include/config_drive.h` (v4.1.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED, CAN-Bus (`amr::can::`) — kein I2C
-- `sensor_node/include/config_sensors.h` (v3.1.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
+- `drive_node/include/config_drive.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED, CAN-Bus (`amr::can::`) — kein I2C
+- `sensor_node/include/config_sensors.h` (v3.0.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung. Keine `#define`-Makros fuer Pins oder PWM-Kanaele — alle in `amr::hal::` als typisierte Konstanten.
 

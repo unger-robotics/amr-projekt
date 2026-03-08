@@ -12,13 +12,13 @@ Das Dashboard ist die Weboberflaeche fuer Telemetrie, Kameraansicht, Kartenansic
 ### Aufgaben des `dashboard_bridge`
 
 - ROS2-Daten fuer den Browser aufbereiten
-- MJPEG-Stream fuer Frontend und Host-Runner bereitstellen
+- MJPEG-Stream fuer Benutzeroberflaeche und Host-Runner bereitstellen
 - Steuerbefehle aus dem Browser an ROS2 publizieren
 - Telemetrie fuer Verbindung und Systemzustand aggregieren
 
 ### Entwicklungsmodus
 
-Frontend lokal starten:
+Benutzeroberflaeche lokal starten:
 
 ```bash
 cd ~/AMR-Bachelorarbeit/dashboard
@@ -44,6 +44,32 @@ cd ~/AMR-Bachelorarbeit/amr/docker
 ./run.sh ros2 launch my_bot full_stack.launch.py \
     use_dashboard:=True use_rviz:=False
 ```
+
+### cmd_vel-Routing und Cliff-Safety
+
+Der `cliff_safety_node` arbeitet als Multiplexer zwischen Navigations- und Dashboard-Befehlen mit integriertem Cliff-Veto.
+
+**Datenfluss:**
+
+```
+Nav2 ──► /nav_cmd_vel ──┐
+                        ├──► cliff_safety_node ──► /cmd_vel ──► Drive-Knoten
+Dashboard ──► /dashboard_cmd_vel ──┘       │
+                                           │
+Sensor-Knoten ──► /cliff (Bool, Best-Effort, 20 Hz) ──┘
+```
+
+**Funktionsweise:**
+
+- Im Normalbetrieb leitet der Knoten empfangene Twist-Nachrichten von `/nav_cmd_vel` oder `/dashboard_cmd_vel` direkt an `/cmd_vel` weiter.
+- Bei Cliff-Erkennung (`/cliff` = true) blockiert der Knoten alle Fahrbefehle und sendet stattdessen einen Null-Twist (20 Hz Timer) auf `/cmd_vel`.
+- Einmalig wird ein Audio-Alarm ueber `/audio/play` ausgeloest (Topic `cliff_alarm`).
+- Nach Aufhebung des Cliff-Zustands (`/cliff` = false) wird der Normalbetrieb wiederhergestellt.
+- Beim Shutdown sendet der Knoten einen finalen Stopp-Befehl.
+
+**QoS-Hinweis:** `/cliff` nutzt Best-Effort QoS. `/nav_cmd_vel`, `/dashboard_cmd_vel` und `/cmd_vel` nutzen Reliable QoS.
+
+**Remapping im Launch-File:** Nav2 publiziert intern auf `/cmd_vel`, das im Launch-File auf `/nav_cmd_vel` remapped wird. Der `dashboard_bridge` publiziert Joystick-Befehle auf `/dashboard_cmd_vel`. Beide Pfade laufen durch den `cliff_safety_node`, der als einziger auf `/cmd_vel` publiziert.
 
 ### Abgrenzung
 

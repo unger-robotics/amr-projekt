@@ -2,7 +2,7 @@
 
 ## Zielbild
 
-Der AMR besteht aus einem Raspberry Pi 5 als zentralem ROS2-Rechner und zwei ESP32-S3-Nodes fuer echtzeitnahe I/O- und Regelaufgaben.
+Der AMR besteht aus einem Raspberry Pi 5 als zentralem ROS2-Rechner und zwei ESP32-S3-Knoten fuer echtzeitnahe I/O- und Regelaufgaben.
 
 ## Hauptkomponenten
 
@@ -13,7 +13,7 @@ Der AMR besteht aus einem Raspberry Pi 5 als zentralem ROS2-Rechner und zwei ESP
 
 ## Kommunikationspfade (Dual-Path)
 
-Die MCU-Nodes kommunizieren ueber zwei parallele Kanaele mit dem Pi 5:
+Die MCU-Knoten kommunizieren ueber zwei parallele Kanaele mit dem Pi 5:
 
 - **micro-ROS/UART** (primaer): ROS2-Topics via Serial Transport, Subscriber/Publisher fuer Steuerung und Telemetrie
 - **CAN-Bus** (sekundaer): 1 Mbit/s, MCP2515/SocketCAN auf Pi 5, TWAI auf ESP32-S3, Fire-and-forget Diagnostik
@@ -22,10 +22,10 @@ CAN-Sends laufen in den Core-1-Tasks (`controlTask`/`sensorTask`), damit sie una
 
 ## Architekturregel
 
-Zeitkritische Low-Level-Funktionen bleiben auf den MCU-Nodes. Koordination, Mapping und Navigation bleiben auf dem Pi 5.
+Zeitkritische Low-Level-Funktionen bleiben auf den MCU-Knoten. Koordination, Mapping und Navigation bleiben auf dem Pi 5.
 
 ## Offene Uebernahme aus der Originaldatei
 
-- Datenflussdiagramm Pi 5 <-> micro-ROS Agent <-> Drive-/Sensor-Node
-- Modulgrenzen pro Node
+- Datenflussdiagramm Pi 5 <-> micro-ROS Agent <-> Drive-/Sensor-Knoten
+- Modulgrenzen pro Knoten
 - optionale Teilsysteme: Dashboard, Kamera, Vision, Audio, ReSpeaker (DoA/VAD)

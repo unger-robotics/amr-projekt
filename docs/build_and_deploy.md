@@ -144,14 +144,14 @@ Kriterium:
 * Der Runner verbindet sich mit dem MJPEG-Stream der `dashboard_bridge`.
 * Erste Detektionen erscheinen nach erfolgreichem Stream-Zugriff.
 
-### Terminal 3: Dashboard-Frontend starten
+### Terminal 3: Dashboard-Benutzeroberflaeche starten
 
 ```bash
 cd ~/AMR-Bachelorarbeit/dashboard
 npm run dev -- --host
 ```
 
-Danach ist das Frontend ueber den konfigurierten Host erreichbar.
+Danach ist die Benutzeroberflaeche ueber den konfigurierten Host erreichbar.
 
 ### Verifikation
 
@@ -182,7 +182,7 @@ Erwartete Kerndaten:
 
 ### System herunterfahren
 
-1. Host-Runner und Frontend mit `Ctrl+C` beenden.
+1. Host-Runner und Benutzeroberflaeche mit `Ctrl+C` beenden.
 2. ROS2-Launch in Terminal 1 mit `Ctrl+C` beenden.
 3. Container und Ports bereinigen:
 

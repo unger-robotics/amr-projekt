@@ -2,8 +2,8 @@
 """
 Kombiniertes ROS2 Launch-File fuer den vollstaendigen AMR-Stack.
 
-Zwei-Node-Architektur: Drive-Node (Motoren, Odometrie, PID, IMU, Batterie, Servo)
-und Sensor-Node (Ultraschall HC-SR04, Cliff-Erkennung MH-B) auf separaten ESP32-S3.
+Zwei-Node-Architektur: Drive-Node (Motoren, Odometrie, PID, LED)
+und Sensor-Node (Ultraschall HC-SR04, Cliff-Erkennung MH-B, IMU MPU6050, Batterie INA260, Servo PCA9685) auf separaten ESP32-S3.
 
 Startet:
   1. micro-ROS Agent Drive (Serial Transport, UART zu Drive ESP32-S3)
@@ -164,7 +164,7 @@ def generate_launch_description():
 
     # --- 1a. micro-ROS Agent Drive (Serial Transport) ---
     # Verbindet Drive ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
-    # Publiziert /odom, /imu, /battery, subscribt /cmd_vel, /servo_cmd, /hardware_cmd.
+    # Publiziert /odom. Subscribt /cmd_vel, /hardware_cmd (x=Motor-Limit, z=LED-PWM).
     micro_ros_agent_drive = ExecuteProcess(
         cmd=[
             "ros2",
@@ -183,7 +183,7 @@ def generate_launch_description():
 
     # --- 1b. micro-ROS Agent Sensor (Serial Transport, optional) ---
     # Verbindet Sensor ESP32-S3 ueber UART/USB-CDC mit dem ROS2-Graphen.
-    # Publiziert /range/front, /cliff.
+    # Publiziert /range/front, /cliff, /imu, /battery. Subscribt /servo_cmd, /hardware_cmd (y=Servo-Speed).
     micro_ros_agent_sensor = ExecuteProcess(
         cmd=[
             "ros2",
