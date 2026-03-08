@@ -30,27 +30,17 @@ def _find_config_h():
 
 
 def _find_config_sensors_h():
-    """Sucht config_sensors.h in bekannten Pfaden."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    """Sucht config_sensors.h relativ zum Skript-Verzeichnis oder im Projektbaum."""
+    script_dir = Path(__file__).resolve().parent
     candidates = [
-        os.path.join(
-            script_dir, "..", "mcu_firmware", "sensor_node", "include", "config_sensors.h"
-        ),
-        os.path.join(
-            script_dir,
-            "..",
-            "..",
-            "amr",
-            "mcu_firmware",
-            "sensor_node",
-            "include",
-            "config_sensors.h",
-        ),
+        script_dir
+        / "../../mcu_firmware/sensor_node/include/config_sensors.h",  # hardware_info/ -> amr/mcu_firmware/
+        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/sensor_node/include/config_sensors.h",
     ]
     for c in candidates:
-        p = os.path.normpath(c)
-        if os.path.isfile(p):
-            return p
+        resolved = c.resolve()
+        if resolved.is_file():
+            return resolved
     return None
 
 
@@ -167,19 +157,19 @@ def collect_project_info() -> dict[str, Any]:
     if config_h_path:
         try:
             content = config_h_path.read_text()
-            # Key #define Werte extrahieren
+            # inline constexpr Werte extrahieren (config_drive.h v4.0.0)
             define_patterns = {
-                "WHEEL_DIAMETER": r"#define\s+WHEEL_DIAMETER\s+([\d.]+f?)",
-                "WHEEL_BASE": r"#define\s+WHEEL_BASE\s+([\d.]+f?)",
-                "TICKS_PER_REV_LEFT": r"#define\s+TICKS_PER_REV_LEFT\s+([\d.]+f?)",
-                "TICKS_PER_REV_RIGHT": r"#define\s+TICKS_PER_REV_RIGHT\s+([\d.]+f?)",
-                "PWM_DEADZONE": r"#define\s+PWM_DEADZONE\s+(\d+)",
-                "FAILSAFE_TIMEOUT_MS": r"#define\s+FAILSAFE_TIMEOUT_MS\s+(\d+)",
-                "CONTROL_LOOP_HZ": r"#define\s+CONTROL_LOOP_HZ\s+(\d+)",
-                "ODOM_PUBLISH_HZ": r"#define\s+ODOM_PUBLISH_HZ\s+(\d+)",
-                "IMU_PUBLISH_HZ": r"#define\s+IMU_PUBLISH_HZ\s+(\d+)",
-                "IMU_CALIBRATION_SAMPLES": r"#define\s+IMU_CALIBRATION_SAMPLES\s+(\d+)",
-                "IMU_COMPLEMENTARY_ALPHA": r"#define\s+IMU_COMPLEMENTARY_ALPHA\s+([\d.]+f?)",
+                "wheel_diameter": r"constexpr\s+float\s+wheel_diameter\s*=\s*([\d.]+)f?",
+                "wheel_base": r"constexpr\s+float\s+wheel_base\s*=\s*([\d.]+)f?",
+                "ticks_per_rev_left": r"constexpr\s+float\s+ticks_per_rev_left\s*=\s*([\d.]+)f?",
+                "ticks_per_rev_right": r"constexpr\s+float\s+ticks_per_rev_right\s*=\s*([\d.]+)f?",
+                "deadzone": r"constexpr\s+uint32_t\s+deadzone\s*=\s*(\d+)",
+                "failsafe_timeout_ms": r"constexpr\s+uint32_t\s+failsafe_timeout_ms\s*=\s*(\d+)",
+                "control_loop_hz": r"constexpr\s+uint32_t\s+control_loop_hz\s*=\s*(\d+)",
+                "odom_publish_hz": r"constexpr\s+uint32_t\s+odom_publish_hz\s*=\s*(\d+)",
+                "kp": r"constexpr\s+float\s+kp\s*=\s*([\d.]+)f?",
+                "ki": r"constexpr\s+float\s+ki\s*=\s*([\d.]+)f?",
+                "kd": r"constexpr\s+float\s+kd\s*=\s*([\d.]+)f?",
             }
             for key, pattern in define_patterns.items():
                 match = re.search(pattern, content)
@@ -198,13 +188,13 @@ def collect_project_info() -> dict[str, Any]:
             patterns = {
                 "imu_sample_hz": r"imu_sample_hz\s*=\s*(\d+)",
                 "cliff_publish_hz": r"cliff_publish_hz\s*=\s*(\d+)",
-                "range_publish_hz": r"range_publish_hz\s*=\s*(\d+)",
+                "us_publish_hz": r"us_publish_hz\s*=\s*(\d+)",
                 "battery_publish_hz": r"battery_publish_hz\s*=\s*(\d+)",
                 "addr_ina260": r"addr_ina260\s*=\s*(0x[0-9a-fA-F]+)",
                 "addr_pca9685": r"addr_pca9685\s*=\s*(0x[0-9a-fA-F]+)",
                 "addr_mpu6050": r"addr_mpu6050\s*=\s*(0x[0-9a-fA-F]+)",
-                "motor_cutoff_voltage": r"motor_cutoff_voltage\s*=\s*([0-9.]+)",
-                "cutoff_hysteresis": r"cutoff_hysteresis\s*=\s*([0-9.]+)",
+                "threshold_motor_shutdown_v": r"threshold_motor_shutdown_v\s*=\s*([\d.]+)f?",
+                "pack_cutoff_v": r"pack_cutoff_v\s*=\s*([\d.]+)f?",
             }
             for key, pattern in patterns.items():
                 m = re.search(pattern, content)
@@ -289,17 +279,17 @@ def print_project_info(data: dict[str, Any]) -> None:
         print(f"  {COLOR_CYAN}Firmware-Parameter (config_drive.h):{COLOR_RESET}")
         # Formatierte Ausgabe der wichtigsten Parameter
         param_labels = {
-            "WHEEL_DIAMETER": ("Raddurchmesser", "m"),
-            "WHEEL_BASE": ("Spurbreite", "m"),
-            "TICKS_PER_REV_LEFT": ("Ticks/Rev links", ""),
-            "TICKS_PER_REV_RIGHT": ("Ticks/Rev rechts", ""),
-            "PWM_DEADZONE": ("PWM-Deadzone", ""),
-            "FAILSAFE_TIMEOUT_MS": ("Failsafe-Timeout", "ms"),
-            "CONTROL_LOOP_HZ": ("Regelfrequenz", "Hz"),
-            "ODOM_PUBLISH_HZ": ("Odom-Rate", "Hz"),
-            "IMU_PUBLISH_HZ": ("IMU-Rate", "Hz"),
-            "IMU_CALIBRATION_SAMPLES": ("IMU-Kalibr.-Samples", ""),
-            "IMU_COMPLEMENTARY_ALPHA": ("Complementary alpha", ""),
+            "wheel_diameter": ("Raddurchmesser", "m"),
+            "wheel_base": ("Spurbreite", "m"),
+            "ticks_per_rev_left": ("Ticks/Rev links", ""),
+            "ticks_per_rev_right": ("Ticks/Rev rechts", ""),
+            "deadzone": ("PWM-Deadzone", ""),
+            "failsafe_timeout_ms": ("Failsafe-Timeout", "ms"),
+            "control_loop_hz": ("Regelfrequenz", "Hz"),
+            "odom_publish_hz": ("Odom-Rate", "Hz"),
+            "kp": ("PID Kp", ""),
+            "ki": ("PID Ki", ""),
+            "kd": ("PID Kd", ""),
         }
         for key, (label, unit) in param_labels.items():
             val = params.get(key)
