@@ -23,11 +23,21 @@ Kurzarchitektur:
 
 ## Zentrale Begriffe
 
-- Drive-Node: ESP32-S3 fuer Motorregelung, Encoder, Odometrie, LED
-- Sensor-Node: ESP32-S3 fuer Sensorik, Batterie, IMU, Servo und Naeherungssensoren
+- Drive-Node (Fahrkern): ESP32-S3 fuer Motorregelung, Encoder, Odometrie, LED
+- Sensor-Node (Sensor- und Sicherheitsbasis): ESP32-S3 fuer Sensorik, Batterie, IMU, Servo und Naeherungssensoren
 - Pi 5: zentrale ROS2- und Docker-Laufzeit
 - micro-ROS Agent: Serial-Bridge zwischen ROS2 und den ESP32-Nodes
-- Dashboard: Weboberflaeche fuer Telemetrie und Fernsteuerung
+- Dashboard (Bedien- und Leitstandsebene): Weboberflaeche fuer Telemetrie und Fernsteuerung
+
+## Terminologie-Norm (aus planung/roadmap.md)
+
+Normierte Begriffe in allen Dokumenten konsistent verwenden:
+- Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung (nicht Komma!)
+- Navigation, Bedien- und Leitstandsebene (nicht "Navigations- und Leitstandsebene")
+- Sprachschnittstelle, Sicherheitslogik, Freigabelogik, Missionskommando, Intent
+- Benutzeroberflaeche (nicht "Frontend", "UI", "Web-UI")
+- Knoten (nicht "Node" im deutschen Fliesstext)
+- Drei Ebenen: A (Fahrkern), B (Bedien- und Leitstandsebene), C (Intelligente Interaktion)
 
 ## Feste Architekturregeln
 

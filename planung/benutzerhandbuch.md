@@ -205,7 +205,7 @@ Dieser Modus stellt Dashboard, Kamerabild und Vision-Pipeline bereit.
 
 Ablauf:
 
-1. Frontend im Browser unter `http://<IP-des-Raspberry-Pi>:5173` öffnen.
+1. Benutzeroberflaeche im Browser unter `http://<IP-des-Raspberry-Pi>:5173` öffnen.
 2. Live-Bild über den MJPEG-Stream an Port 8082 prüfen.
 3. Lokale Objekterkennung über Hailo-8L und semantische Auswertung über Gemini als Overlay über WebSocket an Port 9090 prüfen.
 
@@ -322,7 +322,7 @@ Nicht zulässig ist die Kette:
 
 Zulässig ist die Kette:
 
-> Sprachbefehl -> Intent -> Freigabelogik -> Missionskommando -> Navigation oder Leitstandfunktion
+> Sprachbefehl -> Intent -> Freigabelogik -> Missionskommando -> Navigation oder Bedien- und Leitstandsebene
 
 ---
 

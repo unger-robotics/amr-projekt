@@ -68,7 +68,7 @@ V-Modell nach VDI 2206
 ```text
 +--------------------+                  +---------------------------+
 | Drive-Knoten ESP32 | <─ UART/DDS ───> | Raspberry Pi 5            |
-| Core 1: PID 50 Hz  |                  | Navigations- und          |
+| Core 1: PID 50 Hz  |                  | Bedien- und               |
 | Core 0: /odom      |                  | Leitstandsebene           |
 +--------------------+                  |                           |
                                         | - Lokalisierung und       |
@@ -76,11 +76,11 @@ V-Modell nach VDI 2206
 | Sensor-Knoten      | <─ UART/DDS ───> | - Navigation              |
 | ESP32              |                  | - Sicherheitslogik        |
 | Core 1: I2C-Sensorik|                 | - Bedien- und             |
-| Core 0: /cliff     |                  |   Leitstanddienste        |
+| Core 0: /cliff     |                  |   Leitstandsebene         |
 +--------------------+                  +---------------------------+
                                                    |
                                          +---------------------------+
-                                         | Erweiterte Wahrnehmung    |
+                                         | Intelligente Interaktion  |
                                          | - Hailo-8L Edge-Inferenz  |
                                          | - Gemini-Semantik         |
                                          +---------------------------+
@@ -97,7 +97,7 @@ V-Modell nach VDI 2206
 
 | Komponente               | Funktion                                                      |
 |--------------------------|---------------------------------------------------------------|
-| Raspberry Pi 5           | Navigations- und Leitstandsebene                              |
+| Raspberry Pi 5           | Bedien- und Leitstandsebene                                   |
 | Hailo-8L (PCIe)          | Edge-Inferenz für Objekterkennung                             |
 | Drive-Knoten (ESP32-S3)  | Fahrkern: PID-Regelung und Rad-Odometrie                      |
 | Sensor-Knoten (ESP32-S3) | Sensor- und Sicherheitsbasis: IMU, Batterie, Kanten-Erkennung |
@@ -137,7 +137,7 @@ V-Modell nach VDI 2206
 - `micro_ros_agent` – serielle Brücke zwischen ESP32-S3 und ROS 2
 - `cliff_safety_node` – hardwarenahe Sicherheitslogik für Kanten-Erkennung
 - `dashboard_bridge` – WebSocket- und MJPEG-Anbindung für die Bedien- und Leitstandsebene
-- `slam_toolbox` und `nav2` – Lokalisierung, Kartierung und Navigation
+- `slam_toolbox` und `nav2` – Lokalisierung und Kartierung sowie Navigation
 
 ---
 
@@ -151,7 +151,7 @@ map -> odom -> base_link -> laser
                          -> ultrasonic_link
 ```
 
-**Lokalisierung, Kartierung und Navigation**
+**Lokalisierung und Kartierung sowie Navigation**
 
 - `slam_toolbox` arbeitet mit Ceres-Solver, Loop Closure und einer Rasterauflösung von $5\,\mathrm{cm}$.
 - Nav2 führt die Zielanfahrt mit Regulated Pure Pursuit aus.
@@ -173,7 +173,7 @@ map -> odom -> base_link -> laser
 | Test                 | Ergebnis                                               | Kriterium |
 |----------------------|--------------------------------------------------------|-----------|
 | PID-Regelfrequenz    | $50\,\mathrm{Hz}$, Jitter kleiner als $2\,\mathrm{ms}$ | erfüllt   |
-| Notstopp-Latenz      | kleiner als $50\,\mathrm{ms}$                          | erfüllt   |
+| Kanten-Stopp-Latenz  | kleiner als $50\,\mathrm{ms}$                          | erfüllt   |
 | Hailo-8L-Inferenz    | rund $34\,\mathrm{ms}$ je Frame                        | erfüllt   |
 | Odometrie-Rate       | stabile $20\,\mathrm{Hz}$                              | erfüllt   |
 | Geradeausfahrt-Drift | $1{,}5\,\mathrm{cm}$ mit IMU-Fusion                    | erfüllt   |
@@ -184,6 +184,7 @@ map -> odom -> base_link -> laser
 |----------------------|----------------------|----------------------------------|
 | ATE bei Kartierung   | $0{,}16\,\mathrm{m}$ | kleiner als $0{,}20\,\mathrm{m}$ |
 | Positionsgenauigkeit | $6{,}4\,\mathrm{cm}$ | kleiner als $10\,\mathrm{cm}$    |
+| Winkelgenauigkeit    | $4{,}2^\circ$         | kleiner als $8{,}6^\circ$        |
 
 **Validierung des Dockings**
 

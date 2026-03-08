@@ -4,7 +4,7 @@
 
 Die Flexibilisierung industrieller Fertigungsprozesse im Kontext von Industrie 4.0 erhöht die Anforderungen an die innerbetriebliche Logistik. Autonome mobile Roboter (AMR) adressieren diese Anforderung, weil sie ohne äußere Führungsinfrastruktur wie Leitlinien oder Reflektoren zwischen definierten Orten fahren können.
 
-Die Arbeit entwickelt einen kostengünstigen AMR-Prototypen mit Differentialantrieb für den Transport von Kleinladungsträgern in intralogistischen Szenarien. Der Systementwurf kombiniert Open-Source-Komponenten mit einer verteilten Architektur. Zwei dedizierte ESP32-S3 übernehmen den Fahrkern sowie die Sensor- und Sicherheitsbasis. Ein Raspberry Pi 5 übernimmt Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandfunktionen sowie eine hybride Vision-Pipeline.
+Die Arbeit entwickelt einen kostengünstigen AMR-Prototypen mit Differentialantrieb für den Transport von Kleinladungsträgern in intralogistischen Szenarien. Der Systementwurf kombiniert Open-Source-Komponenten mit einer verteilten Architektur. Zwei dedizierte ESP32-S3 übernehmen den Fahrkern sowie die Sensor- und Sicherheitsbasis. Ein Raspberry Pi 5 übernimmt Lokalisierung und Kartierung, Navigation, die Bedien- und Leitstandsebene sowie eine hybride Vision-Pipeline.
 
 Die Arbeit beantwortet drei Forschungsfragen:
 
@@ -28,7 +28,7 @@ Der Systementwurf zerlegte das Gesamtsystem in drei funktionale Ebenen:
 
 1. **Drive-Knoten (ESP32-S3):** steuert die Motoren, regelt die Raddrehzahl und publiziert die Odometrie.
 2. **Sensor-Knoten (ESP32-S3):** erfasst IMU-Daten, Batterieinformationen und Signale der Kanten-Erkennung.
-3. **Navigations- und Leitstandsebene (Raspberry Pi 5):** übernimmt Lokalisierung und Kartierung, Navigation, Vision, Audio sowie Diagnosefunktionen.
+3. **Bedien- und Leitstandsebene (Raspberry Pi 5):** übernimmt Lokalisierung und Kartierung, Navigation, Vision, Audio sowie Diagnosefunktionen.
 
 Die Kommunikationsarchitektur nutzt micro-ROS über UART als deterministische Schnittstelle zwischen Mikrocontrollern und Host-Rechner. Diese Struktur entkoppelt die Echtzeit-Regelschleife des Fahrkerns von den rechenintensiven Verfahren für Kartierung, Planung und semantische Auswertung.
 
@@ -67,14 +67,14 @@ Die zentrale Launch-Datei koordiniert alle ROS-2-Komponenten über konfigurierba
 │                                                             │
 │  ┌────────────────────┐            ┌──────────────────────┐ │
 │  │ Drive-Knoten ESP32 │ <─UART/DDS→│    Raspberry Pi 5    │ │
-│  │ (Fahrkern)         │            │ Navigations- und     │ │
+│  │ (Fahrkern)         │            │ Bedien- und          │ │
 │  │                    │            │ Leitstandsebene      │ │
 │  └────────────────────┘            │                      │ │
 │                                    │ - Navigation         │ │
 │  ┌────────────────────┐            │ - Kartierung         │ │
 │  │ Sensor-Knoten ESP32│ <─UART/DDS→│ - Sicherheitslogik   │ │
 │  │ (Sensor- und       │            │ - Bedien- und        │ │
-│  │ Sicherheitsbasis)  │            │   Leitstanddienste   │ │
+│  │ Sicherheitsbasis)  │            │   Leitstandsebene    │ │
 │  └────────────────────┘            │ - Audio              │ │
 │                                    └──────────────────────┘ │
 │                                             │         │      │
@@ -97,8 +97,8 @@ Die Trennung in Drive-Knoten und Sensor-Knoten ermöglicht eine echtzeitfähige 
 **Forschungsfrage 2:**
 Die systematische UMBmark-Kalibrierung reduzierte die systematischen Odometriefehler um etwa den Faktor 10. Die Kalibrierung bildet zusammen mit IMU-Fusion und hardwarenaher Sicherheitslogik die Grundlage für reproduzierbare Lokalisierung und Kartierung. Der Absolute Trajectory Error beträgt $0{,}16\,\mathrm{m}$ und bleibt damit unter dem Akzeptanzkriterium von $0{,}20\,\mathrm{m}$.
 
-**Forschungsfrage 3:**
-Die hybride Vision-Pipeline kombiniert lokale Objekterkennung mit semantischer Auswertung. Die lokale Edge-Inferenz erreicht eine Latenz von etwa $34\,\mathrm{ms}$ und bleibt damit schnell genug für eine laufende Anpassung der Navigation. Das ArUco-basierte Docking arbeitet präzise genug für den Ladekontakt. Die mittlere Navigationsgenauigkeit beträgt über zehn Testfahrten $6{,}4\,\mathrm{cm}$ in der Ebene und $4{,}2^\circ$ in der Gier.
+**Forschungsfrage 3 (bedingt bestätigt):**
+Die hybride Vision-Pipeline kombiniert lokale Objekterkennung mit semantischer Auswertung. Die lokale Edge-Inferenz erreicht eine Latenz von etwa $34\,\mathrm{ms}$ und bleibt damit schnell genug für eine laufende Anpassung der Navigation. Das ArUco-basierte Docking arbeitet präzise genug für den Ladekontakt mit einer Erfolgsquote von $80\,\%$ bei 10 Versuchen. Die mittlere Navigationsgenauigkeit beträgt über zehn Testfahrten $6{,}4\,\mathrm{cm}$ in der Ebene und $4{,}2^\circ$ in der Gier. Grenzen bestehen bei ungünstiger Beleuchtung, eingeschränktem Sichtfeld und verdeckter Marker-Sichtbarkeit.
 
 ## 7. Fazit
 

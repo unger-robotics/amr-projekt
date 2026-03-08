@@ -118,7 +118,7 @@ Der TF-Baum definiert die räumlichen Beziehungen der Sensorik zum Roboterzentru
 
 **Dynamische Transformationen:**
 * **`map -> odom`:** Die SLAM Toolbox (AMCL) berechnet diesen Vektor. Er korrigiert die akkumulierte Odometriedrift anhand des globalen Referenzkoordinatensystems.
-* **`odom -> base_link`:** Der Node `odom_to_tf` publiziert diese Transformation mit $20\,\mathrm{Hz}$. Er schließt die Lücke im TF-Baum, da der micro-ROS Agent selbst keine Transformationen broadcastet.
+* **`odom -> base_link`:** Der Knoten `odom_to_tf` publiziert diese Transformation mit $20\,\mathrm{Hz}$. Er schließt die Lücke im TF-Baum, da der micro-ROS Agent selbst keine Transformationen broadcastet.
 
 **Statische Transformationen (`static_transform_publisher`):**
 * **`base_link -> laser`:** Der RPLIDAR ist mechanisch $0,10\,\mathrm{m}$ vor und $0,05\,\mathrm{m}$ über dem Zentrum montiert. Die $180^\circ$-Drehung (Yaw = $\pi$) spiegelt die rückwärtsgerichtete Montage des Sensors wider.

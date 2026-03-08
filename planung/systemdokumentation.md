@@ -2,9 +2,9 @@
 
 ## 1. Systemübersicht und Architektur
 
-Der autonome mobile Roboter ist als zweistufiges Echtzeitsystem aufgebaut. Das System verbindet einen Differentialantrieb mit SLAM-basierter Navigation. Die Architektur trennt die hardwarenahe Steuerung auf zwei Seeed Studio XIAO ESP32-S3 strikt von der Navigations- und Missionslogik auf einem Raspberry Pi 5. Der Drive-Knoten und der Sensor-Knoten bilden die hardwarenahe Ebene. Der Raspberry Pi 5 bildet die Navigations- und Leitstandsebene. Die Kommunikation zwischen beiden Ebenen erfolgt über micro-ROS per UART/USB-CDC über stabile udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`). XRCE-DDS übernimmt die Middleware-Funktion.
+Der autonome mobile Roboter ist als zweistufiges Echtzeitsystem aufgebaut. Das System verbindet einen Differentialantrieb mit SLAM-basierter Navigation. Die Architektur trennt die hardwarenahe Steuerung auf zwei Seeed Studio XIAO ESP32-S3 strikt von der Navigations- und Missionslogik auf einem Raspberry Pi 5. Der Drive-Knoten und der Sensor-Knoten bilden die hardwarenahe Ebene. Der Raspberry Pi 5 bildet die Bedien- und Leitstandsebene. Die Kommunikation zwischen beiden Ebenen erfolgt über micro-ROS per UART/USB-CDC über stabile udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`). XRCE-DDS übernimmt die Middleware-Funktion.
 
-Die Steuerung gliedert sich in drei Ebenen. Die untere Ebene regelt die Gleichstrommotoren mit PID-Reglern bei $50,\mathrm{Hz}$ auf dem ESP32-S3. Die mittlere Ebene verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner. Die obere Ebene realisiert Lokalisierung, Kartierung und Navigation mit SLAM Toolbox und Nav2 auf dem Raspberry Pi 5. Diese Struktur sichert deterministische Motorsteuerung und entkoppelt sie von den rechenintensiven Navigationsalgorithmen.
+Die Steuerung gliedert sich in drei Ebenen. Der Fahrkern (Ebene A) regelt die Gleichstrommotoren mit PID-Reglern bei $50,\mathrm{Hz}$ auf dem ESP32-S3. Die Sensor- und Sicherheitsbasis (Ebene A) verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner. Die Bedien- und Leitstandsebene (Ebene B) realisiert Lokalisierung und Kartierung sowie Navigation mit SLAM Toolbox und Nav2 auf dem Raspberry Pi 5. Diese Struktur sichert deterministische Motorsteuerung und entkoppelt sie von den rechenintensiven Navigationsalgorithmen.
 
 ## 2. Hardware-Komponenten
 
@@ -26,7 +26,7 @@ Optional steht eine Sony-IMX296-Global-Shutter-Kamera für ArUco-basiertes visue
 
 Zwei Seeed Studio XIAO ESP32-S3 arbeiten als echtzeitfähige Steuerungseinheiten in einer Zwei-Knoten-Architektur. Der Drive-Knoten an `/dev/amr_drive` übernimmt Antrieb, PID-Regelung und Odometrie. Der Sensor-Knoten an `/dev/amr_sensor` übernimmt IMU, Batterieüberwachung und Servo-Steuerung. Das Dual-Core-Design mit bis zu $240,\mathrm{MHz}$ erlaubt die Trennung von Kommunikations- und Regelaufgaben. Die Verbindung zum Raspberry Pi erfolgt über USB-CDC mit $115200,\mathrm{Bd}`.
 
-Der Raspberry Pi 5 mit Debian Trixie und `aarch64` übernimmt Lokalisierung, Kartierung, Navigation und Leitstanddienste. ROS 2 Humble läuft in einem Docker-Container auf Basis von `ros:humble-ros-base` für `arm64`, da Debian Trixie kein natives Humble-Paket bereitstellt. Der Container nutzt den Host-Network-Modus für DDS-Multicast und einen privilegierten Modus für den Zugriff auf serielle Schnittstellen und Kamerageräte.
+Der Raspberry Pi 5 mit Debian Trixie und `aarch64` übernimmt Lokalisierung und Kartierung, Navigation sowie die Bedien- und Leitstandsebene. ROS 2 Humble läuft in einem Docker-Container auf Basis von `ros:humble-ros-base` für `arm64`, da Debian Trixie kein natives Humble-Paket bereitstellt. Der Container nutzt den Host-Network-Modus für DDS-Multicast und einen privilegierten Modus für den Zugriff auf serielle Schnittstellen und Kamerageräte.
 
 ## 3. Software-Architektur
 
@@ -34,7 +34,7 @@ Der Raspberry Pi 5 mit Debian Trixie und `aarch64` übernimmt Lokalisierung, Kar
 
 Die Firmware ist modular aufgebaut und verwendet das FreeRTOS-Betriebssystem des ESP32-S3 zur Trennung der Aufgaben auf zwei Kerne.
 
-**Core 0** betreibt den micro-ROS-Executor. Er empfängt `geometry_msgs/Twist` auf `/cmd_vel`, publiziert `nav_msgs/Odometry` auf `/odom` mit $20,\mathrm{Hz}$ und `sensor_msgs/Imu` auf `/imu` mit $20,\mathrm{Hz}`. Zusätzlich überwacht Core 0 den Heartbeat von Core 1. Fällt der Heartbeat aus, löst Core 0 einen Notfall-Stopp der Motoren aus. Ein Failsafe stoppt die Motoren außerdem nach $500,\mathrm{ms}$ ohne eingehende Geschwindigkeitskommandos.
+**Core 0** betreibt den micro-ROS-Executor. Er empfängt `geometry_msgs/Twist` auf `/cmd_vel` und publiziert `nav_msgs/Odometry` auf `/odom` mit $20,\mathrm{Hz}`. Zusätzlich überwacht Core 0 den Heartbeat von Core 1. Der Sensor-Knoten publiziert `sensor_msgs/Imu` auf `/imu` mit $20,\mathrm{Hz}$. Fällt der Heartbeat aus, löst Core 0 einen Notfall-Stopp der Motoren aus. Ein Failsafe stoppt die Motoren außerdem nach $500,\mathrm{ms}$ ohne eingehende Geschwindigkeitskommandos.
 
 **Core 1** führt die PID-Regelschleife mit $50,\mathrm{Hz}$ aus. Die Kette lautet: Encoder lesen, Radgeschwindigkeiten per EMA mit $\alpha = 0{,}3$ filtern, Differentialkinematik berechnen, PID-Regelung mit $K_p = 0{,}4$, $K_i = 0{,}1$ und $K_d = 0{,}0$ anwenden, Anti-Windup berücksichtigen, Beschleunigungsrampe mit `MAX_ACCEL = 5{,}0\,\mathrm{rad/s^2}` anwenden und schließlich die PWM mit Deadzone-Kompensation ausgeben. Die Odometrie verwendet die ungefilterten Encoder-Rohdaten. Der PID-Regler verwendet gefilterte Werte, um Quantisierungsrauschen zu mindern.
 
@@ -56,9 +56,9 @@ Dabei bezeichnet $r$ den Radradius von $32{,}835,\mathrm{mm}$, $L$ die Spurbreit
 
 Die Firmware enthält mehrere Schutzmechanismen. Ein Failsafe-Timeout stoppt die Motoren nach $500,\mathrm{ms}$ ohne eingehende `cmd_vel`-Nachrichten. Ein Inter-Core-Watchdog auf Core 0 überwacht den Heartbeat von Core 1 und löst bei mehr als 50 verpassten Zyklen einen Notfall-Stopp aus. Eine Status-LED an Pin D10, geschaltet über einen IRLZ24N-MOSFET, signalisiert den Systemzustand mit verschiedenen Blinkmustern.
 
-### 3.2 ROS-2-Stack für Lokalisierung, Kartierung und Navigation
+### 3.2 ROS-2-Stack für Lokalisierung und Kartierung sowie Navigation
 
-Das Launch-File `full_stack.launch.py` orchestriert den ROS-2-Stack. Der micro-ROS Agent bildet die Brücke zwischen XRCE-DDS auf dem ESP32-S3 und dem DDS-Graphen auf dem Raspberry Pi. Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten in die dynamische TF-Transformation `odom -> base_link`.
+Das Launch-File `full_stack.launch.py` orchestriert den ROS-2-Stack. Der micro-ROS Agent bildet die Brücke zwischen XRCE-DDS auf dem ESP32-S3 und dem DDS-Graphen auf dem Raspberry Pi. Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten in die dynamische TF-Transformation `odom -> base_link` und publiziert sie mit $20,\mathrm{Hz}$.
 
 `slam_toolbox` arbeitet im asynchronen Online-Modus mit dem Ceres-Solver. Die Konfiguration nutzt `SPARSE_NORMAL_CHOLESKY` und die Levenberg-Marquardt-Strategie. Der Knoten erzeugt eine Belegungskarte mit einer Auflösung von $5,\mathrm{cm}`. Loop Closure ist aktiv. Der Suchradius beträgt $8\,\mathrm{m}` bei einer minimalen Kettenlänge von 10 Scans.
 
@@ -69,6 +69,7 @@ Der TF-Baum hat folgende Struktur:
 ```text
 map -> odom -> base_link -> laser
                          -> camera_link
+                         -> ultrasonic_link
 ```
 
 Die statischen Transformationen definieren `static_transform_publisher`-Knoten. Der Laser sitzt $10,\mathrm{cm}$ vor und $5,\mathrm{cm}$ über `base_link`. Die Kamera sitzt $10,\mathrm{cm}$ vor und $8,\mathrm{cm}$ über `base_link`.
@@ -91,6 +92,9 @@ Die Kommunikation zwischen ESP32-S3 und Raspberry Pi nutzt XRCE-DDS mit einer MT
 | `/odom`             | `nav_msgs/Odometry`     |        $20,\mathrm{Hz}$ | ESP32-S3             | Rad-Odometrie mit Quaternion                       |
 | `/imu`              | `sensor_msgs/Imu`       |        $20,\mathrm{Hz}$ | ESP32-S3             | Beschleunigung, Drehrate, fusionierte Orientierung |
 | `/scan`             | `sensor_msgs/LaserScan` | ca. $7{,}6,\mathrm{Hz}$ | RPLIDAR A1           | 2D-Laserscandaten                                  |
+| `/cliff`            | `std_msgs/Bool`         |        $20,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Kanten-Erkennung, Best-Effort QoS                  |
+| `/range/front`      | `sensor_msgs/Range`     |        $10,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Ultraschall-Entfernung                             |
+| `/battery_voltage`  | `std_msgs/Float32`      |         $2,\mathrm{Hz}$ | ESP32-S3 (Sensor)    | Akkuspannung via INA260                            |
 | `/camera/image_raw` | `sensor_msgs/Image`     |        $15,\mathrm{Hz}$ | `v4l2_camera_node`   | Kamerabild, optional                               |
 
 Die Topic-Struktur trennt Fahrkommandos, Odometrie, IMU, Laserscan und Kameradaten klar. Damit lässt sich der Datenfluss zwischen Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung sowie Navigation sauber nachvollziehen.
@@ -158,4 +162,4 @@ TCP-Port 9090 transportiert über WebSocket Telemetrie, semantische Ergebnisse u
 
 Die Kanten-Erkennung auf dem ESP32-S3 arbeitet deutlich schneller als die Verarbeitung derselben Information im Nav2-Stack auf dem Raspberry Pi 5. Aus dieser Zeitdifferenz folgt eine feste Prioritätsregel: Direkte Sensorsignale überstimmen stets algorithmisch berechnete Bewegungsbefehle.
 
-Der `cliff_safety_node` setzt diese Regel als Befehlsmultiplexer um. Der Sensor-Knoten erfasst den Status des Infrarot-Kanten-Sensors MH-B und publiziert ihn mit $20,\mathrm{Hz}$ auf `/cliff`. Der Multiplexer verarbeitet die Bewegungsbefehle aus `/nav_cmd_vel` und `/dashboard_cmd_vel`. Meldet `/cliff` eine Kante, blockiert der Multiplexer sofort alle eingehenden Kommandos. Anschließend erzeugt er eigenständig einen harten Stopp mit $v = 0,\mathrm{m/s}$ und $\omega = 0,\mathrm{rad/s}`und sendet den Befehl über`/cmd_vel` an den Drive-Knoten. Damit bleibt die Sicherheitslogik gegenüber Navigation und Bedienung übergeordnet.
+Der `cliff_safety_node` setzt diese Regel als Befehlsmultiplexer um. Der Sensor-Knoten erfasst den Status des Infrarot-Kanten-Sensors MH-B und publiziert ihn mit $20,\mathrm{Hz}$ auf `/cliff`. Der Multiplexer verarbeitet die Bewegungsbefehle aus `/nav_cmd_vel` und `/dashboard_cmd_vel`. Meldet `/cliff` eine Kante, blockiert der Multiplexer innerhalb von weniger als $50,\mathrm{ms}$ alle eingehenden Kommandos. Anschließend erzeugt er eigenständig einen harten Stopp mit $v = 0,\mathrm{m/s}$ und $\omega = 0,\mathrm{rad/s}`und sendet den Befehl über`/cmd_vel` an den Drive-Knoten. Damit bleibt die Sicherheitslogik gegenüber Navigation und Bedienung übergeordnet.
