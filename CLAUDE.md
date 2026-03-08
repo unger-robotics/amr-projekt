@@ -10,7 +10,7 @@ Kurzarchitektur:
 - Raspberry Pi 5 als ROS2-, SLAM-, Navigation- und Integrationsrechner
 - XIAO ESP32-S3 Drive-Node fuer Antrieb, PID, Odometrie und LED
 - XIAO ESP32-S3 Sensor-Node fuer Ultraschall, Cliff, IMU, Batterie und Servo
-- Verbindung zwischen Pi 5 und MCU-Nodes ueber micro-ROS/UART und CAN-Bus (Dual-Path)
+- Verbindung zwischen Pi 5 und MCU-Knoten ueber micro-ROS/UART und CAN-Bus (Dual-Path)
 
 ## Arbeitsregeln
 
@@ -26,7 +26,7 @@ Kurzarchitektur:
 - Drive-Node (Fahrkern): ESP32-S3 fuer Motorregelung, Encoder, Odometrie, LED
 - Sensor-Node (Sensor- und Sicherheitsbasis): ESP32-S3 fuer Sensorik, Batterie, IMU, Servo und Naeherungssensoren
 - Pi 5: zentrale ROS2- und Docker-Laufzeit
-- micro-ROS Agent: Serial-Bridge zwischen ROS2 und den ESP32-Nodes
+- micro-ROS Agent: Serial-Bridge zwischen ROS2 und den ESP32-Knoten
 - Dashboard (Bedien- und Leitstandsebene): Weboberflaeche fuer Telemetrie und Fernsteuerung
 
 ## Terminologie-Norm (aus planung/roadmap.md)
@@ -44,7 +44,7 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten
 - Drive-Node und Sensor-Node werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
-- Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Node
+- Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
 - Dashboard, Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
 
