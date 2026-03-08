@@ -44,6 +44,7 @@ known-third-party = ["rclpy", "geometry_msgs", "nav_msgs", "sensor_msgs",
 "amr/scripts/hailo_inference_node.py" = ["F401", "C901"]
 "amr/scripts/host_hailo_runner.py" = ["F401", "C901"]
 "amr/scripts/hardware_info.py" = ["C901"]
+"amr/scripts/hardware_info/*.py" = ["C901"]
 "amr/scripts/serial_latency_logger.py" = ["SIM115"]
 "scripts/md_to_html_converter.py" = ["C901"]
 "amr/pi5/ros2_ws/src/my_bot/launch/*.py" = ["E501"]
