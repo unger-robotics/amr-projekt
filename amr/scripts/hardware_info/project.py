@@ -84,8 +84,7 @@ def collect_project_info() -> dict[str, Any]:
 
     # ROS2-Pakete im Docker-Container (nur wenn Container laeuft)
     ros2_pkgs_raw = run_cmd(
-        "docker exec amr-docker-ros2-humble-1 "
-        "bash -c 'dpkg -l ros-humble-* 2>/dev/null | grep ^ii' 2>/dev/null",
+        "docker exec amr_ros2 bash -c 'dpkg -l ros-humble-* 2>/dev/null | grep ^ii' 2>/dev/null",
         timeout=10,
     )
     ros2_packages = {}
