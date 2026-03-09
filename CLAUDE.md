@@ -90,3 +90,5 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - `docs/quality_checks.md`
 - `docs/bachelorarbeit_style.md`
 - `docs/literature_workflow.md`
+- `docs/testanleitung_phase1_phase2.md`
+- `docs/messprotokoll_phase1_phase2.md`
