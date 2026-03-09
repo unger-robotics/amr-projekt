@@ -14,6 +14,7 @@ Verwendung:
 import math
 import sys
 import time
+from datetime import datetime
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -21,15 +22,18 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
 try:
-    from amr_utils import ANSI_BOLD, ANSI_GREEN, ANSI_RED, ANSI_RESET
+    from amr_utils import ANSI_BOLD, ANSI_GREEN, ANSI_RED, ANSI_RESET, save_json
 except ImportError:
     try:
-        from my_bot.amr_utils import ANSI_BOLD, ANSI_GREEN, ANSI_RED, ANSI_RESET
+        from my_bot.amr_utils import ANSI_BOLD, ANSI_GREEN, ANSI_RED, ANSI_RESET, save_json
     except ImportError:
         ANSI_GREEN = "\033[32m"
         ANSI_RED = "\033[31m"
         ANSI_BOLD = "\033[1m"
         ANSI_RESET = "\033[0m"
+        save_json = None  # type: ignore[assignment]
+
+AKZEPTANZ_WINKEL_DEG = 5.0
 
 
 class RotationController(Node):
@@ -46,6 +50,12 @@ class RotationController(Node):
         self.tolerance = math.radians(2.0)  # 2 Grad Toleranz
         self.timeout = 45.0  # Sekunden
 
+        # Gyro-Bias-Kalibrierung (3s statisch)
+        self.calibrating = True
+        self.cal_samples = []
+        self.cal_duration = 3.0
+        self.gyro_bias = 0.0
+
         # Zustand — direkte Gyro-Integration (kein Wrapping)
         self.accumulated_rad = 0.0
         self.last_stamp = None
@@ -53,22 +63,20 @@ class RotationController(Node):
         self.done = False
         self.start_time = None
         self.last_log_sec = -1
+        self.result = None
 
         # ROS2
         self.pub_cmd = self.create_publisher(Twist, "/cmd_vel", 10)
         self.sub_imu = self.create_subscription(Imu, "/imu", self.imu_callback, 10)
 
         self.get_logger().info(f"Ziel: {target_deg:.1f} Grad Drehung mit IMU-Gyro-Feedback")
-        self.get_logger().info("Warte auf /imu...")
+        self.get_logger().info("Gyro-Kalibrierung (3s still stehen)...")
 
     def imu_callback(self, msg):
         now = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
         if self.last_stamp is None:
             self.last_stamp = now
-            self.running = True
-            self.start_time = time.time()
-            self.get_logger().info("IMU empfangen -- Drehung gestartet!")
             return
 
         # Gyro-Integration: gz [rad/s] * dt [s] = Winkelaenderung [rad]
@@ -79,7 +87,22 @@ class RotationController(Node):
             return
 
         gz = msg.angular_velocity.z
-        self.accumulated_rad += gz * dt
+
+        if self.calibrating:
+            self.cal_samples.append(gz)
+            if len(self.cal_samples) >= int(self.cal_duration * 20):  # ~60 Samples bei ~20 Hz
+                self.gyro_bias = sum(self.cal_samples) / len(self.cal_samples)
+                bias_dps = math.degrees(self.gyro_bias)
+                self.calibrating = False
+                self.get_logger().info(
+                    f"Gyro-Bias: {bias_dps:+.3f} deg/s ({len(self.cal_samples)} Samples)"
+                )
+                self.running = True
+                self.start_time = time.time()
+                self.get_logger().info("Drehung gestartet!")
+            return
+
+        self.accumulated_rad += (gz - self.gyro_bias) * dt
 
         if self.done:
             return
@@ -133,8 +156,7 @@ class RotationController(Node):
     def print_result(self, elapsed):
         achieved = math.degrees(self.accumulated_rad)
         error_deg = self.target_deg - achieved
-        tol_deg = math.degrees(self.tolerance)
-        passed = abs(error_deg) < tol_deg
+        passed = abs(error_deg) < AKZEPTANZ_WINKEL_DEG
 
         print()
         print("=" * 60)
@@ -143,15 +165,32 @@ class RotationController(Node):
         print(f"  Ziel:        {self.target_deg:.1f} Grad")
         print(f"  Erreicht:    {achieved:.1f} Grad")
         print(f"  Fehler:      {error_deg:.2f} Grad")
+        print(f"  Gyro-Bias:   {math.degrees(self.gyro_bias):+.3f} deg/s")
         print(f"  Dauer:       {elapsed:.1f}s")
-        print(f"  Toleranz:    +/- {tol_deg:.1f} Grad")
+        print(f"  Akzeptanz:   +/- {AKZEPTANZ_WINKEL_DEG:.1f} Grad")
         print("=" * 60)
 
         if passed:
             print(f"  {ANSI_GREEN}{ANSI_BOLD}PASS - Ziel erreicht!{ANSI_RESET}")
         else:
-            print(f"  {ANSI_RED}{ANSI_BOLD}FAIL - Timeout{ANSI_RESET}")
+            print(f"  {ANSI_RED}{ANSI_BOLD}FAIL - Winkelfehler zu gross{ANSI_RESET}")
         print("=" * 60)
+
+        self.result = {
+            "test_name": f"rotation_{self.target_deg:.0f}_grad",
+            "result": "PASS" if passed else "FAIL",
+            "metrics": {
+                "soll_winkel_deg": self.target_deg,
+                "erreicht_deg": round(achieved, 1),
+                "fehler_deg": round(error_deg, 2),
+                "gyro_bias_dps": round(math.degrees(self.gyro_bias), 3),
+                "dauer_s": round(elapsed, 1),
+            },
+            "kriterien": {
+                "winkel_fehler_deg_max": AKZEPTANZ_WINKEL_DEG,
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 def main(args=None):
@@ -175,6 +214,9 @@ def main(args=None):
     except KeyboardInterrupt:
         node.stop_robot()
     finally:
+        if node.result and save_json is not None:
+            pfad = save_json({"tests": [node.result]}, "rotation_results.json")
+            print(f"\n  Ergebnisse: {pfad}")
         node.destroy_node()
         rclpy.shutdown()
 

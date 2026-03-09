@@ -13,8 +13,10 @@ Verwendung:
 """
 
 import math
+import os
 import sys
 import time
+from datetime import datetime
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -23,16 +25,39 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
 try:
-    from amr_utils import ANSI_BOLD, ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_RESET
+    from amr_utils import ANSI_BOLD, ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_RESET, save_json
 except ImportError:
     try:
-        from my_bot.amr_utils import ANSI_BOLD, ANSI_CYAN, ANSI_GREEN, ANSI_RED, ANSI_RESET
+        from my_bot.amr_utils import (
+            ANSI_BOLD,
+            ANSI_CYAN,
+            ANSI_GREEN,
+            ANSI_RED,
+            ANSI_RESET,
+            save_json,
+        )
     except ImportError:
         ANSI_GREEN = "\033[32m"
         ANSI_RED = "\033[31m"
         ANSI_BOLD = "\033[1m"
         ANSI_RESET = "\033[0m"
         ANSI_CYAN = "\033[36m"
+
+        def save_json(data, dateiname, verzeichnis=None):
+            """Fallback wenn amr_utils nicht verfuegbar."""
+            import json
+
+            if verzeichnis is None:
+                verzeichnis = os.path.dirname(os.path.abspath(__file__))
+            pfad = os.path.join(verzeichnis, dateiname)
+            with open(pfad, "w") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            return pfad
+
+
+# Akzeptanzkriterien
+AKZEPTANZ_DRIFT_CM = 5.0  # Lateraldrift < 5 cm
+AKZEPTANZ_HEADING_DEG = 5.0  # Heading-Fehler < 5 Grad
 
 
 def quaternion_to_yaw(q):
@@ -76,6 +101,9 @@ class StraightDriveTest(Node):
         self.current_y = 0.0
         self.current_yaw = 0.0
         self.forward_distance = 0.0
+
+        # Ergebnis
+        self.result = None
 
         # Steuerung
         self.running = False
@@ -302,7 +330,39 @@ class StraightDriveTest(Node):
         print(f"  Heading (Gyro):   {heading_gyro:+.2f} Grad")
         print(f"  Gyro-Bias:        {bias_dps:+.3f} deg/s")
         print(f"  Dauer:            {elapsed:.1f}s")
+
+        # PASS/FAIL-Bewertung
+        passed_drift = lateral_drift < AKZEPTANZ_DRIFT_CM
+        passed_heading = abs(heading_gyro) < AKZEPTANZ_HEADING_DEG
+        passed = passed_drift and passed_heading
+
+        if passed:
+            print(f"  {ANSI_GREEN}{ANSI_BOLD}PASS{ANSI_RESET}")
+        else:
+            print(f"  {ANSI_RED}{ANSI_BOLD}FAIL{ANSI_RESET}")
         print("=" * 60)
+
+        # Ergebnis-Dictionary fuer JSON-Export
+        self.result = {
+            "test_name": f"geradeausfahrt_{'mit' if self.use_correction else 'ohne'}_imu",
+            "result": "PASS" if passed else "FAIL",
+            "metrics": {
+                "soll_strecke_m": self.target_distance,
+                "odom_strecke_m": round(distance, 4),
+                "vorwaerts_m": round(forward, 4),
+                "lateral_m": round(lateral, 4),
+                "lateral_drift_cm": round(lateral_drift, 1),
+                "heading_odom_deg": round(heading_odom, 2),
+                "heading_gyro_deg": round(heading_gyro, 2),
+                "gyro_bias_dps": round(bias_dps, 3),
+                "dauer_s": round(elapsed, 1),
+            },
+            "kriterien": {
+                "lateral_drift_cm_max": AKZEPTANZ_DRIFT_CM,
+                "heading_deg_max": AKZEPTANZ_HEADING_DEG,
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 def run_single_test(use_correction):
@@ -314,7 +374,9 @@ def run_single_test(use_correction):
     except KeyboardInterrupt:
         node.stop_robot()
     finally:
+        result = node.result
         node.destroy_node()
+    return result
 
 
 def main(args=None):
@@ -334,21 +396,31 @@ def main(args=None):
     print(f"  {ANSI_BOLD}AMR Geradeausfahrt-Test mit IMU-Korrektur{ANSI_RESET}")
     print("*" * 60)
 
+    results = []
+
     if mode in ("both", "uncorrected"):
         print(f"\n{ANSI_CYAN}>>> Test 1: OHNE IMU-Korrektur{ANSI_RESET}")
         print("    Roboter faehrt 1m geradeaus (Closed-Loop auf Odom-Distanz)")
         if mode == "both":
             print("    Bitte Roboter zurueckstellen nach diesem Test!")
-        run_single_test(use_correction=False)
+        r = run_single_test(use_correction=False)
+        if r:
+            results.append(r)
 
     if mode == "both":
-        print(f"\n{ANSI_CYAN}Warte 5s... Roboter zurueckstellen!{ANSI_RESET}")
-        time.sleep(5.0)
+        print(f"\n{ANSI_CYAN}Roboter zurueckstellen!{ANSI_RESET}")
+        input("    Enter druecken wenn bereit...")
 
     if mode in ("both", "corrected"):
         print(f"\n{ANSI_CYAN}>>> Test 2: MIT IMU-Korrektur{ANSI_RESET}")
         print("    Roboter faehrt 1m geradeaus mit Heading-Stabilisierung")
-        run_single_test(use_correction=True)
+        r = run_single_test(use_correction=True)
+        if r:
+            results.append(r)
+
+    if results:
+        pfad = save_json({"tests": results}, "straight_drive_results.json")
+        print(f"\n  Ergebnisse: {pfad}")
 
     print()
     print("*" * 60)
