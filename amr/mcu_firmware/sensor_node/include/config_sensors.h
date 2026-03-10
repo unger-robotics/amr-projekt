@@ -64,6 +64,7 @@ inline constexpr uint32_t master_freq_hz = 400000; // Fast-mode 400 kHz
 
 namespace amr::imu {
 
+// Yaw-Fusion: 98 % Gyro-Integration, 2 % Encoder-Heading
 inline constexpr float complementary_alpha = 0.98f;
 inline constexpr float gyro_sensitivity = 131.0f;
 inline constexpr float accel_sensitivity = 16384.0f;
@@ -82,6 +83,7 @@ inline constexpr float threshold_hysteresis_v = 0.3f;
 inline constexpr float pack_charge_max_v = 12.60f;
 inline constexpr float pack_cutoff_v = 7.95f;
 inline constexpr float capacity_design_ah = 3.35f;
+inline constexpr float fuse_rating_a = 10.0f;            // KFZ-Flachsicherung 10 A
 
 } // namespace amr::battery
 
@@ -217,6 +219,7 @@ static_assert(amr::battery::pack_cutoff_v < amr::battery::pack_charge_max_v,
               "Cutoff < Charge-Max");
 static_assert(amr::battery::threshold_motor_shutdown_v > amr::battery::pack_cutoff_v,
               "Motor-Shutdown > Cutoff");
+static_assert(amr::battery::fuse_rating_a > 0.0f, "Sicherungsbewertung muss positiv sein");
 
 // --- Servo ---
 static_assert(amr::servo::ticks_min < amr::servo::ticks_max, "Servo Ticks: Min < Max");

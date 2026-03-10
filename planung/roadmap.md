@@ -10,50 +10,50 @@
 | Navigation                   | AMCL, Nav2, Zielanfahrt, Recovery-Verhalten                                                      |
 | Bedien- und Leitstandsebene  | Dashboard, Telemetrie, Audio, manuelle Bedienung                                                 |
 | Sprachschnittstelle          | Audioaufnahme, STT, Intent-Erkennung, TTS                                                        |
-| Sicherheitslogik             | übergeordnete Stop-, Freigabe- und Schutzmechanismen                                             |
-| Freigabelogik                | Regelwerk, das Kommandos zulässt, blockiert oder umsetzt                                         |
+| Sicherheitslogik             | uebergeordnete Stop-, Freigabe- und Schutzmechanismen                                            |
+| Freigabelogik                | Regelwerk, das Kommandos zulaesst, blockiert oder umsetzt                                        |
 | Missionskommando             | freigegebenes Ziel- oder Moduskommando oberhalb roher Fahrbefehle                                |
 | Intent                       | klassifizierte Befehlsabsicht aus der Sprachverarbeitung                                         |
-| ROS-2-Knoten                 | fachlicher Begriff im Fließtext                                                                  |
+| ROS-2-Knoten                 | fachlicher Begriff im Fliesstext                                                                 |
 | Topic                        | technischer ROS-2-Begriff                                                                        |
 | Launch-Datei                 | technische Startkonfiguration                                                                    |
-| Benutzeroberfläche           | statt gemischter Schreibweisen wie UI, Web-UI oder Frontend, sofern kein Produktname gemeint ist |
+| Benutzeroberflaeche          | statt gemischter Schreibweisen wie UI, Web-UI oder Frontend, sofern kein Produktname gemeint ist |
 
 ---
 
-## 1. Zielbild
+## 1. Systementwurf und Zielbild
 
-Das AMR gliedert sich in drei Ebenen.
+Das AMR gliedert sich gemaess Systementwurf in drei Ebenen.
 
-### Ebene A – Fahrkern
+### Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis
 
 Der Fahrkern muss lokalisieren, planen, fahren, stoppen und Fehler behandeln.
-Diese Ebene umfasst Odometrie, IMU, LiDAR, SLAM, Nav2, die Sicherheitslogik für Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5.
+Diese Ebene umfasst Odometrie, IMU, LiDAR, SLAM, Nav2, die Sicherheitslogik fuer Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5.
 
 ### Ebene B – Bedien- und Leitstandsebene
 
-Die Bedien- und Leitstandsebene umfasst Dashboard, Telemetrie, manuelle Kommandos und Audio-Rückmeldungen.
+Die Bedien- und Leitstandsebene umfasst Dashboard, Telemetrie, manuelle Kommandos und Audio-Rueckmeldungen.
 Vorhanden sind bereits ein WebSocket-/MJPEG-Dashboard sowie die Schnittstellen `/cmd_vel`, `/servo_cmd`, `/hardware_cmd` und `/audio/play`.
 
 ### Ebene C – Intelligente Interaktion
 
-Die Ebene der intelligenten Interaktion umfasst Sprachbefehle, semantische Interpretation, Vision und später multimodale Bedienung.
-Das ReSpeaker Mic Array v2.0 gehört in diese Ebene. Die Hardware ist bereits als USB-Audio-Eingabe am Raspberry Pi 5 vorgesehen.
+Die Ebene der intelligenten Interaktion umfasst Sprachbefehle, semantische Interpretation, Vision und spaeter multimodale Bedienung.
+Das ReSpeaker Mic Array v2.0 gehoert in diese Ebene. Die Hardware ist bereits als USB-Audio-Eingabe am Raspberry Pi 5 integriert.
 
-## 2. Projektlandkarte mit Phasen
+## 2. Projektlandkarte und Integration (VDI 2206)
 
-### Phase 1 – Fahrplattform quantitativ schließen
+### Phase 1 – Entwurf und Eigenschaftsabsicherung: Fahrkern (F01)
 
 #### Ziel
 
-Die Grundfahrt muss messbar stabil arbeiten, bevor zusätzliche Systemkomplexität folgt.
+Die Grundfahrt muss messbar stabil arbeiten, bevor zusaetzliche Systemkomplexitaet im Rahmen der Integration folgt.
 
 #### Module
 
 * Drive-ESP32 mit PID-Regelung
 * Encoder und Odometrie
 * Cytron MDD3A
-* grundlegende `cmd_vel`-Kette vom Raspberry Pi über micro-ROS zum ESP32-S3
+* grundlegende `cmd_vel`-Kette vom Raspberry Pi ueber micro-ROS zum ESP32-S3
 
 #### Hardware
 
@@ -72,32 +72,32 @@ Die Grundfahrt muss messbar stabil arbeiten, bevor zusätzliche Systemkomplexit�
 
 * Differentialkinematik
 * PID-Regelung
-* Deadzone, Sättigung und Schlupf
-* messbasierte Bewertung
+* Deadzone, Saettigung und Schlupf
+* messbasierte Eigenschaftsabsicherung
 
 #### Definition of Done
 
-* Geradeausfahrt über $1\,\mathrm{m}$ mit kleinem Seitenfehler
-* Rotation um $360^\circ$ mit reproduzierbarem Winkelfehler
+* Geradeausfahrt ueber 1 m mit Seitenfehler < 5 cm und Heading-Fehler < 5 Grad (mit IMU-Fusion)
+* Rotation um 360 Grad mit reproduzierbarem Winkelfehler < 5 Grad
 * kein ungewolltes Nachlaufen nach dem Stopp
 * mehrfache Wiederholung bei gleichem Ladezustand des Akkus
 
 #### Ergebnis
 
-Die Phase liefert einen charakterisierten Fahrkern.
+Die Phase liefert einen quantitativ charakterisierten Fahrkern.
 
-### Phase 2 – Sensor- und Sicherheitsbasis schließen
+### Phase 2 – Entwurf und Eigenschaftsabsicherung: Sensor- und Sicherheitsbasis (F02)
 
 #### Ziel
 
-Pose und Nahbereichserfassung müssen ausreichend zuverlässig arbeiten, damit Lokalisierung und Kartierung sowie Navigation belastbar werden.
+Pose und Nahbereichserfassung muessen ausreichend zuverlaessig arbeiten, damit Lokalisierung und Kartierung sowie Navigation belastbar werden.
 
 #### Module
 
 * IMU
 * Ultraschall
 * Cliff-Sensor
-* Batterieüberwachung
+* Batterieueberwachung
 * Sensor-ESP32
 
 #### Hardware
@@ -121,20 +121,20 @@ Pose und Nahbereichserfassung müssen ausreichend zuverlässig arbeiten, damit L
 * Sensordrift
 * Bias und Kalibrierung
 * Messrate und Latenz
-* Priorisierung sicherheitsrelevanter Signale
+* Priorisierung sicherheitsrelevanter Signale gemaess funktionaler Anforderungsdefinition
 
 #### Definition of Done
 
-* IMU-Drehung stimmt mit einer Referenzfahrt plausibel überein
-* Kanten-Erkennung stoppt reproduzierbar
+* IMU-Drehung stimmt mit einer Referenzfahrt plausibel ueberein (Fehler < 2 Grad)
+* Kanten-Erkennung stoppt reproduzierbar (Latenz < 50 ms)
+* Ultraschall arbeitet innerhalb der Genauigkeitstoleranz (< 5 % Fehler)
 * Unterspannungsreaktion funktioniert
-* Front-Ultraschall löst sauber aus, ohne dauerhafte Fehltrigger
 
 #### Ergebnis
 
 Die Phase liefert eine belastbare Sensor- und Sicherheitsbasis.
 
-### Phase 3 – TF, LiDAR und SLAM in der Wohnung reproduzierbar machen
+### Phase 3 – Lokalisierung und Kartierung
 
 #### Ziel
 
@@ -150,7 +150,7 @@ Der Roboter muss eine Umgebungskarte erzeugen und sich in dieser Karte wiederfin
 
 #### Hardware
 
-* RPLIDAR A1 am Raspberry Pi 5 über USB
+* RPLIDAR A1 am Raspberry Pi 5 ueber USB
 
 #### Software
 
@@ -158,7 +158,7 @@ Der Roboter muss eine Umgebungskarte erzeugen und sich in dieser Karte wiederfin
 * `/tf`
 * `/tf_static`
 * `slam_toolbox`
-* Kartenauflösung von $5\,\mathrm{cm}$
+* Kartenaufloesung von 5 cm
 
 #### Lernziele
 
@@ -170,13 +170,13 @@ Der Roboter muss eine Umgebungskarte erzeugen und sich in dieser Karte wiederfin
 #### Definition of Done
 
 * wiederholbare Karten im selben Raum
-* erkennbare Wände und Möbel ohne ausgeprägte Doppelkonturen
-* Re-Lokalisierung nach Neustart möglich
-* konsistenter TF-Baum ohne Sprünge
+* erkennbare Waende und Moebel ohne ausgepraegte Doppelkonturen
+* Re-Lokalisierung nach Neustart moeglich
+* konsistenter TF-Baum ohne Spruenge
 
 #### Ergebnis
 
-Die Phase liefert Lokalisierung und Kartierung für den Innenraum.
+Die Phase liefert Lokalisierung und Kartierung fuer den Innenraum.
 
 ### Phase 4 – Navigation mit klarer Missionslogik
 
@@ -218,7 +218,7 @@ Das System soll nicht nur Karten erzeugen, sondern Ziele sicher anfahren.
 
 #### Ergebnis
 
-Die Phase liefert autonome Mobilität auf Kartenbasis.
+Die Phase liefert autonome Mobilitaet auf Kartenbasis.
 
 ### Phase 5 – Bedien- und Leitstandsebene als Betriebswerkzeug
 
@@ -234,12 +234,12 @@ Das System muss beobachtbar und bedienbar sein.
 * Joystick
 * Zustandsanzeige
 * Hardware-Slider
-* Audio-Rückmeldung
+* Audio-Rueckmeldung
 
 #### Software
 
 * `dashboard_bridge`
-* React-/Vite-Benutzeroberfläche
+* React-/Vite-Benutzeroberflaeche
 * `/servo_cmd`
 * `/hardware_cmd`
 * `/audio/play`
@@ -247,7 +247,7 @@ Das System muss beobachtbar und bedienbar sein.
 
 #### Lernziele
 
-* Gestaltung technischer Benutzeroberflächen
+* Gestaltung technischer Benutzeroberflaechen
 * Betriebsdiagnose
 * Trennung von Bedienung und Fahrlogik
 * Leitstandkonzept aus Fahrzeug- und Robotikentwicklung
@@ -256,8 +256,8 @@ Das System muss beobachtbar und bedienbar sein.
 
 * stabile Telemetrie
 * saubere Browser-Bedienung
-* definierte Audio-Rückmeldungen für wichtige Zustände
-* manuelle Eingriffe ohne unklare Systemzustände
+* definierte Audio-Rueckmeldungen fuer wichtige Zustaende
+* manuelle Eingriffe ohne unklare Systemzustaende
 
 #### Ergebnis
 
@@ -266,13 +266,13 @@ Die Phase liefert eine Bedien- und Leitstandsebene mit Diagnosefunktion.
 ## 3. Erweiterung: Sprachschnittstelle mit ReSpeaker Mic Array v2.0
 
 Sprachsteuerung ersetzt weder Navigation noch Sicherheitslogik.
-Die Sprachschnittstelle bildet eine Bedienebene, die Befehle in freigegebene Missionskommandos übersetzt.
+Die Sprachschnittstelle bildet eine Bedienebene, die Befehle in freigegebene Missionskommandos uebersetzt.
 
-Nicht zulässig ist die Kette:
+Nicht zulaessig ist die Kette:
 
 > Sprachbefehl → direkte Motoransteuerung
 
-Zulässig ist die Kette:
+Zulaessig ist die Kette:
 
 > Sprachbefehl → Intent → Freigabelogik → Missionskommando → Navigation / Leitstand / Audio
 
@@ -281,7 +281,7 @@ Zulässig ist die Kette:
 #### Hardware
 
 * ReSpeaker Mic Array v2.0 als USB-Audio-Eingabe am Raspberry Pi 5
-* MAX98357A und Lautsprecher als Audio-Ausgabe
+* PCM5102A (HifiBerry DAC) und Lautsprecher als Audio-Ausgabe
 
 #### Software-Module
 
@@ -295,64 +295,64 @@ wandelt Audiodaten in Text um.
 ordnet den Text einer klaren Befehlsabsicht zu.
 
 **4. `voice_command_mux`**
-gibt nur freigegebene Kommandos frei und übersetzt sie in ROS-2-Aktionen oder Topics.
+gibt nur freigegebene Kommandos frei und uebersetzt sie in ROS-2-Aktionen oder Topics.
 
 **5. `text_to_speech_node`**
-gibt Rückmeldungen aus, direkt per TTS oder über `/audio/play`.
+gibt Rueckmeldungen aus, direkt per TTS oder ueber `/audio/play`.
 
 ### 3.2 Befehlsgruppen
 
 #### Klasse A – sichere Sofortkommandos
 
-* „Stopp“
-* „Halt“
-* „Notstopp“
-* „Sprache aus“
+* "Stopp"
+* "Halt"
+* "Notstopp"
+* "Sprache aus"
 
-Diese Kommandos dürfen ausschließlich einen sicheren Halt auslösen.
+Diese Kommandos duerfen ausschliesslich einen sicheren Halt ausloesen.
 
 #### Klasse B – Betriebsmodus
 
-* „Manuell“
-* „Autonom“
-* „Docking starten“
-* „Mapping starten“
-* „Navigation abbrechen“
+* "Manuell"
+* "Autonom"
+* "Docking starten"
+* "Mapping starten"
+* "Navigation abbrechen"
 
-Diese Kommandos ändern den Betriebsmodus, senden aber keine direkten Geschwindigkeitswerte an den Antrieb.
+Diese Kommandos aendern den Betriebsmodus, senden aber keine direkten Geschwindigkeitswerte an den Antrieb.
 
 #### Klasse C – Missionskommandos
 
-* „Fahre zur Ladestation“
-* „Fahre zum Wohnzimmerpunkt“
-* „Starte Rundfahrt“
+* "Fahre zur Ladestation"
+* "Fahre zum Wohnzimmerpunkt"
+* "Starte Rundfahrt"
 
-Diese Kommandos übersetzt das System in Zielpunkte oder Aktionen.
+Diese Kommandos uebersetzt das System in Zielpunkte oder Aktionen.
 
 #### Klasse D – Informationskommandos
 
-* „Wie ist der Akkustand?“
-* „Was sieht die Kamera?“
-* „Wo befindet sich der Roboter?“
-* „Ist die Navigation aktiv?“
+* "Wie ist der Akkustand?"
+* "Was sieht die Kamera?"
+* "Wo befindet sich der Roboter?"
+* "Ist die Navigation aktiv?"
 
-Diese Kommandos unterstützen die Bedien- und Leitstandsebene bei geringem Risiko.
+Diese Kommandos unterstuetzen die Bedien- und Leitstandsebene bei geringem Risiko.
 
 ### 3.3 Grenzen der Sprachschnittstelle
 
 Nicht direkt freigeben:
 
 * rohe Geschwindigkeitsbefehle
-* unbestätigte Rückwärtsfahrt
+* unbestaetigte Rueckwaertsfahrt
 * Servo-Bewegungen ohne Kontext
 * sicherheitskritische Overrides
 * Deaktivierung der Kanten-Erkennung per Sprache
 
-## 4. Neue Phase 6 – Sprachschnittstelle integrieren
+## 4. Phase 6 – Sprachschnittstelle integrieren
 
 #### Ziel
 
-Der Roboter soll natürlich bedienbar werden, ohne die Kernarchitektur aufzuweichen.
+Der Roboter soll natuerlich bedienbar werden, ohne die Kernarchitektur aufzuweichen.
 
 #### Module
 
@@ -366,7 +366,7 @@ Der Roboter soll natürlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 #### Hardware
 
 * ReSpeaker Mic Array v2.0
-* MAX98357A
+* PCM5102A (HifiBerry DAC)
 * Lautsprecher
 
 #### Software-Zuordnung
@@ -383,12 +383,12 @@ Der Roboter soll natürlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 
 * `voice_intent_node`
 * `voice_command_mux`
-* Übergabe an Navigation, Leitstand und Audio
+* Uebergabe an Navigation, Leitstand und Audio
 
 **ESP32-S3**
 
 * keine direkte Sprachverarbeitung
-* nur Ausführung freigegebener Kommandos
+* nur Ausfuehrung freigegebener Kommandos
 
 #### Lernziele
 
@@ -396,17 +396,17 @@ Der Roboter soll natürlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 * Entkopplung von Bedienebene und Fahrfunktion
 * Ereignisverarbeitung
 * sichere Freigabelogik
-* Multimodalität aus Sprache, Dashboard und Autonomie
+* Multimodalitaet aus Sprache, Dashboard und Autonomie
 
 #### Definition of Done
 
 * Wake-Word oder Push-to-Talk arbeitet stabil
 * definierter Wortschatz mit etwa 10 bis 20 Befehlen
-* „Stopp“ wird priorisiert und zuverlässig erkannt
-* Missionskommandos werden korrekt in ROS-2-Aktionen übersetzt
-* Audio-Rückmeldung bestätigt jeden angenommenen Befehl
-* Fehlinterpretationen führen zu keiner unsicheren Bewegung
+* "Stopp" wird priorisiert und zuverlaessig erkannt
+* Missionskommandos werden korrekt in ROS-2-Aktionen uebersetzt
+* Audio-Rueckmeldung bestaetigt jeden angenommenen Befehl
+* Fehlinterpretationen fuehren zu keiner unsicheren Bewegung
 
 #### Ergebnis
 
-Die Phase erweitert das AMR zu einem interaktiven MINT-System mit natürlicher Bedienung.
+Die Phase erweitert das AMR zu einem interaktiven MINT-System mit natuerlicher Bedienung.

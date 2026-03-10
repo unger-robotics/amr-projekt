@@ -54,13 +54,13 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 
 - MCU Dual-Core: Core 0 = micro-ROS Executor, Core 1 = Echtzeit-Datenerfassung + CAN
 - `full_stack.launch.py` orchestriert alle ROS2-Nodes (micro-ROS Agents, SLAM, Nav2, Dashboard, Vision)
-- Vision-Pipeline: Host-seitiger Hailo-8 Runner → UDP → Docker-Receiver → Gemini Cloud
+- Vision-Pipeline: Host-seitiger Hailo-8L Runner → UDP → Docker-Receiver → Gemini Cloud
 - Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und via `setup.py` entry_points installiert
 
 ## Feste Architekturregeln
 
 - Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten
-- Drive-Node und Sensor-Node werden getrennt gebaut, geflasht und betrieben
+- Drive-Knoten und Sensor-Knoten werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
 - Dashboard, Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
@@ -81,7 +81,7 @@ cd amr/mcu_firmware/sensor_node && pio run                      # Kompilieren
 cd amr/mcu_firmware/sensor_node && pio run -t upload -t monitor # Upload + Monitor
 ```
 
-Erster Build pro Node: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
+Erster Build pro Knoten: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
 
 ### ROS2 (Docker auf Pi 5)
 
@@ -118,8 +118,12 @@ cd planung/vortrag/ && make            # Beamer-Vortrag PDF
 ```bash
 ruff check amr/                    # Python-Lint
 ruff format --check amr/           # Python-Format
-pre-commit run --all-files         # Alle Hooks
+mypy --config-file mypy.ini        # Python Type-Check
+clang-format --dry-run --Werror amr/mcu_firmware/drive_node/src/*.cpp amr/mcu_firmware/drive_node/include/*.hpp amr/mcu_firmware/sensor_node/src/*.cpp amr/mcu_firmware/sensor_node/include/*.hpp  # C++ Format
+pre-commit run --all-files         # Alle Hooks (ruff, mypy, clang-format, eslint, trailing-whitespace)
 ```
+
+Einmalig einrichten: `pip3 install pre-commit && pre-commit install`
 
 ## Relevante Projektpfade
 

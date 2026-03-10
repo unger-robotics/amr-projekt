@@ -115,7 +115,7 @@ def generate_launch_description():
     declare_use_audio = DeclareLaunchArgument(
         "use_audio",
         default_value="False",
-        description="Audio-Feedback-Node (MAX98357A)",
+        description="Audio-Feedback-Node (PCM5102A HifiBerry DAC)",
     )
     declare_use_can = DeclareLaunchArgument(
         "use_can",
@@ -225,6 +225,7 @@ def generate_launch_description():
     # --- 3. Nav2 Navigation Stack ---
     # Nav2 MIT Cliff-Safety: cmd_vel Remapping via launch_arguments
     # (Humble hat kein SetRemap — erst ab Iron verfuegbar)
+    # Nav2 publiziert auf /cmd_vel; cliff_safety_node fungiert als Multiplexer
     nav2_with_remap = GroupAction(
         actions=[
             IncludeLaunchDescription(
@@ -384,8 +385,8 @@ def generate_launch_description():
         ),
     )
 
-    # --- 8. Vision Pipeline (Hailo UDP Receiver + Gemini, optional) ---
-    # Hailo-8 Inference laeuft auf dem Host (host_hailo_runner.py),
+    # --- 8. Vision Pipeline (Hailo-8L UDP Receiver + Gemini, optional) ---
+    # Hailo-8L Inference laeuft auf dem Host (host_hailo_runner.py),
     # Ergebnisse kommen via UDP 127.0.0.1:5005 in den Container.
     hailo_udp_receiver_node = Node(
         package="my_bot",
@@ -411,7 +412,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_cliff_safety")),
     )
 
-    # --- 10. Audio-Feedback (MAX98357A, optional) ---
+    # --- 10. Audio-Feedback (PCM5102A HifiBerry DAC, optional) ---
     audio_feedback_node = Node(
         package="my_bot",
         executable="audio_feedback_node",
