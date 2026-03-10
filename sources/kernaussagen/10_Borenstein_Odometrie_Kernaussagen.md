@@ -11,7 +11,7 @@
 
 ## Zusammenfassung
 
-Dieser umfassende technische Bericht ist das Standardwerk zur Positionierung mobiler Roboter. Er behandelt in zwei Hauptteilen (Part I: Sensoren, Part II: Systeme und Methoden) das gesamte Spektrum von Dead Reckoning ueber Heading-Sensoren, GPS, Range-Sensoren bis hin zu Map-Based und Vision-Based Positioning. Fuer die Bachelorarbeit besonders relevant sind Kapitel 1 (Sensoren fuer Dead Reckoning, insbesondere Differential Drive und Odometrie-Gleichungen) und Kapitel 5 (Odometrie-Fehlerklassifikation, UMBmark-Testverfahren und systematische Kalibrierung).
+Dieser umfassende technische Bericht ist das Standardwerk zur Positionierung mobiler Roboter. Er behandelt in zwei Hauptteilen (Part I: Sensoren, Part II: Systeme und Methoden) das gesamte Spektrum von Dead Reckoning ueber Heading-Sensoren, GPS, Range-Sensoren bis hin zu Map-Based und Vision-Based Positioning. Fuer die Projektarbeit besonders relevant sind Kapitel 1 (Sensoren fuer Dead Reckoning, insbesondere Differential Drive und Odometrie-Gleichungen) und Kapitel 5 (Odometrie-Fehlerklassifikation, UMBmark-Testverfahren und systematische Kalibrierung).
 
 ## Kernaussagen
 
@@ -101,12 +101,12 @@ Dieser umfassende technische Bericht ist das Standardwerk zur Positionierung mob
 - Es gibt keine universelle Loesung fuer die Roboterpositionierung. Die Methoden gliedern sich in **relative** (Odometrie, Inertialnavigation) und **absolute** (Beacons, Landmarks, GPS, Map Matching) Verfahren (S. 10-11).
 - Die meisten praktischen Systeme kombinieren zwei Methoden: eine relative und eine absolute. Odometrie dient als "Backbone" zwischen absoluten Positionsfixes (S. 10).
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 | Aspekt | Relevanz |
 |---|---|
 | **Odometrie-Gleichungen (Gl. 1.2-1.7)** | Direkt implementiert in `diff_drive_kinematics.hpp` der ESP32-Firmware. Die Gleichungen fuer c_m, Delta_U, Delta_theta und Positionsaktualisierung sind identisch. |
-| **UMBmark-Testprotokoll** | Wird als Validierungsmethode in der Bachelorarbeit eingesetzt (4x4 m Quadrat, 5 Laeufe CW/CCW). |
+| **UMBmark-Testprotokoll** | Wird als Validierungsmethode in der Projektarbeit eingesetzt (4x4 m Quadrat, 5 Laeufe CW/CCW). |
 | **Fehlerparameter E_d und E_b** | Zentrale Kalibrierungsgroessen. E_d (Raddurchmesser-Verhaeltnis) und E_b (effektive Spurbreite) werden aus UMBmark-Daten berechnet und als Korrekturfaktoren in der Firmware hinterlegt. |
 | **Korrekturfaktor-Berechnung (Gl. 5.9-5.15)** | Liefert die mathematische Grundlage fuer die Odometrie-Kalibrierung des AMR. |
 | **Systematische vs. nicht-systematische Fehler** | Begruendet, warum auf glatten Hallenboeden (Intralogistik-Szenario) die Kalibrierung besonders wirksam ist. |

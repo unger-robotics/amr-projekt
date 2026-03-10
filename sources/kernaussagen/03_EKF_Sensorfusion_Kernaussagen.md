@@ -97,6 +97,6 @@ Genaue Zustandsschaetzung fuer mobile Roboter erfordert die Fusion von Daten aus
 - **Lineare Beschleunigung im Zustandsmodell**: Derzeit wird lineare Beschleunigung nicht im kinematischen Modell beruecksichtigt. Die Integration wuerde die Filtergenauigkeit erhoehen (S. 6).
 - **Weitere Zustandsschaetzungsknoten**: Geplant sind ein Unscented Kalman Filter (UKF) und ein Partikelfilter als zusaetzliche Knoten im *robot_localization*-Paket (S. 6).
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 Dieses Paper ist die Primaerquelle fuer das *robot_localization*-Paket, das im AMR-Projekt zur Sensorfusion von Rad-Encoder-Odometrie (ESP32) und IMU-Daten auf dem Raspberry Pi 5 eingesetzt wird. Die detaillierte Beschreibung des 12-dimensionalen EKF-Zustandsvektors, der partiellen Zustandsupdates und der pro-Sensor-Konfiguration ueber boolesche Vektoren ist direkt anwendbar auf die Konfiguration des EKF-Knotens im ROS 2 Navigation Stack. Besonders relevant ist die Erkenntnis, dass kinematische Constraints (z.B. keine laterale Geschwindigkeit beim Differentialantrieb) als implizite Nullmessungen fusioniert werden sollten, sowie die Bedeutung der IMU fuer eine stabile Yaw-Schaetzung, ohne die der EKF bei reiner Rad-Odometrie instabil wird. Die Joseph-Form-Kovarianzaktualisierung und die Moeglichkeit, die Prozessrauschkovarianz Q als Parameter zu exponieren, sind wichtige Implementierungsdetails fuer das Tuning des Filters im realen Einsatz.

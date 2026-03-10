@@ -1,0 +1,95 @@
+# 2. Grundlagen und Stand der Technik
+
+Dieses Kapitel klärt die technische Leitfrage der Arbeit: Welche Grundlagen tragen einen autonomen mobilen Roboter für den Transport von Kleinladungsträgern in einer veränderlichen Innenraumumgebung, und wie lassen sich diese Grundlagen in eine belastbare Systemarchitektur überführen? Die Darstellung folgt der Terminologie der Roadmap. Im Mittelpunkt stehen der Fahrkern, die Sensor- und Sicherheitsbasis, die verteilte ROS-2-Architektur, die Verfahren für Lokalisierung und Kartierung, die Navigation sowie die Interaktionsschichten für Bedienung und Sprache. Damit entsteht ein fachlicher Rahmen für die späteren Kapitel zur Anforderungsanalyse, zum Systemkonzept, zur Implementierung und zur Validierung.
+
+## 2.1 Autonome mobile Roboter in der Intralogistik
+
+Autonome mobile Roboter übernehmen Transportaufgaben in Umgebungen, deren Wege, Belegungen und Hindernisse nicht dauerhaft fest vorgegeben sind. Diese Eigenschaft unterscheidet sie von fahrerlosen Transportsystemen, die typischerweise an Leitlinien, Magnetbänder oder andere externe Führungsstrukturen gebunden sind. Für den Transport von Kleinladungsträgern in Werkstatt-, Labor- oder Wohnungsumgebungen ist diese Unterscheidung grundlegend, weil die Nutzbarkeit nicht nur von der Fahrfunktion, sondern vor allem von der Anpassungsfähigkeit an wechselnde Randbedingungen abhängt.
+
+Der fachliche Kern eines AMR liegt deshalb nicht in einem einzelnen Sensor oder in einer einzelnen Softwarebibliothek, sondern in der Kopplung mehrerer Funktionen: Bewegungserzeugung, Zustandsschätzung, Umgebungswahrnehmung, Pfadplanung, Bahnverfolgung und Sicherheitsreaktion. Die Roadmap ordnet diese Funktionen dem Fahrkern, der Sensor- und Sicherheitsbasis, der Lokalisierung und Kartierung sowie der Navigation zu. Bedienung, Telemetrie und Sprachsteuerung bilden davon getrennte Interaktionsschichten. Diese Trennung reduziert Komplexität und verhindert, dass Bedienfunktionen unkontrolliert in sicherheits- oder fahrkritische Abläufe eingreifen.
+
+Referenzplattformen aus Forschung und Lehre zeigen regelmäßig eine hierarchische Architektur. Mikrocontroller übernehmen hardwarenahe und zeitkritische Aufgaben, während leistungsfähigere Rechner Kartierung, Lokalisierung und Navigation ausführen. Die vorliegende Arbeit folgt diesem Grundmuster, verschärft jedoch die funktionale Trennung: Der Fahrkern und die Sensor- und Sicherheitsbasis laufen auf getrennten ESP32-S3-Knoten, während der Raspberry Pi 5 die hostseitigen ROS-2-Funktionen trägt. Diese Aufteilung dient nicht primär der Funktionsvielfalt, sondern der Entkopplung zeitkritischer Abläufe von blockierenden Sensor- oder Kommunikationszugriffen.
+
+## 2.2 Fahrkern: Differentialantrieb, Kinematik und Odometrie
+
+Der Fahrkern umfasst Antrieb, Odometrie und Grundbewegung. Für die vorliegende Plattform ist ein Differentialantrieb relevant. Zwei unabhängig angetriebene Räder erzeugen Translation und Rotation, indem sich ihre Winkelgeschwindigkeiten gezielt unterscheiden. Das Modell ist einfach genug für eine echtzeitfähige Regelung und zugleich hinreichend aussagekräftig für die Anbindung an Lokalisierung und Navigation.
+
+Die Vorwärtskinematik beschreibt, wie aus den gemessenen Radwinkelgeschwindigkeiten $\omega_R$ und $\omega_L$ die translatorische Geschwindigkeit $v$ und die Giergeschwindigkeit $\omega$ des Roboters entstehen. Mit dem Radradius $r$ und der Spurbreite $b$ gilt:
+
+$$
+v = \frac{r}{2} \left(\omega_R + \omega_L\right)
+$$
+
+$$
+\omega = \frac{r}{b} \left(\omega_R - \omega_L\right)
+$$
+
+Die Inverskinematik bildet den umgekehrten Weg ab. Sie wandelt eine Sollvorgabe aus dem Navigationssystem in Sollwerte für linkes und rechtes Rad um:
+
+$$
+\omega_L = \frac{v - \omega \cdot \frac{b}{2}}{r}
+$$
+
+$$
+\omega_R = \frac{v + \omega \cdot \frac{b}{2}}{r}
+$$
+
+Diese Gleichungen koppeln den hostseitigen Navigationsstack direkt an die hardwarenahe Antriebsregelung. Damit aus dieser Kopplung reproduzierbare Bewegung entsteht, muss der Fahrkern systematische Fehler begrenzen. Besonders relevant sind Abweichungen im effektiven Raddurchmesser, in der Spurbreite, im Schlupfverhalten und in Totzonen der Motoransteuerung. Die Roadmap formuliert deshalb quantitative Kriterien für Geradeausfahrt, Rotation, Stoppverhalten und Wiederholbarkeit. Erst ein charakterisierter Fahrkern kann als belastbare Grundlage für die nachfolgenden Ebenen dienen.
+
+Die Odometrie integriert Radbewegungen über die Zeit und liefert damit eine lokale Schätzung der Eigenbewegung. Ihr Vorteil liegt in der hohen Aktualisierungsrate und der unmittelbaren Verfügbarkeit. Ihre Schwäche liegt in der Fehlerakkumulation. Systematische Anteile, etwa das Verhältnis der effektiven Raddurchmesser $E_d$ und die effektive Spurbreite $E_b$, wirken über längere Fahrstrecken direkt auf die Positions- und Winkelschätzung. Die UMBmark-Kalibrierung adressiert genau diese Fehlerquellen durch definierte quadratische Fahrmanöver in beiden Drehrichtungen. Das Verfahren reduziert systematische Odometriefehler deutlich und schafft damit eine bessere Ausgangsbasis für Sensorfusion und Kartierung.
+
+## 2.3 Sensor- und Sicherheitsbasis
+
+Die Sensor- und Sicherheitsbasis umfasst alle Signale, die den Fahrkern stabilisieren, Gefährdungen früh erkennen oder den Energiezustand überwachen. In der Roadmap zählen dazu insbesondere IMU, Ultraschallsensor, Cliff-Sensor und Batterieüberwachung. Diese Ebene ergänzt den Fahrkern um Messgrößen, die aus den Radencodern allein nicht hervorgehen. Gleichzeitig bildet sie die erste technische Schutzschicht gegen unsichere Zustände.
+
+Die inertiale Messeinheit erfasst Drehraten und Beschleunigungen. Für mobile Robotik ist vor allem die Drehrate um die Hochachse relevant, weil sie kurzfristige Orientierungsänderungen auch dann abbildet, wenn Radschlupf die encoderbasierte Schätzung verfälscht. Dem steht eine typische Schwäche inertialer Sensoren gegenüber: Bias, Drift und temperaturabhängige Abweichungen verschieben die Schätzung über die Zeit. Deshalb genügt eine IMU nicht als alleinige Quelle der Pose. Sie gewinnt ihren Wert erst in der Fusion mit Odometrie und gegebenenfalls weiteren absoluten Referenzen.
+
+Der Front-Ultraschallsensor bildet den Nahbereich ab und ergänzt die flächige Umgebungswahrnehmung um eine einfache Distanzinformation im direkten Vorfeld. Die Batterieüberwachung erfasst Spannung und Strom, damit Unterspannung früh erkannt und Schutzreaktionen ausgelöst werden können. Beide Funktionen sind für einen reproduzierbaren Betrieb wichtiger als ihre vergleichsweise einfache Sensorik vermuten lässt: Ohne Energieüberwachung verliert jede Bewegungsbewertung an Vergleichbarkeit, und ohne Nahbereichserfassung steigt das Risiko, dass kurzreichweitige Hindernisse oder Betriebsgrenzen zu spät erkannt werden.
+
+Eine besondere Rolle übernimmt die hardwarenahe Kantenerkennung. Der Cliff-Sensor adressiert eine Gefährdung, bei der die Reaktionszeit entscheidend ist. Rein softwarebasierte Navigationsalgorithmen arbeiten mit Verarbeitungsketten, Scheduling und Kommunikationswegen, die zwar im Normalbetrieb ausreichen, aber keinen unmittelbaren Schutz gegen abrupte Kanten garantieren. Deshalb ordnet die Architektur das Signal des Cliff-Sensors einer Sicherheitslogik zu, die Bewegungsfreigaben sofort sperren und eine Notbremsung auslösen kann. Im Systemkontext handelt es sich nicht um Komfortfunktion, sondern um eine übergeordnete Schutzmaßnahme.
+
+## 2.4 Verteilte Software-Architektur mit ROS 2 und micro-ROS
+
+ROS 2 bildet die Middleware der hostseitigen Systemebene. Das Modell basiert auf ROS-2-Knoten, Topics, Diensten, Aktionen und Launch-Dateien. Der fachliche Nutzen dieser Struktur liegt in der klaren Trennung von Funktionen. Ein Knoten verarbeitet genau abgegrenzte Aufgaben, veröffentlicht Zustände oder Messwerte über Topics und lässt sich mit anderen Knoten über standardisierte Schnittstellen koppeln. Dadurch bleibt das Gesamtsystem erweiterbar, obwohl Wahrnehmung, Lokalisierung, Navigation, Bedienung und Audio parallel laufen.
+
+micro-ROS erweitert diesen Ansatz auf Mikrocontroller. Die beiden ESP32-S3-Knoten treten damit nicht als isolierte Hilfscontroller auf, sondern als eingebundene Teile der Gesamtarchitektur. Für die Arbeit ist diese Eigenschaft wesentlich, weil der Fahrkern und die Sensor- und Sicherheitsbasis Zustände direkt in das ROS-2-System einspeisen, ohne dass eine proprietäre Nebenarchitektur entstehen muss. Die Kommunikation erfolgt über serielle UART-Verbindungen beziehungsweise USB-CDC. Gegenüber drahtlosen Verbindungen bietet diese Kette reproduzierbarere Laufzeiten und eine geringere Störanfälligkeit. Für einen Regelkreis mit $50\,\mathrm{Hz}$ ist diese Entscheidung keine Nebenbedingung, sondern ein Stabilitätsfaktor.
+
+Die verteilte Aufteilung folgt einem klaren Architekturprinzip. Der Drive-Knoten verarbeitet Antriebsregelung und encodernahe Funktionen. Der Sensor-Knoten verarbeitet I2C-basierte Sensorik, Batteriedaten und sicherheitsnahe Signale. Der Raspberry Pi 5 übernimmt Kartierung, Lokalisierung, Navigation, Benutzeroberfläche und höhere Interaktionsfunktionen. Damit trennt die Architektur zeitkritische Abläufe von rechen- und kommunikationsintensiven Hostaufgaben. Gleichzeitig verhindert die physische Aufteilung, dass langsame Sensorzugriffe die Motorregelung blockieren. Diese Entkopplung ist ein direkter Beitrag zur Robustheit des Fahrkerns.
+
+## 2.5 Lokalisierung und Kartierung
+
+Lokalisierung und Kartierung beantworten zwei eng gekoppelte Fragen: Wo befindet sich der Roboter, und wie sieht die Umgebung aus? Für ein AMR mit veränderlicher Einsatzumgebung genügt weder reine Odometrie noch eine einmalig eingemessene Infrastruktur. Erforderlich ist eine Karten- und Transformationskette, die Sensordaten räumlich einordnet, Drift begrenzt und Wiederanlauf nach Neustart ermöglicht. Die Roadmap ordnet diese Aufgaben der Ebene „Lokalisierung und Kartierung“ zu. Zu dieser Ebene gehören LiDAR, TF-Baum, SLAM-Verfahren, Kartenrepräsentation und Re-Lokalisierung.
+
+Der LiDAR liefert Distanzmessungen in einer Ebene und erzeugt daraus einen Scan der Umgebung. Die geometrische Nutzbarkeit dieses Scans hängt nicht nur vom Sensor selbst ab, sondern auch von den zugehörigen Koordinatensystemen. Der TF-Baum verknüpft Basisrahmen, Sensorräume und Weltbezug. Fehler in diesen Transformationen erzeugen keine kleinen Schönheitsfehler, sondern systematische Kartenverzerrungen, instabile Re-Lokalisierung oder Sprünge zwischen Bezugssystemen. Deshalb gehört die Extrinsik des Sensors fachlich zur Kartierungsgrundlage und nicht erst zur späteren Optimierung.
+
+Für die simultane Lokalisierung und Kartierung kommt ein SLAM-Verfahren zum Einsatz. Die SLAM Toolbox kombiniert Scan-Matching mit einer graphbasierten Optimierung und erzeugt daraus eine konsistente Karte, obwohl Odometrie und Einzelmessungen fehlerbehaftet sind. Der fachliche Wert eines solchen Verfahrens liegt nicht nur in der Kartenerzeugung, sondern in der Korrektur lokaler Schätzfehler durch globale Konsistenzbedingungen. Das Ergebnis ist eine wiederverwendbare Karte, auf deren Basis spätere Zielanfahrten überhaupt erst reproduzierbar werden.
+
+## 2.6 Navigation, Sicherheitslogik und Missionslogik
+
+Navigation beginnt erst dann sinnvoll, wenn Fahrkern sowie Lokalisierung und Kartierung hinreichend belastbar arbeiten. Fachlich umfasst die Navigation die globale Pfadplanung, die lokale Bahnverfolgung, die Hindernisberücksichtigung und das Recovery-Verhalten. In der Roadmap ist diese Ebene explizit von der Bedienung getrennt. Diese Trennung verhindert, dass einzelne Bedienereignisse oder Sensoreffekte ungefiltert in Fahrbefehle münden.
+
+Nav2 stellt dafür einen modularen Navigationsstack bereit. Ein globaler Planer erzeugt einen Weg durch die Karte. Ein lokaler Regler verfolgt diesen Weg unter Berücksichtigung der Fahrzeugkinematik und der aktuellen Hindernissituation. Costmaps bilden statische und dynamische Hindernisse als Kostenfelder ab. Behavior Trees koordinieren diese Funktionsblöcke und verknüpfen Standardverhalten mit Fehlerreaktionen wie Anhalten, Rücksetzen oder Neuversuch. Gegenüber starren Zustandsmaschinen bietet diese Struktur eine bessere Erweiterbarkeit bei gleichzeitig klaren Entscheidungswegen.
+
+Für die vorliegende Arbeit reicht reine Navigation jedoch nicht aus. Zwischen Interaktion und Bewegungsfreigabe ist eine Freigabelogik erforderlich. Sie bewertet, ob ein Befehl zulässig ist, in welchem Betriebsmodus sich das System befindet und ob Sicherheitsbedingungen erfüllt sind. Erst danach entsteht ein Missionskommando, etwa eine Zielanfahrt oder ein definierter Betriebswechsel. Die eigentliche Bewegungsausgabe bleibt weiterhin an Navigation, Fahrkern und Sicherheitslogik gebunden. Damit gilt als Architekturregel:
+
+$$
+\text{Interaktion} \rightarrow \text{Freigabelogik} \rightarrow \text{Missionskommando} \rightarrow \text{Navigation} \rightarrow \text{Fahrkern}
+$$
+
+Diese Kette begrenzt das Risiko unsicherer Direktansteuerung und macht Entscheidungswege nachvollziehbar. Sie ist damit nicht nur ein Softwaremuster, sondern ein Sicherheitsprinzip.
+
+## 2.7 Bedien- und Leitstandsebene
+
+Die Bedien- und Leitstandsebene stellt Beobachtbarkeit und Eingriffsmöglichkeiten bereit, ohne die innere Fahrlogik aufzulösen. In der Roadmap gehören dazu Dashboard, Telemetrie, manuelle Kommandos, Audio-Rückmeldungen und weitere Betriebsanzeigen. Fachlich entspricht diese Ebene einem Leitstandkonzept: Zustände werden sichtbar, Diagnoseinformationen werden gesammelt, Bedienhandlungen werden protokollierbar und Betriebsarten werden nachvollziehbar umgeschaltet.
+
+Für ein MINT-orientiertes Entwicklungsprojekt hat diese Ebene einen doppelten Nutzen. Erstens verbessert sie den Betrieb, weil Akkuzustand, Sensordaten, Kamerabilder, Fahrzustände und Fehlermeldungen zentral beobachtbar werden. Zweitens verbessert sie die Validierung, weil Versuche reproduzierbarer dokumentiert und Fehlersituationen klarer zugeordnet werden können. Eine Benutzeroberfläche ist damit kein Zusatzmodul am Rand, sondern ein Werkzeug zur technischen Beherrschung des Gesamtsystems. Die Roadmap nennt dafür bereits konkrete Schnittstellen wie `/cmd_vel`, `/servo_cmd`, `/hardware_cmd` und `/audio/play`. Im Architekturkontext gilt jedoch auch hier: Bedienung darf Fahrfunktionen auslösen, aber sie darf die Sicherheitslogik nicht umgehen.
+
+## 2.8 Sprachschnittstelle als sichere Interaktionsschicht
+
+Die Sprachschnittstelle erweitert die Bedien- und Leitstandsebene um natürliche Eingaben. Sie ersetzt weder Navigation noch Sicherheitslogik. Ihr fachlicher Zweck besteht darin, Sprachsignale in klar definierte Befehlsabsichten zu überführen und nur freigegebene Operationen an die übrige Systemarchitektur weiterzugeben. Die Roadmap ordnet dafür das ReSpeaker Mic Array v2.0, Sprach-zu-Text-Verarbeitung, Intent-Erkennung, Befehlsmultiplexing und Sprachrückmeldung einer eigenen Teilarchitektur zu.
+
+Das Sicherheitsprinzip dieser Ebene lautet: Kein Sprachbefehl darf direkt in eine rohe Motoransteuerung übersetzt werden. Zulässig ist nur die Kette aus Sprachbefehl, Intent, Freigabelogik und Missionskommando. Sichere Sofortkommandos wie „Stopp“ oder „Halt“ dürfen ausschließlich einen sicheren Halt auslösen. Betriebsmodus-Kommandos dürfen Zustände wechseln, aber keine direkten Geschwindigkeiten setzen. Missionskommandos dürfen Zielpunkte oder Aktionen anfordern, nicht jedoch die Schutzlogik außer Kraft setzen. Informationskommandos dienen der Zustandsabfrage und unterstützen die Bedienung bei geringem Risiko. Damit bleibt die Sprachschnittstelle eine Interaktionsschicht und wird nicht zu einem unsicheren Parallelpfad in den Fahrkern.
+
+## 2.9 Zusammenfassung
+
+Der Stand der Technik zeigt kein einzelnes Schlüsselmodul, sondern eine funktional geschichtete Architektur. Der Fahrkern erzeugt reproduzierbare Grundbewegung. Die Sensor- und Sicherheitsbasis ergänzt den Fahrkern um robuste Mess- und Schutzfunktionen. ROS 2 und micro-ROS koppeln Host- und Mikrocontroller-Ebene in einer verteilten Struktur. Lokalisierung und Kartierung schaffen den räumlichen Bezug. Navigation überführt Kartenwissen in sichere Zielanfahrten. Bedien- und Leitstandsebene sowie Sprachschnittstelle erweitern das System um beobachtbare und kontrollierte Interaktion, ohne die Sicherheitslogik zu unterlaufen. Aus dieser Schichtung folgt die zentrale Konsequenz für die weitere Arbeit: Zusätzliche Funktionen erhöhen nur dann den Systemwert, wenn der Fahrkern, die Sicherheitslogik und die Freigabelogik zuvor belastbar geschlossen sind.

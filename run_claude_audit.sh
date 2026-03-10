@@ -31,11 +31,11 @@ run_block 1 "Technische Dokumentation (docs/)" \
 run_block 2 "Projektplanung (planung/)" \
   "Analysiere die Kernkonfigurationen und den Code in amr/. Pruefe alle Dokumente im Verzeichnis planung/ (insbesondere systemdokumentation.md, roadmap.md, DoD-checkliste-phasen.md). Kontrolliere, ob die Systemarchitektur (die 3 Ebenen), Metriken (z. B. 50 ms Latenz, Topic-Raten) und Terminologien exakt mit dem aktuellen Implementierungsstand in amr/ uebereinstimmen. Dokumentiere alle Diskrepanzen." &
 
-run_block 3 "Bachelorarbeit Kap. 1-4 (Theorie)" \
-  "Lese CLAUDE.md und die Code-Struktur in amr/. Pruefe in bachelorarbeit/ die Dateien kapitel_01_einleitung.md, kapitel_02_grundlagen.md, kapitel_03_anforderungsanalyse.md und kapitel_04_systemkonzept.md. Stelle sicher, dass Hardware-Zuordnungen, Terminologie-Normen (z. B. 'Fahrkern', 'Intent') und das beschriebene Systemkonzept fehlerfrei dem tatsaechlichen Code in amr/ entsprechen." &
+run_block 3 "Projektarbeit Kap. 1-4 (Theorie)" \
+  "Lese CLAUDE.md und die Code-Struktur in amr/. Pruefe in projektarbeit/ die Dateien kapitel_01_einleitung.md, kapitel_02_grundlagen.md, kapitel_03_anforderungsanalyse.md und kapitel_04_systemkonzept.md. Stelle sicher, dass Hardware-Zuordnungen, Terminologie-Normen (z. B. 'Fahrkern', 'Intent') und das beschriebene Systemkonzept fehlerfrei dem tatsaechlichen Code in amr/ entsprechen." &
 
-run_block 4 "Bachelorarbeit Kap. 5-7 (Implementierung)" \
-  "Analysiere den finalen Code und die Test-Ergebnisse in amr/. Pruefe in bachelorarbeit/ die Dateien kapitel_05_implementierung.md, kapitel_06_validierung.md, kapitel_07_fazit.md sowie das Sammeldokument latex/kap1-7.tex. Vergleiche jede genannte Zahl, Validierungsmetrik (z. B. CAN vs. USB Raten, 921600 Baudrate) und jedes Implementierungsdetail exakt mit dem realen Code. Fuehre alle gefundenen Widersprueche auf." &
+run_block 4 "Projektarbeit Kap. 5-7 (Implementierung)" \
+  "Analysiere den finalen Code und die Test-Ergebnisse in amr/. Pruefe in projektarbeit/ die Dateien kapitel_05_implementierung.md, kapitel_06_validierung.md, kapitel_07_fazit.md sowie das Sammeldokument latex/kap1-7.tex. Vergleiche jede genannte Zahl, Validierungsmetrik (z. B. CAN vs. USB Raten, 921600 Baudrate) und jedes Implementierungsdetail exakt mit dem realen Code. Fuehre alle gefundenen Widersprueche auf." &
 
 # Warten bis alle 4 fertig sind
 wait
@@ -47,7 +47,7 @@ echo ""
   echo "Datum: $(date '+%Y-%m-%d %H:%M:%S')"
   echo ""
   echo "Referenzbasis: Quellcode und Konfigurationen in amr/ sowie CLAUDE.md"
-  echo "Pruefziele: docs/, planung/, bachelorarbeit/"
+  echo "Pruefziele: docs/, planung/, projektarbeit/"
   echo "---"
   echo ""
 
@@ -55,8 +55,8 @@ echo ""
     case $i in
       1) echo "## 1. Technische Dokumentation (docs/)" ;;
       2) echo "## 2. Projektplanung und Systemdokumentation (planung/)" ;;
-      3) echo "## 3. Bachelorarbeit: Theorie und Konzept (Kapitel 1-4)" ;;
-      4) echo "## 4. Bachelorarbeit: Implementierung und Validierung (Kapitel 5-7)" ;;
+      3) echo "## 3. Projektarbeit: Theorie und Konzept (Kapitel 1-4)" ;;
+      4) echo "## 4. Projektarbeit: Implementierung und Validierung (Kapitel 5-7)" ;;
     esac
     echo ""
     cat "$TMPDIR_AUDIT/block_${i}.md"

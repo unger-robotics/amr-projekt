@@ -1,8 +1,8 @@
- # Exposé-Gliederung und Literaturstrategie für eine AMR-Bachelorarbeit mit ROS 2
+ # Exposé-Gliederung und Literaturstrategie für eine AMR-Projektarbeit mit ROS 2
 
 ## Zusammenfassung
 
-Dieses Dokument liefert zwei konkrete Arbeitsergebnisse für eine ingenieurwissenschaftlich anwendungsorientierte Bachelorarbeit (B.Sc.) über eine autonome mobile Roboterplattform (AMR) mit dem Hardware-Stack ESP32-S3 (Dual-Core, FreeRTOS, micro-ROS) + Raspberry Pi 5 (ROS 2 Humble) + Differentialantrieb.
+Dieses Dokument liefert zwei konkrete Arbeitsergebnisse für eine ingenieurwissenschaftlich anwendungsorientierte Projektarbeit (B.Sc.) über eine autonome mobile Roboterplattform (AMR) mit dem Hardware-Stack ESP32-S3 (Dual-Core, FreeRTOS, micro-ROS) + Raspberry Pi 5 (ROS 2 Humble) + Differentialantrieb.
 
 **Ergebnis 1** definiert eine vollständige, am VDI 2206 V-Modell ausgerichtete Gliederung (Exposé) mit Seitenproportionierung.
 
@@ -53,7 +53,7 @@ Abkürzungsverzeichnis
 
 
 
-#### 1.2 Zielsetzung und Forschungsfragen
+#### 1.2 Zielsetzung und Projektfragen
 
 * **Hauptziel:** Entwicklung und Validierung eines ROS 2-basierten Navigationssystems für einen Low-Cost-AMR, das Industrienormen (Echtzeit, Genauigkeit) annähert.
 * **Scope (Abgrenzung):**
@@ -61,10 +61,10 @@ Abkürzungsverzeichnis
 * *Out of Scope:* Serienzuteilung (CE-Kennzeichnung), Außeneinsatz, Schwerlast > 20 kg.
 
 
-* **Forschungsfragen (FF):** Hier definieren wir 3 Fragen, die du im Fazit (Kap. 7) beantwortest:
-* **FF1 (Architektur):** Wie lässt sich auf einem ESP32-Mikrocontroller eine echtzeitfähige Regelung unter Nutzung von micro-ROS realisieren, ohne dass WLAN-Latenzen die Motorsteuerung destabilisieren? *[Bezug: Woche 3/Dual-Core]*
-* **FF2 (Präzision):** Welchen Einfluss hat eine systematische Odometrie-Kalibrierung (UMBmark) auf die absolute Navigationsgenauigkeit eines Low-Cost-Differentialantriebs? *[Bezug: Woche 4/DeGiorgi]*
-* **FF3 (Funktionalität):** Ist ein monokulares Kamerasystem mit ArUco-Markern hinreichend robust, um einen mechanischen Ladekontakt ( cm) autonom zu treffen? *[Bezug: Woche 4/Docking]*
+* **Projektfragen (PF):** Hier definieren wir 3 Fragen, die du im Fazit (Kap. 7) beantwortest:
+* **PF1 (Architektur):** Wie lässt sich auf einem ESP32-Mikrocontroller eine echtzeitfähige Regelung unter Nutzung von micro-ROS realisieren, ohne dass WLAN-Latenzen die Motorsteuerung destabilisieren? *[Bezug: Woche 3/Dual-Core]*
+* **PF2 (Präzision):** Welchen Einfluss hat eine systematische Odometrie-Kalibrierung (UMBmark) auf die absolute Navigationsgenauigkeit eines Low-Cost-Differentialantriebs? *[Bezug: Woche 4/DeGiorgi]*
+* **PF3 (Funktionalität):** Ist ein monokulares Kamerasystem mit ArUco-Markern hinreichend robust, um einen mechanischen Ladekontakt ( cm) autonom zu treffen? *[Bezug: Woche 4/Docking]*
 
 
 

@@ -240,17 +240,17 @@ KRITERIEN: list[dict[str, Any]] = [
     },
 ]
 
-# Forschungsfragen-Zuordnung
-FF_ZUORDNUNG = {
-    "FF1": {
+# Projektfragen-Zuordnung
+PF_ZUORDNUNG = {
+    "PF1": {
         "titel": "Echtzeit (PID + Safety)",
         "bereiche": ["PID", "Safety", "Sensor"],
     },
-    "FF2": {
+    "PF2": {
         "titel": "Praezision (Encoder + Kinematik + UMBmark + SLAM + Navigation)",
         "bereiche": ["Encoder", "Kinematik", "UMBmark", "SLAM", "Navigation", "RPLIDAR"],
     },
-    "FF3": {
+    "PF3": {
         "titel": "Docking (ArUco-Marker)",
         "bereiche": ["Docking"],
     },
@@ -538,26 +538,26 @@ def generiere_report(ergebnis_verzeichnis):
 
     zeilen.append("")
 
-    # Forschungsfragen-Zuordnung
-    zeilen.append("## Forschungsfragen-Zuordnung")
+    # Projektfragen-Zuordnung
+    zeilen.append("## Projektfragen-Zuordnung")
     zeilen.append("")
 
-    for ff_key, ff_info in FF_ZUORDNUNG.items():
-        relevante = [b for b in bewertungen if b["bereich"] in ff_info["bereiche"]]
+    for pf_key, pf_info in PF_ZUORDNUNG.items():
+        relevante = [b for b in bewertungen if b["bereich"] in pf_info["bereiche"]]
 
         if not relevante:
-            ff_status = "AUSSTEHEND"
+            pf_status = "AUSSTEHEND"
         elif all(b["status"] == "PASS" for b in relevante):
-            ff_status = "PASS"
+            pf_status = "PASS"
         elif any(b["status"] == "FAIL" for b in relevante):
-            ff_status = "FAIL"
+            pf_status = "FAIL"
         else:
-            ff_status = "AUSSTEHEND"
+            pf_status = "AUSSTEHEND"
 
         bereiche_str = ", ".join(
             f"{b['bereich']}/{b['kriterium']}={b['status']}" for b in relevante
         )
-        zeilen.append(f"- **{ff_key} ({ff_info['titel']}):** {ff_status}")
+        zeilen.append(f"- **{pf_key} ({pf_info['titel']}):** {pf_status}")
         zeilen.append(f"  - Kriterien: {bereiche_str}")
 
     zeilen.append("")

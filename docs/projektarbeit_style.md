@@ -1,4 +1,4 @@
-# Stilregeln Bachelorarbeit
+# Stilregeln Projektarbeit
 
 ## Sprache
 

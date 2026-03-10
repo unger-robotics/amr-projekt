@@ -1,4 +1,4 @@
-# Ruff-Konfiguration fuer AMR-Bachelorarbeit
+# Ruff-Konfiguration fuer amr-projekt
 # Python-Linting + Formatierung (ersetzt Flake8, Black, isort)
 
 target-version = "py310"
@@ -9,7 +9,7 @@ extend-exclude = [
     "amr/pi5/ros2_ws/src/my_bot/my_bot",
     ".venv", ".pio", "node_modules", "dashboard",
     "build", "install", "log",
-    "suche", "sources", "bachelorarbeit",
+    "suche", "sources", "projektarbeit",
 ]
 
 [lint]

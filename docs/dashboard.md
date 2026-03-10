@@ -21,14 +21,14 @@ Das Dashboard ist die Weboberflaeche fuer Telemetrie, Kameraansicht, Kartenansic
 Benutzeroberflaeche lokal starten:
 
 ```bash
-cd ~/AMR-Bachelorarbeit/dashboard
+cd ~/amr-projekt/dashboard
 npm run dev -- --host
 ```
 
 ### Statischer Produktivmodus
 
 ```bash
-cd ~/AMR-Bachelorarbeit/dashboard
+cd ~/amr-projekt/dashboard
 npm run build
 python3 -m http.server 3000 -d dist/
 ```
@@ -40,7 +40,7 @@ Das Dashboard-Backend wird im ROS2-Launch ueber `use_dashboard:=True` aktiviert.
 Beispiel:
 
 ```bash
-cd ~/AMR-Bachelorarbeit/amr/docker
+cd ~/amr-projekt/amr/docker
 ./run.sh ros2 launch my_bot full_stack.launch.py \
     use_dashboard:=True use_rviz:=False
 ```

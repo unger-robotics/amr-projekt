@@ -2,7 +2,7 @@
 
 ## Zweck
 
-Ablage- und Arbeitsregeln fuer Quellen, PDFs und Kernaussagen der Bachelorarbeit.
+Ablage- und Arbeitsregeln fuer Quellen, PDFs und Kernaussagen der Projektarbeit.
 
 ## Verzeichnisstruktur
 
@@ -35,14 +35,14 @@ Fuer jede relevante Quelle wird eine Kernaussagen-Datei in `sources/kernaussagen
 3. Relevanz fuer die eigene Arbeit
 4. Querverweise zu betroffenen Kapiteln
 
-Die Datei `00_Uebersicht_Querverweise.md` verknuepft Quellen mit Kapiteln der Bachelorarbeit.
+Die Datei `00_Uebersicht_Querverweise.md` verknuepft Quellen mit Kapiteln der Projektarbeit.
 
 ## LaTeX-Workflow
 
-Die Bachelorarbeit liegt in `bachelorarbeit/latex/`:
+Die Projektarbeit liegt in `projektarbeit/latex/`:
 
 ```
-bachelorarbeit/latex/
+projektarbeit/latex/
   main.tex          # Hauptdokument
   amr.cls           # Dokumentklasse
   literatur.bib     # BibTeX-Datenbank
@@ -57,7 +57,7 @@ bachelorarbeit/latex/
 - Einheiten mit Bezug und sauberer Schreibweise (LaTeX-Mathe konsistent)
 - Begriffe, Annahmen und Randbedingungen vor der Bewertung nennen
 
-### Stilregeln (aus bachelorarbeit_style.md)
+### Stilregeln (aus projektarbeit_style.md)
 
 - Wissenschaftlich-technischer Stil: aktiv, neutral, konsistent
 - Keine UTF-8-Umlaute in Markdown-Dateien (ae, oe, ue, ss)

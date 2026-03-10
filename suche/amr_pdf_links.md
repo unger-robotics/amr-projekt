@@ -1,4 +1,4 @@
-# PDF-Links und Zugangsstatus – AMR-Bachelorarbeit
+# PDF-Links und Zugangsstatus – AMR-Projektarbeit
 
 Stand: 10. Februar 2026
 
@@ -56,7 +56,7 @@ Die folgende Tabelle listet alle priorisierten Quellen mit direktem PDF-Link, Zu
 - **PDF 1. Auflage (frei):** http://vigir.missouri.edu/~gdesouza/Research/MobileRobotics/Autonomous_Mobile_Robots_Siegwart-Nourbakhsh.pdf
 - **ETH-Vorlesungsfolien Kap. 4 (Kinematik):** https://rpg.ifi.uzh.ch/docs/teaching/2024/Ch4_AMRobots.pdf
 - **Relevante Kapitel:** Kap. 3 (Kinematik, Diff-Drive-Herleitung) — ca. 40 Seiten
-- **Hinweis:** Für die Bachelorarbeit reicht die 1. Auflage aus. Die 2. Auflage ergänzt Kap. zu visueller Odometrie (Scaramuzza), das für das Projekt nicht benötigt wird.
+- **Hinweis:** Für die Projektarbeit reicht die 1. Auflage aus. Die 2. Auflage ergänzt Kap. zu visueller Odometrie (Scaramuzza), das für das Projekt nicht benötigt wird.
 
 ---
 
@@ -202,14 +202,14 @@ Die folgende Tabelle listet alle priorisierten Quellen mit direktem PDF-Link, Zu
 
 - **Status:** 📖 Lehrbuch (MIT Press)
 - **Zugang:** Fernleihe; Draft-Kapitel teilweise über Google Scholar auffindbar
-- **Hinweis:** Kap. 5 (Motion Models) und Kap. 6 (Robot Perception) sind die relevanten Abschnitte. Für die Bachelorarbeit genügt es, die EKF-Grundlagen aus Moore & Stouch (2014, Nr. 7) und Abaza (2025, Nr. 10) zu beziehen.
+- **Hinweis:** Kap. 5 (Motion Models) und Kap. 6 (Robot Perception) sind die relevanten Abschnitte. Für die Projektarbeit genügt es, die EKF-Grundlagen aus Moore & Stouch (2014, Nr. 7) und Abaza (2025, Nr. 10) zu beziehen.
 
 ---
 
 ### Siciliano, Sciavicco et al. (2009) — Robotics: Modelling, Planning and Control
 
 - **Status:** 📖 Springer-Lehrbuch
-- **Zugang:** Fernleihe; für die Bachelorarbeit nicht zwingend benötigt
+- **Zugang:** Fernleihe; für die Projektarbeit nicht zwingend benötigt
 - **Hinweis:** Regelungstheorie für PID-Tuning findet sich ausreichend in Albarran (2023) und Abaza (2025)
 
 ---
@@ -285,4 +285,4 @@ Durch die freien Alternativen sind nun fast alle Quellen **ohne Kosten und ohne 
 
 ### Gesamtbilanz
 
-**Kein einziger Kauf erforderlich.** Die 18 frei verfügbaren Quellen plus die offizielle Dokumentation (micro.ros.org, Nav2, ROS 2) liefern eine vollständige Literaturbasis für die Bachelorarbeit.
+**Kein einziger Kauf erforderlich.** Die 18 frei verfügbaren Quellen plus die offizielle Dokumentation (micro.ros.org, Nav2, ROS 2) liefern eine vollständige Literaturbasis für die Projektarbeit.

@@ -38,7 +38,7 @@ ros2 run my_bot sensor_test
 Alle Skripte werden im Docker-Container ausgefuehrt:
 
 ```bash
-cd ~/AMR-Bachelorarbeit/amr/docker
+cd ~/amr-projekt/amr/docker
 ./run.sh ros2 run my_bot <skriptname>
 ```
 

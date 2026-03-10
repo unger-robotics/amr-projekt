@@ -42,7 +42,7 @@ pre-commit install
 - **Regelsets:** E/W (pycodestyle), F (Pyflakes), I (isort), UP (pyupgrade), B (bugbear), C4 (comprehensions), SIM (simplify), C90 (McCabe)
 - **McCabe max-complexity:** 15
 - **Ignoriert:** E501 (Zeilenlaenge vom Formatter), E741 (mehrdeutige Variablennamen), SIM108 (Ternary), B008 (Funktionsaufruf in Default-Argument)
-- **Ausgeschlossene Verzeichnisse:** `my_bot/my_bot` (Symlink-Verzeichnis), `.venv`, `.pio`, `node_modules`, `dashboard`, `build`, `install`, `log`, `suche`, `sources`, `bachelorarbeit`
+- **Ausgeschlossene Verzeichnisse:** `my_bot/my_bot` (Symlink-Verzeichnis), `.venv`, `.pio`, `node_modules`, `dashboard`, `build`, `install`, `log`, `suche`, `sources`, `projektarbeit`
 - **Per-file-ignores:** C901-Ausnahmen fuer `dashboard_bridge.py`, `hailo_inference_node.py`, `host_hailo_runner.py`, `hardware_info.py`; F401 fuer Import-Fallback-Pattern
 - **Format:** Double quotes, Space indent
 

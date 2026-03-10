@@ -112,7 +112,7 @@ Die Autoren analysieren das Callback-Scheduling und das Kommunikationsmodul von 
 - Der ROS 2 Agent beeinflusst die Echtzeitleistung signifikant, da er auf einem Remote-System laeuft (S. 17).
 - Zukuenftige Arbeit: Integration von embeddedRTPS zur Eliminierung der ROS 2 Agent-Abhaengigkeit (S. 17).
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 | Aspekt | Relevanz |
 |---|---|

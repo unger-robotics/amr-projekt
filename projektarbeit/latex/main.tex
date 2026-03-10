@@ -1,0 +1,45 @@
+% =============================================================================
+%  main.tex
+% =============================================================================
+\documentclass{amr}
+
+\usepackage{amsmath}
+
+% Korrekturen für Textumbruch
+\let\oldunderscore\_
+\renewcommand{\_}{\oldunderscore\allowbreak}
+\setlength{\emergencystretch}{1.5em}
+\tolerance=1000
+
+\begin{document}
+
+% Titelseite & Verzeichnis
+\maketitlepage
+\tableofcontents
+\clearpage
+
+% Zusammenfassung
+\abstractpage{
+Die vorliegende Arbeit dokumentiert die Konzeption, den Entwurf und die experimentelle Validierung eines kostengünstigen autonomen mobilen Roboters (AMR) für strukturierte Innenräume.
+
+Im Zentrum steht eine funktional geschichtete Architektur, die eine strikte Trennung zwischen zeitkritischen Regelungsaufgaben und rechenintensiven Navigationsfunktionen realisiert. Der fahrkritische Kern basiert auf einer verteilten Architektur mit zwei ESP32-S3-Mikrocontrollern, während die übergeordnete Lokalisierung und Kartierung sowie die Missionsplanung auf einem Raspberry Pi 5 unter ROS 2 ausgeführt werden. Ein wesentliches Merkmal des Systems ist die integrierte Sicherheits- und Freigabelogik, die den Vorrang des sicheren Zustands vor Navigationskommandos technisch sicherstellt. Die Validierung belegt eine reproduzierbare Grundbewegung sowie eine belastbare Hindernisvermeidung und schafft damit eine stabile Grundlage für künftige Erweiterungen in der intelligenten Interaktion.
+}
+\clearpage
+
+% Hauptteil
+\include{kap1}
+\include{kap2}
+\include{kap3}
+\include{kap4}
+\include{kap5}
+\include{kap6}
+\include{kap7}
+
+\appendix
+\listoffigures
+\listoftables
+
+\begin{thebibliography}{99}
+\end{thebibliography}
+
+\end{document}

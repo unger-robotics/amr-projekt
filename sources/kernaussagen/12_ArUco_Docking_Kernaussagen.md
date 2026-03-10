@@ -93,7 +93,7 @@ Die Studie stellt ein kostenguenstiges autonomes Docking-System fuer AMRs vor, d
 
 ---
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 ### Direkt anwendbar (Kap. 5.5 -- Docking, Kap. 6.4 -- Diskussion)
 

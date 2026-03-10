@@ -108,26 +108,26 @@ Die Autoren argumentieren, dass Rad-Odometrie gegenueber IMU bei Indoor-Robotern
 - Fusion von 2D-LiDAR und Rad-Odometrie ist bisher wenig erforscht
 - Die Dreierkombination LiDAR + IMU + Rad-Odometrie bietet die beste Kosten-Nutzen-Relation
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 ### Direkte Relevanz
 
-1. **Sensorfusion-Architektur:** Das Paper zeigt, wie Rad-Odometrie (Encoder) als dritter Sensor neben LiDAR und IMU den SLAM-Prozess verbessert. Dies validiert den Ansatz der Bachelorarbeit, Encoder-basierte Odometrie vom ESP32 an den Raspberry Pi fuer SLAM zu senden.
+1. **Sensorfusion-Architektur:** Das Paper zeigt, wie Rad-Odometrie (Encoder) als dritter Sensor neben LiDAR und IMU den SLAM-Prozess verbessert. Dies validiert den Ansatz der Projektarbeit, Encoder-basierte Odometrie vom ESP32 an den Raspberry Pi fuer SLAM zu senden.
 
-2. **Ground Constraint (3-DoF-Reduktion):** Die Beschraenkung auf 3-DoF (x, y, Gier) durch Ground Constraints ist direkt auf den Differentialantrieb-Roboter der Bachelorarbeit uebertragbar und erhoet die Robustheit der Zustandsschaetzung.
+2. **Ground Constraint (3-DoF-Reduktion):** Die Beschraenkung auf 3-DoF (x, y, Gier) durch Ground Constraints ist direkt auf den Differentialantrieb-Roboter der Projektarbeit uebertragbar und erhoet die Robustheit der Zustandsschaetzung.
 
-3. **Vergleich mit Cartographer:** Die Bachelorarbeit nutzt SLAM Toolbox (basierend auf aehnlichen Prinzipien wie Cartographer). Die quantitativen Ergebnisse zeigen, dass eng gekoppelte Ansaetze die Genauigkeit verbessern - relevant fuer die Diskussion der SLAM-Leistung.
+3. **Vergleich mit Cartographer:** Die Projektarbeit nutzt SLAM Toolbox (basierend auf aehnlichen Prinzipien wie Cartographer). Die quantitativen Ergebnisse zeigen, dass eng gekoppelte Ansaetze die Genauigkeit verbessern - relevant fuer die Diskussion der SLAM-Leistung.
 
-4. **Degenerationsprobleme in Korridoren:** Die Analyse zeigt, dass lange Korridore (geometrisch aehnliche Umgebungen) ein Hauptproblem fuer 2D-LiDAR-SLAM sind. Die Rad-Odometrie hilft, dies abzumildern - ein Argument fuer zuverlaessige Encoder-Odometrie in der Bachelorarbeit.
+4. **Degenerationsprobleme in Korridoren:** Die Analyse zeigt, dass lange Korridore (geometrisch aehnliche Umgebungen) ein Hauptproblem fuer 2D-LiDAR-SLAM sind. Die Rad-Odometrie hilft, dies abzumildern - ein Argument fuer zuverlaessige Encoder-Odometrie in der Projektarbeit.
 
 ### Indirekte Relevanz
 
-5. **Echtzeit-Anforderungen:** Die Tracking-Zeiten von 9-15 ms pro Frame bestaetigen, dass die 50-Hz-Regelschleife (20 ms) des ESP32 der Bachelorarbeit im typischen Bereich fuer Indoor-SLAM liegt.
+5. **Echtzeit-Anforderungen:** Die Tracking-Zeiten von 9-15 ms pro Frame bestaetigen, dass die 50-Hz-Regelschleife (20 ms) des ESP32 der Projektarbeit im typischen Bereich fuer Indoor-SLAM liegt.
 
-6. **Kartenaufloesung:** Die 5-cm-Kartenaufloesung der Bachelorarbeit entspricht dem Standard fuer 2D-Grid-Maps in der SLAM-Literatur.
+6. **Kartenaufloesung:** Die 5-cm-Kartenaufloesung der Projektarbeit entspricht dem Standard fuer 2D-Grid-Maps in der SLAM-Literatur.
 
 ### Abgrenzung
 
-- 2DLIW-SLAM nutzt ein eigenes SLAM-Framework mit Joint Optimization, waehrend die Bachelorarbeit auf bestehende ROS2-Pakete (SLAM Toolbox, Nav2) setzt
+- 2DLIW-SLAM nutzt ein eigenes SLAM-Framework mit Joint Optimization, waehrend die Projektarbeit auf bestehende ROS2-Pakete (SLAM Toolbox, Nav2) setzt
 - Die LiDAR-Eingabe bei 20-40 Hz ist hoeher als bei vielen kostenguenstigen LiDAR-Sensoren
 - Die enge Kopplung erfordert erheblich mehr Implementierungsaufwand als die lose Kopplung ueber separate ROS2-Nodes

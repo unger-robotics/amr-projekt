@@ -152,32 +152,32 @@ Der Prototyp demonstriert micro-ROS im praktischen Einsatz:
 - 32S verbindet sich direkt per Wi-Fi zum micro-ROS Agent
 - Port-Forwarding-Ergebnisse sind moeglicherweise nicht identisch mit Ethernet oder direktem Serial
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 ### Direkte Relevanz
 
-1. **ESP32 micro-ROS Performance:** Die Thesis liefert die einzige umfassende Latenzmessung fuer ESP32 mit micro-ROS. Die Ping-RTT von 129 ms (Durchschnitt ueber alle Frequenzen) gibt einen realistischen Referenzwert fuer die Kommunikationslatenz in der Bachelorarbeit. Die Bachelorarbeit verwendet UART-Transport statt Wi-Fi, was deterministischere Ergebnisse erwarten laesst.
+1. **ESP32 micro-ROS Performance:** Die Thesis liefert die einzige umfassende Latenzmessung fuer ESP32 mit micro-ROS. Die Ping-RTT von 129 ms (Durchschnitt ueber alle Frequenzen) gibt einen realistischen Referenzwert fuer die Kommunikationslatenz in der Projektarbeit. Die Projektarbeit verwendet UART-Transport statt Wi-Fi, was deterministischere Ergebnisse erwarten laesst.
 
-2. **FreeRTOS + micro-ROS auf ESP32:** Die Thesis bestaetigt, dass FreeRTOS und micro-ROS auf dem ESP32 zusammenarbeiten (ESP-IDF v4.3). Die Bachelorarbeit nutzt ebenfalls FreeRTOS mit Dual-Core-Partitionierung (Core 0: micro-ROS, Core 1: PID-Regelung), was ueber den Ansatz der Thesis hinausgeht.
+2. **FreeRTOS + micro-ROS auf ESP32:** Die Thesis bestaetigt, dass FreeRTOS und micro-ROS auf dem ESP32 zusammenarbeiten (ESP-IDF v4.3). Die Projektarbeit nutzt ebenfalls FreeRTOS mit Dual-Core-Partitionierung (Core 0: micro-ROS, Core 1: PID-Regelung), was ueber den Ansatz der Thesis hinausgeht.
 
-3. **micro-ROS Agent und Transport:** Die Thesis beschreibt detailliert den micro-ROS Agent als Vermittler zwischen micro-ROS-Nodes und dem ROS2-Netzwerk. Die Bachelorarbeit verwendet den gleichen Agent-Ansatz ueber UART/Serial Transport statt UDP.
+3. **micro-ROS Agent und Transport:** Die Thesis beschreibt detailliert den micro-ROS Agent als Vermittler zwischen micro-ROS-Nodes und dem ROS2-Netzwerk. Die Projektarbeit verwendet den gleichen Agent-Ansatz ueber UART/Serial Transport statt UDP.
 
-4. **QoS-Einstellungen:** Die Thesis verwendet Best-Effort QoS (Sensor-Data-Profil), was auch fuer die Odometrie-Publikation der Bachelorarbeit sinnvoll ist, da nur die aktuellsten Daten relevant sind.
+4. **QoS-Einstellungen:** Die Thesis verwendet Best-Effort QoS (Sensor-Data-Profil), was auch fuer die Odometrie-Publikation der Projektarbeit sinnvoll ist, da nur die aktuellsten Daten relevant sind.
 
-5. **Stabilitaet bei hoeheren Frequenzen:** Die Beobachtung, dass die Stabilitaet mit zunehmender Frequenz steigt, ist relevant fuer die 20-Hz-Odometrie-Publishrate der Bachelorarbeit (hoeher als die getesteten 10-16.7 Hz).
+5. **Stabilitaet bei hoeheren Frequenzen:** Die Beobachtung, dass die Stabilitaet mit zunehmender Frequenz steigt, ist relevant fuer die 20-Hz-Odometrie-Publishrate der Projektarbeit (hoeher als die getesteten 10-16.7 Hz).
 
-6. **Portabilitaet der micro-ROS-Integration:** Die Bestaetigung, dass micro-ROS auf verschiedenen MCU-Plattformen funktioniert, stuetzt die Wahl des ESP32 fuer die Bachelorarbeit.
+6. **Portabilitaet der micro-ROS-Integration:** Die Bestaetigung, dass micro-ROS auf verschiedenen MCU-Plattformen funktioniert, stuetzt die Wahl des ESP32 fuer die Projektarbeit.
 
 ### Indirekte Relevanz
 
-7. **Vergleichsprojekt Phueakthong et al.:** Die Thesis referenziert ein aehnliches Projekt (Raspberry Pi 4 + Pico RP2040 + micro-ROS + Differentialantrieb), das SLAM mit Cartographer und Navigation mit Nav2 implementiert (S. 8). Dies ist ein direktes Vergleichsprojekt zur Bachelorarbeit.
+7. **Vergleichsprojekt Phueakthong et al.:** Die Thesis referenziert ein aehnliches Projekt (Raspberry Pi 4 + Pico RP2040 + micro-ROS + Differentialantrieb), das SLAM mit Cartographer und Navigation mit Nav2 implementiert (S. 8). Dies ist ein direktes Vergleichsprojekt zur Projektarbeit.
 
-8. **Analyse-Methodik:** Die Kombination aus MCU-Tracing (Tracealyzer/Ozone) und ROS2-Tracing (ros2_tracing) koennte fuer die Validierung der Bachelorarbeit uebernommen werden.
+8. **Analyse-Methodik:** Die Kombination aus MCU-Tracing (Tracealyzer/Ozone) und ROS2-Tracing (ros2_tracing) koennte fuer die Validierung der Projektarbeit uebernommen werden.
 
 ### Abgrenzung
 
-- Die Thesis verwendet UDP/Wi-Fi-Transport fuer den ESP32, die Bachelorarbeit UART/Serial - UART ist deterministischer und hat weniger Overhead
-- Die Thesis testet keine Dual-Core-Nutzung des ESP32, waehrend die Bachelorarbeit Core 0 und Core 1 gezielt partitioniert
-- Die Ping-Pong-Messung ist ein synthetischer Benchmark; die Bachelorarbeit hat reale cmd_vel/Odometry-Kommunikation
-- Die Testfrequenzen (10-16.7 Hz) sind niedriger als die 20-Hz-Odometrie und 50-Hz-PID-Regelung der Bachelorarbeit
+- Die Thesis verwendet UDP/Wi-Fi-Transport fuer den ESP32, die Projektarbeit UART/Serial - UART ist deterministischer und hat weniger Overhead
+- Die Thesis testet keine Dual-Core-Nutzung des ESP32, waehrend die Projektarbeit Core 0 und Core 1 gezielt partitioniert
+- Die Ping-Pong-Messung ist ein synthetischer Benchmark; die Projektarbeit hat reale cmd_vel/Odometry-Kommunikation
+- Die Testfrequenzen (10-16.7 Hz) sind niedriger als die 20-Hz-Odometrie und 50-Hz-PID-Regelung der Projektarbeit
 - Die Thesis konnte keine exakten micro-ROS-Delay-Werte ableiten - nur Obergrenzen und Stabilitaetsaussagen

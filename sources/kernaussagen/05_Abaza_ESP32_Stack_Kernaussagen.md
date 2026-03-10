@@ -166,9 +166,9 @@ Die Studie evaluiert einen KI-gestuetzten Ansatz zur dynamischen Anpassung von K
 - Dynamische Schwellenwerte: Umschalten zwischen AI und statischem Fallback bei aggressiver Dynamik (S. 22)
 - Deployment in industriellen Umgebungen mit variablen Lasten und unebenen Boeden (S. 22)
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
-Diese Studie ist die **wichtigste Vergleichsquelle** fuer die eigene Bachelorarbeit, da sie einen nahezu identischen Hardware-Stack verwendet: ESP32-Mikrocontroller fuer Low-Level-Motorsteuerung, Raspberry Pi als High-Level-Rechner, ROS 2 Humble als Middleware und Differentialantrieb als Kinematikmodell. Der zentrale Unterschied liegt in der Kommunikationsschicht: Abaza nutzt ein eigenes `ROS_ESP32_Bridge`-Paket ueber USB-Serial mit `ros2_control`/`diff_drive_controller`, waehrend die eigene Arbeit micro-ROS ueber UART einsetzt -- ein architektonisch relevanter Vergleichspunkt fuer die Diskussion von Echtzeit-Determinismus und Protokoll-Overhead.
+Diese Studie ist die **wichtigste Vergleichsquelle** fuer die eigene Projektarbeit, da sie einen nahezu identischen Hardware-Stack verwendet: ESP32-Mikrocontroller fuer Low-Level-Motorsteuerung, Raspberry Pi als High-Level-Rechner, ROS 2 Humble als Middleware und Differentialantrieb als Kinematikmodell. Der zentrale Unterschied liegt in der Kommunikationsschicht: Abaza nutzt ein eigenes `ROS_ESP32_Bridge`-Paket ueber USB-Serial mit `ros2_control`/`diff_drive_controller`, waehrend die eigene Arbeit micro-ROS ueber UART einsetzt -- ein architektonisch relevanter Vergleichspunkt fuer die Diskussion von Echtzeit-Determinismus und Protokoll-Overhead.
 
 Die EKF-Konfiguration mit `robot_localization` (odom0 im Differential-Modus, imu0 als absolute Orientierung, 50 Hz Takt) bietet eine direkt uebertragbare Referenzkonfiguration. Die identifizierte Problematik statischer Kovarianzen bei variablen Betriebsbedingungen (Motorschlupf, Oberflaechenwechsel, thermisches Sensorrauschen) ist unmittelbar relevant fuer die Validierung des eigenen Systems.
 

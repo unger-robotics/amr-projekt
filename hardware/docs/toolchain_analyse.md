@@ -255,7 +255,7 @@ Rollback ist einfach und risikoarm:
    ABI-Wechsel (GCC 8→14) ist riskant und schwer zu debuggen.
 
 3. **pioarduino-Abhaengigkeit:** Der Community-Fork ist funktional, aber fuer eine
-   Bachelorarbeit ist eine nicht-offizielle Abhaengigkeit problematisch.
+   Projektarbeit ist eine nicht-offizielle Abhaengigkeit problematisch.
 
 4. **Aufwand/Nutzen:** Die C++17-Features (`std::clamp`, `constexpr`, `[[nodiscard]]`)
    verbessern die Code-Qualitaet, sind aber keine funktionalen Requirements. Der
@@ -263,20 +263,20 @@ Rollback ist einfach und risikoarm:
 
 5. **Arduino Core v2 EOL:** Arduino-ESP32 v2.0.17 ist die letzte v2-Version. Espressif
    entwickelt nur noch v3.x weiter. Ein Upgrade wird mittelfristig notwendig, aber
-   nicht waehrend der Bachelorarbeit.
+   nicht waehrend der Projektarbeit.
 
 ### 6.2 Bezug zum V-Modell (automotive_software_engineering.pdf)
 
 Die Entscheidung folgt dem V-Modell-Grundsatz: Aenderungen an der Toolchain erfordern
 eine vollstaendige Re-Verifikation aller Testebenen (Unit Test, Integrationstest,
-Systemtest). Dies ist im Zeitrahmen der Bachelorarbeit nicht leistbar.
+Systemtest). Dies ist im Zeitrahmen der Projektarbeit nicht leistbar.
 
 MISRA C++:2023 Compliance (basierend auf C++17) wird als Verbesserungspotential im
 Ausblick der Arbeit dokumentiert.
 
 ### 6.3 Ausblick / Zukuenftige Migration
 
-Fuer eine zukuenftige Migration nach Abschluss der Bachelorarbeit:
+Fuer eine zukuenftige Migration nach Abschluss der Projektarbeit:
 
 1. **Zieltoolchain:** pioarduino 55.03.37 (GCC 14.2, C++17/C++23)
 2. **Voraussetzung:** micro_ros_platformio mit stabilem ESP-IDF 5.x Support

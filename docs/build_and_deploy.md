@@ -108,7 +108,7 @@ for port in ['/dev/ttyACM0', '/dev/ttyACM1']:
 "
 
 # Docker-Full-Stack starten
-cd ~/AMR-Bachelorarbeit/amr/docker
+cd ~/amr-projekt/amr/docker
 ./run.sh ros2 launch my_bot full_stack.launch.py \
     use_slam:=True use_dashboard:=True use_camera:=True use_vision:=True \
     use_rviz:=False use_nav:=False \
@@ -127,7 +127,7 @@ Erfolgsindikatoren in Terminal 1:
 ### Terminal 2: Hailo-Runner auf dem Host starten
 
 ```bash
-cd ~/AMR-Bachelorarbeit
+cd ~/amr-projekt
 PYTHONUNBUFFERED=1 python3 amr/scripts/host_hailo_runner.py \
     --model hardware/models/yolov8s.hef --threshold 0.35
 ```
@@ -135,7 +135,7 @@ PYTHONUNBUFFERED=1 python3 amr/scripts/host_hailo_runner.py \
 Falls keine Hailo-Hardware angeschlossen ist:
 
 ```bash
-cd ~/AMR-Bachelorarbeit
+cd ~/amr-projekt
 PYTHONUNBUFFERED=1 python3 amr/scripts/host_hailo_runner.py --fallback
 ```
 
@@ -147,7 +147,7 @@ Kriterium:
 ### Terminal 3: Dashboard-Benutzeroberflaeche starten
 
 ```bash
-cd ~/AMR-Bachelorarbeit/dashboard
+cd ~/amr-projekt/dashboard
 npm run dev -- --host
 ```
 
@@ -158,7 +158,7 @@ Danach ist die Benutzeroberflaeche ueber den konfigurierten Host erreichbar.
 Nach dem Start sollte in einem zweiten Shell-Zugang zum Container geprueft werden:
 
 ```bash
-cd ~/AMR-Bachelorarbeit/amr/docker
+cd ~/amr-projekt/amr/docker
 ./run.sh exec bash
 ```
 

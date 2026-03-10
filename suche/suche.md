@@ -6,7 +6,7 @@ schritt 2: konkrete Suchstrategie für die AMR-Literaturrecherche ausarbeiten, E
 Guter Plan. Bevor ich mit der Recherche starte, drei kurze Rückfragen, um beide Schritte passgenau zuzuschneiden:Diese Angaben helfen mir, sowohl die Exposé-Gliederung (Proportionierung, Tiefe der Grundlagenkapitel) als auch die Suchstrategie (Suchbegriffe, Datenbankauswahl) präzise auf die Arbeit zuzuschneiden.
 
 F: Welchen Abschluss zielt die Arbeit an?
-A: B.Sc. (Bachelorarbeit)
+A: B.Sc. (Projektarbeit)
 
 F: Welche Schwerpunkte soll die Literaturrecherche abdecken? (Wähle alle zutreffenden aus)
 A: Sensorfusion (LiDAR, IMU, Kamera), micro-ROS / ESP32-Einbindung, Kinematik & Regelung (PID, Odometrie), SLAM & Navigation (Nav2, Cartographer)

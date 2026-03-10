@@ -1,0 +1,171 @@
+\chapter{Validierung und Bewertung der Ergebnisse}
+
+\section{Leitfrage, Prüfumfang und Datengrundlage}
+
+Die Leitfrage dieses Kapitels lautet: In welchem Maß erfüllt das implementierte System die Kernanforderungen an Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung, Navigation sowie Sicherheitslogik unter den Randbedingungen eines Innenraums?
+
+Die Validierung stützt sich auf projektinterne Messdaten aus einem $10\,\mathrm{m} \times 10\,\mathrm{m}$ großen Testareal mit statischen und dynamischen Hindernissen. Die Referenzpositionen wurden mit einem Laserdistanzmessgerät erfasst. Für die Offline-Analyse zeichnete \texttt{rosbag2} die Topics \texttt{/odom}, \texttt{/scan}, \texttt{/cmd\_vel} und \texttt{/tf} auf. Die Datengrundlage verbindet damit Bewegungsdaten des Fahrkerns mit Zustandsdaten aus Lokalisierung und Kartierung sowie der Navigation.
+
+Der Prüfumfang gliedert sich in drei Ebenen. Die erste Ebene verifiziert den Fahrkern sowie die Sensor- und Sicherheitsbasis. Die zweite Ebene validiert Lokalisierung und Kartierung, Navigation und Sicherheitslogik im Gesamtsystem. Die dritte Ebene betrachtet erweiterte Funktionen wie Vision und Docking. Diese dritte Ebene gehört nicht zum zwingenden Kern der Roadmap, ist für die technische Einordnung des Prototyps jedoch relevant.
+
+Tabelle 6.1 ordnet die Messgrößen den Kernzielen der Arbeit zu.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Zuordnung der Messgrößen zu den Kernzielen (Tabelle 6.1)}
+  \small
+  \begin{tabularx}{\textwidth}{l l L}
+    \toprule
+    \textbf{Prüfbereich} & \textbf{Messgröße} & \textbf{Kriterium} \\
+    \midrule
+    Fahrkern & Regeltakt, Jitter, Odometriefehler & reproduzierbare Grundbewegung und deterministische Verarbeitung \\
+    \addlinespace
+    Sensor- und Sicherheitsbasis & Kantenreaktionszeit, Sensorkette & sicherer Halt bei erkannter Gefahr \\
+    \addlinespace
+    Lokalisierung und Kartierung & Absolute Trajectory Error, Kartenqualität & belastbare Karte und Re-Lokalisierungsfähigkeit \\
+    \addlinespace
+    Navigation & Zielabweichung, Recovery-Verhalten, Passierabstand & sichere Zielanfahrt auf Kartenbasis \\
+    \addlinespace
+    Sicherheitslogik & Übersteuerung konkurrierender Kommandos & Vorrang des sicheren Zustands \\
+    \addlinespace
+    Erweiterungsfunktionen & Inferenzzeit, Docking-Toleranz, Erfolgsquote & Einordnung von Vision und Docking außerhalb des Kernpfads \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Verifikation von Fahrkern sowie Sensor- und Sicherheitsbasis}
+
+\subsection{Deterministische Verarbeitung des Fahrkerns}
+
+Der Fahrkern muss Bewegungsbefehle mit konstantem Zeitverhalten umsetzen. Gemessen wurde deshalb der Regelzyklus der PID-Schleife auf dem Drive-Knoten. Die Schleife hielt einen Takt von $50\,\mathrm{Hz}$ bei einem Jitter von unter $2\,\mathrm{ms}$ ein. Der Datenverlust der micro-ROS-Kommunikation lag unter $0{,}1\,\%$.
+
+Das Ergebnis belegt eine hinreichend deterministische Verarbeitung für den Fahrkern. Die Trennung zwischen Drive-Knoten und Sensor-Knoten erfüllt damit die zentrale Architekturabsicht, blockierende Sensorzugriffe von der Motorregelung fernzuhalten. Das Ergebnis stützt insbesondere die nichtfunktionale Anforderung N01.
+
+\subsection{Odometrie und Kalibrierung}
+
+Die Grundbewegung des Fahrkerns wurde über das UMBmark-Verfahren und eine distanzbasierte Referenzfahrt geprüft. Zehn bidirektionale Testläufe zeigten vor der Kalibrierung deutliche Drift-Cluster. Nach der Kalibrierung mit einem effektiven Raddurchmesser von $65{,}67\,\mathrm{mm}$ und angepasster Spurbreite sank der systematische Fehler um den Faktor $10$ bis $20$.
+
+Für eine Geradeausfahrt über $1{,}0\,\mathrm{m}$ reduzierte sich der laterale Fehler bei aktivierter IMU-Heading-Korrektur von $3{,}6\,\mathrm{cm}$ auf $2{,}1\,\mathrm{cm}$. Ohne IMU-Korrektur betrug der Gierfehler $+5{,}57^\circ$ (Gyro) bzw.\ $+2{,}91^\circ$ (Odometrie) und überschritt damit das Akzeptanzkriterium von $5^\circ$ knapp. Mit aktivierter IMU-Korrektur sank der Gyro-Gierfehler auf $+0{,}06^\circ$ bei einem Odometrie-Gierfehler von $+1{,}49^\circ$. Der Odometrie-Distanzfehler lag bei $0{,}5\,\%$ ohne bzw.\ $0{,}3\,\%$ mit IMU-Korrektur.
+
+In einem ergänzenden Rotationstest sollte der Fahrkern eine Drehung um $360^\circ$ ausführen. Die tatsächlich erreichte Rotation betrug $358{,}1^\circ$, der Restfehler somit $1{,}88^\circ$. Der gemessene Gyro-Bias lag bei $-0{,}012\,\mathrm{deg/s}$ über eine Testdauer von $14{,}4\,\mathrm{s}$. Das Ergebnis liegt deutlich unter dem Akzeptanzkriterium von $5^\circ$ und belegt die Reproduzierbarkeit der Rotation nach Kalibrierung.
+
+Das Ergebnis zeigt: Der Fahrkern erreicht nach Kalibrierung sowohl für Geradeausfahrt als auch für Rotation eine reproduzierbare Grundbewegung. Ohne IMU-Korrektur verfehlt die Geradeausfahrt das Heading-Kriterium knapp, mit IMU-Korrektur wird es klar eingehalten. Für die Zielgröße einer belastbaren Innenraum-Navigation ist die Kalibrierung einschließlich IMU-Heading-Korrektur damit nicht optional, sondern Voraussetzung.
+
+\subsection{Reaktionszeit der Sicherheitskette}
+
+Die Sicherheitskette wurde über manuelle Kantenüberfahrten bei einer Fahrgeschwindigkeit von $0{,}2\,\mathrm{m/s}$ geprüft. Gemessen wurde die vollständige End-to-End-Latenz von der Detektion am Kanten-Sensor über das Topic \texttt{/cliff}, die Verarbeitung im \texttt{cliff\_safety\_node} und den daraus resultierenden Stoppbefehl an den Drive-Knoten. Die gesamte Reaktionszeit betrug $2{,}0\,\mathrm{ms}$ bei einem Bremsweg von $1{,}0\,\mathrm{cm}$.
+
+Das Ergebnis erfüllt die zentrale Forderung der Sensor- und Sicherheitsbasis: Ein erkannter Gefahrenzustand führt reproduzierbar in einen sicheren Halt. Die End-to-End-Latenz von $2{,}0\,\mathrm{ms}$ liegt deutlich unter einem regulären Replanning-Zyklus der Navigation. Für Kantenereignisse greift damit der Schutzpfad vor dem Komfortpfad.
+
+\subsection{Einzelbewertung der Sensorik}
+
+Die Sensor- und Sicherheitsbasis umfasst neben dem Kanten-Sensor weitere Subsysteme, deren Leistungsfähigkeit einzeln bewertet wurde. Die Messungen entstanden unter kontrollierten Laborbedingungen mit definierten Referenzabständen und -winkeln.
+
+\paragraph{Ultraschall (HC-SR04).}
+Der Ultraschallsensor erreichte eine Messrate von $9{,}2\,\mathrm{Hz}$ bei einem nutzbaren Bereich von $0{,}02$ bis $4{,}0\,\mathrm{m}$ und einem Öffnungswinkel von $0{,}26\,\mathrm{rad}$. Bei einem Referenzabstand von $23\,\mathrm{cm}$ betrug die Genauigkeit $0{,}8\,\%$ mit einer Wiederholbarkeit von $\sigma = 1{,}6\,\mathrm{mm}$. Die ISR-basierte Auswertung vermeidet blockierende Wartezeiten in der Sensor-Task und belastet die IMU-Abtastung nicht.
+
+\paragraph{Cliff-Sensor (MH-B IR).}
+Der Cliff-Sensor erreichte eine Rate von $16{,}8\,\mathrm{Hz}$ bei null Fehlalarmen über die gesamte Testreihe. Die Erkennungszeit für einen Kantenübergang betrug $1\,\mathrm{ms}$. Das Ergebnis bestätigt die Eignung als sicherheitskritischer Eingang für die Cliff-Safety-Kette.
+
+\paragraph{IMU (MPU-6050).}
+Die IMU lieferte eine Datenrate von $30$ bis $35\,\mathrm{Hz}$. Die Gyro-Drift betrug $0{,}463\,\mathrm{deg/min}$, der Beschleunigungs-Bias $0{,}43\,\mathrm{m/s^2}$. In einem $90^\circ$-Rotationstest erreichte der Fahrkern $88{,}5^\circ$, was einem Fehler von $1{,}45^\circ$ entspricht. Der gemessene Gyro-Drift bleibt für die Heading-Korrektur im Innenraumbetrieb tragbar, da die SLAM-Korrektur langfristige Drift kompensiert.
+
+\paragraph{Batterie (INA260).}
+Die Batterieüberwachung erfasst Spannung, Strom und Leistung mit $2\,\mathrm{Hz}$ über den I2C-Bus. Die Unterspannungsabschaltung bei $9{,}5\,\mathrm{V}$ mit einer Hysterese von $0{,}3\,\mathrm{V}$ wurde im Betrieb verifiziert und löst einen CAN-basierten Shutdown aus.
+
+Zusammen mit der Cliff-Safety-Kette belegen diese Einzelmessungen, dass die Sensor- und Sicherheitsbasis alle sicherheitskritischen Eingänge mit ausreichender Rate und Genauigkeit bereitstellt.
+
+\section{Validierung von Lokalisierung, Kartierung und Navigation}
+
+\subsection{Lokalisierung und Kartierung im Innenraum}
+
+Lokalisierung und Kartierung wurden über den Absolute Trajectory Error, kurz ATE, und die Wiederholbarkeit der erzeugten Karte bewertet. Der mittlere ATE der \texttt{slam\_toolbox} betrug $0{,}16\,\mathrm{m}$. Das Akzeptanzkriterium lag bei $0{,}20\,\mathrm{m}$.
+
+Der gemessene ATE unterschreitet das Akzeptanzkriterium um $0{,}04\,\mathrm{m}$. Für einen kostengünstigen Innenraum-Prototyp ist das Ergebnis ausreichend, um Ziele auf Kartenbasis anzufahren und nach einem Neustart wieder zu lokalisieren. Die Kernanforderung an Lokalisierung und Kartierung gilt damit auf Basis der vorliegenden Messdaten als erfüllt.
+
+\subsection{Zielanfahrt und Bahnverfolgung}
+
+Die Qualität der Zielanfahrt wurde über Punkt-zu-Punkt-Fahrten bewertet. Die mittlere Positionsabweichung betrug $6{,}4\,\mathrm{cm}$, die mittlere Winkelabweichung $4{,}2^\circ$.
+
+Diese Werte zeigen eine für die Innenraumanwendung brauchbare Zielgenauigkeit. Die Abweichungen liegen in einer Größenordnung, die eine zuverlässige Navigation zwischen definierten Zielpunkten erlaubt. Die Zielanfahrt bestätigt zugleich, dass die zuvor kalibrierte Odometrie, die IMU-Korrektur und die globale Kartenreferenz im Betrieb zusammenwirken.
+
+\subsection{Hindernisvermeidung und Recovery-Verhalten}
+
+Die Navigation musste nicht nur Zielpunkte erreichen, sondern auf Störungen geordnet reagieren. Der Nav2-Stack umfuhr statische Hindernisse mit einem minimalen Passierabstand von $12\,\mathrm{cm}$. In Situationen ohne gültigen Pfad lösten die Recovery-Verfahren \texttt{Spin}, \texttt{BackUp} und \texttt{Wait} insgesamt $80\,\%$ der Blockaden eigenständig auf.
+
+Das Ergebnis zeigt zwei Punkte. Erstens arbeitet die lokale Bahnverfolgung auch in Engstellen noch kontrolliert. Zweitens beseitigt das Recovery-Verhalten einen großen Teil typischer Sackgassen, jedoch nicht alle. Die Navigation erreicht damit ein belastbares, aber noch nicht vollständiges Robustheitsniveau.
+
+\subsection{Vorrang des sicheren Zustands}
+
+Die Sicherheitslogik wurde in einer gezielt erzeugten Konfliktsituation geprüft. Die Navigation plante einen formal gültigen Pfad über eine geöffnete Bodenluke. Sobald der Kanten-Sensor am Sensor-Knoten auslöste, überstimmte der \texttt{cliff\_safety\_node} die anliegenden Navigationskommandos. Das Fahrzeug kam $3\,\mathrm{cm}$ vor der Absturzkante zum Stillstand.
+
+Die Messung belegt den Vorrang des sicheren Zustands vor einer weiterhin gültigen Bewegungsplanung. Für die Architektur ist dieses Ergebnis zentral: Nicht das zuletzt berechnete Bewegungsziel entscheidet über die Aktorik, sondern die Sicherheitslogik mit höherer Priorität. Damit bestätigt der Versuch die vorgesehene Hierarchie aus Navigation, Sicherheitslogik und Fahrkern.
+
+\section{Einordnung der Bedien- und Leitstandsebene sowie der Systemlast}
+
+Die Bedien- und Leitstandsebene bildet das Betriebswerkzeug des Systems. Für die Validierung relevant sind Beobachtbarkeit, Zustandsdarstellung und die Trennung zwischen fahrkritischem Kern und benutzerseitiger Interaktion. Die Datengrundlage dieses Kapitels enthält dafür keine eigenständige Usability-Messreihe, wohl aber Last- und Betriebsdaten.
+
+Der Raspberry Pi 5 blieb im regulären Betrieb unter $80\,\%$ CPU-Last. Der Docker-Container für ROS-2-Integration und MJPEG-Stream lag im Mittel bei etwa $35\,\%$ Auslastung. Der hardwarebeschleunigte Vision-Prozess \texttt{host\_hailo\_runner.py} lief nativ auf dem Host und band den PCIe-Beschleuniger ohne erhebliche Zusatzlast für die CPU ein. Auf Mikrocontroller-Ebene beanspruchte die Firmware des Drive-Knotens auf Core 1 weniger als $40\,\%$ der verfügbaren Rechenkapazität. Der Regulated Pure Pursuit Controller auf dem Raspberry Pi erreichte Rechenraten von mehr als $2{.}000\,\mathrm{Hz}$ bei einem geforderten Minimum von $100\,\mathrm{Hz}$.
+
+Diese Messdaten belegen keine Benutzerqualität im engeren Sinn, sie belegen jedoch die technische Tragfähigkeit der Ebenentrennung. Telemetrie, Video und erweiterte Vision belasten den Fahrkern nicht in kritischem Maß. Für die Bedien- und Leitstandsebene bedeutet das: Die Beobachtung des Systems bleibt möglich, ohne die fahrkritische Kette strukturell zu destabilisieren.
+
+\section{Explorative Bewertung von Vision und Docking}
+
+\subsection{Vision-Pipeline}
+
+Die Vision-Pipeline gehört zur erweiterten Interaktions- und Wahrnehmungsebene oberhalb des Fahrkerns. Die gemessene Inferenzzeit des Hailo-8L mit dem Modell \texttt{yolov8s} betrug im Mittel rund $34\,\mathrm{ms}$ pro Bild. Das Projektkriterium lag bei weniger als $50\,\mathrm{ms}$ pro Bild.
+
+Damit erfüllt die lokale Bildverarbeitung das vorgegebene Zeitkriterium. Das Ergebnis rechtfertigt die Einordnung der Vision-Pipeline als echtzeitnahe Erweiterung. Gleichwohl bleibt die Funktion außerhalb des zwingenden Sicherheits- und Navigationskerns, da aus der Objekterkennung keine direkte, unüberwachte Motoransteuerung folgt.
+
+\subsection{Docking als Erweiterungsfunktion}
+
+Das Docking-Verfahren verbindet ArUco-Marker-Erkennung mit der Vision-Pipeline. Von $10$ Docking-Versuchen erreichten $8$ die vorgegebene Toleranz von kleiner als $2\,\mathrm{cm}$ lateralem Versatz und kleiner als $5^\circ$ Orientierungsfehler. Der mittlere laterale Versatz betrug $1{,}3\,\mathrm{cm}$, der mittlere Orientierungsfehler $2{,}8^\circ$.
+
+Die beiden Fehlversuche traten bei Beleuchtungsartefakten und ungünstigem initialem Seitenversatz außerhalb des Kamerasichtfelds auf. Das Ergebnis zeigt eine technisch brauchbare, aber noch nicht robuste Erweiterungsfunktion. Für eine Kernanforderung wäre eine Erfolgsquote von $80\,\%$ zu niedrig. Als Zusatzfunktion des Prototyps ist das Ergebnis jedoch aussagekräftig, weil es die Grenzen monokularer Bildauswertung unter variabler Beleuchtung offenlegt.
+
+\section{Soll-Ist-Vergleich der Anforderungen}
+
+Tabelle 6.2 fasst die Anforderungen aus Kapitel 3 mit dem Stand der vorliegenden Messdaten zusammen. Die Bewertung unterscheidet bewusst zwischen „erfüllt", „teilweise erfüllt" und „nicht geprüft". Diese Unterscheidung trennt belegte Ergebnisse von plausiblen, aber noch unvollständig vermessenen Annahmen.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Soll-Ist-Vergleich der Anforderungen (Tabelle 6.2)}
+  \small
+  \begin{tabularx}{\textwidth}{l L l L}
+    \toprule
+    \textbf{ID} & \textbf{Anforderung} & \textbf{Bewertung} & \textbf{Begründung} \\
+    \midrule
+    F01 & Fahrkern mit reproduzierbarer Grundbewegung & erfüllt & Geradeausfahrt und $360^\circ$-Rotation sind nach Kalibrierung mit IMU-Korrektur belegt. Lateraler Fehler $2{,}1\,\mathrm{cm}$, Heading-Fehler $0{,}06^\circ$, Rotationsfehler $1{,}88^\circ$. \\
+    \addlinespace
+    F02 & Sensor- und Sicherheitsbasis mit priorisierten Schutzfunktionen & erfüllt & End-to-End-Latenz der Cliff-Safety-Kette $2{,}0\,\mathrm{ms}$, Bremsweg $1{,}0\,\mathrm{cm}$. Ultraschall ($9{,}2\,\mathrm{Hz}$, $0{,}8\,\%$ Fehler), Cliff ($16{,}8\,\mathrm{Hz}$, $0$ Fehlalarme), IMU ($30$--$35\,\mathrm{Hz}$, $1{,}45^\circ$ Rotationsfehler) und Batterie einzeln bewertet. \\
+    \addlinespace
+    F03 & Lokalisierung und Kartierung für den Innenraum & erfüllt & Der mittlere ATE von $0{,}16\,\mathrm{m}$ unterschreitet das Kriterium von $0{,}20\,\mathrm{m}$. \\
+    \addlinespace
+    F04 & Navigation mit Missionslogik und Recovery-Verhalten & teilweise erfüllt & Zielanfahrt, Hindernisvermeidung und Recovery-Verhalten sind belegt. Die Recovery-Verfahren lösen $80\,\%$ der Blockaden, aber nicht alle. \\
+    \addlinespace
+    F05 & Bedien- und Leitstandsebene als Betriebswerkzeug & teilweise erfüllt & Lastdaten und Betriebsfähigkeit stützen die technische Umsetzbarkeit. Eine eigenständige Messreihe zur Bedienqualität wurde nicht durchgeführt. \\
+    \addlinespace
+    F06 & Freigabelogik mit sicheren Zustandsübergängen & teilweise erfüllt & Der Vorrang des sicheren Zustands ist über den Cliff-Versuch belegt. Eine vollständige Prüfung aller Kommandoklassen liegt nicht vor. \\
+    \addlinespace
+    F07 & Sprachschnittstelle als anschlussfähige Erweiterung & nicht geprüft & Die Sprachschnittstelle ist architektonisch vorbereitet, aber nicht Gegenstand der Kernvalidierung. \\
+    \addlinespace
+    N01 & Deterministische Verarbeitung im Fahrkern & erfüllt & $50\,\mathrm{Hz}$ Regeltakt, Jitter unter $2\,\mathrm{ms}$, geringe Paketverluste. \\
+    \addlinespace
+    N02 & Modulare und wartbare Systemstruktur & nicht geprüft & Die Architektur ist umgesetzt, wurde in diesem Kapitel aber nicht mit einem separaten Wartbarkeitskriterium vermessen. \\
+    \addlinespace
+    N03 & Robuste Kommunikation und Fehlerbehandlung & teilweise erfüllt & Geringer Datenverlust ist belegt. Ein vollständiger Wiederanlauftest der Kommunikationskette wird in diesem Kapitel nicht dokumentiert. \\
+    \addlinespace
+    N04 & Beobachtbarkeit und Nachvollziehbarkeit & teilweise erfüllt & \texttt{rosbag2}, Telemetrie und Lastdaten zeigen Beobachtbarkeit. Ein explizites Diagnosekriterium wurde nicht separat vermessen. \\
+    \addlinespace
+    N05 & Erweiterbarkeit der Interaktionsschicht & nicht geprüft & Die Architektur erlaubt Vision, Audio und Sprachschnittstelle, wurde dafür aber nicht mit einem formalen Kriterium getestet. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Schlussfolgerung aus der Validierung}
+
+Die Validierung zeigt ein klares Gesamtbild. Der Prototyp erfüllt die Kernziele für den Fahrkern mit reproduzierbarer Grundbewegung, für die Sensor- und Sicherheitsbasis, für Lokalisierung und Kartierung, für die sichere Navigation auf Kartenbasis und für die deterministische Verarbeitung im Fahrkern. Die Sicherheitslogik greift im Konfliktfall zuverlässig vor der Navigation ein. Damit ist die zentrale Architekturentscheidung der Arbeit technisch bestätigt.
+
+Die Sensor- und Sicherheitsbasis ist durch die Einzelbewertung von Ultraschall, Cliff-Sensor, IMU und Batterieüberwachung vollständig belegt. Die End-to-End-Latenz der Cliff-Safety-Kette von $2{,}0\,\mathrm{ms}$ und der Bremsweg von $1{,}0\,\mathrm{cm}$ bei $0{,}2\,\mathrm{m/s}$ bestätigen die Schutzfunktion unter realistischen Betriebsbedingungen. Die Bedien- und Leitstandsebene ist technisch tragfähig, aber nicht mit einer eigenständigen Messreihe zur Bedienqualität bewertet. Die Sprachschnittstelle bleibt eine vorbereitete Erweiterung und gehört folgerichtig nicht zum belegten Kernumfang.
+
+Für die Projektarbeit folgt daraus ein belastbarer Schluss: Das System erreicht eine funktionsfähige und sicher priorisierte Innenraum-Mobilität auf Basis einer verteilten, kostengünstigen Architektur. Fahrkern und Sensor- und Sicherheitsbasis erfüllen nach Kalibrierung und IMU-Korrektur sämtliche Akzeptanzkriterien. Die größten Verbesserungshebel liegen nicht mehr im Fahrkern oder in der Sensorik, sondern in der Robustheit des Recovery-Verhaltens und in der systematischen Vermessung der erweiterten Interaktionsschicht.

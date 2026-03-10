@@ -101,9 +101,9 @@ Das Paper bietet eine umfassende Uebersicht ueber den Stand der Technik der mobi
 #### 12. Smac Planner Framework (Appendix II)
 - Einheitliches suchbasiertes Planungs-Framework mit gemeinsam genutztem, hoch optimiertem A*-Algorithmus. Algorithmusspezifisches Verhalten wird ueber templated Node Types realisiert (Heuristiken, Expansionsverhalten, Traversierungskosten). Neue Planer koennen mit nur 50 Zeilen Code (Durchschnitt ca. 200) hinzugefuegt werden (S. 25)
 
-### Relevanz fuer die Bachelorarbeit
+### Relevanz fuer die Projektarbeit
 
-Das Paper ist die zentrale Referenz fuer die gesamte Navigationsarchitektur des AMR. Der in der Bachelorarbeit eingesetzte Regulated Pure Pursuit Controller wird detailliert beschrieben -- insbesondere die heuristischen Geschwindigkeitsregulierungen bei Hindernisnaehe und Kurvenkruemmung. Die Empfehlung NavFn + MPPI fuer kreisfoermige Differentialantrieb-Roboter liefert eine direkte Begruendung fuer die Planerwahl. Die Beschreibung der Costmap-Schichten, AMCL-Lokalisierung und Behavior Trees deckt alle im Projekt genutzten Nav2-Komponenten ab. Die Benchmark-Daten ermoeglichen eine Einordnung der Systemleistung.
+Das Paper ist die zentrale Referenz fuer die gesamte Navigationsarchitektur des AMR. Der in der Projektarbeit eingesetzte Regulated Pure Pursuit Controller wird detailliert beschrieben -- insbesondere die heuristischen Geschwindigkeitsregulierungen bei Hindernisnaehe und Kurvenkruemmung. Die Empfehlung NavFn + MPPI fuer kreisfoermige Differentialantrieb-Roboter liefert eine direkte Begruendung fuer die Planerwahl. Die Beschreibung der Costmap-Schichten, AMCL-Lokalisierung und Behavior Trees deckt alle im Projekt genutzten Nav2-Komponenten ab. Die Benchmark-Daten ermoeglichen eine Einordnung der Systemleistung.
 
 ---
 
@@ -164,6 +164,6 @@ SLAM Toolbox ist ein vollstaendig quelloffenes ROS-Paket fuer Simultaneous Local
 - In die ROS 2 Navigation2 integriert fuer Echtzeit-Positionierung in dynamischen Umgebungen (S. 1)
 - Eingesetzt bei: Simbe Robotics (Tally), ROBOTIS (TurtleBot3), Samsung Research, Rover Robotics, Pal Robotics (ARI), Intel Open Source Group, Queensland University of Technology, MT Robot AG, Magazino, 6 River Systems, u.a. (S. 5--6)
 
-### Relevanz fuer die Bachelorarbeit
+### Relevanz fuer die Projektarbeit
 
-SLAM Toolbox ist das in der Bachelorarbeit eingesetzte Kartierungssystem. Die drei Betriebsmodi (synchron, asynchron, Pure Localization) entsprechen direkt den Konfigurationsparametern in mapper_params_online_async.yaml. Der asynchrone Modus ist fuer den Raspberry Pi 5 besonders relevant, da er Echtzeit-Lokalisierung garantiert, auch wenn komplexe Loop Closures laufen. Die Verwendung von Google Ceres als Solver bestaetigt die Konfiguration im Projekt. Die Serialisierungsfaehigkeit ermoeglicht die Wiederverwendung erstellter Karten fuer den Pure Localization Mode im Betrieb -- was fuer den Intralogistik-Einsatz (wiederholte Fahrten in bekannter Umgebung) zentral ist.
+SLAM Toolbox ist das in der Projektarbeit eingesetzte Kartierungssystem. Die drei Betriebsmodi (synchron, asynchron, Pure Localization) entsprechen direkt den Konfigurationsparametern in mapper_params_online_async.yaml. Der asynchrone Modus ist fuer den Raspberry Pi 5 besonders relevant, da er Echtzeit-Lokalisierung garantiert, auch wenn komplexe Loop Closures laufen. Die Verwendung von Google Ceres als Solver bestaetigt die Konfiguration im Projekt. Die Serialisierungsfaehigkeit ermoeglicht die Wiederverwendung erstellter Karten fuer den Pure Localization Mode im Betrieb -- was fuer den Intralogistik-Einsatz (wiederholte Fahrten in bekannter Umgebung) zentral ist.

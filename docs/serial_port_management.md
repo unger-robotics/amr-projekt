@@ -18,7 +18,7 @@ Beide ESP32-S3 (Seeed Studio XIAO) haben identische USB VID/PID. Die Linux-Enume
 Die udev-Regeln werden durch `host_setup.sh` installiert:
 
 ```bash
-cd ~/AMR-Bachelorarbeit/amr/docker
+cd ~/amr-projekt/amr/docker
 sudo bash host_setup.sh
 ```
 

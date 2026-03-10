@@ -107,11 +107,11 @@ Die Studie vergleicht SLAM Toolbox und Cartographer unter identischen Bedingunge
 
 ---
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 ### Direkt anwendbar (Kap. 2.5 -- SLAM, Kap. 6.3 -- Diskussion)
 
-1. **Begruendung der SLAM-Toolbox-Wahl:** Die Bachelorarbeit nutzt SLAM Toolbox im async-Modus. Die Studie liefert quantitative Evidenz, dass SLAM Toolbox bei verfuegbarer EKF-Odometrie (wie im BA-Roboter: ESP32-Encoder + IMU via micro-ROS) den niedrigeren Trajektorienfehler und stabilere Karten produziert (ATE 0.13 m Simulation, 0.17 m real-world).
+1. **Begruendung der SLAM-Toolbox-Wahl:** Die Projektarbeit nutzt SLAM Toolbox im async-Modus. Die Studie liefert quantitative Evidenz, dass SLAM Toolbox bei verfuegbarer EKF-Odometrie (wie im BA-Roboter: ESP32-Encoder + IMU via micro-ROS) den niedrigeren Trajektorienfehler und stabilere Karten produziert (ATE 0.13 m Simulation, 0.17 m real-world).
 
 2. **EKF-Odometrie als Schluesselanforderung:** Der Odometrie-Stoerungstest (S. 15) unterstreicht, wie kritisch die korrekte EKF-Fusion fuer SLAM Toolbox ist -- direkt relevant fuer die Odometrie-Kalibrierung via UMBmark in der BA (Kap. 4.4).
 

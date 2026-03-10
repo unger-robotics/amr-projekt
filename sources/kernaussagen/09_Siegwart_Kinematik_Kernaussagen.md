@@ -30,7 +30,7 @@
                                [0                              ]
                                [r*phi_1_dot/(2l) - r*phi_2_dot/(2l)]
   ```
-- **Fuer die Bachelorarbeit:** Mit Radradius r = 32 mm und Spurbreite b = 2l = 145 mm ergeben sich die konkreten Kinematik-Gleichungen direkt aus dieser allgemeinen Form.
+- **Fuer die Projektarbeit:** Mit Radradius r = 32 mm und Spurbreite b = 2l = 145 mm ergeben sich die konkreten Kinematik-Gleichungen direkt aus dieser allgemeinen Form.
 
 ### 3. Rad-Zwangsbedingungen (Rolling und Sliding Constraints)
 - Jeder Radtyp bringt zwei kinematische Zwangsbedingungen ein (S. 53-54):
@@ -77,7 +77,7 @@
 - Ein **holonomischer Roboter** hat keine nichtholonomen Zwangsbedingungen, d.h. DDOF = DOF. Er kann jede Pose direkt erreichen (S. 75-77).
 - Ein **nichtholonomischer Roboter** (wie der Differentialantrieb) hat DDOF < DOF: Er hat 2 differenzielle Freiheitsgrade (DDOF = delta_m = 2), kann aber trotzdem jede Pose im 3D-Workspace (DOF = 3) erreichen -- allerdings nicht auf beliebigen Pfaden (S. 75).
 - Die Gleitbedingung ist eine nichtholonome Zwangsbedingung, da sie von der Ableitung der Pose (xi_dot) abhaengt und nicht integrierbar ist (S. 76).
-- **Konsequenz fuer die Bachelorarbeit:** Der Differentialantrieb ist nichtholonom. Er kann jede (x, y, theta)-Pose erreichen, benoetigt aber Manoever (z.B. auf der Stelle drehen) fuer laterale Bewegung.
+- **Konsequenz fuer die Projektarbeit:** Der Differentialantrieb ist nichtholonom. Er kann jede (x, y, theta)-Pose erreichen, benoetigt aber Manoever (z.B. auf der Stelle drehen) fuer laterale Bewegung.
 
 ### 8. Motion Control (Kinematische Regelung)
 - **Open-Loop Control:** Trajektorie wird in Geraden- und Kreissegmente zerlegt. Nachteil: Keine Fehlerkorrektur, unstetiges Beschleunigungsprofil an Segmentuebergaengen (S. 81-82).
@@ -122,7 +122,7 @@
   theta' = theta + Delta_theta
   ```
   Dabei sind Delta_s_r, Delta_s_l die Wegstrecken des rechten/linken Rades und b der Radabstand (Spurbreite).
-- **Fuer die Bachelorarbeit:** Diese Gleichungen entsprechen exakt der Implementierung in `diff_drive_kinematics.hpp` mit b = 145 mm.
+- **Fuer die Projektarbeit:** Diese Gleichungen entsprechen exakt der Implementierung in `diff_drive_kinematics.hpp` mit b = 145 mm.
 
 ### 6. Fehlerfortpflanzungsmodell (Kovarianzmatrix)
 - Die Kovarianzmatrix der Odometrie-Schaetzung wird ueber Fehlerfortpflanzung (Linearisierung erster Ordnung / Taylor-Entwicklung) berechnet (Gl. 5.9, S. 189):
@@ -143,9 +143,9 @@
 ### 7. Lokalisierung erfordert externe Referenzen
 - Reine Odometrie (Dead Reckoning) ist als alleinige Lokalisierungsmethode unzureichend, da der Positionsfehler unbeschraenkt waechst (S. 188, 191).
 - Fuer langfristig stabile Lokalisierung sind externe Referenzmechanismen noetig, z.B. kartenbasierte Lokalisierung (AMCL), SLAM oder Landmarken (S. 191).
-- **Fuer die Bachelorarbeit:** Deshalb wird Odometrie nur als Praediktion im Nav2-Stack (AMCL) verwendet, waehrend SLAM Toolbox und LiDAR-basierte Korrekturen die Drift kompensieren.
+- **Fuer die Projektarbeit:** Deshalb wird Odometrie nur als Praediktion im Nav2-Stack (AMCL) verwendet, waehrend SLAM Toolbox und LiDAR-basierte Korrekturen die Drift kompensieren.
 
-## Relevanz fuer die Bachelorarbeit
+## Relevanz fuer die Projektarbeit
 
 1. **Kinematik-Herleitung (Kap. 3):** Siegwart liefert die theoretische Grundlage fuer die Differentialantrieb-Kinematik in `diff_drive_kinematics.hpp`. Die Vorwaertskinematik (Encoder -> Odometrie) und Inverskinematik (cmd_vel -> Radgeschwindigkeiten) sind direkt aus den Gleichungen 3.9 und 3.30 ableitbar.
 

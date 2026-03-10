@@ -1,6 +1,6 @@
 # Uebersicht: 15 Kernaussagen-Dateien mit Querverweisen
 
-> Erstellt als Querverweis-Index fuer die Bachelorarbeit "Autonomer Mobiler Roboter fuer Intralogistik"
+> Erstellt als Querverweis-Index fuer die Projektarbeit "Autonomer Mobiler Roboter fuer Intralogistik"
 > 15 Quellen, 4 Themenfelder, geordnet nach Literaturstrategie
 
 ---
@@ -193,7 +193,7 @@
 
 ---
 
-## Zuordnung zu Bachelorarbeit-Kapiteln
+## Zuordnung zu Projektarbeit-Kapiteln
 
 | BA-Kapitel | Primaerquellen | Sekundaerquellen |
 |------------|---------------|------------------|

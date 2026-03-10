@@ -85,10 +85,10 @@
 \end{frame}
 
 % =============================================================================
-\section{Zielsetzung und Forschungsfragen}
+\section{Zielsetzung und Projektfragen}
 % =============================================================================
 
-\begin{frame}{Zielsetzung und Forschungsfragen}
+\begin{frame}{Zielsetzung und Projektfragen}
 
   \textbf{Hauptziel}\\
   Entwicklung und Validierung eines ROS-2-basierten Navigationssystems
@@ -96,16 +96,16 @@
   $500\,\mathrm{EUR}$.
 
   \vspace{0.5em}
-  \textbf{Forschungsfragen}
+  \textbf{Projektfragen}
   \begin{itemize}
-    \item \textbf{FF1 -- Echtzeitarchitektur:} Wie lässt sich auf einer
+    \item \textbf{PF1 -- Echtzeitarchitektur:} Wie lässt sich auf einer
           Dual-Knoten-Architektur mit zwei ESP32-S3 eine echtzeitfähige
           Regelung bei gleichzeitiger Sensorerfassung mit micro-ROS
           realisieren?
-    \item \textbf{FF2 -- Navigationsgenauigkeit:} Welchen Einfluss haben
+    \item \textbf{PF2 -- Navigationsgenauigkeit:} Welchen Einfluss haben
           UMBmark-Kalibrierung, IMU-Fusion und hardwarenahe
           Sicherheitslogik auf die Navigationsgenauigkeit?
-    \item \textbf{FF3 -- Visuelle Wahrnehmung und Docking:} Erreicht ein
+    \item \textbf{PF3 -- Visuelle Wahrnehmung und Docking:} Erreicht ein
           monokulares Kamerasystem mit Edge-Inferenz und Cloud-Semantik
           eine ausreichende Präzision und Kontextsensitivität?
   \end{itemize}
@@ -365,7 +365,7 @@
 
 \begin{frame}{Kernergebnisse}
 
-  \textbf{FF1 bestätigt}
+  \textbf{PF1 bestätigt}
   \begin{itemize}
     \item Trennung in Fahrkern und Sensor- und Sicherheitsbasis
           stabilisiert die Echtzeitfähigkeit.
@@ -374,7 +374,7 @@
   \end{itemize}
 
   \vspace{0.4em}
-  \textbf{FF2 bestätigt}
+  \textbf{PF2 bestätigt}
   \begin{itemize}
     \item UMBmark-Kalibrierung korrigiert Raddurchmesser von
           $65{,}00$ auf $65{,}67\,\mathrm{mm}$.
@@ -383,7 +383,7 @@
   \end{itemize}
 
   \vspace{0.4em}
-  \textbf{FF3 bedingt bestätigt}
+  \textbf{PF3 bedingt bestätigt}
   \begin{itemize}
     \item Hybride Vision erreicht beim Docking $80\,\%$ Erfolgsquote.
     \item Edge-Inferenz schnell genug für laufende Eingriffe.
@@ -438,8 +438,8 @@
     \item Vollständiger Entwicklungszyklus nach VDI~2206
     \item Verteilte Drei-Ebenen-Architektur mit zwei ESP32-S3 und einem
           Raspberry Pi~5
-    \item Positive Beantwortung aller drei Forschungsfragen mit
-          abgestuftem Ergebnis für FF3
+    \item Positive Beantwortung aller drei Projektfragen mit
+          abgestuftem Ergebnis für PF3
     \item Erfüllung aller Muss-Anforderungen des Lastenhefts
   \end{itemize}
 

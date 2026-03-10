@@ -1,0 +1,138 @@
+# 4. Systemkonzept und Entwurf
+
+Dieses Kapitel beantwortet die Entwurfsfrage der Arbeit: Wie lässt sich ein Innenraum-AMR für Kartierung, Zielanfahrt und sichere Bedienung so strukturieren, dass der Fahrkern reproduzierbar arbeitet, sicherheitsrelevante Signale Vorrang erhalten und spätere Erweiterungen wie Vision oder Sprachschnittstelle anschlussfähig bleiben? Die Darstellung überführt die Anforderungen aus Kapitel 3 in eine konkrete Zielarchitektur. Im Mittelpunkt stehen die Konzeptauswahl, die funktionale Partitionierung, die Daten- und Kommandokette sowie die Einordnung von Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene und intelligenter Interaktion.
+
+## 4.1 Entwurfsziele und Auswahlkriterien
+
+Das Systemkonzept folgt vier Entwurfszielen. Erstens muss der Fahrkern zeitlich stabil arbeiten, damit Geschwindigkeitsvorgaben reproduzierbar in Bewegung umgesetzt werden. Zweitens muss die Sensor- und Sicherheitsbasis sicherheitsnahe Signale priorisieren, damit eine erkannte Kante oder ein kritischer Betriebszustand eine sofortige Schutzreaktion auslösen kann. Drittens muss die Architektur Funktionen sauber trennen, damit Kartierung, Navigation, Telemetrie und Audio die hardwarenahe Regelung nicht stören. Viertens muss die Struktur spätere Erweiterungen aufnehmen, ohne die Kernlogik des Fahrkerns umzubauen.
+
+Aus diesen Zielen ergeben sich die Auswahlkriterien für den Entwurf:
+
+| Kriterium                        | Bedeutung für den Entwurf                                                                                                 |
+|----------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Determinismus                    | Der Fahrkern muss Sollwerte und Messwerte mit konstanter Zykluszeit verarbeiten.                                          |
+| Priorisierte Sicherheitsreaktion | Sicherheitslogik und Freigabelogik müssen Fahrkommandos überstimmen können.                                               |
+| Modulare Struktur                | Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung, Navigation sowie Bedienung müssen getrennt bleiben. |
+| Innenraumeignung                 | Kinematik, Sensorik und Navigation müssen für enge Räume, Kurven und variable Hindernisse geeignet sein.                  |
+| Erweiterbarkeit                  | Benutzeroberfläche, Audio, Vision und Sprachschnittstelle müssen anschließbar bleiben.                                    |
+
+Diese Kriterien verschieben die Entwurfsentscheidung bewusst weg von maximaler Rechenleistung oder maximaler Funktionsvielfalt. Vorrang erhalten stattdessen klare Zuständigkeiten, stabile Datenpfade und nachvollziehbare Zustandsübergänge.
+
+## 4.2 Konzeptauswahl
+
+Der morphologische Kasten reduziert den Variantenraum auf die Teilfunktionen, die den Systemcharakter am stärksten prägen. Die ausgewählte Lösung erfüllt die Anforderungen des Innenraum-AMR mit dem geringsten Integrationsrisiko.
+
+| Teilfunktion                 | Alternative A                                            | Alternative B                 | Alternative C     |
+|------------------------------|----------------------------------------------------------|-------------------------------|-------------------|
+| Host-Recheneinheit           | **Raspberry Pi 5 mit optionalem Hailo-8L-Beschleuniger** | Jetson Nano                   | Intel NUC         |
+| Low-Level-Steuerung          | **2 x ESP32-S3**                                         | 1 x ESP32-S3                  | STM32F767ZI       |
+| Kommunikation Host-Low-Level | **micro-ROS über UART**                                  | USB mit proprietärer Kopplung | WLAN über UDP     |
+| Antriebskonzept              | **Differentialantrieb**                                  | Mecanum-Antrieb               | Ackermann-Lenkung |
+| Lokalisierung und Kartierung | **SLAM Toolbox**                                         | Cartographer                  | GMapping          |
+| Lokaler Navigationsregler    | **Regulated Pure Pursuit**                               | Dynamic Window Approach       | MPPI              |
+
+Die Wahl des Raspberry Pi 5 folgt der Anforderung, ROS 2, LiDAR, Kartierung, Navigation, Benutzeroberfläche und Audio auf einer einzigen Host-Plattform zusammenzuführen. Ein zusätzlicher Hailo-8L-Beschleuniger bleibt als Erweiterung für Vision-Aufgaben möglich, ist jedoch nicht Voraussetzung für den Kernbetrieb. Der Host bildet damit die Rechenbasis für Lokalisierung und Kartierung, Navigation sowie Bedien- und Leitstandsebene.
+
+Die Aufteilung der Low-Level-Ebene auf zwei ESP32-S3 ist die zentrale Entwurfsentscheidung. Der Drive-Knoten übernimmt ausschließlich Fahrkern und Odometrie. Der Sensor-Knoten übernimmt I2C-basierte Sensorik, Batterieüberwachung und sicherheitsnahe Signale. Diese physische Trennung senkt das Risiko, dass blockierende Sensorzugriffe oder langsame Peripherieoperationen die Motorregelung stören.
+
+Für die Kommunikation zwischen Host und Low-Level-Ebene wurde micro-ROS über UART gewählt. Die serielle Kopplung reduziert den Integrationsaufwand, erlaubt eine direkte Einbindung der Mikrocontroller in das ROS-2-System und vermeidet die zusätzliche Unsicherheit einer drahtlosen Übertragung im Regelpfad.
+
+Zusätzlich verbindet ein CAN-Bus mit $1\,\mathrm{Mbit/s}$ (ISO 11898, SN65HVD230-Transceiver) die beiden ESP32-S3-Knoten direkt miteinander. Dieser Dual-Path erlaubt sicherheitsrelevante Signale wie Cliff-Erkennung und Unterspannungsabschaltung unabhängig vom Host und micro-ROS Agent zu übertragen. Der CAN-Bus bildet damit einen redundanten Sicherheitspfad neben der UART-basierten micro-ROS-Kommunikation.
+
+Der Differentialantrieb ist für enge Innenräume die zweckmäßige Wahl. Das Konzept benötigt wenig mechanische Komplexität, unterstützt Rotation auf engem Raum und lässt sich mit überschaubarem Rechenaufwand modellieren. Mecanum- und Ackermann-Konzepte würden den mechanischen und regelungstechnischen Aufwand erhöhen, ohne für die Zielumgebung einen zwingenden Vorteil zu liefern.
+
+Für Lokalisierung und Kartierung wurde die SLAM Toolbox gewählt, weil sie Kartenaufbau und Re-Lokalisierung in einer ROS-2-nahen Toolchain abbildet. Für die lokale Bahnverfolgung wurde Regulated Pure Pursuit gewählt, weil das Verfahren kinematisch einfache Plattformen gut unterstützt und Geschwindigkeiten in Kurven oder bei Hindernisannäherung begrenzen kann.
+
+## 4.3 Zielarchitektur des Gesamtsystems
+
+Das Zielbild folgt der Roadmap mit drei Ebenen. Die Ebenen trennen fahrkritische Funktionen, Betriebsfunktionen und intelligente Interaktion.
+
+| Ebene                                                 | Hauptfunktionen                                                                              | Zentrale Recheneinheit                      |
+|-------------------------------------------------------|----------------------------------------------------------------------------------------------|---------------------------------------------|
+| Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis | Antrieb, Odometrie, IMU, Ultraschall, Cliff-Sensor, Batterieüberwachung, Servo-Steuerung, Sicherheitsreaktion | 2 x ESP32-S3 und Raspberry Pi 5             |
+| Ebene B – Bedien- und Leitstandsebene                 | Benutzeroberfläche, Telemetrie, manuelle Kommandos, Videostream, Audio-Rückmeldungen         | Raspberry Pi 5                              |
+| Ebene C – Intelligente Interaktion                    | Sprachschnittstelle, semantische Interpretation, Vision, spätere multimodale Bedienung       | Raspberry Pi 5 mit optionalem Beschleuniger |
+
+Die physische Ausführung ordnet den Ebenen feste Komponenten zu. Der Raspberry Pi 5 trägt die hostseitigen ROS-2-Knoten für Lokalisierung und Kartierung, Navigation, Benutzeroberfläche, Audio und spätere Interaktionsfunktionen. Ein ESP32-S3 bildet den Drive-Knoten des Fahrkerns. Ein weiterer ESP32-S3 bildet den Sensor-Knoten der Sensor- und Sicherheitsbasis. LiDAR, Kamera und Audio-Hardware sind an den Host angebunden.
+
+Die Architektur trennt nicht nur Hardware, sondern auch Verantwortlichkeiten. Der Fahrkern setzt freigegebene Fahrvorgaben um. Die Sensor- und Sicherheitsbasis liefert Zustände und Schutzsignale. Lokalisierung und Kartierung sowie Navigation berechnen Bewegungsziele auf Kartenbasis. Die Bedien- und Leitstandsebene beobachtet und bedient das System. Die Sprachschnittstelle bleibt eine Interaktionsschicht oberhalb der Freigabelogik.
+
+## 4.4 Mechanisches und elektronisches Konzept
+
+Das mechanische Konzept basiert auf einem Differentialantrieb mit zwei angetriebenen Rädern und einer frei laufenden Stützstruktur. Der Aufbau unterstützt enge Kurvenradien und Richtungswechsel auf engem Raum. Für den Prototyp sind ein Raddurchmesser von $65{,}67\,\mathrm{mm}$ und eine kalibrierte Spurbreite von $178\,\mathrm{mm}$ vorgesehen. Diese Größen gehen direkt in Kinematik, Odometrie und spätere Kalibrierung ein.
+
+Die Antriebseinheit nutzt JGA25-370-Motoren mit Encoder-Rückführung. Die Leistungsstufe bildet ein Cytron-MDD3A-Motortreiber. Die PWM-Frequenz beträgt $20\,\mathrm{kHz}$, um die Ansteuerung oberhalb des gut hörbaren Bereichs zu betreiben und gleichzeitig eine fein genug aufgelöste Stellgröße bereitzustellen.
+
+Die Sensorik folgt der funktionalen Trennung des Gesamtsystems. Encoder erfassen die Radbewegung des Fahrkerns. Eine MPU6050 liefert inertiale Messgrößen. Ein Front-Ultraschallsensor erfasst den Nahbereich. Ein Cliff-Sensor erkennt Kanten. Eine INA260 überwacht Spannung und Strom des Energiesystems. I2C-basierte Baugruppen einschließlich der Servo-Steuerung über einen PCA9685-PWM-Treiber liegen vollständig auf dem Sensor-Knoten, damit der Fahrkern nicht durch Sensorzugriffe belastet wird.
+
+Zusätzliche Hardware für die Bedien- und Leitstandsebene und die intelligente Interaktion wird bewusst vom Kernpfad getrennt. Eine frontseitige Kamera unterstützt Videostream und spätere Vision-Funktionen. Das ReSpeaker Mic Array v2.0 dient als Audioeingang für die Sprachschnittstelle. Ein Lautsprecherpfad ermöglicht definierte Audio-Rückmeldungen. Diese Komponenten erweitern die Beobachtbarkeit und Interaktion, ohne die Grundfahrt direkt zu steuern.
+
+## 4.5 Software-Architektur und funktionale Partitionierung
+
+Die Software-Architektur kombiniert ROS 2 auf dem Host mit micro-ROS auf den Mikrocontrollern. Auf dem Raspberry Pi 5 laufen die ROS-2-Knoten für Lokalisierung und Kartierung, Navigation, Benutzeroberfläche, Audio und Schnittstellenlogik. Auf den ESP32-S3 läuft FreeRTOS als harte Partitionierung der Low-Level-Aufgaben. Damit entsteht eine verteilte Architektur mit klarer Zuständigkeit pro Knoten.
+
+Der Drive-Knoten verarbeitet ausschließlich fahrkritische Funktionen. Dazu gehören die Umsetzung von Geschwindigkeitsvorgaben, die Encoder-Auswertung, die Odometrie und die Motorregelung mit einem Arbeitstakt von $50\,\mathrm{Hz}$. Die hostseitige Navigation liefert translatorische und rotatorische Sollgrößen, der Drive-Knoten setzt diese über das kinematische Modell in Radgrößen um.
+
+Der Sensor-Knoten verarbeitet die Sensor- und Sicherheitsbasis. Er liest IMU, Ultraschall, Batterieüberwachung und Kanten-Erkennung aus und veröffentlicht die Daten als ROS-2-nahe Informationen über micro-ROS. Zusätzlich liefert er sicherheitsnahe Zustände an die hostseitige Sicherheitslogik.
+
+Die hostseitige Ebene bündelt Kartenaufbau, Re-Lokalisierung, Zielplanung, Benutzeroberfläche und Audio. Diese Aufteilung erlaubt eine klare Trennung zwischen hardwarenaher Reaktion und rechenintensiver Verarbeitung. Zugleich vermeidet sie eine proprietäre Nebenarchitektur, weil beide Mikrocontroller als eingebundene ROS-2-Teilnehmer auftreten.
+
+Die Kommandokette bildet ein zentrales Entwurfselement. Sie verhindert, dass Bedienung oder Sprache rohe Motorbefehle direkt in den Fahrkern einspeisen. Zulässig ist nur eine freigegebene Kette:
+
+$$
+\text{Interaktion} \rightarrow \text{Freigabelogik} \rightarrow \text{Missionskommando} \rightarrow \text{Navigation oder manuelle Bedienung} \rightarrow /\text{cmd\_vel} \rightarrow \text{Fahrkern}
+$$
+
+Nicht zulässig ist eine direkte Kette der Form
+
+$$
+\text{Sprachbefehl} \rightarrow \text{direkte Motoransteuerung}
+$$
+
+Diese Trennung gibt der Sicherheitslogik und der Freigabelogik einen festen Ort in der Architektur. Ein Stopp-Kommando hat Vorrang vor Fahr- und Missionskommandos. Nicht freigegebene Eingaben werden blockiert oder in einen sicheren Zustand überführt.
+
+## 4.6 Datenfluss, Sicherheitslogik und Freigabelogik
+
+Die Daten- und Befehlsflüsse folgen dem Prinzip „Zustand nach oben, Freigabe nach unten“. Sensorwerte, Odometrie und Diagnoseinformationen laufen von den Mikrocontrollern zum Host. Missionskommandos, Zielzustände und freigegebene Fahrbefehle laufen vom Host zum Fahrkern.
+
+Für die Navigation entstehen mindestens drei logisch getrennte Befehlsquellen: autonome Fahrbefehle der Navigation, manuelle Fahrbefehle der Benutzeroberfläche und Stopp- oder Schutzkommandos der Sicherheitslogik. Die Architektur führt diese Quellen nicht unkontrolliert zusammen, sondern über eine Freigabelogik mit eindeutigem Vorrang. Die Sicherheitslogik steht oberhalb der regulären Fahrvorgaben. Eine erkannte Kante darf daher eine aktive Zielanfahrt unmittelbar unterbrechen.
+
+Der Cliff-Sicherheitsmultiplexer bildet diese Regel technisch ab. Er verarbeitet den Status des Cliff-Sensors und übersteuert bei Bedarf eingehende Fahrbefehle. Das Ergebnis ist kein konkurrierender Fahrkanal, sondern eine übergeordnete Schutzinstanz. Damit trennt das System bewusst zwischen Navigationsfehlern, die Recovery-Verhalten auslösen können, und Schutzereignissen, die unmittelbar zum Halt führen müssen.
+
+Die Freigabelogik regelt zusätzlich die Übergänge zwischen Betriebsarten. Navigation darf nur freigegebene Missionskommandos ausführen. Manuelle Eingriffe der Benutzeroberfläche dürfen den Fahrzustand beeinflussen, aber keine Schutzmechanismen umgehen. Sprachkommandos dürfen nur freigegebene Missionskommandos erzeugen. Dadurch bleibt die gesamte Befehlskette auch bei späteren Erweiterungen nachvollziehbar.
+
+## 4.7 Entwurf von Fahrkern, Lokalisierung und Kartierung sowie Navigation
+
+Der Fahrkern arbeitet mit dem kinematischen Modell des Differentialantriebs. Die hostseitige Ebene erzeugt eine Translationsgeschwindigkeit $v$ und eine Drehrate $\omega$. Der Drive-Knoten berechnet daraus die Radsollwerte
+
+$$
+\omega_L = \frac{v - \omega \cdot \frac{b}{2}}{r}
+$$
+
+$$
+\omega_R = \frac{v + \omega \cdot \frac{b}{2}}{r}
+$$
+
+mit dem Radradius $r$ und der Spurbreite $b$. Die konkrete Parametrierung der Motorregelung gehört zur Implementierung und Validierung. Im Systemkonzept reicht die Festlegung, dass der Fahrkern freigegebene Sollgrößen deterministisch und reproduzierbar umsetzen muss.
+
+Für Lokalisierung und Kartierung sind zwei Betriebsarten vorgesehen. Im Kartierungsbetrieb erzeugt die SLAM Toolbox aus LiDAR-Daten, Odometrie und Transformationsbeziehungen eine Karte des Innenraums. Im Navigationsbetrieb nutzt das System eine vorhandene Karte, lokalisiert sich darin erneut und fährt Zielpunkte auf Kartenbasis an. Diese Trennung reduziert Komplexität, weil Kartenaufbau und autonome Zielanfahrt nicht dauerhaft denselben Optimierungszustand teilen müssen.
+
+Die Navigation kombiniert globale Pfadplanung mit lokaler Bahnverfolgung. Globale Planer erzeugen eine Route auf Basis der Karte. Der lokale Regler verfolgt diese Route unter Berücksichtigung der Fahrzeugkinematik. Recovery-Verhalten bleibt Teil der Navigation, etwa bei blockiertem Weg oder ungünstiger Pose. Recovery ersetzt jedoch keine Sicherheitslogik. Eine Kante, ein kritischer Energiezustand oder eine gesperrte Freigabe sind Abbruchkriterien und keine regulären Navigationsprobleme.
+
+## 4.8 Bedien- und Leitstandsebene sowie Sprachschnittstelle
+
+Die Bedien- und Leitstandsebene ist kein Nebenprodukt des Entwurfs, sondern ein eigenes Systemelement. Sie stellt Telemetrie, Zustandsanzeige, Videostream, manuelle Kommandos und Audio-Rückmeldungen bereit. Damit unterstützt sie Diagnose, Versuchsdurchführung und den sicheren Betrieb. Die Benutzeroberfläche dient folglich nicht nur der Interaktion, sondern auch der Beobachtbarkeit des Systems.
+
+Die Sprachschnittstelle wird als Erweiterung der Ebene der intelligenten Interaktion eingeordnet. Das ReSpeaker Mic Array v2.0 liefert Audiodaten an den Host. Nachgelagerte ROS-2-Knoten können Sprache in Text, Text in einen Intent und den Intent in ein freigegebenes Missionskommando überführen. Die Sprachschnittstelle bleibt damit oberhalb von Freigabelogik und Missionskommando. Sie ergänzt die Benutzeroberfläche, ersetzt aber weder Navigation noch Sicherheitslogik.
+
+Die daraus entstehende Kette lautet:
+
+$$
+\text{Sprachbefehl} \rightarrow \text{Intent} \rightarrow \text{Freigabelogik} \rightarrow \text{Missionskommando} \rightarrow \text{Navigation, Leitstand oder Audio}
+$$
+
+Durch diese Einordnung lässt sich die Sprachschnittstelle in die Projektarbeit aufnehmen, ohne den Kernnachweis des Fahr- und Navigationssystems zu verwässern.
+
+## 4.9 Ergebnis des Systementwurfs
+
+Der Entwurf überführt die Anforderungen des Innenraum-AMR in eine klar gegliederte Zielarchitektur. Die Dual-Node-Struktur trennt Fahrkern und Sensor- und Sicherheitsbasis. Der Raspberry Pi 5 bündelt Lokalisierung und Kartierung, Navigation, Benutzeroberfläche und spätere Interaktionsfunktionen. Sicherheitslogik und Freigabelogik sichern die Kommandokette gegen unkontrollierte Eingriffe. Damit liegt ein Systemkonzept vor, das den Kernbetrieb der Projektarbeit trägt und zugleich Erweiterungen wie Audio, Vision und Sprachschnittstelle geordnet einbindet.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Kontext
 
-`amr/` ist das technische Kernverzeichnis des AMR-Bachelorarbeit-Projekts (Autonomer Mobiler Roboter, Differentialantrieb, KLT-Intralogistik). Uebergeordnete Projektdokumentation, Troubleshooting und Bachelorarbeit-Konventionen: `../CLAUDE.md`.
+`amr/` ist das technische Kernverzeichnis des amr-projekt-Projekts (Autonomer Mobiler Roboter, Differentialantrieb, KLT-Intralogistik). Uebergeordnete Projektdokumentation, Troubleshooting und Projektarbeit-Konventionen: `../CLAUDE.md`.
 
 **Sprache:** Deutsch, wissenschaftlicher Stil. Keine UTF-8-Umlaute in Markdown — ae/oe/ue/ss verwenden.
 

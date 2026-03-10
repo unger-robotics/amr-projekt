@@ -10,7 +10,7 @@ theme: "metropolis"
 ## Gliederung
 
 1. Motivation und Problemstellung
-2. Zielsetzung und Forschungsfragen
+2. Zielsetzung und Projektfragen
 3. Systemarchitektur
 4. Hardware-Plattform
 5. Software-Stack
@@ -37,22 +37,22 @@ theme: "metropolis"
 
 ---
 
-## Zielsetzung und Forschungsfragen
+## Zielsetzung und Projektfragen
 
 **Hauptziel**
 
 Entwicklung und Validierung eines ROS-2-basierten Navigationssystems für einen kostengünstigen AMR mit Gesamtkosten von rund $500\,\mathrm{EUR}$.
 
-**Forschungsfragen**
+**Projektfragen**
 
-- **FF1 – Echtzeitarchitektur:** Wie lässt sich auf einer Dual-Knoten-Architektur mit zwei ESP32-S3 eine echtzeitfähige Regelung bei gleichzeitiger Sensorerfassung mit micro-ROS realisieren?
+- **PF1 – Echtzeitarchitektur:** Wie lässt sich auf einer Dual-Knoten-Architektur mit zwei ESP32-S3 eine echtzeitfähige Regelung bei gleichzeitiger Sensorerfassung mit micro-ROS realisieren?
   - Entkopplung von Fahrkern und Sensor- und Sicherheitsbasis
   - serielle Kopplung über UART statt WLAN
 
-- **FF2 – Navigationsgenauigkeit:** Welchen Einfluss haben UMBmark-Kalibrierung, IMU-Fusion und hardwarenahe Sicherheitslogik auf die Navigationsgenauigkeit?
+- **PF2 – Navigationsgenauigkeit:** Welchen Einfluss haben UMBmark-Kalibrierung, IMU-Fusion und hardwarenahe Sicherheitslogik auf die Navigationsgenauigkeit?
   - Zielgröße: deutliche Reduktion systematischer Odometriefehler
 
-- **FF3 – Visuelle Wahrnehmung und Docking:** Erreicht ein monokulares Kamerasystem mit Edge-Inferenz und Cloud-Semantik eine ausreichende Präzision und Kontextsensitivität?
+- **PF3 – Visuelle Wahrnehmung und Docking:** Erreicht ein monokulares Kamerasystem mit Edge-Inferenz und Cloud-Semantik eine ausreichende Präzision und Kontextsensitivität?
   - Zielwerte: lateraler Fehler kleiner als $2\,\mathrm{cm}$, Orientierungsfehler kleiner als $5^\circ$
 
 **Methodik**
@@ -198,19 +198,19 @@ map -> odom -> base_link -> laser
 
 ## Kernergebnisse
 
-**FF1 bestätigt**
+**PF1 bestätigt**
 
 - Die Trennung in Fahrkern und Sensor- und Sicherheitsbasis stabilisiert die Echtzeitfähigkeit.
 - Fahrkern und Sensor- und Sicherheitsbasis blockieren sich nicht gegenseitig.
 - Die serielle Kopplung über UART liefert deterministischere Laufzeiten als WLAN.
 
-**FF2 bestätigt**
+**PF2 bestätigt**
 
 - Die UMBmark-Kalibrierung korrigiert den Raddurchmesser von $65{,}00\,\mathrm{mm}$ auf $65{,}67\,\mathrm{mm}$.
 - Systematische Odometriefehler sinken um den Faktor 10 bis 20.
 - Die Sicherheitslogik stoppt den Roboter zuverlässig, bevor die Navigation reagieren muss.
 
-**FF3 bedingt bestätigt**
+**PF3 bedingt bestätigt**
 
 - Die hybride Vision erreicht beim Docking eine Erfolgsquote von $80\,\%$.
 - Die Edge-Inferenz ist schnell genug für laufende Eingriffe in die Missionsausführung.
@@ -252,7 +252,7 @@ Alle Muss-Anforderungen sind erfüllt.
 
 - vollständiger Entwicklungszyklus nach VDI 2206
 - verteilte Drei-Ebenen-Architektur mit zwei ESP32-S3 und einem Raspberry Pi 5
-- positive Beantwortung aller drei Forschungsfragen mit abgestuftem Ergebnis für FF3
+- positive Beantwortung aller drei Projektfragen mit abgestuftem Ergebnis für PF3
 - Erfüllung aller Muss-Anforderungen des Lastenhefts
 
 **Ausblick**

@@ -20,7 +20,7 @@ def _find_config_h():
         / "../../mcu_firmware/drive_node/include/config_drive.h",  # hardware_info/ -> amr/mcu_firmware/
         script_dir
         / "../../../mcu_firmware/drive_node/include/config_drive.h",  # my_bot/my_bot/hardware_info/ -> amr/mcu_firmware/
-        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node/include/config_drive.h",
+        Path.home() / "amr-projekt/amr/mcu_firmware/drive_node/include/config_drive.h",
     ]
     for c in candidates:
         resolved = c.resolve()
@@ -35,7 +35,7 @@ def _find_config_sensors_h():
     candidates = [
         script_dir
         / "../../mcu_firmware/sensor_node/include/config_sensors.h",  # hardware_info/ -> amr/mcu_firmware/
-        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/sensor_node/include/config_sensors.h",
+        Path.home() / "amr-projekt/amr/mcu_firmware/sensor_node/include/config_sensors.h",
     ]
     for c in candidates:
         resolved = c.resolve()
@@ -52,7 +52,7 @@ def _find_firmware_dir():
         / "../../mcu_firmware/drive_node",  # hardware_info/ -> amr/mcu_firmware/drive_node/
         script_dir
         / "../../../amr/mcu_firmware/drive_node",  # my_bot/my_bot/hardware_info/ -> amr/mcu_firmware/drive_node/
-        Path.home() / "AMR-Bachelorarbeit/amr/mcu_firmware/drive_node",
+        Path.home() / "amr-projekt/amr/mcu_firmware/drive_node",
     ]
     for c in candidates:
         resolved = c.resolve()

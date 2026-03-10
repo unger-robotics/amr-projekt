@@ -3,7 +3,7 @@
 
 Subscribt /odom und /imu, berechnet die Differenz zwischen header.stamp
 (ESP32 rmw_uros_epoch_nanos) und der lokalen Pi-Systemzeit.
-Schreibt Ergebnisse in eine CSV-Datei fuer Bachelorarbeit-Auswertung.
+Schreibt Ergebnisse in eine CSV-Datei fuer Projektarbeit-Auswertung.
 
 Nutzung:
     ros2 run my_bot serial_latency_logger
