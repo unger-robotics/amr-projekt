@@ -37,7 +37,7 @@ pre-commit install
 
 ## Ruff-Konfiguration (ruff.toml)
 
-- **Zielversion:** Python 3.10
+- **Zielversion:** Python 3.10 (Container-Skripte). Host-Only-Skripte wie `host_hailo_runner.py` laufen unter Python 3.13 (Debian Trixie).
 - **Zeilenlaenge:** 100
 - **Regelsets:** E/W (pycodestyle), F (Pyflakes), I (isort), UP (pyupgrade), B (bugbear), C4 (comprehensions), SIM (simplify), C90 (McCabe)
 - **McCabe max-complexity:** 15

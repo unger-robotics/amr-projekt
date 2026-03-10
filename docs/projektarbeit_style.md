@@ -4,7 +4,7 @@
 
 - wissenschaftlich-technischer Stil
 - aktiv, neutral, konsistent
-- keine UTF-8-Umlaute in Markdown-Dateien
+- keine UTF-8-Umlaute in Markdown-Dateien im Git-Repository (ae, oe, ue, ss). In LaTeX- und Pandoc-Quelltexten der Projektarbeit sind UTF-8-Umlaute zulaessig.
 
 ## Struktur
 

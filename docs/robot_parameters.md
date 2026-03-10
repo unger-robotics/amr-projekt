@@ -79,7 +79,7 @@ Bus-Frequenz: 400 kHz (Fast-mode). Alle I2C-Zugriffe ueber globalen `i2c_mutex` 
 
 | Parameter | Wert |
 |---|---|
-| Komplementaerfilter Alpha | 0.98 |
+| Komplementaerfilter Alpha | 0.98 (Yaw-Fusion: 98 % Gyro-Integration, 2 % Encoder-Heading) |
 | Gyro-Empfindlichkeit | 131.0 LSB/(°/s) |
 | Beschleunigungs-Empfindlichkeit | 16384.0 LSB/g |
 | Kalibrierproben | 500 |

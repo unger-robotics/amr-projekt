@@ -69,7 +69,7 @@ Sensor-Knoten ──► /cliff (Bool, Best-Effort, 20 Hz) ──┘
 
 **QoS-Hinweis:** `/cliff` nutzt Best-Effort QoS. `/nav_cmd_vel`, `/dashboard_cmd_vel` und `/cmd_vel` nutzen Reliable QoS.
 
-**Remapping im Launch-File:** Nav2 publiziert intern auf `/cmd_vel`, das im Launch-File auf `/nav_cmd_vel` remapped wird. Der `dashboard_bridge` publiziert Joystick-Befehle auf `/dashboard_cmd_vel`. Beide Pfade laufen durch den `cliff_safety_node`, der als einziger auf `/cmd_vel` publiziert.
+**Remapping:** Nav2 wird ueber `nav2_params.yaml` so konfiguriert, dass der `controller_server` auf `/nav_cmd_vel` publiziert (in ROS 2 Humble ist `SetRemap` im Launch-File nicht verfuegbar). Der `dashboard_bridge` publiziert Joystick-Befehle auf `/dashboard_cmd_vel`. Beide Pfade laufen durch den `cliff_safety_node`, der als einziger auf `/cmd_vel` publiziert.
 
 ### Abgrenzung
 

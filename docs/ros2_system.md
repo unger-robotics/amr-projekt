@@ -28,10 +28,10 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `camera_tf_publisher` | `tf2_ros` | `static_transform_publisher` | `use_camera` | Statischer TF `base_link` → `camera_link` |
 | `ultrasonic_tf_publisher` | `tf2_ros` | `static_transform_publisher` | `use_sensors` | Statischer TF `base_link` → `ultrasonic_link` |
 | `dashboard_bridge` | `my_bot` | `dashboard_bridge` | `use_dashboard` | WebSocket :9090, MJPEG :8082, Telemetrie und Fernsteuerung |
-| `hailo_udp_receiver` | `my_bot` | `hailo_udp_receiver_node` | `use_vision` | Empfaengt Hailo-8 Inferenz via UDP 127.0.0.1:5005 |
+| `hailo_udp_receiver` | `my_bot` | `hailo_udp_receiver_node` | `use_vision` | Empfaengt Hailo-8L Inferenz via UDP 127.0.0.1:5005 |
 | `gemini_semantic_node` | `my_bot` | `gemini_semantic_node` | `use_vision` | Gemini-Cloud-Semantik aus Kamerabild und Detektionen |
 | `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff-Sicherheits-Multiplexer, blockiert `/cmd_vel` bei Abgrund |
-| `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/MAX98357A I2S |
+| `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/PCM5102A DAC |
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN, publiziert /imu, /cliff, /range, /battery via CAN) |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD via USB (pyusb) |
 
@@ -44,10 +44,10 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | Topic | Typ | Rate | QoS | Publisher / Subscriber | Beschreibung |
 |---|---|---|---|---|---|
 | `/odom` | `nav_msgs/Odometry` | 20 Hz | Reliable | Drive-Node (Pub) | Radodometrie, ~725 Bytes, Reliable wg. XRCE-DDS MTU |
-| `/imu` | `sensor_msgs/Imu` | 50 Hz | Reliable | Sensor-Node (Pub) | MPU6050 Beschleunigung + Gyroskop |
+| `/imu` | `sensor_msgs/Imu` | 50 Hz (Soll), ~30–35 Hz (Ist, I2C-Contention) | Reliable | Sensor-Node (Pub) | MPU6050 Beschleunigung + Gyroskop |
 | `/battery` | `sensor_msgs/BatteryState` | 2 Hz | Reliable | Sensor-Node (Pub) | INA260 Spannung, Strom, Leistung |
 | `/battery_shutdown` | `std_msgs/Bool` | Event | Reliable | Sensor-Node (Pub) | Unterspannungs-Notaus (< 9.5 V) |
-| `/range/front` | `sensor_msgs/Range` | 10 Hz | Reliable | Sensor-Node (Pub) | HC-SR04 Ultraschall, frame: `ultrasonic_link` |
+| `/range/front` | `sensor_msgs/Range` | 10 Hz (Soll), ~8–9 Hz (Ist) | Reliable | Sensor-Node (Pub) | HC-SR04 Ultraschall, frame: `ultrasonic_link` |
 | `/cliff` | `std_msgs/Bool` | 20 Hz | **Best-Effort** | Sensor-Node (Pub) | MH-B IR Cliff (true = Abgrund erkannt) |
 | `/cmd_vel` | `geometry_msgs/Twist` | — | Reliable | Drive-Node (Sub) | Fahrbefehl (linear.x, angular.z) |
 | `/servo_cmd` | `geometry_msgs/Point` | — | Reliable | Sensor-Node (Sub) | Servo-Winkel (x=Pan, y=Tilt) |
@@ -62,7 +62,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `/dashboard_cmd_vel` | `geometry_msgs/Twist` | — | Reliable | dashboard_bridge (Pub) | Dashboard-Joystick (nur mit Cliff-Safety aktiv) |
 | `/sound_direction` | `std_msgs/Int32` | 10 Hz | Reliable | respeaker_doa_node (Pub) | Azimut 0-359 Grad (Direction of Arrival) |
 | `/is_voice` | `std_msgs/Bool` | 10 Hz | Reliable | respeaker_doa_node (Pub) | Sprache erkannt (Voice Activity Detection) |
-| `/vision/detections` | `std_msgs/String` | ~5 Hz | Reliable | hailo_udp_receiver (Pub) | Hailo-8 YOLOv8 Objekterkennung (JSON) |
+| `/vision/detections` | `std_msgs/String` | ~5 Hz | Reliable | hailo_udp_receiver (Pub) | Hailo-8L YOLOv8 Objekterkennung (JSON) |
 | `/vision/semantics` | `std_msgs/String` | — | Reliable | gemini_semantic_node (Pub) | Gemini-Cloud Szenenbeschreibung (JSON) |
 | `/diagnostics/can` | `diagnostic_msgs/DiagnosticArray` | — | Reliable | can_bridge_node (Pub) | CAN-Bus Diagnostik und Frame-Statistiken |
 | `/audio/play` | `std_msgs/String` | — | Reliable | cliff_safety_node (Pub), audio_feedback_node (Sub) | WAV-Dateiname fuer Audio-Wiedergabe |
@@ -111,7 +111,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_dashboard` | `False` | Web-Dashboard starten (WebSocket :9090, MJPEG :8082) |
 | `use_vision` | `False` | Vision-Pipeline starten (Hailo UDP Receiver + Gemini Semantik) |
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer aktivieren |
-| `use_audio` | `False` | Audio-Feedback-Knoten (MAX98357A I2S) |
+| `use_audio` | `False` | Audio-Feedback-Knoten (PCM5102A DAC) |
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN → /imu, /cliff, /range, /battery) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array v2.0 DoA/VAD-Knoten (USB, pyusb) |
 

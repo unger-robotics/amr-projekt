@@ -51,7 +51,7 @@ Vor dem Start muessen folgende Bedingungen erfuellt sein:
 - Das HEF-Modell liegt unter `hardware/models/yolov8s.hef`.
 - `GEMINI_API_KEY` ist in `amr/docker/.env` gesetzt.
 - Das Docker-Image ist aktuell.
-- Kein anderer Prozess blockiert `/dev/ttyACM0` oder `/dev/ttyACM1`.
+- Kein anderer Prozess blockiert `/dev/ttyACM0` oder `/dev/ttyACM1`. **Hinweis:** Die Zuordnung von `ttyACM0`/`ttyACM1` zu Drive-/Sensor-Knoten ist nicht deterministisch. Falls udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) im Container verfuegbar sind, diese bevorzugen (siehe `docs/serial_port_management.md`).
 - Auf dem Drive-Node laeuft die korrekte Firmware, nicht `led_test`.
 
 Firmware-Pruefung des Drive-Node:

@@ -23,7 +23,7 @@ Prueft 12 CAN-IDs (5 Drive, 7 Sensor), Frame-Raten, Heartbeat-Dekodierung, Daten
 
 ## Sensor-Validierung (Ultraschall + Cliff)
 
-`amr/scripts/sensor_test.py` — ROS2-Node, subscribt `/range/front` und `/cliff`.
+`amr/scripts/sensor_test.py` — ROS2-Knoten, subscribt `/range/front` und `/cliff`.
 
 ```bash
 ros2 run my_bot sensor_test
@@ -56,6 +56,7 @@ cd ~/amr-projekt/amr/docker
 | `nav_test` | Nav2-Wegplanung und Zielpunktanfahrt |
 | `docking_test` | ArUco-Marker-Erkennung und Docking-Anfahrt |
 | `sensor_test` | Ultraschall- und Cliff-Validierung (siehe oben) |
+| `cliff_test` | Cliff-Latenztest (Kanten-Stopp End-to-End) |
 | `can_validation_test` | CAN-Bus Frame-Raten und Plausibilitaet (Standalone) |
 | `serial_latency_logger` | Messung der seriellen Latenz (USB-CDC) |
 | `validation_report` | Aggregiert JSON-Ergebnisse aller Validierungsskripte zu einem Gesamtbericht (Standalone-Skript, kein ROS2-Entry-Point) |

@@ -15,7 +15,8 @@ Kurzarchitektur:
 ## Arbeitsregeln
 
 - Sprache: Deutsch im wissenschaftlich-technischen Stil
-- In Markdown-Dateien keine UTF-8-Umlaute, sondern ae, oe, ue, ss
+- In Markdown-Dateien keine UTF-8-Umlaute, sondern ae, oe, ue, ss (gilt fuer Git-Markdown; in LaTeX-/Pandoc-Quelltexten der Projektarbeit sind UTF-8-Umlaute zulaessig)
+- udev-Seriennummern fuer die ESP32-S3-Zuordnung stehen in docs/serial_port_management.md
 - Terminologie konsistent beibehalten
 - Keine Annahmen ueber ungelesene Dateien, Messwerte oder Hardware-Zustaende treffen
 - Kleine, pruefbare Aenderungen bevorzugen
