@@ -7,8 +7,16 @@ const ROBOT_DOT_RADIUS = 3; // px (gruener Mittelpunkt)
 const ROBOT_GLOW_RADIUS = 14; // px (aeusserer Glow)
 const SCALE_BAR_MARGIN = 16; // px Abstand vom Rand
 const MAX_TRAIL_POINTS = 500; // Max Pfad-Punkte
+const GOAL_MARKER_SIZE = 8; // px (Ziel-Marker)
 
-export function MapView() {
+interface MapViewProps {
+  onNavGoal?: (x: number, y: number, yaw: number) => void;
+  navStatus?: 'idle' | 'navigating' | 'reached' | 'failed' | 'cancelled';
+  navGoalX?: number;
+  navGoalY?: number;
+}
+
+export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement | null>(null);
@@ -171,6 +179,34 @@ export function MapView() {
     ctx.fillStyle = '#00e676';
     ctx.fill();
 
+    // --- Navigationsziel-Marker ---
+    if (navStatus === 'navigating' && navGoalX !== undefined && navGoalY !== undefined) {
+      const { cx: goalCx, cy: goalCy } = toCanvas(navGoalX, navGoalY);
+      // Pulsierender Kreis
+      ctx.beginPath();
+      ctx.arc(goalCx, goalCy, GOAL_MARKER_SIZE + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 230, 118, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Innerer Kreis
+      ctx.beginPath();
+      ctx.arc(goalCx, goalCy, GOAL_MARKER_SIZE, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 230, 118, 0.6)';
+      ctx.fill();
+      ctx.strokeStyle = '#00e676';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Kreuz im Zentrum
+      ctx.beginPath();
+      ctx.moveTo(goalCx - 4, goalCy);
+      ctx.lineTo(goalCx + 4, goalCy);
+      ctx.moveTo(goalCx, goalCy - 4);
+      ctx.lineTo(goalCx, goalCy + 4);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
     // --- Massstabsleiste (1m, weiss) ---
     const oneMetrePixels = (1.0 / mapResolution) * mapScale;
     const barY = offsetY + drawH - SCALE_BAR_MARGIN;
@@ -200,6 +236,7 @@ export function MapView() {
   }, [
     mapVersion, mapWidth, mapHeight, mapResolution,
     mapOriginX, mapOriginY, robotMapX, robotMapY, robotMapYaw,
+    navStatus, navGoalX, navGoalY,
   ]);
 
   useEffect(() => {
@@ -218,13 +255,51 @@ export function MapView() {
     return () => observer.disconnect();
   }, [draw]);
 
+  // Klick auf Karte -> Navigationsziel setzen
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onNavGoal || !mapImageRef.current || mapWidth === 0 || mapHeight === 0) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const width = rect.width;
+    const height = rect.height;
+
+    const margin = Math.min(width, height) * MARGIN_FRACTION;
+    const availW = width - 2 * margin;
+    const availH = height - 2 * margin;
+    const mapScale = Math.min(availW / mapWidth, availH / mapHeight);
+    const drawW = mapWidth * mapScale;
+    const drawH = mapHeight * mapScale;
+    const offsetX = (width - drawW) / 2;
+    const offsetY = (height - drawH) / 2;
+
+    // Canvas-Pixel -> Map-Meter (Inverse von toCanvas)
+    const mapX = ((clickX - offsetX) / mapScale) * mapResolution + mapOriginX;
+    const mapY = ((mapHeight - (clickY - offsetY) / mapScale)) * mapResolution + mapOriginY;
+
+    // Yaw zum Roboter hin berechnen
+    const dx = mapX - robotMapX;
+    const dy = mapY - robotMapY;
+    const yaw = Math.atan2(dy, dx);
+
+    onNavGoal(mapX, mapY, yaw);
+  }, [onNavGoal, mapWidth, mapHeight, mapResolution, mapOriginX, mapOriginY, robotMapX, robotMapY]);
+
   // Resolution als cm/px und Map-Dimensionen fuer HUD-Label
   const resolutionCm = mapResolution > 0 ? Math.round(mapResolution * 100) : 0;
   const hasMap = mapPngB64 !== null && mapWidth > 0;
 
   return (
     <div ref={containerRef} className="bg-hud-bg w-full h-full relative">
-      <canvas ref={canvasRef} className="absolute inset-0" />
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 ${onNavGoal ? 'cursor-crosshair' : ''}`}
+        onClick={handleCanvasClick}
+      />
       {/* SLAM MAP label */}
       <div className="absolute top-2 left-3 text-hud-cyan/60 text-[10px] uppercase tracking-widest pointer-events-none z-10">
         SLAM MAP

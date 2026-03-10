@@ -30,8 +30,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
 import rclpy
-from geometry_msgs.msg import Point, Twist
+from geometry_msgs.msg import Point, PoseStamped, Twist
+from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import BatteryState, Image, Imu, LaserScan
@@ -70,6 +72,7 @@ MAP_BROADCAST_HZ = 0.5  # Karten-Broadcast-Rate
 MAP_PNG_QUALITY = 6  # PNG-Kompressionsgrad (0-9)
 DETECTION_BROADCAST_HZ = 5.0  # Vision-Detektionen Broadcast-Rate
 SEMANTICS_BROADCAST_HZ = 0.5  # Semantische Analyse Broadcast-Rate
+NAV_STATUS_BROADCAST_HZ = 1.0  # Navigationsstatus Broadcast-Rate
 
 # Batterie: OCV-SOC-Tabelle (3S Li-Ion, Samsung INR18650-35E)
 BATTERY_CAPACITY_MAH = 3500.0
@@ -237,13 +240,20 @@ class WebSocketServer:
             self.node.publish_hardware_cmd(motor_limit, servo_speed, led_pwm)
         elif op == "heartbeat":
             self.node.record_heartbeat()
+        elif op == "nav_goal":
+            x = float(msg.get("x", 0.0))
+            y = float(msg.get("y", 0.0))
+            yaw = float(msg.get("yaw", 0.0))
+            self.node.send_nav_goal(x, y, yaw)
+        elif op == "nav_cancel":
+            self.node.cancel_nav_goal()
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""
         if not self.clients:
             return
         stale = set()
-        for ws in self.clients:
+        for ws in list(self.clients):
             try:
                 await ws.send(data_str)
             except (websockets.exceptions.ConnectionClosed, Exception):
@@ -272,6 +282,7 @@ class WebSocketServer:
                 self._map_loop(),
                 self._detections_loop(),
                 self._semantics_loop(),
+                self._nav_status_loop(),
             )
 
     async def _telemetry_loop(self):
@@ -322,6 +333,15 @@ class WebSocketServer:
         interval = 1.0 / SEMANTICS_BROADCAST_HZ
         while True:
             data = self.node.build_semantics_msg()
+            if data is not None:
+                await self.broadcast(json.dumps(data))
+            await asyncio.sleep(interval)
+
+    async def _nav_status_loop(self):
+        """Sendet Navigationsstatus mit 1 Hz."""
+        interval = 1.0 / NAV_STATUS_BROADCAST_HZ
+        while True:
+            data = self.node.build_nav_status_msg()
             if data is not None:
                 await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
@@ -418,6 +438,15 @@ class DashboardBridge(Node):
         self.detection_times = deque(maxlen=HZ_WINDOW)
         self.camera_image_width = 1456
         self.camera_image_height = 1088
+
+        # --- Navigation Action Client ---
+        self.nav_client = ActionClient(self, NavigateToPose, "navigate_to_pose")
+        self.nav_goal_handle = None
+        self.nav_status = "idle"  # idle, navigating, reached, failed, cancelled
+        self.nav_goal_x = 0.0
+        self.nav_goal_y = 0.0
+        self.nav_goal_yaw = 0.0
+        self.nav_remaining_m = 0.0
 
         # --- ROS2 Publisher ---
         self.pub_cmd_vel = self.create_publisher(Twist, "/cmd_vel", 10)
@@ -1030,6 +1059,112 @@ class DashboardBridge(Node):
                 "running": proc_running,
                 "total": proc_total,
             },
+        }
+
+    # --- Navigation ---
+
+    def send_nav_goal(self, x, y, yaw):
+        """Sendet ein Navigationsziel an Nav2."""
+        if not self.nav_client.wait_for_server(timeout_sec=1.0):
+            self.get_logger().warn("Nav2-Server nicht verfuegbar")
+            with self.lock:
+                self.nav_status = "failed"
+            return
+
+        # Vorheriges Ziel abbrechen
+        if self.nav_goal_handle is not None:
+            self.cancel_nav_goal()
+
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.pose = PoseStamped()
+        goal_msg.pose.header.frame_id = "map"
+        goal_msg.pose.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.pose.pose.position.x = float(x)
+        goal_msg.pose.pose.position.y = float(y)
+        goal_msg.pose.pose.position.z = 0.0
+        # Yaw -> Quaternion
+        goal_msg.pose.pose.orientation.z = math.sin(yaw / 2.0)
+        goal_msg.pose.pose.orientation.w = math.cos(yaw / 2.0)
+
+        with self.lock:
+            self.nav_goal_x = x
+            self.nav_goal_y = y
+            self.nav_goal_yaw = yaw
+            self.nav_status = "navigating"
+
+        self.get_logger().info(
+            f"Nav-Goal gesendet: x={x:.2f}, y={y:.2f}, yaw={math.degrees(yaw):.1f} deg"
+        )
+
+        future = self.nav_client.send_goal_async(goal_msg, feedback_callback=self._nav_feedback_cb)
+        future.add_done_callback(self._nav_goal_response_cb)
+
+    def cancel_nav_goal(self):
+        """Bricht das aktuelle Navigationsziel ab."""
+        if self.nav_goal_handle is not None:
+            self.get_logger().info("Nav-Goal abgebrochen")
+            self.nav_goal_handle.cancel_goal_async()
+            self.nav_goal_handle = None
+        with self.lock:
+            self.nav_status = "cancelled"
+
+    def _nav_goal_response_cb(self, future):
+        """Callback fuer die Goal-Antwort von Nav2."""
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().warn("Nav-Goal abgelehnt")
+            with self.lock:
+                self.nav_status = "failed"
+            return
+        self.nav_goal_handle = goal_handle
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._nav_result_cb)
+
+    def _nav_feedback_cb(self, feedback_msg):
+        """Callback fuer Nav2-Feedback (Restdistanz)."""
+        fb = feedback_msg.feedback
+        pos = fb.current_pose.pose.position
+        with self.lock:
+            dx = self.nav_goal_x - pos.x
+            dy = self.nav_goal_y - pos.y
+            self.nav_remaining_m = math.sqrt(dx * dx + dy * dy)
+
+    def _nav_result_cb(self, future):
+        """Callback fuer das Nav2-Ergebnis."""
+        result = future.result()
+        status = result.status
+        self.nav_goal_handle = None
+        # status 4 = SUCCEEDED, 5 = CANCELED, 6 = ABORTED
+        with self.lock:
+            if status == 4:
+                self.nav_status = "reached"
+                self.nav_remaining_m = 0.0
+                self.get_logger().info("Nav-Goal erreicht")
+            elif status == 5:
+                self.nav_status = "cancelled"
+                self.get_logger().info("Nav-Goal abgebrochen (Nav2)")
+            else:
+                self.nav_status = "failed"
+                self.get_logger().warn(f"Nav-Goal fehlgeschlagen (Status {status})")
+
+    def build_nav_status_msg(self):
+        """Erstellt das Nav-Status-JSON-Dictionary."""
+        with self.lock:
+            status = self.nav_status
+            goal_x = self.nav_goal_x
+            goal_y = self.nav_goal_y
+            goal_yaw = self.nav_goal_yaw
+            remaining = self.nav_remaining_m
+        if status == "idle":
+            return None
+        return {
+            "op": "nav_status",
+            "ts": round(time.time(), 3),
+            "status": status,
+            "goal_x": round(goal_x, 3),
+            "goal_y": round(goal_y, 3),
+            "goal_yaw": round(goal_yaw, 3),
+            "remaining_distance_m": round(remaining, 2),
         }
 
     def build_detections_msg(self):

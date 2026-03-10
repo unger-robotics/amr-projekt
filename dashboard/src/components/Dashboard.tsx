@@ -23,6 +23,12 @@ export function Dashboard() {
   const updateVisionDetections = useTelemetryStore((s) => s.updateVisionDetections);
   const updateVisionSemantics = useTelemetryStore((s) => s.updateVisionSemantics);
 
+  const updateNavStatus = useTelemetryStore((s) => s.updateNavStatus);
+  const navStatus = useTelemetryStore((s) => s.navStatus);
+  const navGoalX = useTelemetryStore((s) => s.navGoalX);
+  const navGoalY = useTelemetryStore((s) => s.navGoalY);
+  const navRemainingM = useTelemetryStore((s) => s.navRemainingM);
+
   const onMessage = useCallback(
     (msg: ServerMessage) => {
       if (msg.op === 'telemetry') updateTelemetry(msg);
@@ -31,11 +37,12 @@ export function Dashboard() {
       else if (msg.op === 'map') updateMap(msg);
       else if (msg.op === 'vision_detections') updateVisionDetections(msg);
       else if (msg.op === 'vision_semantics') updateVisionSemantics(msg);
+      else if (msg.op === 'nav_status') updateNavStatus(msg);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, updateNavStatus],
   );
 
-  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel } = useWebSocket(onMessage);
   const { onJoystickMove, onJoystickEnd } = useJoystick(send);
 
   const handleEmergencyStop = useCallback(() => {
@@ -62,8 +69,35 @@ export function Dashboard() {
         </div>
 
         {/* SLAM-Karte (Zeile 1-3, Spalte 3) */}
-        <div className="min-h-[200px] lg:min-h-0 lg:col-start-3 lg:row-start-1 lg:row-end-4 overflow-hidden">
-          <MapView />
+        <div className="min-h-[200px] lg:min-h-0 lg:col-start-3 lg:row-start-1 lg:row-end-4 overflow-hidden relative">
+          <MapView
+            onNavGoal={connected ? sendNavGoal : undefined}
+            navStatus={navStatus}
+            navGoalX={navGoalX}
+            navGoalY={navGoalY}
+          />
+          {navStatus !== 'idle' && (
+            <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 bg-hud-panel/90 border border-hud-border px-3 py-1.5 text-xs z-10">
+              <span className={
+                navStatus === 'navigating' ? 'text-hud-cyan' :
+                navStatus === 'reached' ? 'text-green-400' :
+                'text-red-400'
+              }>
+                {navStatus === 'navigating' ? `NAV ${navRemainingM.toFixed(1)}m` :
+                 navStatus === 'reached' ? 'ZIEL ERREICHT' :
+                 navStatus === 'failed' ? 'NAV FEHLER' :
+                 'ABGEBROCHEN'}
+              </span>
+              {navStatus === 'navigating' && (
+                <button
+                  onClick={sendNavCancel}
+                  className="ml-auto text-red-400 hover:text-red-300 border border-red-400/50 px-2 py-0.5"
+                >
+                  Abbrechen
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* LiDAR (Zeile 1-3, Spalte 4) */}

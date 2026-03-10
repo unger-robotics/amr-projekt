@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, Detection } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, NavStatusMsg, Detection } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -80,6 +80,12 @@ interface TelemetryState {
   // Serial-Transport Latenz (ESP32 → Pi)
   serialLatencyAvg: number;
   serialLatencyP95: number;
+  // Navigation
+  navStatus: 'idle' | 'navigating' | 'reached' | 'failed' | 'cancelled';
+  navGoalX: number;
+  navGoalY: number;
+  navGoalYaw: number;
+  navRemainingM: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -87,6 +93,7 @@ interface TelemetryState {
   updateMap: (msg: MapMsg) => void;
   updateVisionDetections: (msg: VisionDetectionsMsg) => void;
   updateVisionSemantics: (msg: VisionSemanticsMsg) => void;
+  updateNavStatus: (msg: NavStatusMsg) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -111,6 +118,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   servoPan: 90, servoTilt: 90,
   hwMotorLimit: 100, hwServoSpeed: 5, hwLedPwm: 0,
   serialLatencyAvg: 0, serialLatencyP95: 0,
+  navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -200,5 +208,13 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     semanticAnalysis: msg.analysis,
     semanticModel: msg.model,
     lastSemanticsTs: msg.ts,
+  }),
+
+  updateNavStatus: (msg) => set({
+    navStatus: msg.status,
+    navGoalX: msg.goal_x,
+    navGoalY: msg.goal_y,
+    navGoalYaw: msg.goal_yaw,
+    navRemainingM: msg.remaining_distance_m,
   }),
 }));

@@ -141,5 +141,29 @@ export interface VisionSemanticsMsg {
   model: string;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg;
+/** Navigationsziel ans Backend */
+export interface NavGoalMsg {
+  op: 'nav_goal';
+  x: number;
+  y: number;
+  yaw: number;
+}
+
+/** Navigations-Abbruch ans Backend */
+export interface NavCancelMsg {
+  op: 'nav_cancel';
+}
+
+/** Navigationsstatus vom Backend (1 Hz) */
+export interface NavStatusMsg {
+  op: 'nav_status';
+  ts: number;
+  status: 'idle' | 'navigating' | 'reached' | 'failed' | 'cancelled';
+  goal_x: number;
+  goal_y: number;
+  goal_yaw: number;
+  remaining_distance_m: number;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg;

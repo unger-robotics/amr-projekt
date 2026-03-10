@@ -96,5 +96,13 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send(msg);
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd };
+  const sendNavGoal = useCallback((x: number, y: number, yaw: number) => {
+    send({ op: 'nav_goal', x, y, yaw });
+  }, [send]);
+
+  const sendNavCancel = useCallback(() => {
+    send({ op: 'nav_cancel' });
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel };
 }
