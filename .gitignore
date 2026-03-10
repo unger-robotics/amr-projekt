@@ -63,6 +63,9 @@ hailort.log
 # Profiling / Debug
 gstshark_*/
 
+# LaTeX-Build-Artefakte
+planung/vortrag/out/
+
 # Linting-Caches
 .ruff_cache/
 .mypy_cache/
