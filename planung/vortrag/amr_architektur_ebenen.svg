@@ -26,11 +26,12 @@
     <rect width="800" height="120" class="layer" />
     <text x="20" y="30" class="layer-title">L1: Hard-Realtime &amp; Failsafe (ESP32-S3)</text>
 
-    <rect x="20" y="60" width="140" height="40" class="node"/><text x="90" y="85" class="node-text">INA260 Monitor</text>
-    <rect x="175" y="60" width="140" height="40" class="node"/><text x="245" y="85" class="node-text">LED (IRLZ24N)</text>
-    <rect x="330" y="60" width="140" height="40" class="node"/><text x="400" y="85" class="node-text">Cytron MDD3A</text>
-    <rect x="485" y="60" width="140" height="40" class="node"/><text x="555" y="85" class="node-text">Odometrie (Enc)</text>
-    <rect x="640" y="60" width="140" height="40" class="node"/><text x="710" y="85" class="node-text">MPU6050 (IMU)</text>
+    <rect x="15" y="60" width="115" height="40" class="node"/><text x="72.5" y="85" class="node-text">INA260 Monitor</text>
+    <rect x="145" y="60" width="115" height="40" class="node"/><text x="202.5" y="85" class="node-text">MH-B &amp; CAN-Stop</text>
+    <rect x="275" y="60" width="115" height="40" class="node"/><text x="332.5" y="85" class="node-text">Cytron MDD3A</text>
+    <rect x="405" y="60" width="115" height="40" class="node"/><text x="462.5" y="85" class="node-text">Odometrie (Enc)</text>
+    <rect x="535" y="60" width="115" height="40" class="node"/><text x="592.5" y="85" class="node-text">MPU6050 (IMU)</text>
+    <rect x="665" y="60" width="115" height="40" class="node"/><text x="722.5" y="85" class="node-text">LED (IRLZ24N)</text>
   </g>
 
   <g transform="translate(100, 260)">
@@ -39,7 +40,7 @@
 
     <rect x="50" y="60" width="180" height="40" class="node"/><text x="140" y="85" class="node-text">ROS 2 Humble (Docker)</text>
     <rect x="280" y="60" width="180" height="40" class="node"/><text x="370" y="85" class="node-text">Nav2 / SLAM</text>
-    <rect x="510" y="60" width="180" height="40" class="node"/><text x="600" y="85" class="node-text">PulseAudio Loopback</text>
+    <rect x="510" y="60" width="180" height="40" class="node"/><text x="600" y="85" class="node-text">ALSA / /dev/snd</text>
 
     <rect x="50" y="110" width="180" height="40" class="node"/><text x="140" y="135" class="node-text">USB-CDC Bridge</text>
     <rect x="280" y="110" width="180" height="40" class="node"/><text x="370" y="135" class="node-text">v4l2loopback</text>
@@ -55,8 +56,10 @@
     <rect x="450" y="60" width="150" height="40" class="node"/><text x="525" y="85" class="node-text">RPLIDAR (USB)</text>
     <rect x="650" y="60" width="120" height="40" class="node"/><text x="710" y="85" class="node-text">ReSpeaker (USB)</text>
 
-    <rect x="250" y="110" width="150" height="40" class="node"/><text x="325" y="135" class="node-text">Pan-Tilt (I2C)</text>
-    <rect x="450" y="110" width="150" height="40" class="node"/><text x="525" y="135" class="node-text">MAX98357A (I2S)</text>
+    <rect x="40" y="110" width="150" height="40" class="node"/><text x="115" y="135" class="node-text">Gemini API (Cloud)</text>
+    <rect x="230" y="110" width="150" height="40" class="node"/><text x="305" y="135" class="node-text">PCA9685 (Pan-Tilt)</text>
+    <rect x="420" y="110" width="150" height="40" class="node"/><text x="495" y="135" class="node-text">PCM5102A (I2S)</text>
+    <rect x="610" y="110" width="150" height="40" class="node"/><text x="685" y="135" class="node-text">Web-Dashboard</text>
   </g>
 
   <g>

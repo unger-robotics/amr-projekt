@@ -1,10 +1,29 @@
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{amr-dashboard}[2026/02/24 AMR Dashboard Theme]
+\ProvidesPackage{amr-style}[2026/03/10 AMR Corporate Design und Pakete]
 
+% -- 1. Grundlegende Pakete --------------------------------------------------
+\RequirePackage{fontspec}
+\setsansfont{Fira Sans}
+\setmonofont{Fira Mono}
+
+\RequirePackage{graphicx}
+\RequirePackage{booktabs}
+\RequirePackage{amsmath}
+\RequirePackage[ngerman]{babel}
 \RequirePackage{tikz}
-\RequirePackage{xcolor}
 
-% 1. Farbdefinitionen
+% PDF-Anzeigemodus (Vollbild)
+\hypersetup{pdfpagemode=FullScreen}
+
+% -- 2. Farbdefinitionen (Corporate Design) ----------------------------------
+\definecolor{CdRed}{HTML}{E60000}
+\definecolor{CdDarkRed}{HTML}{8A0000}
+\definecolor{CdLightGray}{HTML}{EAEAEA}
+\definecolor{CdMedGray}{HTML}{969696}
+\definecolor{CdDarkGray}{HTML}{323232}
+\definecolor{CdBlack}{HTML}{111820}
+
+% Farben fuer das Dashboard / Architektur-Diagramme
 \definecolor{BgBase}{HTML}{0B131E}
 \definecolor{BgPanel}{HTML}{111D2B}
 \definecolor{TextSec}{HTML}{517C96}
@@ -12,7 +31,17 @@
 \definecolor{StatSucc}{HTML}{00FF66}
 \definecolor{StatCrit}{HTML}{FF2A40}
 
-% 2. Globale TikZ-Stile (Ohne Leerzeilen!) [cite: 25, 26, 46]
+% -- 3. Beamer-Theme Anpassungen (Metropolis) --------------------------------
+% Diese Ueberschreibungen greifen, da das Metropolis-Theme in der Hauptdatei
+% VOR diesem Paket geladen wird.
+\setbeamercolor{normal text}{fg=CdBlack, bg=white}
+\setbeamercolor{alerted text}{fg=CdRed}
+\setbeamercolor{example text}{fg=CdDarkRed}
+\setbeamercolor{frametitle}{bg=CdBlack, fg=white}
+\setbeamercolor{progress bar}{fg=CdRed, bg=CdDarkGray}
+\setbeamercolor{title separator}{fg=CdRed}
+
+% -- 4. TikZ-Stile und Makros ------------------------------------------------
 \tikzset{
     titleText/.style={anchor=center, text=AccPrim, font=\sffamily\bfseries\Large},
     lblText/.style={anchor=base west, text=TextSec, font=\sffamily\scriptsize},
@@ -22,9 +51,7 @@
     txtCompute/.style={anchor=center, text=AccPrim, font=\sffamily\bfseries\normalsize},
     txtComputeSub/.style={anchor=center, text=AccPrim, font=\sffamily\tiny},
     txtActuator/.style={anchor=center, text=StatSucc, font=\sffamily\bfseries\normalsize},
-    box/.style={fill=BgPanel, draw=TextSec, line width=2pt, rounded corners=6pt},
-    layer/.style={fill=BgPanel, draw=TextSec, line width=2pt, rounded corners=10pt},
-    nodeBox/.style={fill=BgBase, draw=AccPrim, line width=1pt, rounded corners=5pt},
+    nodeBox/.style={fill=BgPanel, draw=AccPrim, line width=2pt, rounded corners=8pt},
     boxSensor/.style={fill=BgPanel, draw=TextSec, line width=2pt, rounded corners=8pt},
     boxCompute/.style={fill=BgPanel, draw=AccPrim, line width=2pt, rounded corners=8pt},
     boxActuator/.style={fill=BgPanel, draw=StatSucc, line width=2pt, rounded corners=8pt},
@@ -34,7 +61,6 @@
     flowSlow/.style={draw=TextSec, line width=2pt, dash pattern=on 6pt off 6pt}
 }
 
-% 3. Makros [cite: 28, 29, 47]
 \newcommand{\sysnode}[7]{
   \draw[nodeBox] (#1,#2) rectangle ++(#3,#4);
   \node[nodeText] at (#1+#6, #2+#7) {#5};
@@ -49,17 +75,3 @@
   \draw[boxActuator] (#1,#2) rectangle ++(#3,#4);
   \node[txtActuator] at (#1+#6, #2+#7) {#5};
 }
-
-\newcommand{\amrIcon}[3]{
-  \begin{scope}[shift={(#1,#2)}, scale=#3, x=1pt, y=-1pt]
-    \draw[AccPrim, opacity=0.4] (4,5) -- (2,5) -- (2,19) -- (4,19);
-    \draw[AccPrim, opacity=0.4] (20,5) -- (22,5) -- (22,19) -- (20,19);
-    \draw[AccPrim, fill=AccPrim, fill opacity=0.1] (12,14) circle (5);
-    \fill[TextSec] (5,11) rectangle ++(2,6);
-    \fill[TextSec] (17,11) rectangle ++(2,6);
-    \fill[TextSec] (12,8) circle (1.5);
-    \draw[StatSucc] (12,14) circle (1.5);
-    \fill[StatCrit] (12,14) circle (0.5);
-  \end{scope}
-}
-\endinput
