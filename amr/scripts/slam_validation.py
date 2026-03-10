@@ -12,7 +12,10 @@ der Drift zwischen SLAM-korrigierter Position (map->base_link) und
 reiner Odometrie (odom->base_link) als Qualitaetsmass verwendet.
 Die map->odom Transformation zeigt den Korrekturbedarf des SLAM.
 
-Akzeptanzkriterium: ATE (RMSE) < 0.20 m
+Akzeptanzkriterien:
+  - ATE (RMSE) < 0.20 m
+  - TF-Rate map->odom >= 1.5 Hz
+  - TF-Rate odom->base_link >= 15 Hz
 
 Verwendung:
   # Live (laeuft bis Ctrl+C, dann Auswertung):
@@ -36,7 +39,9 @@ try:
     import rclpy
     from nav_msgs.msg import Odometry
     from rclpy.node import Node
+    from rclpy.qos import QoSProfile, ReliabilityPolicy
     from rclpy.time import Time
+    from sensor_msgs.msg import Imu, LaserScan
     from tf2_ros import (
         Buffer,
         ConnectivityException,
@@ -150,7 +155,29 @@ def verify_tf_chain(tf_buffer, node):
     return results
 
 
-def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output_dir="."):
+def compute_tf_rate(timestamps):
+    """Berechnet die TF-Publikationsrate aus einer Liste von Zeitstempeln.
+
+    Nur eindeutige Zeitstempel (neue Publikationen) werden gezaehlt.
+    """
+    if len(timestamps) < 2:
+        return 0.0
+    duration = timestamps[-1] - timestamps[0]
+    if duration <= 0:
+        return 0.0
+    return (len(timestamps) - 1) / duration
+
+
+def generate_report(
+    ate_rmse,
+    errors,
+    odom_poses,
+    slam_poses,
+    tf_results,
+    output_dir=".",
+    tf_rates=None,
+    topic_rates=None,
+):
     """Erzeugt Markdown-Report und optionalen Matplotlib-Plot."""
     # Akzeptanzkriterium
     passed = ate_rmse < 0.20
@@ -169,6 +196,41 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
     for tf_name, status in tf_results.items():
         report.append(f"| {tf_name} | {status} |")
     report.append("")
+
+    if tf_rates is not None:
+        report.append("## TF-Publikationsraten")
+        report.append("")
+        report.append("| Transform | Rate (Hz) | Akzeptanz | Ergebnis |")
+        report.append("|-----------|-----------|-----------|----------|")
+        mo_rate = tf_rates.get("map_odom_hz", 0.0)
+        ob_rate = tf_rates.get("odom_base_hz", 0.0)
+        mo_pass = mo_rate >= 1.5
+        ob_pass = ob_rate >= 15.0
+        report.append(
+            f"| map -> odom | {mo_rate:.1f} | >= 1.5 Hz "
+            f"| **{'BESTANDEN' if mo_pass else 'NICHT BESTANDEN'}** |"
+        )
+        report.append(
+            f"| odom -> base_link | {ob_rate:.1f} | >= 15 Hz "
+            f"| **{'BESTANDEN' if ob_pass else 'NICHT BESTANDEN'}** |"
+        )
+        report.append("")
+
+    if topic_rates:
+        # Soll-Raten fuer Akzeptanzpruefung
+        expected_rates = {"/odom": 15.0, "/scan": 5.0, "/imu": 25.0}
+        report.append("## Topic-Raten")
+        report.append("")
+        report.append("| Topic | Rate (Hz) | Akzeptanz | Ergebnis |")
+        report.append("|-------|-----------|-----------|----------|")
+        for topic, rate in topic_rates.items():
+            threshold = expected_rates.get(topic, 0.0)
+            ok = rate >= threshold
+            report.append(
+                f"| {topic} | {rate:.1f} | >= {threshold:.0f} Hz "
+                f"| **{'BESTANDEN' if ok else 'NICHT BESTANDEN'}** |"
+            )
+        report.append("")
 
     report.append("## Absolute Trajectory Error (ATE)")
     report.append("")
@@ -206,6 +268,13 @@ def generate_report(ate_rmse, errors, odom_poses, slam_poses, tf_results, output
         "num_slam_poses": len(slam_poses),
         "passed": passed,
     }
+    if tf_rates is not None:
+        json_export["tf_rate_map_odom_hz"] = round(tf_rates.get("map_odom_hz", 0.0), 1)
+        json_export["tf_rate_odom_base_hz"] = round(tf_rates.get("odom_base_hz", 0.0), 1)
+    if topic_rates is not None:
+        json_export["topic_rate_odom_hz"] = round(topic_rates.get("/odom", 0.0), 1)
+        json_export["topic_rate_scan_hz"] = round(topic_rates.get("/scan", 0.0), 1)
+        json_export["topic_rate_imu_hz"] = round(topic_rates.get("/imu", 0.0), 1)
     json_path = os.path.join(output_dir, "slam_results.json")
     with open(json_path, "w") as f:
         json.dump(json_export, f, indent=2)
@@ -270,15 +339,46 @@ class SlamValidationNode(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
+        # Topic-Raten-Messung
+        self.topic_rate_stamps: dict[str, list[float]] = {"/odom": [], "/scan": [], "/imu": []}
+
         # Odometrie-Subscriber
         self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
 
         # Timer: Alle 200 ms SLAM-Pose aus TF abfragen
         self.sample_timer = self.create_timer(0.2, self.sample_slam_pose)
 
+        # Topic-Subscriber fuer Raten-Messung (/scan, /imu)
+        self.scan_sub = self.create_subscription(
+            LaserScan,
+            "/scan",
+            self._scan_cb,
+            10,
+        )
+        best_effort_qos = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.imu_sub = self.create_subscription(
+            Imu,
+            "/imu",
+            self._imu_cb,
+            best_effort_qos,
+        )
+
+        # TF-Rate-Messung: 20 ms Abtastung fuer map->odom und odom->base_link
+        self.tf_rate_map_odom_stamps = []
+        self.tf_rate_odom_base_stamps = []
+        self._last_map_odom_stamp = None
+        self._last_odom_base_stamp = None
+        self.tf_rate_timer = self.create_timer(0.02, self.sample_tf_rates)
+
         self.get_logger().info(
             f"SLAM-Validierung gestartet (Dauer: {duration}s). Warte auf Daten..."
         )
+
+    def _scan_cb(self, _msg):
+        self.topic_rate_stamps["/scan"].append(time.time())
+
+    def _imu_cb(self, _msg):
+        self.topic_rate_stamps["/imu"].append(time.time())
 
     def odom_callback(self, msg):
         """Speichert reine Odometrie-Posen."""
@@ -286,6 +386,7 @@ class SlamValidationNode(Node):
             self.start_time = time.time()
 
         t = time.time()
+        self.topic_rate_stamps["/odom"].append(t)
         pos = msg.pose.pose.position
         ori = msg.pose.pose.orientation
         yaw = quaternion_to_yaw([ori.x, ori.y, ori.z, ori.w])
@@ -315,6 +416,44 @@ class SlamValidationNode(Node):
         except (LookupException, ConnectivityException, ExtrapolationException):
             pass  # TF noch nicht verfuegbar, normal beim Start
 
+    def sample_tf_rates(self):
+        """Misst TF-Publikationsraten anhand eindeutiger Timestamps."""
+        if self.start_time is None:
+            return
+
+        now = time.time()
+
+        # map -> odom
+        try:
+            tf = self.tf_buffer.lookup_transform("map", "odom", Time())
+            stamp = (tf.header.stamp.sec, tf.header.stamp.nanosec)
+            if stamp != self._last_map_odom_stamp:
+                self._last_map_odom_stamp = stamp
+                self.tf_rate_map_odom_stamps.append(now)
+        except (LookupException, ConnectivityException, ExtrapolationException):
+            pass
+
+        # odom -> base_link
+        try:
+            tf = self.tf_buffer.lookup_transform("odom", "base_link", Time())
+            stamp = (tf.header.stamp.sec, tf.header.stamp.nanosec)
+            if stamp != self._last_odom_base_stamp:
+                self._last_odom_base_stamp = stamp
+                self.tf_rate_odom_base_stamps.append(now)
+        except (LookupException, ConnectivityException, ExtrapolationException):
+            pass
+
+    def get_tf_rates(self):
+        """Berechnet gemessene TF-Publikationsraten."""
+        return {
+            "map_odom_hz": compute_tf_rate(self.tf_rate_map_odom_stamps),
+            "odom_base_hz": compute_tf_rate(self.tf_rate_odom_base_stamps),
+        }
+
+    def get_topic_rates(self):
+        """Berechnet gemessene Topic-Publikationsraten."""
+        return {topic: compute_tf_rate(stamps) for topic, stamps in self.topic_rate_stamps.items()}
+
     def get_tf_results(self):
         """TF-Kette pruefen."""
         return verify_tf_chain(self.tf_buffer, self)
@@ -334,6 +473,8 @@ def run_live_mode(duration, output_dir):
 
     # TF-Kette pruefen (am Ende, wenn alles laeuft)
     tf_results = node.get_tf_results()
+    tf_rates = node.get_tf_rates()
+    topic_rates = node.get_topic_rates()
 
     # ATE berechnen
     ate_rmse, errors = compute_ate(node.odom_poses, node.slam_poses)
@@ -342,9 +483,20 @@ def run_live_mode(duration, output_dir):
     print(f"Odom-Posen:  {len(node.odom_poses)}")
     print(f"SLAM-Posen:  {len(node.slam_poses)}")
     print(f"ATE (RMSE):  {ate_rmse:.4f} m")
+    print(f"TF map->odom:       {tf_rates['map_odom_hz']:.1f} Hz (>= 1.5)")
+    print(f"TF odom->base_link: {tf_rates['odom_base_hz']:.1f} Hz (>= 15.0)")
+    for topic, rate in topic_rates.items():
+        print(f"Topic {topic}: {rate:.1f} Hz")
 
     passed = generate_report(
-        ate_rmse, errors, node.odom_poses, node.slam_poses, tf_results, output_dir
+        ate_rmse,
+        errors,
+        node.odom_poses,
+        node.slam_poses,
+        tf_results,
+        output_dir,
+        tf_rates=tf_rates,
+        topic_rates=topic_rates,
     )
 
     node.destroy_node()
