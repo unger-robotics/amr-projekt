@@ -1,0 +1,141 @@
+% =============================================================================
+% AMR-Vortrag: Kolloquium / Verteidigung
+% Fokus: Methodik, VDI 2206, Eigenschaftsabsicherung, Projektfragen
+% Build: make vortrag_kolloquium.pdf
+% =============================================================================
+\documentclass[aspectratio=169]{beamer}
+\usetheme{metropolis}
+
+% Zentrales Design und alle Pakete laden
+\usepackage{amr-style}
+
+% -- Metadaten ---------------------------------------------------------------
+\title{Autonomer mobiler Roboter fuer die Intralogistik}
+\subtitle{Konzeption und Eigenschaftsabsicherung gemaess VDI 2206}
+\author{Jan Unger}
+\date{10. Maerz 2026}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+\maketitle
+
+\begin{frame}{Gliederung}
+  \small
+  \tableofcontents
+\end{frame}
+
+% =============================================================================
+\section{Motivation und Projektfragen}
+% =============================================================================
+
+\begin{frame}{Motivation und Problemstellung}
+  \textbf{Ausgangslage und Problemstellung}
+  \begin{itemize}
+    \item Industrie 4.0 erfordert flexible Materialfluesse (z.\,B. KLT-Transporte).
+    \item Industrielle AMR sind fuer diese Aufgaben oft ueberdimensioniert (Kosten $> 25\,000\,\mathrm{EUR}$).
+    \item Technischer Kernkonflikt: Strikte Trennung von harter Echtzeit (Motorregelung) und rechenintensiver Navigation auf Low-Cost-Hardware.
+  \end{itemize}
+
+  \vspace{1em}
+  \textbf{Methodik}\\
+  Strukturierte Systementwicklung und Eigenschaftsabsicherung nach VDI 2206.
+\end{frame}
+
+\begin{frame}{Projektfragen (PF)}
+  \begin{itemize}
+    \item \textbf{PF1 -- Echtzeitarchitektur:}\\ Wie laesst sich auf einer Dual-Knoten-Architektur mit ESP32-S3 eine deterministische Regelung bei gleichzeitiger Sensorerfassung realisieren?
+    \item \textbf{PF2 -- Navigationsgenauigkeit:}\\ Welchen Einfluss haben Odometrie-Kalibrierung, IMU-Fusion und hardwarenahe Sicherheitslogik auf die metrische Genauigkeit?
+    \item \textbf{PF3 -- Wahrnehmung und Docking:}\\ Erreicht hybride Vision (Edge-Inferenz und Cloud-Semantik) eine ausreichend praezise Umgebungswahrnehmung fuer komplexe Innenraeume und zentimetergenaues Docking?
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+\section{Systemarchitektur und Hardware}
+% =============================================================================
+
+\begin{frame}{Architektur der Drei Ebenen}
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{amr_datenfluss.pdf}
+  \end{figure}
+  \vspace{-1em}
+  \begin{itemize}
+    \item \textbf{Fahrkern und Navigation (Ebene A):} ESP32-S3 + RPi 5, PID bei $50\,\mathrm{Hz}$, SLAM, Nav2.
+    \item \textbf{Bedien- und Leitstandsebene (Ebene B):} Dashboard, Telemetrie, Audio.
+    \item \textbf{Intelligente Interaktion (Ebene C):} Hailo-8L Edge-NPU, Gemini API.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+\section{Lokalisierung und Navigation}
+% =============================================================================
+
+\begin{frame}{Lokalisierung: Der TF-Baum}
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=0.45\textheight]{amr_tf_baum.pdf}
+  \end{figure}
+
+  \vspace{0.5em}
+  \textbf{Koordinatensysteme (REP-105)}
+  \begin{itemize}
+    \item \texttt{map $\rightarrow$ odom}: Drift-Korrektur durch AMCL.
+    \item \texttt{odom $\rightarrow$ base\_link}: Berechnet aus Rad-Odometrie ($20\,\mathrm{Hz}$).
+    \item \texttt{base\_link $\rightarrow$ laser}: Statische Extrinsik ($x = 0{,}10\,\mathrm{m}$, Yaw = $180^\circ$).
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+\section{Eigenschaftsabsicherung und Ergebnisse}
+% =============================================================================
+
+\begin{frame}{Eigenschaftsabsicherung (PF1 und PF2)}
+  \textbf{Verifikation der hardwarenahen Subsysteme}
+
+  \vspace{0.2em}
+  {\small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
+    \midrule
+    PID-Regelfrequenz    & $50\,\mathrm{Hz}$ (Jitter $< 2\,\mathrm{ms}$) & erfuellt \\
+    Kanten-Stopp-Latenz  & $< 20\,\mathrm{ms}$ (CAN-Redundanz)            & $< 50\,\mathrm{ms}$ \\
+    Geradeausfahrt-Drift & $1{,}5\,\mathrm{cm}$ (mit IMU-Fusion)         & $< 5{,}0\,\mathrm{cm}$ \\
+    \bottomrule
+  \end{tabular}}
+
+  \vspace{0.8em}
+  \textbf{Validierung der Systemnavigation}
+
+  \vspace{0.2em}
+  {\small
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
+    \midrule
+    ATE (Kartierung)     & $0{,}16\,\mathrm{m}$  & $< 0{,}20\,\mathrm{m}$ \\
+    Positionsgenauigkeit & $6{,}4\,\mathrm{cm}$  & $< 10\,\mathrm{cm}$    \\
+    \bottomrule
+  \end{tabular}}
+\end{frame}
+
+% =============================================================================
+\section{Zusammenfassung}
+% =============================================================================
+
+\begin{frame}{Fazit und Projektbeantwortung}
+  \textbf{Kernergebnisse}
+  \begin{itemize}
+    \item \textbf{PF1 (Bestaetigt):} Die Dual-Knoten-Architektur stabilisiert die Echtzeit. Die UART-Kopplung ($921\,600\,\mathrm{Baud}$) loest Latenzprobleme drahtloser Systeme.
+    \item \textbf{PF2 (Bestaetigt):} Die systematische Odometrie-Kalibrierung reduzierte den Drift um den Faktor 10.
+    \item \textbf{PF3 (Bedingt bestaetigt):} Visuelles ArUco-Docking erreicht $80\,\%$ Erfolgsquote; Grenzen bestehen bei unzureichender Beleuchtung.
+  \end{itemize}
+
+  \vspace{1em}
+  \textbf{Fazit:}\\
+  Kostenguenstiges Gesamtsystem (${\sim}\,513\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206.
+\end{frame}
+
+\end{document}
