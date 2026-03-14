@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
@@ -104,5 +104,10 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send({ op: 'nav_cancel' });
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel };
+  const sendAudioPlay = useCallback((soundKey: string) => {
+    const msg: AudioPlayMsg = { op: 'audio_play', sound_key: soundKey };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay };
 }

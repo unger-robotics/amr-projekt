@@ -96,7 +96,7 @@ export interface SystemMsg {
   cpu: { temp_c: number; load_1m: number; load_5m: number; load_15m: number; freq_mhz: number[]; per_cpu_pct: number[] };
   ram: { total_mb: number; used_mb: number; usage_pct: number };
   disk: { total_gb: number; used_gb: number; usage_pct: number };
-  devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean; ina260: boolean };
+  devices: { esp32: boolean; lidar: boolean; camera: boolean; hailo: boolean; ina260: boolean; audio: boolean; respeaker: boolean };
   ip: string;
   uptime_s: number;
   processes: { running: number; total: number };
@@ -165,5 +165,29 @@ export interface NavStatusMsg {
   remaining_distance_m: number;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg;
+/** Sensor-Status vom Backend (2 Hz) */
+export interface SensorStatusMsg {
+  op: 'sensor_status';
+  ts: number;
+  ultrasonic: { range_m: number; hz: number };
+  cliff: { detected: boolean; hz: number };
+  imu_hz: number;
+  sensor_node_active: boolean;
+}
+
+/** Audio-Status vom Backend (2 Hz) */
+export interface AudioStatusMsg {
+  op: 'audio_status';
+  ts: number;
+  direction_deg: number;
+  is_voice: boolean;
+}
+
+/** Audio-Abspielbefehl ans Backend */
+export interface AudioPlayMsg {
+  op: 'audio_play';
+  sound_key: string;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg;

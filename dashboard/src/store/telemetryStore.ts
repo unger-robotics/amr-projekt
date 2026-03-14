@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, NavStatusMsg, Detection } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, NavStatusMsg, Detection, SensorStatusMsg, AudioStatusMsg } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -86,6 +86,18 @@ interface TelemetryState {
   navGoalY: number;
   navGoalYaw: number;
   navRemainingM: number;
+  // Sensor-Node Detail
+  sensorNodeActive: boolean;
+  imuHz: number;
+  ultrasonicHz: number;
+  cliffHz: number;
+  ultrasonicRange: number;
+  cliffDetected: boolean;
+  // Audio (ReSpeaker + HifiBerry)
+  soundDirection: number;
+  isVoiceActive: boolean;
+  audioNodeActive: boolean;
+  respeakerActive: boolean;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -94,6 +106,8 @@ interface TelemetryState {
   updateVisionDetections: (msg: VisionDetectionsMsg) => void;
   updateVisionSemantics: (msg: VisionSemanticsMsg) => void;
   updateNavStatus: (msg: NavStatusMsg) => void;
+  updateSensorStatus: (msg: SensorStatusMsg) => void;
+  updateAudioStatus: (msg: AudioStatusMsg) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -119,6 +133,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   hwMotorLimit: 100, hwServoSpeed: 5, hwLedPwm: 0,
   serialLatencyAvg: 0, serialLatencyP95: 0,
   navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
+  sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
+  ultrasonicRange: 0, cliffDetected: false,
+  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -178,6 +195,8 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     cameraActive: msg.devices.camera,
     hailoDetected: msg.devices.hailo,
     ina260Active: msg.devices.ina260 ?? false,
+    audioNodeActive: msg.devices.audio ?? false,
+    respeakerActive: msg.devices.respeaker ?? false,
     lastSystemTs: msg.ts,
     hostIp: msg.ip ?? '',
     uptimeS: msg.uptime_s ?? 0,
@@ -216,5 +235,19 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     navGoalY: msg.goal_y,
     navGoalYaw: msg.goal_yaw,
     navRemainingM: msg.remaining_distance_m,
+  }),
+
+  updateSensorStatus: (msg) => set({
+    sensorNodeActive: msg.sensor_node_active,
+    imuHz: msg.imu_hz,
+    ultrasonicHz: msg.ultrasonic.hz,
+    cliffHz: msg.cliff.hz,
+    ultrasonicRange: msg.ultrasonic.range_m,
+    cliffDetected: msg.cliff.detected,
+  }),
+
+  updateAudioStatus: (msg) => set({
+    soundDirection: msg.direction_deg,
+    isVoiceActive: msg.is_voice,
   }),
 }));

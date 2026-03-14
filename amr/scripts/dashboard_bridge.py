@@ -36,8 +36,8 @@ from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import BatteryState, Image, Imu, LaserScan
-from std_msgs.msg import String
+from sensor_msgs.msg import BatteryState, Image, Imu, LaserScan, Range
+from std_msgs.msg import Bool, Int32, String
 from tf2_msgs.msg import TFMessage
 
 try:
@@ -247,6 +247,10 @@ class WebSocketServer:
             self.node.send_nav_goal(x, y, yaw)
         elif op == "nav_cancel":
             self.node.cancel_nav_goal()
+        elif op == "audio_play":
+            key = msg.get("sound_key", "")
+            if key in ("cliff_alarm", "nav_start", "nav_reached", "startup"):
+                self.node.publish_audio_play(key)
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""
@@ -274,7 +278,7 @@ class WebSocketServer:
             ping_timeout=10,
         ):
             self.node.get_logger().info(f"WebSocket-Server gestartet auf ws://0.0.0.0:{WS_PORT}")
-            # Telemetrie-, Scan-, System-, Map- und Vision-Broadcast parallel
+            # Telemetrie-, Scan-, System-, Map-, Vision- und Sensor-Broadcast parallel
             await asyncio.gather(
                 self._telemetry_loop(),
                 self._scan_loop(),
@@ -283,6 +287,8 @@ class WebSocketServer:
                 self._detections_loop(),
                 self._semantics_loop(),
                 self._nav_status_loop(),
+                self._sensor_status_loop(),
+                self._audio_status_loop(),
             )
 
     async def _telemetry_loop(self):
@@ -346,6 +352,20 @@ class WebSocketServer:
                 await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
 
+    async def _sensor_status_loop(self):
+        """Sendet Sensor-Status mit 2 Hz."""
+        while True:
+            await asyncio.sleep(0.5)
+            msg = self.node.build_sensor_status_msg()
+            await self.broadcast(json.dumps(msg))
+
+    async def _audio_status_loop(self):
+        """Sendet Audio-Status mit 2 Hz."""
+        while True:
+            await asyncio.sleep(0.5)
+            msg = self.node.build_audio_status_msg()
+            await self.broadcast(json.dumps(msg))
+
     def start(self):
         """Startet die asyncio Event-Loop in einem Daemon-Thread."""
 
@@ -390,6 +410,18 @@ class DashboardBridge(Node):
         self.hw_led_pwm = 0.0  # LED-PWM 0-255 (0 = Auto-Heartbeat)
         self.prev_cpu_stats = None  # /proc/stat Vorheriger Zustand
 
+        # --- Sensor-Status (Ultraschall, Cliff, IMU-Hz) ---
+        self.ultrasonic_range = 0.0
+        self.ultrasonic_times = deque(maxlen=HZ_WINDOW)
+        self.cliff_detected = False
+        self.cliff_times = deque(maxlen=HZ_WINDOW)
+        self.imu_times = deque(maxlen=HZ_WINDOW)
+
+        # --- Audio-Status (ReSpeaker, Spracherkennung) ---
+        self.sound_direction = 0
+        self.is_voice = False
+        self._last_sound_dir_time = 0.0
+
         # --- CvBridge (Kamera) ---
         self.cv_bridge = CvBridge() if HAS_CAMERA else None
 
@@ -426,6 +458,14 @@ class DashboardBridge(Node):
         self.sub_battery = self.create_subscription(
             BatteryState, "/battery", self._battery_cb, sensor_qos
         )
+        self.sub_range_front = self.create_subscription(
+            Range, "/range/front", self._range_front_cb, sensor_qos
+        )
+        self.sub_cliff = self.create_subscription(Bool, "/cliff", self._cliff_cb, sensor_qos)
+        self.sub_sound_dir = self.create_subscription(
+            Int32, "/sound_direction", self._sound_dir_cb, 10
+        )
+        self.sub_is_voice = self.create_subscription(Bool, "/is_voice", self._is_voice_cb, 10)
 
         # --- Map / TF State (geschuetzt durch Lock) ---
         self.latest_map_png = None  # Base64 string
@@ -452,6 +492,7 @@ class DashboardBridge(Node):
         self.pub_cmd_vel = self.create_publisher(Twist, "/cmd_vel", 10)
         self.pub_servo_cmd = self.create_publisher(Point, "/servo_cmd", 10)
         self.pub_hardware_cmd = self.create_publisher(Point, "/hardware_cmd", 10)
+        self.pub_audio_play = self.create_publisher(String, "/audio/play", 10)
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)
@@ -491,6 +532,7 @@ class DashboardBridge(Node):
         now = time.time()
         with self.lock:
             self.latest_imu = msg
+            self.imu_times.append(now)
             stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             if stamp_s > 1e9:
                 latency_ms = (now - stamp_s) * 1000.0
@@ -591,6 +633,29 @@ class DashboardBridge(Node):
                 "percentage": round(soc, 1),
                 "runtime_min": round(runtime_min, 1),
             }
+
+    def _range_front_cb(self, msg):
+        """Speichert Ultraschall-Entfernung (Range)."""
+        with self.lock:
+            self.ultrasonic_range = msg.range
+            self.ultrasonic_times.append(time.time())
+
+    def _cliff_cb(self, msg):
+        """Speichert Cliff-Erkennungsstatus (Bool)."""
+        with self.lock:
+            self.cliff_detected = msg.data
+            self.cliff_times.append(time.time())
+
+    def _sound_dir_cb(self, msg):
+        """Speichert Schallrichtung (Int32, Grad)."""
+        with self.lock:
+            self.sound_direction = msg.data
+            self._last_sound_dir_time = time.time()
+
+    def _is_voice_cb(self, msg):
+        """Speichert Spracherkennungsstatus (Bool)."""
+        with self.lock:
+            self.is_voice = msg.data
 
     def _map_cb(self, msg):
         """OccupancyGrid -> RGBA PNG -> Base64."""
@@ -726,6 +791,12 @@ class DashboardBridge(Node):
         """Aktualisiert den Heartbeat-Zeitstempel."""
         with self.lock:
             self.last_heartbeat_time = time.time()
+
+    def publish_audio_play(self, sound_key):
+        """Publiziert Audio-Wiedergabe-Kommando auf /audio/play."""
+        msg = String()
+        msg.data = str(sound_key)
+        self.pub_audio_play.publish(msg)
 
     # --- Daten-Abfragen (thread-safe) ---
 
@@ -1022,8 +1093,10 @@ class DashboardBridge(Node):
             odom_hz = self._compute_hz(self.odom_times)
             scan_hz = self._compute_hz(self.scan_times)
             det_hz = self._compute_hz(self.detection_times)
+            imu_hz = self._compute_hz(self.imu_times)
             has_jpeg = self.latest_jpeg is not None
             has_battery = self.battery_data is not None
+            last_sound_dir_time = self._last_sound_dir_time
 
         return {
             "op": "system",
@@ -1052,6 +1125,8 @@ class DashboardBridge(Node):
                 "camera": has_jpeg,
                 "hailo": det_hz > 0.5 or os.path.exists("/dev/hailo0"),
                 "ina260": has_battery,
+                "audio": bool(imu_hz > 0),
+                "respeaker": bool(time.time() - last_sound_dir_time < 5.0),
             },
             "ip": self._get_host_ip(),
             "uptime_s": round(uptime_s, 0),
@@ -1166,6 +1241,36 @@ class DashboardBridge(Node):
             "goal_yaw": round(goal_yaw, 3),
             "remaining_distance_m": round(remaining, 2),
         }
+
+    def build_sensor_status_msg(self):
+        """Erstellt das Sensor-Status-JSON-Dictionary."""
+        with self.lock:
+            return {
+                "op": "sensor_status",
+                "ts": round(time.time(), 3),
+                "ultrasonic": {
+                    "range_m": round(self.ultrasonic_range, 3),
+                    "hz": round(self._compute_hz(self.ultrasonic_times), 1),
+                },
+                "cliff": {
+                    "detected": self.cliff_detected,
+                    "hz": round(self._compute_hz(self.cliff_times), 1),
+                },
+                "imu_hz": round(self._compute_hz(self.imu_times), 1),
+                "sensor_node_active": bool(
+                    self._compute_hz(self.imu_times) > 1.0 or self.battery_data is not None
+                ),
+            }
+
+    def build_audio_status_msg(self):
+        """Erstellt das Audio-Status-JSON-Dictionary."""
+        with self.lock:
+            return {
+                "op": "audio_status",
+                "ts": round(time.time(), 3),
+                "direction_deg": self.sound_direction,
+                "is_voice": self.is_voice,
+            }
 
     def build_detections_msg(self):
         """Erstellt das Vision-Detections-JSON-Dictionary (oder None)."""
