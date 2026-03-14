@@ -168,7 +168,7 @@ docker compose down
 - SEARCHING: Marker nicht sichtbar, Roboter dreht sich suchend
 - APPROACHING: Marker sichtbar, Kamera steuert Richtung, Roboter faehrt vor.
   Bei kurzem Marker-Verlust (< 3 s): geradeaus weiterfahren.
-- DOCKED: Ultraschall <= 0,60 m und Marker kuerzlich sichtbar, Roboter stoppt (Erfolg)
+- DOCKED: Ultraschall <= 0,30 m und Marker kuerzlich sichtbar, Roboter stoppt (Erfolg)
 - TIMEOUT: 60 s ohne Docking (Fehlschlag)
 
 **Sensorik:**

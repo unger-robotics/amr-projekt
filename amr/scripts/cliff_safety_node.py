@@ -16,6 +16,7 @@ import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
+from sensor_msgs.msg import Range
 from std_msgs.msg import Bool, String
 
 
@@ -27,8 +28,13 @@ class CliffSafetyNode(Node):
 
         # Zustand
         self._cliff_detected = False
+        self._obstacle_too_close = False
         self._alarm_sent = False
         self._last_twist = Twist()
+
+        # Ultraschall-Schwellen (Hysterese)
+        self._obstacle_stop_m = 0.08  # Stopp bei < 80 mm
+        self._obstacle_clear_m = 0.12  # Freigabe bei > 120 mm
 
         # QoS: Best-Effort fuer Sensor-Daten (Cliff), Reliable fuer cmd_vel
         qos_sensor = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -36,6 +42,7 @@ class CliffSafetyNode(Node):
 
         # Subscriber
         self.create_subscription(Bool, "/cliff", self._cliff_callback, qos_sensor)
+        self.create_subscription(Range, "/range/front", self._range_callback, qos_sensor)
         self.create_subscription(Twist, "/nav_cmd_vel", self._nav_cmd_vel_callback, qos_reliable)
         self.create_subscription(
             Twist, "/dashboard_cmd_vel", self._dashboard_cmd_vel_callback, qos_reliable
@@ -51,7 +58,11 @@ class CliffSafetyNode(Node):
         # Shutdown-Handler
         self.context.on_shutdown(self._on_shutdown)
 
-        self.get_logger().info("Cliff-Safety-Node gestartet. Ueberwache /cliff...")
+        self.get_logger().info(
+            "Cliff-Safety-Node gestartet. Ueberwache /cliff und /range/front "
+            f"(Stopp < {self._obstacle_stop_m * 1000:.0f} mm, "
+            f"Freigabe > {self._obstacle_clear_m * 1000:.0f} mm)..."
+        )
 
     def _cliff_callback(self, msg: Bool):
         """Verarbeitet Cliff-Sensordaten (true = Abgrund erkannt)."""
@@ -77,21 +88,37 @@ class CliffSafetyNode(Node):
             self._alarm_sent = False
             self.get_logger().info("Cliff aufgehoben. Fahrbefehle wieder freigegeben.")
 
+    def _range_callback(self, msg: Range):
+        """Verarbeitet Ultraschall-Distanz (Hindernis in Fahrtrichtung)."""
+        dist = msg.range
+        if dist < self._obstacle_stop_m and not self._obstacle_too_close:
+            self._obstacle_too_close = True
+            self._cmd_vel_pub.publish(Twist())
+            self.get_logger().warn(f"HINDERNIS bei {dist * 100:.1f} cm! Fahrbefehle blockiert.")
+        elif dist > self._obstacle_clear_m and self._obstacle_too_close:
+            self._obstacle_too_close = False
+            self.get_logger().info("Hindernis frei. Fahrbefehle wieder freigegeben.")
+
+    @property
+    def _blocked(self) -> bool:
+        """True wenn Cliff oder Hindernis aktiv."""
+        return self._cliff_detected or self._obstacle_too_close
+
     def _nav_cmd_vel_callback(self, msg: Twist):
         """Empfaengt Nav2-Geschwindigkeitsbefehle (remapped)."""
         self._last_twist = msg
-        if not self._cliff_detected:
+        if not self._blocked:
             self._cmd_vel_pub.publish(msg)
 
     def _dashboard_cmd_vel_callback(self, msg: Twist):
         """Empfaengt Dashboard-Joystick-Befehle (remapped)."""
         self._last_twist = msg
-        if not self._cliff_detected:
+        if not self._blocked:
             self._cmd_vel_pub.publish(msg)
 
     def _safety_timer_callback(self):
-        """20 Hz Timer: Sendet Null-Twist solange Cliff aktiv ist."""
-        if self._cliff_detected:
+        """20 Hz Timer: Sendet Null-Twist solange Cliff oder Hindernis aktiv."""
+        if self._blocked:
             self._cmd_vel_pub.publish(Twist())
 
     def _on_shutdown(self):

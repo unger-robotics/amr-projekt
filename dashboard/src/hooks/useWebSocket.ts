@@ -12,6 +12,12 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastPongRef = useRef(0);
   const connectRef = useRef<(() => void) | undefined>(undefined);
+  const onMessageRef = useRef(onMessage);
+
+  // Immer aktuelle onMessage-Referenz halten, ohne connect neu zu bauen
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  });
 
   const getUrl = useCallback(() => {
     const host = window.location.hostname || 'localhost';
@@ -35,7 +41,7 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
         if (msg.op === 'telemetry') {
           setLatencyMs(Date.now() - msg.ts * 1000);
         }
-        onMessage(msg);
+        onMessageRef.current(msg);
       } catch {
         // ignore malformed messages
       }
@@ -56,7 +62,7 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     };
 
     wsRef.current = ws;
-  }, [getUrl, onMessage]);
+  }, [getUrl]);
 
   useEffect(() => {
     connectRef.current = connect;

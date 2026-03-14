@@ -51,7 +51,7 @@ Software: ROS2 Humble (Docker), Nav2 (Regulated Pure Pursuit)
 | Marker-ID | 0 (DICT_4X4_50) |
 | Marker-Groesse | 10 cm |
 | Startabstand | ca. 1,5-2 m |
-| Docking-Distanz | 0,60 m (Ultraschall) |
+| Docking-Distanz | 0,30 m (Ultraschall) |
 | Approach-Geschwindigkeit | 0,08 m/s |
 | Kamera | IMX296 640x480, kalibriert |
 
@@ -85,7 +85,7 @@ Software: ROS2 Humble (Docker), Nav2 (Regulated Pure Pursuit)
 - Versuch 6 mit -6,13 cm Versatz ist Ausreisser (Marker bei Annaeherung
   mehrfach verloren, Roboter naeherte sich unter starkem Winkel)
 - Ohne Versuch 6: Mittl. Versatz = 1,57 cm (PASS)
-- Docking-Kriterium: Ultraschall <= 0,60 m UND Marker innerhalb 2 s sichtbar
+- Docking-Kriterium: Ultraschall <= 0,30 m UND Marker innerhalb 2 s sichtbar
 - Roboter stoppt nach DOCKED, keine automatische Rueckwaertsfahrt
 
 ### Bewertung Phase 4

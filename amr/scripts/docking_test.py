@@ -90,7 +90,7 @@ class DockingTestNode(Node):
         self.approach_vel = 0.08  # m/s Vorwaertsgeschwindigkeit
         self.search_vel = 0.3  # rad/s Suchrotation
         self.target_marker_id = 0
-        self.docking_distance_m = 0.60  # Ultraschall-Distanz fuer DOCKED [m]
+        self.docking_distance_m = 0.30  # Ultraschall-Distanz fuer DOCKED [m]
         self.timeout_sec = 60.0
         self.marker_lost_timeout = 3.0
         self.num_versuche = 10

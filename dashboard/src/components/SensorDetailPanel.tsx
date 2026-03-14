@@ -26,7 +26,7 @@ export default function SensorDetailPanel() {
       <div className="mb-4">
         <div className="flex justify-between text-xs mb-1">
           <span className="text-hud-text-dim uppercase tracking-wider">Ultraschall (HC-SR04)</span>
-          <span className="text-hud-cyan font-mono">{ultrasonicRange.toFixed(2)} m</span>
+          <span className="text-hud-cyan font-mono">{(ultrasonicRange * 100).toFixed(1)} cm</span>
         </div>
         <div className="h-2 bg-hud-bg rounded-sm overflow-hidden">
           <div
