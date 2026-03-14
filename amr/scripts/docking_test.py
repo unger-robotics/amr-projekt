@@ -19,6 +19,7 @@ Topics:
 Ergebnis: Markdown-Tabelle + JSON-Export (docking_results.json)
 """
 
+import argparse
 import json
 import math
 import os
@@ -36,10 +37,17 @@ from sensor_msgs.msg import Image
 
 from amr_utils import quaternion_to_yaw
 
-# Pixel-zu-cm Umrechnung (Naeherung).
-# Annahme: 5 cm Markergroesse, ~150 px Markerbreite bei ~20 cm Docking-Distanz.
-# Kann spaeter mit bekannter Markergroesse und Kamerakalibrierung verfeinert werden.
-CM_PER_PIXEL = 0.033
+# ArUco-Marker physische Groesse [m] — muss mit gedrucktem Marker uebereinstimmen
+MARKER_SIZE_M = 0.10  # 10 cm Seitenlaenge (DICT_4X4_50, ID 0)
+
+# Kamerakalibrierung (IMX296 640x480, aus amr_camera.yaml)
+CAMERA_MATRIX = np.array(
+    [[864.435907, 0.0, 309.080247], [0.0, 862.648938, 263.741198], [0.0, 0.0, 1.0]]
+)
+DIST_COEFFS = np.array([-0.573493, 1.144172, -0.009577, -0.000665, -3.194487])
+
+# Akzeptanzkriterium lateraler Versatz
+VERSATZ_AKZEPTANZ_CM = 2.0
 
 
 class DockingTestNode(Node):
@@ -51,8 +59,15 @@ class DockingTestNode(Node):
     DOCKED = "DOCKED"
     TIMEOUT = "TIMEOUT"
 
-    def __init__(self):
+    def __init__(self, output_dir=None):
         super().__init__("docking_test")
+
+        # Ausgabeverzeichnis
+        if output_dir is not None:
+            self.output_dir = Path(output_dir)
+        else:
+            self.output_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Publisher / Subscriber
         self.cmd_pub = self.create_publisher(Twist, "cmd_vel", 10)
@@ -66,7 +81,7 @@ class DockingTestNode(Node):
         self.kp_angular = 0.5
         self.approach_vel = 0.05
         self.search_vel = 0.2
-        self.target_marker_id = 42
+        self.target_marker_id = 0
         self.docking_threshold = 150
         self.timeout_sec = 60.0
         self.marker_lost_timeout = 3.0
@@ -86,6 +101,7 @@ class DockingTestNode(Node):
         self.last_marker_time = 0.0
         self.last_marker_center_x = None
         self.last_marker_width = None
+        self.last_marker_corners = None
         self.image_width = None
         self.test_aktiv = False
 
@@ -96,10 +112,8 @@ class DockingTestNode(Node):
         # Ergebnisse
         self.ergebnisse = []
 
-        # Skript-Verzeichnis fuer JSON-Export
-        self.skript_verzeichnis = Path(os.path.dirname(os.path.abspath(__file__)))
-
         self.get_logger().info(f"Docking-Test bereit. {self.num_versuche} Versuche geplant.")
+        self.get_logger().info(f"Ausgabeverzeichnis: {self.output_dir}")
         self.get_logger().info('Eingabe "s" + Enter im Terminal startet den naechsten Versuch.')
 
     def odom_callback(self, msg):
@@ -137,6 +151,7 @@ class DockingTestNode(Node):
 
             self.last_marker_center_x = center_x
             self.last_marker_width = marker_width
+            self.last_marker_corners = corners[index]
             self.last_marker_time = time.time()
 
             error_x = (center_x - img_center_x) / img_center_x
@@ -163,6 +178,24 @@ class DockingTestNode(Node):
 
         self.cmd_pub.publish(cmd)
 
+    def _estimate_lateral_offset_cm(self, corners):
+        """Berechnet lateralen Versatz in cm via solvePnP mit Kamerakalibrierung."""
+        obj_points = np.array(
+            [
+                [-MARKER_SIZE_M / 2, MARKER_SIZE_M / 2, 0],
+                [MARKER_SIZE_M / 2, MARKER_SIZE_M / 2, 0],
+                [MARKER_SIZE_M / 2, -MARKER_SIZE_M / 2, 0],
+                [-MARKER_SIZE_M / 2, -MARKER_SIZE_M / 2, 0],
+            ],
+            dtype=np.float64,
+        )
+        img_points = corners.reshape(4, 2).astype(np.float64)
+        success, rvec, tvec = cv2.solvePnP(obj_points, img_points, CAMERA_MATRIX, DIST_COEFFS)
+        if not success:
+            return None
+        # tvec[0] = lateraler Versatz (x in Kamera-Frame), Meter -> cm
+        return float(tvec[0][0]) * 100.0
+
     def versuch_starten(self):
         """Initialisiert einen neuen Docking-Versuch."""
         self.aktueller_versuch += 1
@@ -171,6 +204,7 @@ class DockingTestNode(Node):
         self.last_marker_time = 0.0
         self.last_marker_center_x = None
         self.last_marker_width = None
+        self.last_marker_corners = None
         self.odom_yaw_start = self.odom_yaw
         self.test_aktiv = True
 
@@ -219,10 +253,10 @@ class DockingTestNode(Node):
         dauer = time.time() - self.versuch_start_time
         erfolg = self.state == self.DOCKED
 
-        # Lateraler Versatz [px -> cm] (grobe Schaetzung: 0.05 cm/px bei ~1m Abstand)
-        lat_versatz_px = None
-        if self.last_marker_center_x is not None and self.image_width is not None:
-            lat_versatz_px = self.last_marker_center_x - (self.image_width / 2.0)
+        # Lateraler Versatz via solvePnP (metrisch, kalibriert)
+        lat_versatz_cm = None
+        if self.last_marker_corners is not None:
+            lat_versatz_cm = self._estimate_lateral_offset_cm(self.last_marker_corners)
 
         # Orientierungsfehler [rad -> Grad] mit Wraparound-Korrektur
         yaw_diff = math.atan2(
@@ -231,16 +265,10 @@ class DockingTestNode(Node):
         )
         orient_fehler_deg = math.degrees(yaw_diff)
 
-        # Pixel -> cm Umrechnung
-        lat_versatz_cm = None
-        if lat_versatz_px is not None:
-            lat_versatz_cm = lat_versatz_px * CM_PER_PIXEL
-
         ergebnis = {
             "versuch": self.aktueller_versuch,
             "erfolg": erfolg,
             "dauer_s": round(dauer, 2),
-            "lat_versatz_px": round(lat_versatz_px, 1) if lat_versatz_px is not None else None,
             "lat_versatz_cm": round(lat_versatz_cm, 2) if lat_versatz_cm is not None else None,
             "orient_fehler_deg": round(orient_fehler_deg, 2),
             "marker_breite_px": round(self.last_marker_width, 0)
@@ -357,6 +385,16 @@ class DockingTestNode(Node):
             f"Erfolgsquote >= 80%: {'PASS' if pass_erfolg else 'FAIL'} ({erfolgsquote:.0f}%)"
         )
 
+        mittlerer_versatz = float(np.mean(versatz_werte_cm)) if versatz_werte_cm else None
+        pass_versatz = mittlerer_versatz is not None and mittlerer_versatz < VERSATZ_AKZEPTANZ_CM
+        if mittlerer_versatz is not None:
+            self.get_logger().info(
+                f"Mittl. Versatz < {VERSATZ_AKZEPTANZ_CM} cm: "
+                f"{'PASS' if pass_versatz else 'FAIL'} ({mittlerer_versatz:.2f} cm)"
+            )
+        else:
+            self.get_logger().info("Mittl. Versatz: keine Daten (kein Erfolg)")
+
         # JSON-Export
         export = {
             "test": "docking",
@@ -366,8 +404,8 @@ class DockingTestNode(Node):
                 "erfolgsquote_pct": round(erfolgsquote, 1),
                 "erfolge": erfolge,
                 "gesamt": len(self.ergebnisse),
-                "mittlerer_versatz_cm": round(float(np.mean(versatz_werte_cm)), 2)
-                if versatz_werte_cm
+                "mittlerer_versatz_cm": round(mittlerer_versatz, 2)
+                if mittlerer_versatz is not None
                 else None,
                 "std_versatz_cm": round(float(np.std(versatz_werte_cm)), 2)
                 if versatz_werte_cm
@@ -380,18 +418,27 @@ class DockingTestNode(Node):
             },
             "akzeptanz": {
                 "erfolgsquote_pass": pass_erfolg,
+                "versatz_pass": pass_versatz,
             },
         }
 
-        json_pfad = self.skript_verzeichnis / "docking_results.json"
+        json_pfad = self.output_dir / "docking_results.json"
         with open(json_pfad, "w") as f:
             json.dump(export, f, indent=2)
         self.get_logger().info(f"Ergebnisse gespeichert: {json_pfad}")
 
 
 def main(args=None):
+    parser = argparse.ArgumentParser(description="Docking-Validierungstest fuer AMR Ladestation")
+    parser.add_argument(
+        "--output",
+        default=os.path.dirname(os.path.abspath(__file__)),
+        help="Ausgabeverzeichnis fuer JSON-Ergebnisse (Default: Skriptverzeichnis)",
+    )
+    parsed = parser.parse_args()
+
     rclpy.init(args=args)
-    node = DockingTestNode()
+    node = DockingTestNode(output_dir=parsed.output)
 
     # Interaktiver Modus: Benutzer startet jeden Versuch manuell
     import threading
