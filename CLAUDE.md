@@ -64,7 +64,8 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - Drive-Knoten und Sensor-Knoten werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
-- Dashboard, Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
+- Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
+- Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
 
 ## Build-Befehle
