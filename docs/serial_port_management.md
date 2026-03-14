@@ -47,9 +47,39 @@ setDTR(False)
   2. `lsof /dev/amr_drive /dev/amr_sensor` — kein anderer Prozess aktiv?
   3. `docker ps` — keine alten `run`-Container?
 
+## Docker-Integration
+
+### docker-compose.yml Device-Mapping
+
+Die `docker-compose.yml` mappt die udev-Symlinks explizit in den Container:
+
+```yaml
+devices:
+  - "/dev/amr_drive:/dev/amr_drive"     # ESP32-S3 #1 (Antrieb)
+  - "/dev/amr_sensor:/dev/amr_sensor"   # ESP32-S3 #2 (Sensorik)
+  - "/dev/ttyUSB0:/dev/ttyUSB0"         # RPLIDAR A1
+  - "/dev/video10:/dev/video10"         # IMX296 Kamera (v4l2loopback)
+  - "/dev/snd:/dev/snd"                 # I2S Audio-Ausgabe
+```
+
+Zusaetzlich sind Cgroup-Regeln fuer dynamisch eingesteckte USB-Geraete definiert (`c 166:* rmw` fuer ttyACM, `c 188:* rmw` fuer ttyUSB).
+
+### Container-Symlinks via run.sh
+
+Da Host-udev-Regeln im Container nicht greifen, erstellt `run.sh` nach dem Start des Containers die Symlinks manuell. Die Funktion `_setup_serial_symlinks` liest fuer jeden Symlink (`/dev/amr_drive`, `/dev/amr_sensor`) das Host-Ziel (z.B. `/dev/ttyACM0`) und erstellt per `docker exec ln -sf` den entsprechenden Symlink im Container.
+
+**Wichtig:** `run.sh` verwendet `docker compose up -d` statt `docker compose run`, da `run` die `devices:`-Mappings aus der Compose-Datei ignoriert.
+
 ## micro-ROS Agent
 
-Zwei separate Agents laufen im Docker-Container, jeweils auf einem eigenen seriellen Pfad:
+Zwei separate Agents laufen im Docker-Container, jeweils auf einem eigenen seriellen Pfad. Die Standard-Ports werden im Launch-File (`full_stack.launch.py`) definiert:
+
+```
+drive_serial_port:=/dev/amr_drive    (Default)
+sensor_serial_port:=/dev/amr_sensor  (Default)
+```
+
+Aufruf der Agents:
 
 ```
 micro_ros_agent serial --dev /dev/amr_drive -b 921600

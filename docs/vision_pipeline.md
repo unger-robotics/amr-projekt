@@ -28,7 +28,7 @@ Docker (Python 3.10, ROS2 Humble):
       v  /vision/detections (ROS2 Topic)
       |
       v
-  gemini_semantic_node (Gemini Cloud API)
+  gemini_semantic_node (Gemini Cloud API, gemini-3-flash-preview)
       |
       v  /vision/semantics (ROS2 Topic)
 ```
@@ -64,9 +64,33 @@ Vision-Komponenten sind standardmaessig deaktiviert. Aktivierung ueber Launch-Pa
 Den Host-Runner separat starten:
 
 ```bash
-python3 amr/scripts/host_hailo_runner.py
+python3 amr/scripts/host_hailo_runner.py --model hardware/models/yolov8s.hef
 ```
+
+Argumente des Host-Runners:
+
+| Argument | Standard | Beschreibung |
+|---|---|---|
+| `--model` | `hardware/models/yolov8s.hef` | Pfad zum HEF-Modell |
+| `--threshold` | `0.35` | Confidence-Schwellwert fuer Detektionen |
+| `--fallback` | (Flag) | Dummy-Detektionen ohne Hailo-Hardware senden |
 
 ## Fallback-Modus
 
+Der Host-Runner unterstuetzt einen `--fallback`-Modus, der Dummy-Detektionen ohne Hailo-Hardware sendet. Dies ermoeglicht die Entwicklung und Tests der nachgelagerten Pipeline (UDP-Receiver, Gemini-Node, Dashboard) ohne physische NPU.
+
+```bash
+python3 amr/scripts/host_hailo_runner.py --fallback
+```
+
 Ohne Hailo-8L NPU oder bei deaktivierter Vision (`use_vision:=False`) laufen Kamera und Dashboard-Stream weiterhin. Die Topics `/vision/detections` und `/vision/semantics` werden dann nicht publiziert. Navigation und SLAM sind davon unabhaengig.
+
+## Gemini-Modell
+
+Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-3-flash-preview`. Das Modell kann per ROS2-Parameter geaendert werden:
+
+```bash
+ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash
+```
+
+Die Umgebungsvariable `GEMINI_API_KEY` muss gesetzt sein (wird ueber `docker-compose.yml` an den Container durchgereicht).

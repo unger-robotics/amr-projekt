@@ -37,17 +37,22 @@ Fuer jede relevante Quelle wird eine Kernaussagen-Datei in `sources/kernaussagen
 
 Die Datei `00_Uebersicht_Querverweise.md` verknuepft Quellen mit Kapiteln der Projektarbeit.
 
-## LaTeX-Workflow
+## Projektarbeit-Struktur
 
-Die Projektarbeit liegt in `projektarbeit/latex/`:
+Die Projektarbeit existiert in zwei Formaten:
+
+- **Markdown-Kapitel** in `projektarbeit/`: `kapitel_01_einleitung.md` bis `kapitel_07_fazit.md`
+- **LaTeX-Kapitel** in `projektarbeit/latex/`: `kap1.tex` bis `kap7.tex`
 
 ```
-projektarbeit/latex/
-  main.tex          # Hauptdokument
-  amr.cls           # Dokumentklasse
-  literatur.bib     # BibTeX-Datenbank
-  kap1.tex - kap7.tex  # Kapitel
-  Makefile          # Build-Automatisierung
+projektarbeit/
+  kapitel_01_einleitung.md - kapitel_07_fazit.md  # Markdown-Kapitel
+  latex/
+    main.tex          # Hauptdokument
+    amr.cls           # Dokumentklasse
+    literatur.bib     # BibTeX-Datenbank
+    kap1.tex - kap7.tex  # LaTeX-Kapitel
+    Makefile          # Build-Automatisierung
 ```
 
 ### Zitierkonventionen
@@ -60,10 +65,11 @@ projektarbeit/latex/
 ### Stilregeln (aus projektarbeit_style.md)
 
 - Wissenschaftlich-technischer Stil: aktiv, neutral, konsistent
-- Keine UTF-8-Umlaute in Markdown-Dateien (ae, oe, ue, ss)
+- Keine UTF-8-Umlaute in Markdown-Dateien (ae, oe, ue, ss); in LaTeX-/Pandoc-Quelltexten sind UTF-8-Umlaute zulaessig
+- Terminologie-Norm beachten (siehe docs/projektarbeit_style.md): Projektfrage (nicht Forschungsfrage), PF1/PF2/PF3, Benutzeroberflaeche (nicht Frontend/UI), Knoten (nicht Node im Fliesstext)
 - Ein Thema pro Abschnitt
-- Ablauf: Daten → Regel → Schluss → Konsequenz
+- Ablauf: Daten -> Regel -> Schluss -> Konsequenz
 
-## Verknuepfung Quelle — Kapitel
+## Verknuepfung Quelle -- Kapitel
 
 Jede Quelle soll mindestens einem Kapitel zugeordnet sein. Die Zuordnung erfolgt in `00_Uebersicht_Querverweise.md` und durch `\cite{}`-Befehle in den `.tex`-Dateien.

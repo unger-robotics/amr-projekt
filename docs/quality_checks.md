@@ -43,7 +43,7 @@ pre-commit install
 - **McCabe max-complexity:** 15
 - **Ignoriert:** E501 (Zeilenlaenge vom Formatter), E741 (mehrdeutige Variablennamen), SIM108 (Ternary), B008 (Funktionsaufruf in Default-Argument)
 - **Ausgeschlossene Verzeichnisse:** `my_bot/my_bot` (Symlink-Verzeichnis), `.venv`, `.pio`, `node_modules`, `dashboard`, `build`, `install`, `log`, `suche`, `sources`, `projektarbeit`
-- **Per-file-ignores:** C901-Ausnahmen fuer `dashboard_bridge.py`, `hailo_inference_node.py`, `host_hailo_runner.py`, `hardware_info.py`; F401 fuer Import-Fallback-Pattern
+- **Per-file-ignores:** C901-Ausnahmen fuer `dashboard_bridge.py`, `hailo_inference_node.py`, `host_hailo_runner.py`, `hardware_info.py`, `hardware_info/*.py`, `scripts/md_to_html_converter.py`; F401 fuer Import-Fallback-Pattern (`dashboard_bridge.py`, `gemini_semantic_node.py`, `hailo_inference_node.py`, `host_hailo_runner.py`); SIM115 fuer `serial_latency_logger.py`; E501 fuer Launch-Dateien und `setup.py`
 - **Format:** Double quotes, Space indent
 
 ## mypy-Konfiguration (mypy.ini)
@@ -58,7 +58,9 @@ pre-commit install
   - `warn_unused_ignores = true`
   - `warn_unreachable = true`
   - `no_implicit_optional = true`
-- **ignore_missing_imports:** Aktiviert fuer alle ROS2-Pakete (rclpy, geometry_msgs, nav_msgs, sensor_msgs, std_msgs, tf2_ros), OpenCV, numpy, websockets, google, hailort, matplotlib
+  - `namespace_packages = true`
+  - `ignore_missing_imports = true` (global)
+- **ignore_missing_imports:** Zusaetzlich per-Modul aktiviert fuer alle ROS2-Pakete (rclpy, geometry_msgs, nav_msgs, sensor_msgs, std_msgs, tf2_ros, launch, launch_ros), cv_bridge, OpenCV, numpy, websockets, google, hailort, matplotlib
 
 ## clang-format (.clang-format)
 
