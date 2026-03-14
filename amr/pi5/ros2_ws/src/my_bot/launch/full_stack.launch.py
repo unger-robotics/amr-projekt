@@ -142,6 +142,7 @@ def generate_launch_description():
                 "frame_id": "laser",
                 "inverted": False,
                 "angle_compensate": True,
+                "scan_frequency": 7.0,
             }
         ],
     )
@@ -299,7 +300,7 @@ def generate_launch_description():
                 "pixel_format": "YUYV",
                 "output_encoding": "bgr8",
                 "camera_frame_id": "camera_link",
-                "camera_info_url": "",
+                "camera_info_url": "file:///ros2_ws/src/my_bot/config/amr_camera.yaml",
             }
         ],
         remappings=[

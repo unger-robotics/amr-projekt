@@ -38,6 +38,11 @@ hardware_info_*.md
 # Validierungs-Ergebnisse (JSON-Artefakte)
 *_results.json
 
+# Generierte Test- und Audit-Berichte
+*_report.md
+*_report_gesamt.md
+slam_validation_plot.png
+
 # Grosse Mediendateien
 *.MOV
 *.mov

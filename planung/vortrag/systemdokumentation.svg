@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 800" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg-base { fill: #0B131E; }
+      .bg-panel { fill: #111D2B; stroke-width: 2px; rx: 8px; }
+      .text-sec { fill: #517C96; font-family: 'Fira Sans', sans-serif; }
+      .text-prim { fill: #00E5FF; font-family: 'Fira Sans', sans-serif; }
+      .text-succ { fill: #00FF66; font-family: 'Fira Sans', sans-serif; }
+      .text-crit { fill: #FF2A40; font-family: 'Fira Sans', sans-serif; font-weight: bold; }
+      .font-mono { font-family: 'Fira Mono', monospace; }
+      .font-title { font-size: 24px; font-weight: bold; fill: #00E5FF; }
+      .font-large { font-size: 18px; font-weight: bold; }
+      .font-normal { font-size: 14px; }
+      .font-small { font-size: 12px; }
+
+      /* Node Styles based on TikZ */
+      .box-compute { stroke: #00E5FF; }
+      .box-sensor { stroke: #517C96; }
+      .box-actuator { stroke: #00FF66; }
+
+      /* Link Styles */
+      .link-line { stroke: #517C96; stroke-width: 3px; stroke-dasharray: 6 4; fill: none; }
+      .link-crit { stroke: #FF2A40; stroke-width: 3px; stroke-dasharray: 10 5; fill: none; }
+    </style>
+
+    <marker id="arrow-sec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#517C96" />
+    </marker>
+    <marker id="arrow-crit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF2A40" />
+    </marker>
+  </defs>
+
+  <rect width="1100" height="800" class="bg-base" />
+
+  <text x="50" y="50" class="text-prim font-title font-mono">AMR Systemarchitektur &amp; Hardware-Engpässe</text>
+  <text x="50" y="75" class="text-sec font-normal">Fokus: Datenfluss und dokumentierte Inkonsistenzen (I2C-Contention &amp; MTU-Limit)</text>
+
+  <g id="host-node" transform="translate(250, 120)">
+    <rect width="600" height="160" class="bg-panel box-compute" />
+    <text x="20" y="35" class="text-prim font-large">Raspberry Pi 5 (Bedien- &amp; Leitstandsebene)</text>
+    <text x="20" y="60" class="text-sec font-normal">OS: Debian Trixie (aarch64) / Docker: ROS 2 Humble</text>
+
+    <rect x="20" y="80" width="170" height="60" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="105" y="105" text-anchor="middle" class="text-prim font-normal font-mono">Nav2 / SLAM</text>
+    <text x="105" y="125" text-anchor="middle" class="text-sec font-small">Navigation (0.4 m/s)</text>
+
+    <rect x="210" y="80" width="170" height="60" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="295" y="105" text-anchor="middle" class="text-prim font-normal font-mono">XRCE-DDS</text>
+    <text x="295" y="125" text-anchor="middle" class="text-sec font-small">micro-ROS Agent</text>
+
+    <rect x="400" y="80" width="180" height="60" fill="#0B131E" stroke="#FF2A40" stroke-width="1" rx="4"/>
+    <text x="490" y="105" text-anchor="middle" class="text-crit font-normal font-mono">cliff_safety_node</text>
+    <text x="490" y="125" text-anchor="middle" class="text-sec font-small">ROS-Sicherheitslogik (2 ms)</text>
+  </g>
+
+  <path d="M 400 280 L 300 420" class="link-line" marker-end="url(#arrow-sec)" />
+  <text x="210" y="350" class="text-sec font-small font-mono">UART (921600 Baud)</text>
+
+  <path d="M 700 280 L 800 420" class="link-crit" marker-end="url(#arrow-crit)" />
+  <rect x="680" y="325" width="280" height="55" fill="#111D2B" stroke="#FF2A40" stroke-width="1" rx="4"/>
+  <text x="690" y="345" class="text-crit font-small">! MTU-Limit überschritten !</text>
+  <text x="690" y="365" class="text-sec font-small">Odom-Msg (725 B) > MTU (512 B)</text>
+
+  <g id="sensor-node" transform="translate(50, 420)">
+    <rect width="450" height="220" class="bg-panel box-sensor" />
+    <text x="20" y="35" class="text-sec font-large">Sensor-Knoten (ESP32-S3 #2)</text>
+    <text x="20" y="60" class="text-sec font-normal">Sensor- &amp; Sicherheitsbasis (Core 0/1)</text>
+
+    <rect x="20" y="80" width="410" height="80" fill="#0B131E" stroke="#FF2A40" stroke-width="1" rx="4"/>
+    <text x="30" y="105" class="text-crit font-normal font-mono">I2C-Bus-Contention (400 kHz)</text>
+    <text x="30" y="125" class="text-sec font-small">IMU (MPU6050) konfiguriert auf 50 Hz</text>
+    <text x="30" y="145" class="text-crit font-small">Reale Topic-Rate fällt auf 30-35 Hz ab!</text>
+
+    <rect x="20" y="170" width="190" height="30" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="115" y="190" text-anchor="middle" class="text-sec font-small">Kanten-Sensor (MH-B)</text>
+  </g>
+
+  <g id="drive-node" transform="translate(600, 420)">
+    <rect width="450" height="220" class="bg-panel box-compute" />
+    <text x="20" y="35" class="text-prim font-large">Drive-Knoten (ESP32-S3 #1)</text>
+    <text x="20" y="60" class="text-sec font-normal">Fahrkern (deterministisch 50 Hz)</text>
+
+    <rect x="20" y="80" width="410" height="50" fill="#0B131E" stroke="#00E5FF" stroke-width="1" rx="4"/>
+    <text x="30" y="100" class="text-prim font-normal">Core 1: PID-Regelschleife</text>
+    <text x="30" y="120" class="text-sec font-small">Inverskinematik, Anti-Windup, Odometrie-Berechnung</text>
+
+    <rect x="20" y="140" width="410" height="50" fill="#0B131E" stroke="#00FF66" stroke-width="1" rx="4"/>
+    <text x="30" y="160" class="text-succ font-normal">Dual-PWM (20 kHz)</text>
+    <text x="30" y="180" class="text-sec font-small">Cytron MDD3A Motortreiber, Deadzone: 35</text>
+  </g>
+
+  <path d="M 500 530 L 600 530" class="link-crit" marker-end="url(#arrow-crit)" />
+  <text x="550" y="520" text-anchor="middle" class="text-crit font-small font-mono">CAN-Bus</text>
+  <text x="550" y="550" text-anchor="middle" class="text-sec font-small">Notstopp (&lt;20ms)</text>
+
+  <g id="actuators" transform="translate(600, 680)">
+    <rect width="215" height="60" class="bg-panel box-actuator" />
+    <text x="107" y="25" text-anchor="middle" class="text-succ font-normal font-mono">Motor L (JGA25)</text>
+    <text x="107" y="45" text-anchor="middle" class="text-sec font-small">Encoder: 748.6 Ticks/U</text>
+
+    <rect x="235" width="215" height="60" class="bg-panel box-actuator" />
+    <text x="342" y="25" text-anchor="middle" class="text-succ font-normal font-mono">Motor R (JGA25)</text>
+    <text x="342" y="45" text-anchor="middle" class="text-sec font-small">Encoder: 747.2 Ticks/U</text>
+
+    <path d="M 107 -40 L 107 0" class="link-line" marker-end="url(#arrow-sec)" />
+    <path d="M 342 -40 L 342 0" class="link-line" marker-end="url(#arrow-sec)" />
+  </g>
+
+  <g id="legend" transform="translate(50, 680)">
+    <rect width="450" height="80" class="bg-panel" stroke="#517C96" stroke-width="1"/>
+    <text x="10" y="20" class="text-prim font-small font-mono">Legende</text>
+
+    <circle cx="20" cy="40" r="5" fill="#00E5FF" />
+    <text x="35" y="44" class="text-sec font-small">Rechenknoten (Drive / Host)</text>
+
+    <circle cx="20" cy="60" r="5" fill="#00FF66" />
+    <text x="35" y="64" class="text-sec font-small">Aktorik / Leistungselektronik</text>
+
+    <circle cx="250" cy="40" r="5" fill="#517C96" />
+    <text x="265" y="44" class="text-sec font-small">Sensorik (Peripherie)</text>
+
+    <circle cx="250" cy="60" r="5" fill="#FF2A40" />
+    <text x="265" y="64" class="text-crit font-small">Hardware-Inkonsistenz / Engpass</text>
+  </g>
+</svg>

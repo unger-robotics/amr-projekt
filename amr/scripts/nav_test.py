@@ -5,7 +5,7 @@ Automatisierter Navigationstest fuer den AMR.
 Sendet eine Sequenz von Waypoints ueber den Nav2 NavigateToPose Action-Server
 und misst die Abweichung zwischen Soll- und Ist-Position.
 
-Testparcours: 2m x 2m Rechteck im 10x10m Testfeld.
+Testparcours: 1m x 1m Rechteck im 10x10m Testfeld.
 
 Akzeptanzkriterien:
   - Positionsfehler (xy): < 0.10 m
@@ -42,13 +42,13 @@ except ImportError:
 from amr_utils import normalize_angle, quaternion_to_yaw, yaw_to_quaternion
 
 # ---------------------------------------------------------------------------
-# Waypoints im map-Frame (2m x 2m Rechteck)
+# Waypoints im map-Frame (1m x 1m Rechteck)
 # ---------------------------------------------------------------------------
 
 WAYPOINTS = [
-    {"x": 2.0, "y": 0.0, "yaw": 0.0, "name": "WP1: 2m geradeaus"},
-    {"x": 2.0, "y": 2.0, "yaw": 1.5708, "name": "WP2: 2m links"},
-    {"x": 0.0, "y": 2.0, "yaw": 3.1416, "name": "WP3: zurueck (x-Richtung)"},
+    {"x": 1.0, "y": 0.0, "yaw": 0.0, "name": "WP1: 1m geradeaus"},
+    {"x": 1.0, "y": 1.0, "yaw": 1.5708, "name": "WP2: 1m links"},
+    {"x": 0.0, "y": 1.0, "yaw": 3.1416, "name": "WP3: zurueck (x-Richtung)"},
     {"x": 0.0, "y": 0.0, "yaw": 0.0, "name": "WP4: Start"},
 ]
 

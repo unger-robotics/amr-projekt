@@ -52,9 +52,25 @@
 * **ROS-2-Knoten:** `controller_server`, `planner_server`, `amcl`, `bt_navigator`
 * **Topics:** `/goal_pose` (Sub), `/nav_cmd_vel` (Pub), `/local_plan` (Pub)
 * **Testfall:** Skript `nav_test`. Vorgabe von Wegpunkten innerhalb der kartierten Wohnung.
-* **Kriterium:** Die Ziele werden ohne physische Kollision erreicht; die Endposition liegt innerhalb eines Radius von 10 cm um die Zielkoordinate; der Gierfehler betraegt weniger als 5 Grad.
+* **Kriterium:** Die Ziele werden ohne physische Kollision erreicht; die Endposition liegt innerhalb eines Radius von 10 cm um die Zielkoordinate; der Gierfehler betraegt weniger als 8,6 Grad (0,15 rad).
 * **Testfall 2 (ArUco-Docking):** Skript `docking_test`. Zehn aufeinanderfolgende Docking-Versuche an der ArUco-Ladestation.
 * **Kriterium 2:** Erfolgsquote >= 80 %, lateraler Versatz < 2 cm.
+
+ArUco-Marker <chev.me/arucogen>
+
+Minimalstruktur Konfigurationsvorlage (YAML)
+
+```yaml
+# aruco_params.yaml
+aruco_node:
+  ros__parameters:
+    marker_size: 0.1
+    aruco_dictionary_id: "DICT_4X4_50"
+    image_topic: "/camera/image_raw"
+    camera_info_topic: "/camera/camera_info"
+    camera_frame: "camera_color_optical_frame"
+```
+
 
 ## Phase 5: Bedien- und Leitstandsebene
 

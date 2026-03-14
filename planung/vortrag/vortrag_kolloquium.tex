@@ -27,7 +27,7 @@
 \end{frame}
 
 % =============================================================================
-\section{Motivation und Projektfragen}
+\section{Motivation und Methodik}
 % =============================================================================
 
 \begin{frame}{Motivation und Problemstellung}
@@ -51,6 +51,15 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{Methodisches Vorgehen: VDI 2206}
+  \textbf{Entwicklung nach dem V-Modell}
+  \begin{itemize}
+    \item \textbf{Domaenenspezifischer Entwurf:} Aufteilung in Fahrkern (Phase 1), Sensorbasis (Phase 2) und Softwaredomaene (Phasen 3-4).
+    \item \textbf{Iterative Zyklen:} Die Softwareentwicklung erforderte mehrfache Rueckspruege ueber die Arme des V-Modells.
+    \item \textbf{Beispiel UMBmark:} Die Kalibrierung in der Eigenschaftsabsicherung (Phase 2) erzwang eine Korrektur der Parameter in \texttt{config\_drive.h} und damit einen Ruecksprung in den Entwurf.
+  \end{itemize}
+\end{frame}
+
 % =============================================================================
 \section{Systemarchitektur und Hardware}
 % =============================================================================
@@ -62,14 +71,33 @@
   \end{figure}
   \vspace{-1em}
   \begin{itemize}
-    \item \textbf{Fahrkern und Navigation (Ebene A):} ESP32-S3 + RPi 5, PID bei $50\,\mathrm{Hz}$, SLAM, Nav2.
-    \item \textbf{Bedien- und Leitstandsebene (Ebene B):} Dashboard, Telemetrie, Audio.
-    \item \textbf{Intelligente Interaktion (Ebene C):} Hailo-8L Edge-NPU, Gemini API.
+    \item \textbf{Fahrkern und Sensorbasis (Ebene A):} Zwei ESP32-S3 steuern deterministisch Antrieb und Sensorik.
+    \item \textbf{Bedien- und Leitstandsebene (Ebene B):} RPi 5 betreibt Dashboard, Telemetrie und Audio.
+    \item \textbf{Intelligente Interaktion (Ebene C):} Hailo-8L Edge-NPU und Gemini API.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Aktorik: Der Dual-Core Mikrocontroller}
+  \textbf{Ressourcentrennung auf dem Drive-Knoten (ESP32-S3)}
+  \begin{itemize}
+    \item \textbf{Core 0 (Kommunikation):} Betreibt den micro-ROS-Executor und ueberwacht den Heartbeat von Core 1.
+    \item \textbf{Core 1 (Regelung):} Fuehrt exklusiv die PID-Regelschleife mit $50\,\mathrm{Hz}$ aus.
+    \item \textbf{Inverskinematik:} Berechnet individuelle Sollradgeschwindigkeiten basierend auf \texttt{cmd\_vel}-Vorgaben.
+    \item \textbf{Vorteil:} Vermeidung von Jitter durch blockierende I2C-Sensorabfragen.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hardwarenahe Sicherheitslogik}
+  \textbf{Zwei unabhaengige Sicherheitspfade}
+  \begin{itemize}
+    \item \textbf{ROS-2-Pfad (Multiplexer):} Der \texttt{cliff\_safety\_node} blockiert Navigationsbefehle bei erkannter Kante. End-to-End-Latenz (Sensor $\rightarrow$ Stopp): $2{,}0\,\mathrm{ms}$.
+    \item \textbf{CAN-Notstopp-Redundanz:} Ein hardwarenaher CAN-Bus uebertraegt Cliff-Signale (CAN-ID 0x120) direkt zwischen den Mikrocontrollern.
+    \item \textbf{Reaktionszeit:} Der CAN-Pfad greift unabhaengig vom Host-System in $< 20\,\mathrm{ms}$.
   \end{itemize}
 \end{frame}
 
 % =============================================================================
-\section{Lokalisierung und Navigation}
+\section{Lokalisierung, Navigation und Vision}
 % =============================================================================
 
 \begin{frame}{Lokalisierung: Der TF-Baum}
@@ -81,9 +109,18 @@
   \vspace{0.5em}
   \textbf{Koordinatensysteme (REP-105)}
   \begin{itemize}
-    \item \texttt{map $\rightarrow$ odom}: Drift-Korrektur durch AMCL.
+    \item \texttt{map $\rightarrow$ odom}: Drift-Korrektur durch SLAM Toolbox und AMCL.
     \item \texttt{odom $\rightarrow$ base\_link}: Berechnet aus Rad-Odometrie ($20\,\mathrm{Hz}$).
     \item \texttt{base\_link $\rightarrow$ laser}: Statische Extrinsik ($x = 0{,}10\,\mathrm{m}$, Yaw = $180^\circ$).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Hybride Vision-Pipeline}
+  \textbf{Entlastung der Host-CPU}
+  \begin{itemize}
+    \item \textbf{Edge-KI:} Der `host\_hailo\_runner` fuehrt Objekterkennung auf dem PCIe-angebundenen Hailo-8L aus. Inferenzzeit: ca. $34\,\mathrm{ms}$ pro Frame.
+    \item \textbf{Cloud-Semantik:} Der `gemini\_semantic\_node` sendet Bounding Boxes und Telemetrie an die externe API fuer asynchrone, logische Auswertungen.
+    \item \textbf{Vorteil:} Die rechenintensive Wahrnehmung gefaehrdet die Echtzeitfaehigkeit des Nav2-Stacks nicht.
   \end{itemize}
 \end{frame}
 
@@ -101,8 +138,8 @@
     \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
     \midrule
     PID-Regelfrequenz    & $50\,\mathrm{Hz}$ (Jitter $< 2\,\mathrm{ms}$) & erfuellt \\
-    Kanten-Stopp-Latenz  & $< 20\,\mathrm{ms}$ (CAN-Redundanz)            & $< 50\,\mathrm{ms}$ \\
-    Geradeausfahrt-Drift & $2{,}1\,\mathrm{cm}$ (mit IMU-Fusion)         & $< 5{,}0\,\mathrm{cm}$ \\
+    Kanten-Stopp-Latenz  & $2{,}0\,\mathrm{ms}$ (ROS 2 Pfad) & $< 50\,\mathrm{ms}$ \\
+    Geradeausfahrt-Drift & $2{,}1\,\mathrm{cm}$ (mit IMU-Fusion) & $< 5{,}0\,\mathrm{cm}$ \\
     \bottomrule
   \end{tabular}}
 
@@ -115,8 +152,8 @@
     \toprule
     \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
     \midrule
-    ATE (Kartierung)     & $0{,}16\,\mathrm{m}$  & $< 0{,}20\,\mathrm{m}$ \\
-    Positionsgenauigkeit & $6{,}4\,\mathrm{cm}$  & $< 10\,\mathrm{cm}$    \\
+    ATE (Kartierung)     & $0{,}16\,\mathrm{m}$ & $< 0{,}20\,\mathrm{m}$ \\
+    Positionsgenauigkeit & $6{,}4\,\mathrm{cm}$ & $< 10\,\mathrm{cm}$ \\
     \bottomrule
   \end{tabular}}
 \end{frame}
@@ -135,7 +172,7 @@
 
   \vspace{1em}
   \textbf{Fazit:}\\
-  Kostenguenstiges Gesamtsystem (${\sim}\,513\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206.
+  Ein kostenguenstiges Gesamtsystem (${\sim}\,513\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206. Die Grenzen liegen in den MTU-Beschraenkungen ($512$ Bytes) und Rad-Schlupf.
 \end{frame}
 
 \end{document}

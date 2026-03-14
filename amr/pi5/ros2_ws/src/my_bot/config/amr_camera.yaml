@@ -1,0 +1,38 @@
+# =============================================================================
+# ROS2 Camera Calibration File — IMX296 Global Shutter (640x480 via v4l2loopback)
+#
+# Calibrated using OpenCV camera_calibration with checkerboard pattern.
+# RMS reprojection error: 0.3427 px
+# Date: 2026-03-14 13:55
+#
+# Sensor: Sony IMX296 (native 1440x1088), downscaled to 640x480
+# Lens: Wide-angle M12 (PT361060M3MP12)
+# Format: ROS2 camera_calibration_parsers (YAML)
+# =============================================================================
+
+image_width: 640
+image_height: 480
+camera_name: amr_camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [864.435907, 0.0, 309.080247,
+         0.0, 862.648938, 263.741198,
+         0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.573493, 1.144172, -0.009577, -0.000665, -3.194487]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [864.435907, 0.0, 309.080247, 0.0,
+         0.0, 862.648938, 263.741198, 0.0,
+         0.0, 0.0, 1.0, 0.0]

@@ -173,7 +173,7 @@ Der Live-Betrieb benoetigt drei Terminals.
 # Alte Container und Ports freigeben
 docker stop $(docker ps -q) 2>/dev/null
 docker rm $(docker ps -aq) 2>/dev/null
-sudo fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp 2>/dev/null
+fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp 2>/dev/null
 
 # Kamera-Bridge pruefen oder starten
 sudo systemctl is-active camera-v4l2-bridge.service || {
@@ -278,7 +278,7 @@ Erwartete Kerndaten:
 
 ```bash
 docker stop $(docker ps -q) && docker rm $(docker ps -aq)
-sudo fuser -k 8082/tcp 9090/tcp 5173/tcp
+fuser -k 8082/tcp 9090/tcp 5173/tcp
 ```
 
 ## CAN-Bus (SocketCAN)
@@ -367,7 +367,7 @@ pkill -f host_hailo_runner
 Massnahme:
 
 ```bash
-sudo fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp
+fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp
 ```
 
 ## Regel

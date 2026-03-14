@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg-base { fill: #0B131E; }
+      .bg-panel { fill: #111D2B; stroke-width: 2px; rx: 8px; }
+      .text-sec { fill: #517C96; font-family: 'Fira Sans', sans-serif; }
+      .text-prim { fill: #00E5FF; font-family: 'Fira Sans', sans-serif; }
+      .text-succ { fill: #00FF66; font-family: 'Fira Sans', sans-serif; }
+      .text-crit { fill: #FF2A40; font-family: 'Fira Sans', sans-serif; font-weight: bold; }
+      .font-mono { font-family: 'Fira Mono', monospace; }
+
+      /* Typography Sizes */
+      .font-title { font-size: 24px; font-weight: bold; fill: #00E5FF; }
+      .font-large { font-size: 18px; font-weight: bold; }
+      .font-normal { font-size: 14px; }
+      .font-small { font-size: 12px; }
+
+      /* Node Styles */
+      .box-compute { stroke: #00E5FF; }
+      .box-sensor { stroke: #517C96; }
+      .box-actuator { stroke: #00FF66; }
+      .box-crit { stroke: #FF2A40; stroke-dasharray: 4 4; fill: #0B131E; }
+
+      /* Link Styles */
+      .link-line { stroke: #517C96; stroke-width: 3px; stroke-dasharray: 6 4; fill: none; }
+      .link-crit { stroke: #FF2A40; stroke-width: 3px; stroke-dasharray: 10 5; fill: none; }
+      .link-solid { stroke: #00E5FF; stroke-width: 3px; fill: none; }
+    </style>
+
+    <marker id="arrow-sec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#517C96" />
+    </marker>
+    <marker id="arrow-crit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF2A40" />
+    </marker>
+    <marker id="arrow-prim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00E5FF" />
+    </marker>
+  </defs>
+
+  <rect width="1200" height="850" class="bg-base" />
+
+  <g id="title-group" transform="translate(50, 50)">
+    <text x="0" y="0" class="text-prim font-title font-mono">AMR Systemarchitektur (Abschlussbericht)</text>
+    <text x="0" y="25" class="text-sec font-normal">Fokus: Verteilte Architektur und experimentell validierte Hardware-Inkonsistenzen / Systemgrenzen</text>
+  </g>
+
+  <g id="host-node" transform="translate(350, 120)">
+    <rect width="500" height="220" class="bg-panel box-compute" />
+    <text x="20" y="35" class="text-prim font-large">Raspberry Pi 5 (Bedien- &amp; Leitstandsebene)</text>
+    <text x="20" y="60" class="text-sec font-normal">Docker: ROS 2 Humble | Navigation &amp; Vision-Pipeline</text>
+
+    <rect x="20" y="80" width="220" height="50" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="130" y="100" text-anchor="middle" class="text-prim font-normal font-mono">Nav2 / SLAM Toolbox</text>
+    <text x="130" y="120" text-anchor="middle" class="text-sec font-small">Lokalisierung &amp; Kartierung</text>
+
+    <rect x="260" y="80" width="220" height="50" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="370" y="100" text-anchor="middle" class="text-prim font-normal font-mono">cliff_safety_node</text>
+    <text x="370" y="120" text-anchor="middle" class="text-sec font-small">Hardwarenahe Sicherheitslogik</text>
+
+    <rect x="20" y="145" width="460" height="50" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="250" y="165" text-anchor="middle" class="text-prim font-normal font-mono">micro-ROS Agent (XRCE-DDS)</text>
+    <text x="250" y="185" text-anchor="middle" class="text-sec font-small">UART-Brücke zu Mikrocontrollern (921600 Baud)</text>
+  </g>
+
+  <g id="vision-pipeline" transform="translate(900, 120)">
+    <rect width="250" height="80" class="bg-panel box-compute" />
+    <text x="125" y="30" text-anchor="middle" class="text-prim font-large">Hailo-8L Edge-KI</text>
+    <text x="125" y="50" text-anchor="middle" class="text-sec font-normal font-mono">Lokale Objekterkennung</text>
+    <text x="125" y="70" text-anchor="middle" class="text-succ font-small">Latenz: ~34 ms (validiert)</text>
+
+    <rect y="140" width="250" height="80" class="bg-panel box-sensor" />
+    <text x="125" y="170" text-anchor="middle" class="text-sec font-large">Cloud LLM API</text>
+    <text x="125" y="190" text-anchor="middle" class="text-sec font-normal font-mono">Semantische Auswertung</text>
+  </g>
+
+  <g id="drive-node" transform="translate(50, 500)">
+    <rect width="400" height="220" class="bg-panel box-actuator" />
+    <text x="20" y="35" class="text-succ font-large">Drive-Knoten (ESP32-S3 #1)</text>
+    <text x="20" y="60" class="text-sec font-normal">Fahrkern (Deterministische Regelschleife)</text>
+
+    <rect x="20" y="80" width="360" height="40" fill="#0B131E" stroke="#00FF66" stroke-width="1" rx="4"/>
+    <text x="200" y="105" text-anchor="middle" class="text-succ font-normal font-mono">PID-Regelung (50 Hz) &amp; Odometrie</text>
+
+    <rect x="20" y="135" width="360" height="65" class="box-crit" rx="4"/>
+    <text x="35" y="155" class="text-crit font-normal font-mono">! Hardware-Inkonsistenz: Rad-Schlupf</text>
+    <text x="35" y="175" class="text-sec font-small">Fehleranfälligkeit der differentiellen Odometrie</text>
+    <text x="35" y="190" class="text-sec font-small">auf rauem Untergrund (erfordert IMU-Fusion).</text>
+  </g>
+
+  <g id="sensor-node" transform="translate(550, 500)">
+    <rect width="400" height="220" class="bg-panel box-sensor" />
+    <text x="20" y="35" class="text-sec font-large">Sensor-Knoten (ESP32-S3 #2)</text>
+    <text x="20" y="60" class="text-sec font-normal">Sensor- &amp; Sicherheitsbasis</text>
+
+    <rect x="20" y="80" width="360" height="40" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="200" y="105" text-anchor="middle" class="text-sec font-normal font-mono">Kanten-Erkennung (Cliff) &amp; IMU-Erfassung</text>
+
+    <rect x="20" y="135" width="360" height="65" class="box-crit" rx="4"/>
+    <text x="35" y="155" class="text-crit font-normal font-mono">! Hardware-Inkonsistenz: I2C-Contention</text>
+    <text x="35" y="175" class="text-sec font-small">Blockierende Buszugriffe reduzieren die reale</text>
+    <text x="35" y="190" class="text-sec font-small">IMU-Publishing-Rate von 50 Hz auf 30-35 Hz.</text>
+  </g>
+
+  <g id="connections">
+    <path d="M 850 160 L 900 160" class="link-solid" marker-end="url(#arrow-prim)" />
+    <text x="875" y="150" text-anchor="middle" class="text-prim font-small font-mono">UDP</text>
+
+    <path d="M 850 280 L 960 280" class="link-crit" marker-end="url(#arrow-crit)" />
+    <rect x="850" y="290" width="140" height="25" fill="#111D2B" stroke="#FF2A40" stroke-width="1" rx="4"/>
+    <text x="920" y="307" text-anchor="middle" class="text-crit font-small">Systemgrenze: Latenz</text>
+
+    <path d="M 250 500 L 400 340" class="link-crit" marker-end="url(#arrow-crit)" />
+    <rect x="150" y="380" width="220" height="45" fill="#111D2B" stroke="#FF2A40" stroke-width="1" rx="4"/>
+    <text x="260" y="398" text-anchor="middle" class="text-crit font-small font-mono">Engpass: MTU-Limit (512 B)</text>
+    <text x="260" y="415" text-anchor="middle" class="text-sec font-small">Odom-Msg erfordert Fragmentierung</text>
+
+    <path d="M 750 500 L 650 340" class="link-line" marker-end="url(#arrow-sec)" />
+    <rect x="650" y="390" width="160" height="25" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
+    <text x="730" y="407" text-anchor="middle" class="text-sec font-small font-mono">UART (micro-ROS)</text>
+
+    <path d="M 450 610 L 550 610" class="link-solid" marker-end="url(#arrow-prim)" />
+    <rect x="440" y="570" width="120" height="30" fill="#0B131E" stroke="#00E5FF" stroke-width="1" rx="4"/>
+    <text x="500" y="590" text-anchor="middle" class="text-prim font-small font-mono">CAN-Notstopp</text>
+  </g>
+
+  <g id="legend" transform="translate(50, 750)">
+    <rect width="900" height="60" class="bg-panel" stroke="#517C96" stroke-width="1"/>
+    <text x="15" y="20" class="text-prim font-small font-mono">Legende (Corporate Design Vorgaben)</text>
+
+    <circle cx="25" cy="40" r="5" fill="#00E5FF" />
+    <text x="40" y="44" class="text-sec font-small">Ebene B/C (Host / Leitstand)</text>
+
+    <circle cx="250" cy="40" r="5" fill="#00FF66" />
+    <text x="265" y="44" class="text-sec font-small">Ebene A (Fahrkern / Aktorik)</text>
+
+    <circle cx="480" cy="40" r="5" fill="#517C96" />
+    <text x="495" y="44" class="text-sec font-small">Ebene A (Sensor- &amp; Sicherheitsbasis)</text>
+
+    <circle cx="710" cy="40" r="5" fill="#FF2A40" />
+    <text x="725" y="44" class="text-crit font-small">Hardware-Inkonsistenz / Grenze</text>
+  </g>
+</svg>

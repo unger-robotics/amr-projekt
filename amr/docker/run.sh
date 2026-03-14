@@ -55,9 +55,17 @@ fi
 # --- Container sicherstellen (up -d statt run) ---
 # docker compose up -d wendet devices:, device_cgroup_rules: und volumes: korrekt an.
 # docker compose run ignoriert devices:-Mappings, was zu "Serial port not found" fuehrt.
+# Belegte Ports freigeben (Dashboard, WebSocket, MJPEG)
+_cleanup_ports() {
+    for port in 5173 5174 8082 9090; do
+        fuser -k "$port/tcp" 2>/dev/null || true
+    done
+}
+
 _ensure_container() {
     if ! docker ps --format '{{.Names}}' | grep -q '^amr_ros2$'; then
         echo "Container amr_ros2 wird gestartet..."
+        _cleanup_ports
         docker compose up -d
         # udev-Symlinks existieren im Container nicht — manuell anlegen
         sleep 1

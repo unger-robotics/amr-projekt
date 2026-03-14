@@ -8,28 +8,59 @@ theme: "metropolis"
 
 ## Das Ziel: Ein Low-Cost AMR fuer KLT-Transporte
 
-**Das Problem**
-* Industrielle Flotten (z. B. MiR100) kosten $> 25.000$ EUR.
-* Fuer leichte Transporte (KLT) ist das massiv ueberdimensioniert.
-* Reine Software-Stacks auf Raspberry Pis scheitern oft an harter Echtzeit (Motor-Jitter).
+**Wie laesst sich ein fahrerloses Transportsystem fuer Kleinladungstraeger kosteneffizient und echtzeitfaehig realisieren?**
 
-**Die Loesung**
-* Ein modularer Stack auf Basis von ROS 2 Humble.
-* Hardwarekosten: **~513 EUR**.
-* Strikte Trennung von High-Level KI und Low-Level Motorik.
+* **Problem:** Industrielle Flotten kosten oft ueber $25.000$ EUR und sind fuer leichte Transporte ueberdimensioniert. Reine Software-Stacks auf Raspberry Pis scheitern haeufig an den harten Echtzeitanforderungen der Motorregelung.
+* **Loesung:** Ein modularer ROS-2-Stack mit einer verteilten Hardware-Architektur entkoppelt die Motorik von der Kuentslichen Intelligenz.
+* **Evidenz:** Das System arbeitet mit Hardwarekosten von rund $513$ EUR und haelt strenge Latenz- sowie Genauigkeitsvorgaben ein.
 
 ---
 
-## Die 4 Saeulen der Systemarchitektur
+## Physischer Systemaufbau
 
-Der Datenfluss verlaeuft deterministisch von links nach rechts:
+Die Hardware-Basis bildet ein Differentialantrieb mit umfassender Sensor-Suite:
 
-![Architektur und Datenfluss des AMR](amr_datenfluss.pdf){width=30%}
+{width=35%}
 
-1.  **Sensorik:** LiDAR, Kamera, IMU, Encoder.
-2.  **Edge-KI:** Raspberry Pi 5 + Hailo-8L NPU fuer SLAM und Objekterkennung.
-3.  **Cloud-KI:** Gemini API loest logische Blockaden auf Basis von Semantik.
-4.  **Aktorik:** ESP32-S3 uebernimmt die 50 Hz Echtzeit-PID-Regelung.
+* **Antrieb:** Zwei JGA25-370-Gleichstrommotoren mit integrierten Hall-Encodern ($748$ Ticks pro Umdrehung).
+* **Sensorik:** RPLIDAR A1 ($12\,\mathrm{m}$ Reichweite), MPU6050-IMU und MH-B Kanten-Sensor.
+* **Energieversorgung:** 3S1P-Li-Ion-Akkupack mit einem harten System-Cutoff bei $7{,}95\,\mathrm{V}$ zum Schutz vor Tiefenentladung.
+
+---
+
+## Die Systemarchitektur in drei Ebenen
+
+Die Architektur trennt High-Level-Navigation strikt von der Low-Level-Motorik:
+
+{width=45%}
+
+* **Ebene A (Fahrkern & Sensorbasis):** Zwei ESP32-S3 uebernehmen die deterministische Steuerung und Datenerfassung bei $50\,\mathrm{Hz}$.
+* **Ebene B (Leitstandsebene):** Ein Raspberry Pi 5 betreibt die Navigation (Nav2) und das webbasierte Dashboard.
+* **Ebene C (Interaktion):** Beinhaltet die Sprachschnittstelle und die Cloud-Semantik ueber die Gemini API.
+
+---
+
+## Datenfluss und Kommunikation
+
+Der Datenfluss erfolgt deterministisch ueber dedizierte Bus-Systeme:
+
+{width=45%}
+
+* **XRCE-DDS (micro-ROS):** Koppelt die Mikrocontroller ueber serielle UART-Verbindungen ($921\,600$ Baud) stabil an den ROS-2-Graphen an.
+* **I2C & GPIO:** Binden lokale Peripherie (wie IMU und Encoder) direkt an die ESP32-S3 an.
+* **MTU-Limit:** Datenpakete duerfen den Wert von $512$ Bytes nicht ueberschreiten, was die Fragmentierung groesserer Nachrichten wie der Odometrie erzwingt.
+
+---
+
+## Aktorik: Der Dual-Core Mikrocontroller
+
+Die Motorregelung erfordert harte Echtzeit, die ein Standard-Betriebssystem wie Linux nicht garantiert:
+
+{width=30%}
+
+* **Core 0:** Managt ausschliesslich den micro-ROS-Datenstrom.
+* **Core 1:** Fuehrt exklusiv und jitterfrei ($< 2\,\mathrm{ms}$) die PID-Regelschleife und die Inverskinematik aus.
+* **CAN-Redundanz:** Ein direkter CAN-Bus vom Sensor-Knoten stoppt die Motoren bei erkannten Abgruenden in $< 20\,\mathrm{ms}$ – komplett unabhaengig vom Host-System.
 
 ---
 
@@ -37,45 +68,58 @@ Der Datenfluss verlaeuft deterministisch von links nach rechts:
 
 Die lokale Ebene reagiert in Millisekunden auf dynamische Hindernisse:
 
-![Navigations-Pipeline (ROS 2 Nav2 Stack)](amr_nav2_pipeline.pdf){width=30%}
+{width=35%}
 
-* **SLAM Toolbox:** Generiert eine 2D-Gitterkarte ($5\,\mathrm{cm}$ Aufloesung).
-* **Nav2:** Plant globale Pfade und faehrt sie per Regulated Pure Pursuit ($0{,}4\,\mathrm{m/s}$) ab.
-* **Hailo-8L:** Erkennt per YOLOv8 parallel Hindernisse im Videostream bei ${\sim}\,34\,\mathrm{ms}$ Latenz, ohne die RPi-CPU zu blockieren.
+* **Lokalisierung:** `slam_toolbox` und AMCL generieren eine 2D-Gitterkarte mit $5\,\mathrm{cm}$ Aufloesung.
+* **Bahnverfolgung:** Der Regulated Pure Pursuit Controller faehrt geplante Pfade mit bis zu $0{,}4\,\mathrm{m/s}$ ab.
+* **Edge-Vision:** Der Hailo-8L-Beschleuniger erkennt per YOLOv8 Hindernisse im Videostream bei ${\sim}34\,\mathrm{ms}$ Latenz, ohne die CPU des Raspberry Pi zu blockieren.
 
 ---
 
-## Aktorik: Der Dual-Core Mikrocontroller
+## Software-Architektur und Koordinatensysteme
 
-Waehrend ROS 2 die Pfade plant, sorgt der ESP32-S3 fuer die sichere Umsetzung:
+Die raeumliche Berechnung erfordert eine durchgaengige Koordinaten-Transformation:
 
-![Dual-Core Architektur ESP32-S3](amr_esp32_dualcore.pdf){width=30%}
+{width=45%}
 
-* **Core 0:** Managt den XRCE-DDS (micro-ROS) Stream bei $921\,600$ Baud.
-* **Core 1:** Fuehrt exklusiv und jitterfrei ($< 2\,\mathrm{ms}$) die Regelschleife aus.
-* **Hardware-Redundanz:** Ein direkter CAN-Bus vom Sensor-Node blockiert die Motoren bei erkannten Abgruenden ($< 20\,\mathrm{ms}$ Reaktionszeit) – unabhaengig von ROS 2.
+* **TF-Kette:** Transformiert von `map` ueber `odom` zu `base_link` und weiter zu den Sensoren (`laser`, `camera_link`).
+* **Dynamik:** Die Odometrie-Publikation ($20\,\mathrm{Hz}$) schaetzt die relative Fortbewegung kontinuierlich, waehrend der SLAM-Knoten die absolute Position im Raum iterativ korrigiert.
 
 ---
 
 ## Die semantische Cloud-Entscheidung
 
-**Was passiert, wenn Nav2 feststeckt?**
+**Was passiert, wenn die lokale Navigation (Nav2) feststeckt?**
 
-* Der Roboter stoppt vor einem unbekannten, blockierenden Hindernis.
-* Das System uebergibt das erkannte YOLO-Label (z. B. "Mensch") sowie Telemetriedaten als JSON an die **Gemini API**.
-* Die LLM-Logik entscheidet kontextbasiert:
-  * Handelt es sich um ein statisches Objekt? $\rightarrow$ *Recovery-Verhalten und Umfahrung.*
-  * Handelt es sich um einen Menschen im Gang? $\rightarrow$ *Warten und Sprachwarnung ueber den PCM5102A-DAC ausgeben.*
+* Der Roboter stoppt zunaechst vor einem unbekannten, blockierenden Hindernis.
+* Das System uebergibt das lokal erkannte YOLO-Label (z. B. "Mensch") sowie Telemetriedaten als JSON an die externe Gemini API.
+* Die Sprachmodell-Logik bewertet die Situation kontextbasiert:
+* Handelt es sich um ein statisches Objekt? $\rightarrow$ *Ausloesen von Recovery-Verhalten und Neuplanung zur Umfahrung.*
+* Handelt es sich um einen Menschen im Gang? $\rightarrow$ *Warten und Ausgabe einer Sprachwarnung ueber den Audio-DAC.*
+
+
+
+---
+
+## Eigenschaftsabsicherung und Evidenz
+
+Systematische Messdaten validieren den Architekturansatz:
+
+* **Sicherheitslogik:** Die End-to-End-Latenz vom Ausloesen des Kanten-Sensors bis zum Motorstopp betraegt gemessene $2{,}0\,\mathrm{ms}$.
+* **Regelungs-Jitter:** Die Architektur haelt die $50\,\mathrm{Hz}$-Regelschleife stabil und drueckt den Jitter auf unter $2\,\mathrm{ms}$.
+* **Navigationsgenauigkeit:** Der Absolute Trajectory Error (ATE) liegt nach SLAM-Korrektur bei $0{,}16\,\mathrm{m}$.
+* **Docking:** Die Erkennung von ArUco-Markern ermoeglicht eine erfolgreiche Zielanfahrt mit einer Quote von $80\,\%$.
 
 ---
 
 ## Live-Demo
 
-**Szenario:** Punkt-zu-Punkt Navigation mit Hinderniserkennung.
+**Szenario:** Punkt-zu-Punkt Navigation mit Hinderniserkennung und Dashboard-Interaktion.
 
 ```bash
-# Gesamten ROS 2 Stack inklusive Dashboard und Vision starten
+# Gesamten ROS-2-Stack inklusive Dashboard und Vision starten
 cd amr/docker/
 ./run.sh ros2 launch my_bot full_stack.launch.py \
     use_dashboard:=True use_vision:=True
+
 ```
