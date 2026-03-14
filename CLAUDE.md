@@ -126,6 +126,17 @@ pre-commit run --all-files         # Alle Hooks (ruff, mypy, clang-format, eslin
 
 Einmalig einrichten: `pip3 install pre-commit && pre-commit install`
 
+### Wartung und Abhaengigkeiten
+
+```bash
+# Projekt-Abhaengigkeiten aktualisieren (npm, pip, PlatformIO, Docker, ROS2-Image)
+./scripts/update_dependencies.sh
+
+# Systemwartung mit AMR-Diagnose (Temperatur, Speicher, Services, USB, EEPROM)
+sudo ./scripts/rover_wartung.sh            # Vollstaendig mit apt-Updates
+sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
+```
+
 ## Relevante Projektpfade
 
 - `amr/mcu_firmware/drive_node/` — ESP32-S3 Firmware Antrieb (eigene CLAUDE.md in `amr/mcu_firmware/`)
@@ -133,6 +144,7 @@ Einmalig einrichten: `pip3 install pre-commit && pre-commit install`
 - `amr/pi5/ros2_ws/src/my_bot/` — ROS2 ament_python-Paket (Launch, Nodes, Config)
 - `amr/docker/` — Dockerfile, docker-compose.yml, run.sh, verify.sh
 - `amr/scripts/` — Validierungsskripte, ROS2-Runtime-Nodes, Host-Only-Tools
+- `scripts/` — Wartungsskripte (update_dependencies.sh, rover_wartung.sh)
 - `dashboard/` — React/Vite Benutzeroberflaeche
 - `projektarbeit/` — Projektarbeit (Markdown-Kapitel + LaTeX)
 - `planung/vortrag/` — Beamer-Praesentationen
