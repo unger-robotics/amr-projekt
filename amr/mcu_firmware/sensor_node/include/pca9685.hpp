@@ -106,8 +106,18 @@ class PCA9685 {
         return true;
     }
 
+    // Kalibrierungs-Offset pro Kanal (Pan/Tilt)
+    static float calibrationOffset(uint8_t channel) {
+        if (channel == amr::servo::ch_pan)
+            return amr::servo::pan_offset_deg;
+        if (channel == amr::servo::ch_tilt)
+            return amr::servo::tilt_offset_deg;
+        return 0.0f;
+    }
+
     void setAngle(uint8_t channel, float angle_deg) {
-        uint16_t off_ticks = angleToPWM(angle_deg);
+        float hw_angle = angle_deg + calibrationOffset(channel);
+        uint16_t off_ticks = angleToPWM(hw_angle);
         setPWM(channel, 0, off_ticks);
         // State aktualisieren (nur fuer Rampen-Kanaele)
         if (channel < NUM_SERVO_CH) {
@@ -117,7 +127,16 @@ class PCA9685 {
     }
 
     void setTargetAngle(uint8_t channel, float angle_deg) {
-        angle_deg = std::clamp(angle_deg, amr::servo::angle_min_deg, amr::servo::angle_max_deg);
+        float lo = amr::servo::angle_min_deg;
+        float hi = amr::servo::angle_max_deg;
+        if (channel == amr::servo::ch_pan) {
+            lo = amr::servo::pan_limit_min_deg;
+            hi = amr::servo::pan_limit_max_deg;
+        } else if (channel == amr::servo::ch_tilt) {
+            lo = amr::servo::tilt_limit_min_deg;
+            hi = amr::servo::tilt_limit_max_deg;
+        }
+        angle_deg = std::clamp(angle_deg, lo, hi);
         if (channel < NUM_SERVO_CH) {
             target_angle_[channel] = angle_deg;
         }
@@ -140,7 +159,7 @@ class PCA9685 {
         float diff = target_angle_[channel] - current_angle_[channel];
         if (fabsf(diff) < 0.5f) {
             current_angle_[channel] = target_angle_[channel];
-            setPWM(channel, 0, angleToPWM(current_angle_[channel]));
+            setPWM(channel, 0, angleToPWM(current_angle_[channel] + calibrationOffset(channel)));
             return true;
         }
         if (diff > 0) {
@@ -154,7 +173,7 @@ class PCA9685 {
                 current_angle_[channel] = target_angle_[channel];
             }
         }
-        setPWM(channel, 0, angleToPWM(current_angle_[channel]));
+        setPWM(channel, 0, angleToPWM(current_angle_[channel] + calibrationOffset(channel)));
         return false;
     }
 

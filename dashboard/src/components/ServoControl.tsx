@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTelemetryStore } from '../store/telemetryStore';
 
 interface SliderProps {
@@ -16,8 +16,8 @@ function ServoSlider({ label, value, onChange }: SliderProps) {
       </div>
       <input
         type="range"
-        min={0}
-        max={180}
+        min={45}
+        max={135}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full h-1 appearance-none cursor-pointer bg-hud-bg rounded-none
@@ -28,9 +28,9 @@ function ServoSlider({ label, value, onChange }: SliderProps) {
           [&::-moz-range-track]:bg-hud-bg [&::-moz-range-track]:h-1"
       />
       <div className="flex justify-between text-[10px] text-hud-text-dim">
-        <span>0&deg;</span>
+        <span>45&deg;</span>
         <span>90&deg;</span>
-        <span>180&deg;</span>
+        <span>135&deg;</span>
       </div>
     </div>
   );
@@ -45,26 +45,33 @@ export default function ServoControl({ sendServoCmd, layout = 'vertical' }: Serv
   const storePan = useTelemetryStore((s) => s.servoPan);
   const storeTilt = useTelemetryStore((s) => s.servoTilt);
 
-  const [pan, setPan] = useState(storePan);
-  const [tilt, setTilt] = useState(storeTilt);
+  // Local overrides while user is actively dragging
+  const [localPan, setLocalPan] = useState<number | null>(null);
+  const [localTilt, setLocalTilt] = useState<number | null>(null);
+  const panTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tiltTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync from store when server reports actual positions
-  useEffect(() => { setPan(storePan); }, [storePan]);
-  useEffect(() => { setTilt(storeTilt); }, [storeTilt]);
+  // Show local value during interaction, store value otherwise
+  const pan = localPan ?? storePan;
+  const tilt = localTilt ?? storeTilt;
 
   const handlePan = useCallback((v: number) => {
-    setPan(v);
-    sendServoCmd(v, tilt);
-  }, [sendServoCmd, tilt]);
+    setLocalPan(v);
+    if (panTimer.current) clearTimeout(panTimer.current);
+    panTimer.current = setTimeout(() => setLocalPan(null), 1000);
+    sendServoCmd(v, localTilt ?? storeTilt);
+  }, [sendServoCmd, localTilt, storeTilt]);
 
   const handleTilt = useCallback((v: number) => {
-    setTilt(v);
-    sendServoCmd(pan, v);
-  }, [sendServoCmd, pan]);
+    setLocalTilt(v);
+    if (tiltTimer.current) clearTimeout(tiltTimer.current);
+    tiltTimer.current = setTimeout(() => setLocalTilt(null), 1000);
+    sendServoCmd(localPan ?? storePan, v);
+  }, [sendServoCmd, localPan, storePan]);
 
   const handleCenter = useCallback(() => {
-    setPan(90);
-    setTilt(90);
+    setLocalPan(null);
+    setLocalTilt(null);
     sendServoCmd(90, 90);
   }, [sendServoCmd]);
 

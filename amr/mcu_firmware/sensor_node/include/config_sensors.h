@@ -109,6 +109,8 @@ namespace amr::servo {
 
 inline constexpr uint8_t ch_pan = 0;
 inline constexpr uint8_t ch_tilt = 1;
+
+// PWM-Bereich (PCA9685 Ticks fuer 0-180° Gesamtbereich)
 inline constexpr float angle_min_deg = 0.0f;
 inline constexpr float angle_max_deg = 180.0f;
 inline constexpr float angle_range_deg = angle_max_deg - angle_min_deg;
@@ -116,6 +118,16 @@ inline constexpr uint16_t ticks_min = 123;
 inline constexpr uint16_t ticks_max = 492;
 inline constexpr uint8_t pca_prescale = 121;
 inline constexpr float ramp_deg_per_step = 2.0f;
+
+// Kalibrierung: Offset addiert auf den Soll-Winkel, damit 90° = geradeaus
+inline constexpr float pan_offset_deg = 8.0f;
+inline constexpr float tilt_offset_deg = 1.0f;
+
+// Zul. Schwenkbereich (logisch, vor Offset-Anwendung)
+inline constexpr float pan_limit_min_deg = 45.0f;
+inline constexpr float pan_limit_max_deg = 135.0f;
+inline constexpr float tilt_limit_min_deg = 45.0f;
+inline constexpr float tilt_limit_max_deg = 135.0f;
 
 } // namespace amr::servo
 
@@ -224,6 +236,12 @@ static_assert(amr::battery::fuse_rating_a > 0.0f, "Sicherungsbewertung muss posi
 // --- Servo ---
 static_assert(amr::servo::ticks_min < amr::servo::ticks_max, "Servo Ticks: Min < Max");
 static_assert(amr::servo::angle_min_deg < amr::servo::angle_max_deg, "Servo: 0 < 180 deg");
+static_assert(amr::servo::pan_limit_min_deg >= amr::servo::angle_min_deg, "Pan-Min im PWM-Bereich");
+static_assert(amr::servo::pan_limit_max_deg + amr::servo::pan_offset_deg <= amr::servo::angle_max_deg,
+              "Pan-Max + Offset im PWM-Bereich");
+static_assert(amr::servo::tilt_limit_min_deg >= amr::servo::angle_min_deg, "Tilt-Min im PWM-Bereich");
+static_assert(amr::servo::tilt_limit_max_deg + amr::servo::tilt_offset_deg <= amr::servo::angle_max_deg,
+              "Tilt-Max + Offset im PWM-Bereich");
 
 // --- CAN-Bus ---
 static_assert(amr::can::id_range >= 0x100 && amr::can::id_range <= 0x7FF, "CAN-ID 11-Bit");

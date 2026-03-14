@@ -116,8 +116,9 @@ SharedSensorData shared;
 SemaphoreHandle_t mutex;
 volatile uint32_t core1_heartbeat = 0;
 
-/** Deferred Servo: Callback schreibt Zielwinkel (RAM), loop() fuehrt I2C aus.
- *  Noetig weil Wire-Operationen in rclc_executor_spin_some() still fehlschlagen. */
+/** Deferred Servo: Callback schreibt Zielwinkel (RAM), sensorTask (Core 1) fuehrt I2C aus.
+ *  Alle I2C-Operationen muessen auf Core 1 laufen, da die ESP32-S3 Wire-Bibliothek
+ *  nicht cross-core-sicher ist (I2C-Writes von Core 0 schlagen still fehl). */
 struct ServoCommand {
     volatile float pan = 90.0f;
     volatile float tilt = 90.0f;
@@ -125,12 +126,15 @@ struct ServoCommand {
 };
 ServoCommand servo_cmd;
 
-/** Deferred Hardware: Callback schreibt Werte (RAM), loop() wendet sie an. */
+/** Deferred Hardware: Callback schreibt Werte (RAM), sensorTask wendet sie an. */
 struct HardwareCommand {
     volatile float servo_speed = 5.0f;
     volatile bool update_pending = false;
 };
 HardwareCommand hw_cmd;
+
+/** Deferred Batterie-Servo-Steuerung: Core 0 setzt Flag, Core 1 fuehrt I2C aus. */
+volatile int8_t deferred_servo_power = 0; // 0=noop, 1=allOff, 2=clearAllOff
 
 // --- micro-ROS Variablen ---
 rcl_publisher_t pub_range;
@@ -177,10 +181,10 @@ void servo_cmd_callback(const void *m) {
         return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
     if (pca9685_ok) {
-        servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::angle_min_deg,
-                                   amr::servo::angle_max_deg);
-        servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::angle_min_deg,
-                                    amr::servo::angle_max_deg);
+        servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::pan_limit_min_deg,
+                                   amr::servo::pan_limit_max_deg);
+        servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::tilt_limit_min_deg,
+                                    amr::servo::tilt_limit_max_deg);
         servo_cmd.update_pending = true;
     }
 }
@@ -316,6 +320,39 @@ void sensorTask(void *p) {
                     }
                     xSemaphoreGive(i2c_mutex);
                 }
+            }
+        }
+
+        // 5. Deferred Servo I2C (Core 1, da Wire nicht cross-core-sicher ist)
+        if (pca9685_ok && servo_cmd.update_pending) {
+            servo_cmd.update_pending = false;
+            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                pca9685.setAngle(amr::servo::ch_pan, servo_cmd.pan);
+                pca9685.setAngle(amr::servo::ch_tilt, servo_cmd.tilt);
+                xSemaphoreGive(i2c_mutex);
+            } else {
+                servo_cmd.update_pending = true;
+                i2c_contention_errors++;
+            }
+        }
+
+        // 6. Deferred Hardware Command (Servo-Speed, RAM-only)
+        if (hw_cmd.update_pending) {
+            hw_cmd.update_pending = false;
+            if (pca9685_ok)
+                pca9685.setRampSpeed(hw_cmd.servo_speed * 0.5f);
+        }
+
+        // 7. Deferred Batterie-Servo-Power (allOff/clearAllOff)
+        if (pca9685_ok && deferred_servo_power != 0) {
+            int8_t action = deferred_servo_power;
+            deferred_servo_power = 0;
+            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
+                if (action == 1)
+                    pca9685.allOff();
+                else if (action == 2)
+                    pca9685.clearAllOff();
+                xSemaphoreGive(i2c_mutex);
             }
         }
 
@@ -539,41 +576,8 @@ void loop() {
         digitalWrite(amr::hal::pin_led_internal, hb_on ? LOW : HIGH);
     }
 
-    // --- Deferred Servo I2C (nach spin_some, Core 0) ---
-    if (pca9685_ok && servo_cmd.update_pending) {
-        servo_cmd.update_pending = false;
-        pca9685.setTargetAngle(amr::servo::ch_pan, servo_cmd.pan);
-        pca9685.setTargetAngle(amr::servo::ch_tilt, servo_cmd.tilt);
-    }
-
-    // Servo-Ramp: 20 Hz Rate-Limit + Early-Return wenn kein Servo sich bewegt
-    if (pca9685_ok) {
-        static uint32_t last_ramp = 0;
-        uint32_t now_ramp = millis();
-        if (now_ramp - last_ramp >= 50) { // 20 Hz
-            last_ramp = now_ramp;
-            bool pan_needs = pca9685.needsRamp(amr::servo::ch_pan);
-            bool tilt_needs = pca9685.needsRamp(amr::servo::ch_tilt);
-            if (pan_needs || tilt_needs) {
-                if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-                    if (pan_needs)
-                        pca9685.updateRamp(amr::servo::ch_pan);
-                    if (tilt_needs)
-                        pca9685.updateRamp(amr::servo::ch_tilt);
-                    xSemaphoreGive(i2c_mutex);
-                } else {
-                    i2c_contention_errors++;
-                }
-            }
-        }
-    }
-
-    // Deferred Hardware Command (Servo-Speed → RAM, kein I2C noetig)
-    if (hw_cmd.update_pending) {
-        hw_cmd.update_pending = false;
-        if (pca9685_ok)
-            pca9685.setRampSpeed(hw_cmd.servo_speed * 0.5f);
-    }
+    // Servo + Hardware-Command I2C: laeuft in sensorTask (Core 1),
+    // da Wire auf dem ESP32-S3 nicht cross-core-sicher ist.
 
     // --- 1. Cliff publizieren (20 Hz) ---
     static unsigned long last_pub_cliff = 0;
@@ -682,15 +686,8 @@ void loop() {
                 // Batterie-Unterspannungsabschaltung
                 if (voltage > 0.5f && voltage < amr::battery::threshold_motor_shutdown_v) {
                     battery_motor_shutdown = true;
-                    if (pca9685_ok) {
-                        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-                            pca9685.allOff();
-                            xSemaphoreGive(i2c_mutex);
-                        } else {
-                            i2c_contention_errors++;
-                        }
-                    }
-                    // Shutdown-Status publizieren
+                    if (pca9685_ok)
+                        deferred_servo_power = 1; // Core 1: allOff()
                     msg_bat_shutdown.data = true;
                     rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
                     if (can_ok)
@@ -699,14 +696,8 @@ void loop() {
                                          amr::battery::threshold_hysteresis_v) {
                     if (battery_motor_shutdown) {
                         battery_motor_shutdown = false;
-                        if (pca9685_ok) {
-                            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-                                pca9685.clearAllOff();
-                                xSemaphoreGive(i2c_mutex);
-                            } else {
-                                i2c_contention_errors++;
-                            }
-                        }
+                        if (pca9685_ok)
+                            deferred_servo_power = 2; // Core 1: clearAllOff()
                         msg_bat_shutdown.data = false;
                         rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
                         if (can_ok)
