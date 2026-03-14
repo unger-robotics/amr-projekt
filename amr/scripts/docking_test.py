@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-Docking-Validierungstest fuer AMR Ladestation.
+Docking-Validierungstest fuer AMR.
 
 Fuehrt 10 Docking-Versuche durch und protokolliert Erfolgsquote,
 lateralen Versatz und Orientierungsfehler.
 
 Ablauf pro Versuch:
   1. Benutzer positioniert Roboter manuell (~1.5 m vor Marker)
-  2. Docking-Node wird gestartet (ArUco-Marker-Suche + Annaeherung)
-  3. Warten auf DOCKED-State oder Timeout (60 s)
-  4. Ergebnis messen (Marker-Position, Dauer)
+  2. Kamera erkennt ArUco-Marker und steuert Roboter darauf zu
+  3. DOCKED sobald Ultraschall <= 0.40 m misst, Roboter stoppt
+  4. Ergebnis messen (lateraler Versatz via solvePnP, Orientierung)
   5. Roboter faehrt 3 s rueckwaerts zur Ausgangsposition
 
+Zustaende:
+  SEARCHING   — Marker nicht sichtbar, Roboter dreht sich suchend
+  APPROACHING — Marker sichtbar, Kamera steuert Richtung, Roboter faehrt vor.
+                Bei kurzem Marker-Verlust: Drehung um Hochachse bis Marker
+                wieder sichtbar, dann geradeaus weiter.
+  DOCKED      — Ultraschall <= 0.60 m UND Marker sichtbar, Roboter stoppt (Erfolg)
+  TIMEOUT     — 60 s ohne Docking (Fehlschlag)
+
 Topics:
-  - Subscribes: /camera/image_raw, /odom
+  - Subscribes: /camera/image_raw, /odom, /range/front
   - Publishes:  /cmd_vel
 
 Ergebnis: Markdown-Tabelle + JSON-Export (docking_results.json)
@@ -33,7 +41,7 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, Range
 
 from amr_utils import quaternion_to_yaw
 
@@ -53,7 +61,6 @@ VERSATZ_AKZEPTANZ_CM = 2.0
 class DockingTestNode(Node):
     """Fuehrt wiederholte Docking-Tests durch und sammelt Ergebnisse."""
 
-    # Zustaende fuer einzelnen Versuch
     SEARCHING = "SEARCHING"
     APPROACHING = "APPROACHING"
     DOCKED = "DOCKED"
@@ -75,24 +82,22 @@ class DockingTestNode(Node):
             Image, "/camera/image_raw", self.image_callback, 10
         )
         self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
+        self.range_sub = self.create_subscription(Range, "/range/front", self.range_callback, 10)
 
-        # Parameter
+        # Steuerungsparameter
         self.bridge = CvBridge()
-        self.kp_angular = 0.5
-        self.approach_vel = 0.05
-        self.search_vel = 0.2
+        self.kp_angular = 0.3
+        self.approach_vel = 0.08  # m/s Vorwaertsgeschwindigkeit
+        self.search_vel = 0.3  # rad/s Suchrotation
         self.target_marker_id = 0
-        self.docking_threshold = 150
+        self.docking_distance_m = 0.60  # Ultraschall-Distanz fuer DOCKED [m]
         self.timeout_sec = 60.0
         self.marker_lost_timeout = 3.0
         self.num_versuche = 10
-        self.rueckfahrt_vel = -0.2
-        self.rueckfahrt_dauer = 3.0
 
-        # ArUco Detector (moderne API)
-        dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        parameters = cv2.aruco.DetectorParameters()
-        self.detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+        # ArUco Detector (kompatibel mit OpenCV 4.5+)
+        self.aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+        self.aruco_params = cv2.aruco.DetectorParameters_create()
 
         # Test-Zustand
         self.aktueller_versuch = 0
@@ -105,6 +110,9 @@ class DockingTestNode(Node):
         self.image_width = None
         self.test_aktiv = False
 
+        # Ultraschall-Distanz
+        self.range_m = float("inf")
+
         # Odometrie
         self.odom_yaw = 0.0
         self.odom_yaw_start = 0.0
@@ -114,12 +122,30 @@ class DockingTestNode(Node):
 
         self.get_logger().info(f"Docking-Test bereit. {self.num_versuche} Versuche geplant.")
         self.get_logger().info(f"Ausgabeverzeichnis: {self.output_dir}")
+        self.get_logger().info(f"Docking-Distanz: {self.docking_distance_m:.2f} m (Ultraschall)")
         self.get_logger().info('Eingabe "s" + Enter im Terminal startet den naechsten Versuch.')
+
+    def range_callback(self, msg):
+        """Speichert aktuelle Ultraschall-Distanz."""
+        self.range_m = float(msg.range)
 
     def odom_callback(self, msg):
         """Speichert aktuelle Gier-Orientierung aus Odometrie."""
         q = msg.pose.pose.orientation
         self.odom_yaw = quaternion_to_yaw(q)
+
+    def _check_docked(self):
+        """Prueft ob Ultraschall <= 0.40 m UND Marker kuerzlich sichtbar (< 2 s)."""
+        marker_kuerzlich = self.last_marker_time > 0 and (time.time() - self.last_marker_time) < 2.0
+        if self.range_m <= self.docking_distance_m and marker_kuerzlich:
+            self.state = self.DOCKED
+            self.get_logger().info(
+                f"  Versuch {self.aktueller_versuch}: DOCKED (Ultraschall: {self.range_m:.2f} m)"
+            )
+            self.stop_robot()
+            self.versuch_abschliessen()
+            return True
+        return False
 
     def image_callback(self, msg):
         """Verarbeitet Kamerabild waehrend aktivem Docking-Versuch."""
@@ -138,11 +164,19 @@ class DockingTestNode(Node):
         self.image_width = frame.shape[1]
         img_center_x = self.image_width / 2.0
 
-        corners, ids, _rejected = self.detector.detectMarkers(gray)
+        corners, ids, _rejected = cv2.aruco.detectMarkers(
+            gray, self.aruco_dict, parameters=self.aruco_params
+        )
+
+        # DOCKED wenn Ultraschall <= 0.40 m UND Marker kuerzlich sichtbar
+        if self._check_docked():
+            return
 
         cmd = Twist()
+        marker_sichtbar = ids is not None and self.target_marker_id in ids.flatten()
 
-        if ids is not None and self.target_marker_id in ids.flatten():
+        if marker_sichtbar:
+            # --- Marker sichtbar: Richtung korrigieren + vorwaerts ---
             index = np.where(ids.flatten() == self.target_marker_id)[0][0]
             c = corners[index][0]
 
@@ -162,18 +196,22 @@ class DockingTestNode(Node):
                     f"  Versuch {self.aktueller_versuch}: Marker erkannt -> APPROACHING"
                 )
 
-            if marker_width > self.docking_threshold:
-                self.state = self.DOCKED
-                self.get_logger().info(
-                    f"  Versuch {self.aktueller_versuch}: DOCKED (Breite: {marker_width:.0f} px)"
-                )
-                self.stop_robot()
-                self.versuch_abschliessen()
-                return
-
-            cmd.angular.z = -1.0 * error_x * self.kp_angular
+            angular_cmd = error_x * self.kp_angular
+            cmd.angular.z = angular_cmd
             cmd.linear.x = self.approach_vel
+            self.get_logger().info(
+                f"  center_x={center_x:.0f} img_center={img_center_x:.0f} "
+                f"error_x={error_x:.3f} angular_z={angular_cmd:.3f} "
+                f"range={self.range_m:.2f}m width={marker_width:.0f}px",
+                throttle_duration_sec=1.0,
+            )
+
+        elif self.state == self.APPROACHING:
+            # --- Marker kurz verloren: geradeaus weiterfahren ---
+            cmd.linear.x = self.approach_vel
+
         else:
+            # --- SEARCHING: Drehung um Marker zu finden ---
             cmd.angular.z = self.search_vel
 
         self.cmd_pub.publish(cmd)
@@ -205,6 +243,7 @@ class DockingTestNode(Node):
         self.last_marker_center_x = None
         self.last_marker_width = None
         self.last_marker_corners = None
+        self.range_m = float("inf")
         self.odom_yaw_start = self.odom_yaw
         self.test_aktiv = True
 
@@ -212,7 +251,7 @@ class DockingTestNode(Node):
             f"--- Versuch {self.aktueller_versuch}/{self.num_versuche} gestartet ---"
         )
 
-        # Watchdog-Timer fuer diesen Versuch
+        # Watchdog-Timer fuer Timeout und Marker-Verlust
         self.watchdog_timer = self.create_timer(0.1, self.watchdog_callback)
 
     def watchdog_callback(self):
@@ -220,6 +259,10 @@ class DockingTestNode(Node):
         if not self.test_aktiv:
             return
         if self.state in (self.DOCKED, self.TIMEOUT):
+            return
+
+        # Ultraschall-Docking pruefen (10 Hz, unabhaengig von Kamera-Framerate)
+        if self._check_docked():
             return
 
         now = time.time()
@@ -271,6 +314,7 @@ class DockingTestNode(Node):
             "dauer_s": round(dauer, 2),
             "lat_versatz_cm": round(lat_versatz_cm, 2) if lat_versatz_cm is not None else None,
             "orient_fehler_deg": round(orient_fehler_deg, 2),
+            "ultraschall_m": round(self.range_m, 3),
             "marker_breite_px": round(self.last_marker_width, 0)
             if self.last_marker_width
             else None,
@@ -282,35 +326,17 @@ class DockingTestNode(Node):
         versatz_cm_str = f"{lat_versatz_cm:.2f} cm" if lat_versatz_cm is not None else "N/A"
         self.get_logger().info(
             f"  Ergebnis: {status}, Dauer: {dauer:.1f} s, "
-            f"Versatz: {versatz_cm_str}, Orient: {orient_fehler_deg:.1f} deg"
+            f"Versatz: {versatz_cm_str}, Orient: {orient_fehler_deg:.1f} deg, "
+            f"Distanz: {self.range_m:.2f} m"
         )
 
-        # Rueckwaertsfahrt (timer-basiert, nicht blockierend)
-        self.get_logger().info("  Rueckwaertsfahrt...")
-        self._rueckfahrt_start = time.time()
-        self._rueckfahrt_timer = self.create_timer(0.1, self._rueckfahrt_callback)
-
-    def _rueckfahrt_callback(self):
-        """Timer-Callback: publiziert Rueckwaertsfahrt-Kommandos fuer die konfigurierte Dauer."""
-        elapsed = time.time() - self._rueckfahrt_start
-        if elapsed < self.rueckfahrt_dauer:
-            cmd = Twist()
-            cmd.linear.x = self.rueckfahrt_vel
-            self.cmd_pub.publish(cmd)
+        # Naechster Versuch oder Auswertung
+        if self.aktueller_versuch < self.num_versuche:
+            self.get_logger().info(
+                '  Roboter fuer naechsten Versuch positionieren. Dann "s" + Enter druecken.'
+            )
         else:
-            # Rueckwaertsfahrt beendet
-            self._rueckfahrt_timer.cancel()
-            self.destroy_timer(self._rueckfahrt_timer)
-            self.stop_robot()
-            self.get_logger().info("  Rueckwaertsfahrt abgeschlossen.")
-
-            # Naechster Versuch oder Auswertung
-            if self.aktueller_versuch < self.num_versuche:
-                self.get_logger().info(
-                    '  Roboter fuer naechsten Versuch positionieren. Dann "s" + Enter druecken.'
-                )
-            else:
-                self.auswertung()
+            self.auswertung()
 
     def stop_robot(self):
         """Sendet Null-Twist."""
@@ -327,18 +353,19 @@ class DockingTestNode(Node):
         # Tabelle
         self.get_logger().info("")
         self.get_logger().info(
-            "| Versuch | Erfolg | Dauer [s] | Lat. Versatz [cm] | Orient. [deg] |"
+            "| Versuch | Erfolg | Dauer [s] | Versatz [cm] | Orient. [deg] | Dist. [m] |"
         )
         self.get_logger().info(
-            "|---------|--------|-----------|-------------------|---------------|"
+            "|---------|--------|-----------|--------------|---------------|-----------|"
         )
 
         for e in self.ergebnisse:
             erfolg_str = "Ja" if e["erfolg"] else "Nein"
             versatz_str = f"{e['lat_versatz_cm']:.2f}" if e["lat_versatz_cm"] is not None else "N/A"
+            dist_str = f"{e['ultraschall_m']:.2f}" if e.get("ultraschall_m") is not None else "N/A"
             self.get_logger().info(
                 f"| {e['versuch']:>7} | {erfolg_str:>6} | {e['dauer_s']:>9.1f} | "
-                f"{versatz_str:>17} | {e['orient_fehler_deg']:>13.1f} |"
+                f"{versatz_str:>12} | {e['orient_fehler_deg']:>13.1f} | {dist_str:>9} |"
             )
 
         # Statistik
@@ -429,7 +456,7 @@ class DockingTestNode(Node):
 
 
 def main(args=None):
-    parser = argparse.ArgumentParser(description="Docking-Validierungstest fuer AMR Ladestation")
+    parser = argparse.ArgumentParser(description="Docking-Validierungstest fuer AMR")
     parser.add_argument(
         "--output",
         default=os.path.dirname(os.path.abspath(__file__)),

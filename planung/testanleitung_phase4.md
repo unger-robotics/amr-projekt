@@ -120,7 +120,7 @@ cd amr/docker/
 
 ### Testfall 4.2: ArUco-Docking (10 Versuche)
 
-**Platzbedarf:** Freie Flaeche >= 2 m vor ArUco-Marker ID 42
+**Platzbedarf:** Freie Flaeche >= 2 m vor ArUco-Marker ID 0
 **Stack:** `use_slam:=True use_nav:=True use_camera:=True use_dashboard:=True use_cliff_safety:=True`
 **Steuerung:** Halbautomatisch (Benutzer positioniert, Skript faehrt)
 
@@ -153,13 +153,29 @@ docker compose down
 1. Stack mit Kamera und Dashboard starten (ESP32-Reset)
 2. `docking_test.py` starten
 3. Fuer jeden der 10 Versuche:
-   a. Roboter manuell ca. 1,5 m vor Marker positionieren (Marker sichtbar)
+   a. Roboter manuell ca. 1,5-2 m vor Marker positionieren (Marker sichtbar)
    b. `s` + Enter druecken
-   c. Roboter sucht Marker (Drehung), naehert sich, dockt (oder Timeout 60 s)
-   d. Roboter faehrt 3 s rueckwaerts
-   e. Ergebnis wird protokolliert
-4. Nach 10 Versuchen: Auswertung + JSON-Export
-5. Eingabe `q` + Enter bricht den Test vorzeitig ab (mit Teilauswertung)
+   c. Kamera erfasst Marker und steuert Roboter darauf zu (0,08 m/s)
+   d. Andocken gilt als abgeschlossen (DOCKED), sobald der
+      Ultraschallsensor einen Abstand von <= 60 cm misst und der
+      Marker innerhalb der letzten 2 s sichtbar war
+   e. Roboter stoppt, Ergebnis wird protokolliert
+4. Benutzer positioniert Roboter manuell fuer naechsten Versuch
+5. Nach 10 Versuchen: Auswertung + JSON-Export
+6. Eingabe `q` + Enter bricht den Test vorzeitig ab (mit Teilauswertung)
+
+**Zustaende:**
+- SEARCHING: Marker nicht sichtbar, Roboter dreht sich suchend
+- APPROACHING: Marker sichtbar, Kamera steuert Richtung, Roboter faehrt vor.
+  Bei kurzem Marker-Verlust (< 3 s): geradeaus weiterfahren.
+- DOCKED: Ultraschall <= 0,60 m und Marker kuerzlich sichtbar, Roboter stoppt (Erfolg)
+- TIMEOUT: 60 s ohne Docking (Fehlschlag)
+
+**Sensorik:**
+- Kamera (ArUco-Erkennung): Richtungssteuerung via Proportionalregler (kp=0,3)
+- Ultraschall (`/range/front`): Distanzmessung fuer Docking-Entscheidung
+- Odometrie (`/odom`): Orientierungsmessung fuer Ergebnisprotokoll
+- Lateraler Versatz via solvePnP mit kalibrierter Kameramatrix
 
 **Akzeptanzkriterien:**
 - Erfolgsquote >= 80 % (mindestens 8 von 10 Versuchen)
@@ -193,7 +209,7 @@ cd amr/docker/
 `yaw_error`, `duration`, `passed`.
 
 **docking_results.json** — Enthaltene Felder: `versuche[]` mit `erfolg`, `dauer_s`,
-`lat_versatz_cm`, `orient_fehler_deg`; `statistik` mit `erfolgsquote_pct`,
+`lat_versatz_cm`, `orient_fehler_deg`, `ultraschall_m`; `statistik` mit `erfolgsquote_pct`,
 `mittlerer_versatz_cm`.
 
 ## Gesamtbericht generieren
