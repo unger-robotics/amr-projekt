@@ -80,6 +80,7 @@ cd amr/mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor  # LE
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
 cd amr/mcu_firmware/sensor_node && pio run                      # Kompilieren
 cd amr/mcu_firmware/sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd amr/mcu_firmware/sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung
 ```
 
 Erster Build pro Knoten: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.

@@ -126,7 +126,7 @@ inline constexpr float tilt_offset_deg = 1.0f;
 // Zul. Schwenkbereich (logisch, vor Offset-Anwendung)
 inline constexpr float pan_limit_min_deg = 45.0f;
 inline constexpr float pan_limit_max_deg = 135.0f;
-inline constexpr float tilt_limit_min_deg = 45.0f;
+inline constexpr float tilt_limit_min_deg = 80.0f;
 inline constexpr float tilt_limit_max_deg = 135.0f;
 
 } // namespace amr::servo

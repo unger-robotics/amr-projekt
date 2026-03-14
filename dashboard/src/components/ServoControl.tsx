@@ -4,10 +4,13 @@ import { useTelemetryStore } from '../store/telemetryStore';
 interface SliderProps {
   label: string;
   value: number;
+  min: number;
+  max: number;
   onChange: (value: number) => void;
 }
 
-function ServoSlider({ label, value, onChange }: SliderProps) {
+function ServoSlider({ label, value, min, max, onChange }: SliderProps) {
+  const mid = Math.round((min + max) / 2);
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between text-xs">
@@ -16,8 +19,8 @@ function ServoSlider({ label, value, onChange }: SliderProps) {
       </div>
       <input
         type="range"
-        min={45}
-        max={135}
+        min={min}
+        max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full h-1 appearance-none cursor-pointer bg-hud-bg rounded-none
@@ -28,9 +31,9 @@ function ServoSlider({ label, value, onChange }: SliderProps) {
           [&::-moz-range-track]:bg-hud-bg [&::-moz-range-track]:h-1"
       />
       <div className="flex justify-between text-[10px] text-hud-text-dim">
-        <span>45&deg;</span>
-        <span>90&deg;</span>
-        <span>135&deg;</span>
+        <span>{min}&deg;</span>
+        <span>{mid}&deg;</span>
+        <span>{max}&deg;</span>
       </div>
     </div>
   );
@@ -80,10 +83,10 @@ export default function ServoControl({ sendServoCmd, layout = 'vertical' }: Serv
       <div className="flex items-center gap-4 text-hud-text">
         <span className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 shrink-0">Servo</span>
         <div className="flex-1 min-w-[100px]">
-          <ServoSlider label="Pan" value={pan} onChange={handlePan} />
+          <ServoSlider label="Pan" value={pan} min={45} max={135} onChange={handlePan} />
         </div>
         <div className="flex-1 min-w-[100px]">
-          <ServoSlider label="Tilt" value={tilt} onChange={handleTilt} />
+          <ServoSlider label="Tilt" value={tilt} min={80} max={135} onChange={handleTilt} />
         </div>
         <button
           onClick={handleCenter}
@@ -103,8 +106,8 @@ export default function ServoControl({ sendServoCmd, layout = 'vertical' }: Serv
         Servo (Pan/Tilt)
       </h2>
 
-      <ServoSlider label="Pan" value={pan} onChange={handlePan} />
-      <ServoSlider label="Tilt" value={tilt} onChange={handleTilt} />
+      <ServoSlider label="Pan" value={pan} min={45} max={135} onChange={handlePan} />
+      <ServoSlider label="Tilt" value={tilt} min={80} max={135} onChange={handleTilt} />
 
       <button
         onClick={handleCenter}

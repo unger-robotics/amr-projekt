@@ -33,6 +33,7 @@ cd mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor  # MOSFET
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
 cd mcu_firmware/sensor_node && pio run                      # Kompilieren
 cd mcu_firmware/sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd mcu_firmware/sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung
 ```
 
 Erster Build pro Node: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.

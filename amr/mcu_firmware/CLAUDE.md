@@ -36,7 +36,7 @@ mcu_firmware/
     platformio.ini
   sensor_node/
     include/          # Header: config_sensors.h, 6 hpp-Module (range_sensor, cliff_sensor, mpu6050, ina260, pca9685, twai_can)
-    src/              # main.cpp
+    src/              # main.cpp, servo_test.cpp
     platformio.ini
 ```
 
@@ -51,6 +51,7 @@ cd drive_node && pio run -e led_test -t upload -t monitor  # MOSFET-Diagnose (oh
 # Sensor-Node (Ultraschall + Cliff):
 cd sensor_node && pio run                      # Kompilieren
 cd sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung (Pan/Tilt)
 ```
 
 Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecached. Es gibt keine Unit-Tests.
