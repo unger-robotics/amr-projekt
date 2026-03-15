@@ -128,6 +128,11 @@ def generate_launch_description():
         default_value="False",
         description="ReSpeaker Mic Array v2.0 DoA/VAD-Node (USB, pyusb)",
     )
+    declare_use_tts = DeclareLaunchArgument(
+        "use_tts",
+        default_value="False",
+        description="TTS-Sprachausgabe fuer Gemini-Semantik (gTTS + mpg123)",
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -435,7 +440,16 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_can")),
     )
 
-    # --- 12. ReSpeaker DoA/VAD (USB Mic Array, optional) ---
+    # --- 12. TTS-Sprachausgabe (gTTS + mpg123, optional) ---
+    tts_speak_node = Node(
+        package="my_bot",
+        executable="tts_speak_node",
+        name="tts_speak_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_tts")),
+    )
+
+    # --- 13. ReSpeaker DoA/VAD (USB Mic Array, optional) ---
     respeaker_doa_node = Node(
         package="my_bot",
         executable="respeaker_doa_node",
@@ -462,6 +476,7 @@ def generate_launch_description():
             declare_use_cliff_safety,
             declare_use_audio,
             declare_use_can,
+            declare_use_tts,
             declare_use_respeaker,
             # Nodes / Prozesse
             rplidar_node,
@@ -483,6 +498,7 @@ def generate_launch_description():
             cliff_safety_node,
             audio_feedback_node,
             can_bridge_node,
+            tts_speak_node,
             respeaker_doa_node,
         ]
     )

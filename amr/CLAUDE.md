@@ -100,7 +100,7 @@ Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
 ### ROS2 Stack (pi5/ros2_ws/src/my_bot/)
 
-Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Node (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker.
+Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Node (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker. TTS-Speak-Node (`tts_speak_node`, `use_tts:=True`) spricht Gemini-Semantik via gTTS Cloud-Synthese ueber den Lautsprecher (Deutsch, Rate-Limiting 10 s).
 
 TF-Baum: `odom → base_link → laser (180° Yaw) / camera_link (optional) / ultrasonic_link (optional)`
 

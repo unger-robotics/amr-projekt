@@ -6,7 +6,7 @@ Der AMR besteht aus einem Raspberry Pi 5 als zentralem ROS2-Rechner und zwei ESP
 
 ## Hauptkomponenten
 
-- Pi 5: ROS2, SLAM, Navigation, Dashboard-Bridge, optionale Vision, Audio-Feedback (MAX98357A I2S)
+- Pi 5: ROS2, SLAM, Navigation, Dashboard-Bridge, optionale Vision, Audio-Feedback und TTS-Sprachausgabe (MAX98357A I2S)
 - Drive-Knoten: Motoransteuerung, Encoder, PID, Odometrie, LED
 - Sensor-Knoten: Ultraschall, Cliff, IMU, Batterie, Servo (PCA9685 PWM)
 - LiDAR, Kamera, optionale Hailo-/Gemini-Pipeline

@@ -33,6 +33,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff- und Hindernisstopp-Multiplexer, blockiert `/cmd_vel` bei Abgrund oder Ultraschall < 80 mm |
 | `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/MAX98357A I2S, Software-Lautstaerke (ALSA softvol) |
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN, publiziert /imu, /cliff, /range, /battery via CAN) |
+| `tts_speak_node` | `my_bot` | `tts_speak_node` | `use_tts` | TTS-Sprachausgabe der Gemini-Semantik via gTTS + mpg123 (MAX98357A) |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD via USB (pyusb) |
 
 ---
@@ -114,6 +115,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer aktivieren |
 | `use_audio` | `False` | Audio-Feedback-Knoten (MAX98357A I2S, benoetigt `asound.conf` Docker-Mount) |
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN → /imu, /cliff, /range, /battery) |
+| `use_tts` | `False` | TTS-Sprachausgabe fuer Gemini-Semantik (gTTS Cloud, mpg123, Deutsch) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array v2.0 DoA/VAD-Knoten (USB, pyusb) |
 
 **Beispiele:**

@@ -34,7 +34,7 @@ PRIORITY_SOUNDS = {"cliff_alarm"}
 # ALSA-Konfiguration: softvol-Device und Mixer-Control
 ALSA_DEVICE = "default"  # Nutzt softvol via /etc/asound.conf
 ALSA_MIXER_CONTROL = "SoftMaster"  # softvol-Kontrollname
-DEFAULT_VOLUME_PCT = 80
+DEFAULT_VOLUME_PCT = 50
 
 
 # ===========================================================================

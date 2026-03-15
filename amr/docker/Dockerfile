@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # System-Tools
     usbutils \
     alsa-utils \
+    mpg123 \
     nano \
     iputils-ping \
     git \
@@ -110,7 +111,8 @@ RUN pip3 install --no-cache-dir \
     websockets \
     google-genai \
     python-can \
-    pyusb
+    pyusb \
+    gTTS
 
 WORKDIR /ros2_ws
 

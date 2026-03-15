@@ -31,6 +31,9 @@ Docker (Python 3.10, ROS2 Humble):
   gemini_semantic_node (Gemini Cloud API, gemini-3-flash-preview)
       |
       v  /vision/semantics (ROS2 Topic)
+      |
+      v
+  tts_speak_node (gTTS Cloud → mpg123 → MAX98357A Lautsprecher, optional)
 ```
 
 ## Komponenten
@@ -42,6 +45,7 @@ Docker (Python 3.10, ROS2 Humble):
 | `host_hailo_runner.py` | Host (Python 3.13) | YOLOv8-Inferenz via Hailo-8L NPU, sendet Detektionen per UDP |
 | `hailo_udp_receiver_node` | Docker (ROS2) | Empfaengt UDP-JSON, publiziert `/vision/detections` |
 | `gemini_semantic_node` | Docker (ROS2) | Semantische Auswertung via Gemini Cloud, publiziert `/vision/semantics` |
+| `tts_speak_node` | Docker (ROS2) | Spricht Gemini-Semantik via gTTS (Cloud, Deutsch) + mpg123 ueber MAX98357A Lautsprecher |
 
 ## Ports
 
@@ -84,6 +88,19 @@ python3 amr/scripts/host_hailo_runner.py --fallback
 ```
 
 Ohne Hailo-8L NPU oder bei deaktivierter Vision (`use_vision:=False`) laufen Kamera und Dashboard-Stream weiterhin. Die Topics `/vision/detections` und `/vision/semantics` werden dann nicht publiziert. Navigation und SLAM sind davon unabhaengig.
+
+## TTS-Sprachausgabe (optional)
+
+Der `tts_speak_node` subscribt `/vision/semantics` und spricht die Gemini-Analyse ueber den Lautsprecher (MAX98357A I2S) aus. Die Synthese erfolgt via Google Text-to-Speech (gTTS, Cloud) auf Deutsch mit Wiedergabe ueber mpg123. Rate-Limiting: maximal alle 10 Sekunden.
+
+Aktivierung:
+
+```bash
+./run.sh ros2 launch my_bot full_stack.launch.py \
+    use_camera:=True use_vision:=True use_audio:=True use_tts:=True
+```
+
+Abhaengigkeiten im Docker-Image: `gTTS` (pip), `mpg123` (apt). Internetzugang erforderlich fuer gTTS-Cloud-Synthese.
 
 ## Gemini-Modell
 

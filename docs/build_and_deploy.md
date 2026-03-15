@@ -103,6 +103,7 @@ cd amr/docker/
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer |
 | `use_audio` | `False` | Audio-Feedback (MAX98357A I2S, Docker-Volume `asound.conf` fuer softvol) |
 | `use_can` | `False` | CAN-to-ROS2 Bridge (SocketCAN) |
+| `use_tts` | `False` | TTS-Sprachausgabe (Gemini-Semantik via gTTS) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array DoA/VAD |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Node |
 | `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Node |
