@@ -101,7 +101,7 @@ cd amr/docker/
 | `use_camera` | `False` | Kamera-Node (v4l2_camera_node) |
 | `use_vision` | `False` | Vision-Pipeline (Hailo UDP + Gemini) |
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer |
-| `use_audio` | `False` | Audio-Feedback (PCM5102A HifiBerry DAC) |
+| `use_audio` | `False` | Audio-Feedback (MAX98357A I2S, Docker-Volume `asound.conf` fuer softvol) |
 | `use_can` | `False` | CAN-to-ROS2 Bridge (SocketCAN) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array DoA/VAD |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Node |

@@ -25,12 +25,13 @@ Vom Client empfangene Nachrichten (`op`-Feld):
 | Operation | Beschreibung |
 |---|---|
 | `cmd_vel` | Fahrbefehle (`linear_x`, `angular_z`). Single-Controller: nur ein Client darf senden. |
-| `servo_cmd` | Servo-Steuerung (`pan`, `tilt`) |
+| `servo_cmd` | Servo-Steuerung (`pan`: 45-135 deg, `tilt`: 80-135 deg) |
 | `hardware_cmd` | Hardware-Parameter (`motor_limit`, `servo_speed`, `led_pwm`) |
 | `heartbeat` | Deadman-Timer zuruecksetzen (300 ms Timeout) |
 | `nav_goal` | Navigationsziel senden (`x`, `y`, `yaw` in Map-Koordinaten) |
 | `nav_cancel` | Laufendes Navigationsziel abbrechen |
 | `audio_play` | Sound-Wiedergabe ausloesen (`sound_key`, z.B. `cliff_alarm`, `nav_start`) |
+| `volume` | Lautstaerke setzen (`volume`: 0-100%, publiziert auf `/audio/volume`) |
 
 Vom Server gesendete Nachrichten:
 
@@ -59,7 +60,7 @@ Die Benutzeroberflaeche hat zwei Seiten, erreichbar ueber einen Tab-Switcher:
 **Details** (Detailansicht):
 - ActiveDevicesPanel: Online/Offline-Status aller ROS2-Knoten und Hardware
 - SensorDetailPanel: Ultraschall-Distanz, Cliff-Zustand, IMU-Raten, Sensor-Node-Status
-- AudioPanel: Sound-Wiedergabe per WebSocket (`audio_play`), verfuegbare Sounds
+- AudioPanel: Sound-Wiedergabe per WebSocket (`audio_play`), Lautstaerke-Slider (`volume`, 0-100%), verfuegbare Sounds
 - RobotInfoPanel: Systemmetriken (CPU, RAM, Disk), IP, Uptime
 
 ### ROS2-Subscriptions im dashboard_bridge
@@ -73,7 +74,7 @@ Der `dashboard_bridge` subscribt folgende Topics fuer die Detail-Seite:
 | `/sound_direction` | `std_msgs/Int32` | Schallrichtung fuer AudioPanel (ReSpeaker DoA) |
 | `/is_voice` | `std_msgs/Bool` | Spracherkennung fuer AudioPanel (ReSpeaker VAD) |
 
-Zusaetzlich publiziert der `dashboard_bridge` auf `/audio/play` (`std_msgs/String`) bei Empfang der WebSocket-Operation `audio_play`.
+Zusaetzlich publiziert der `dashboard_bridge` auf `/audio/play` (`std_msgs/String`) bei Empfang der WebSocket-Operation `audio_play` und auf `/audio/volume` (`std_msgs/Int32`) bei Empfang der WebSocket-Operation `volume`.
 
 ### Entwicklungsmodus
 

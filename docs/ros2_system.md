@@ -31,7 +31,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `hailo_udp_receiver` | `my_bot` | `hailo_udp_receiver_node` | `use_vision` | Empfaengt Hailo-8L Inferenz via UDP 127.0.0.1:5005 |
 | `gemini_semantic_node` | `my_bot` | `gemini_semantic_node` | `use_vision` | Gemini-Cloud-Semantik aus Kamerabild und Detektionen |
 | `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff- und Hindernisstopp-Multiplexer, blockiert `/cmd_vel` bei Abgrund oder Ultraschall < 80 mm |
-| `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/PCM5102A DAC |
+| `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/MAX98357A I2S, Software-Lautstaerke (ALSA softvol) |
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN, publiziert /imu, /cliff, /range, /battery via CAN) |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD via USB (pyusb) |
 
@@ -65,7 +65,8 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `/vision/detections` | `std_msgs/String` | ~5 Hz | Reliable | hailo_udp_receiver (Pub) | Hailo-8L YOLOv8 Objekterkennung (JSON) |
 | `/vision/semantics` | `std_msgs/String` | — | Reliable | gemini_semantic_node (Pub) | Gemini-Cloud Szenenbeschreibung (JSON) |
 | `/diagnostics/can` | `diagnostic_msgs/DiagnosticArray` | — | Reliable | can_bridge_node (Pub) | CAN-Bus Diagnostik und Frame-Statistiken |
-| `/audio/play` | `std_msgs/String` | — | Reliable | cliff_safety_node (Pub), audio_feedback_node (Sub) | WAV-Dateiname fuer Audio-Wiedergabe |
+| `/audio/play` | `std_msgs/String` | — | Reliable | cliff_safety_node (Pub), dashboard_bridge (Pub), audio_feedback_node (Sub) | WAV-Dateiname fuer Audio-Wiedergabe |
+| `/audio/volume` | `std_msgs/Int32` | — | Reliable | dashboard_bridge (Pub), audio_feedback_node (Sub) | Lautstaerke 0-100% (ALSA softvol via amixer) |
 | `/camera/image_raw` | `sensor_msgs/Image` | — | Reliable | v4l2_camera_node (Pub) | Kamerabild 640x480 bgr8 |
 | `/camera/camera_info` | `sensor_msgs/CameraInfo` | — | Reliable | v4l2_camera_node (Pub) | Kamera-Kalibrierungsdaten |
 
@@ -111,7 +112,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_dashboard` | `False` | Web-Dashboard starten (WebSocket :9090, MJPEG :8082) |
 | `use_vision` | `False` | Vision-Pipeline starten (Hailo UDP Receiver + Gemini Semantik) |
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer aktivieren |
-| `use_audio` | `False` | Audio-Feedback-Knoten (PCM5102A DAC) |
+| `use_audio` | `False` | Audio-Feedback-Knoten (MAX98357A I2S, benoetigt `asound.conf` Docker-Mount) |
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN → /imu, /cliff, /range, /battery) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array v2.0 DoA/VAD-Knoten (USB, pyusb) |
 
