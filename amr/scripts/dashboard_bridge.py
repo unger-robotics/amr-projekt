@@ -1242,8 +1242,6 @@ class DashboardBridge(Node):
             goal_y = self.nav_goal_y
             goal_yaw = self.nav_goal_yaw
             remaining = self.nav_remaining_m
-        if status == "idle":
-            return None
         return {
             "op": "nav_status",
             "ts": round(time.time(), 3),

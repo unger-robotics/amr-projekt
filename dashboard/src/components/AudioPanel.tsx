@@ -2,6 +2,7 @@ import { useTelemetryStore } from '../store/telemetryStore';
 
 interface AudioPanelProps {
   sendAudioPlay: (soundKey: string) => void;
+  sendAudioVolume: (volumePercent: number) => void;
 }
 
 const SOUND_BUTTONS = [
@@ -11,11 +12,12 @@ const SOUND_BUTTONS = [
   { key: 'cliff_alarm', label: 'Alarm' },
 ] as const;
 
-export default function AudioPanel({ sendAudioPlay }: AudioPanelProps) {
+export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPanelProps) {
   const soundDirection = useTelemetryStore((s) => s.soundDirection);
   const isVoiceActive = useTelemetryStore((s) => s.isVoiceActive);
   const respeakerActive = useTelemetryStore((s) => s.respeakerActive);
   const audioNodeActive = useTelemetryStore((s) => s.audioNodeActive);
+  const audioVolume = useTelemetryStore((s) => s.audioVolume);
 
   // DoA compass geometry
   const compassSize = 120;
@@ -113,6 +115,18 @@ export default function AudioPanel({ sendAudioPlay }: AudioPanelProps) {
             }`}
           />
           <span className="text-xs text-hud-text-dim uppercase tracking-wider">Lautsprecher (PCM5102A)</span>
+        </div>
+        <div className="flex items-center gap-2 ml-4 mb-3">
+          <span className="text-xs text-hud-text-dim w-8 font-mono">{audioVolume}%</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={audioVolume}
+            onChange={(e) => sendAudioVolume(Number(e.target.value))}
+            className="flex-1 h-1 accent-hud-cyan bg-hud-border rounded appearance-none cursor-pointer"
+          />
         </div>
         <div className="grid grid-cols-2 gap-2 ml-4">
           {SOUND_BUTTONS.map((btn) => (

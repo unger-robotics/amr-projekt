@@ -312,6 +312,14 @@ KRITERIEN: list[dict[str, Any]] = [
         "pfad": None,
         "pruef_fn": lambda daten: _dashboard_audio_check(daten),
     },
+    {
+        "bereich": "Dashboard",
+        "kriterium": "Notaus (Stopp-Latenz)",
+        "anforderung": "< 100 ms",
+        "datei": "dashboard",
+        "pfad": None,
+        "pruef_fn": lambda daten: _dashboard_notaus_check(daten),
+    },
 ]
 
 # Projektfragen-Zuordnung
@@ -489,6 +497,18 @@ def _dashboard_audio_check(daten):
     if val is None:
         return (None, None)
     return (f"{val}/4", val >= 4)
+
+
+def _dashboard_notaus_check(daten):
+    """Notaus-Stopp-Latenz, pruefe stopp_ms < 100."""
+    t = _dashboard_find_test(daten, "notaus")
+    if t is None:
+        return (None, None)
+    m = t.get("metrics", {})
+    val = m.get("stopp_ms")
+    if val is None:
+        return (None, None)
+    return (f"{val} ms", val < 100.0)
 
 
 def _docking_versatz_check(daten):
