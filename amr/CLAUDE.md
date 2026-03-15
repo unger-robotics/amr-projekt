@@ -26,13 +26,13 @@ amr/
 
 ```bash
 # Drive-Node (Antrieb, PID, Odometrie, LED):
-cd mcu_firmware/drive_node && pio run                      # Kompilieren
-cd mcu_firmware/drive_node && pio run -t upload -t monitor # Upload + Monitor
-cd mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor  # MOSFET-Diagnose (~5s)
+cd mcu_firmware/drive_node && pio run -e drive_node                      # Kompilieren
+cd mcu_firmware/drive_node && pio run -e drive_node -t upload -t monitor # Upload + Monitor
+cd mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # MOSFET-Diagnose (~5s)
 
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
-cd mcu_firmware/sensor_node && pio run                      # Kompilieren
-cd mcu_firmware/sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd mcu_firmware/sensor_node && pio run -e sensor_node                      # Kompilieren
+cd mcu_firmware/sensor_node && pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 cd mcu_firmware/sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung
 ```
 

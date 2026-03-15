@@ -58,6 +58,26 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - Vision-Pipeline: Host-seitiger Hailo-8L Runner → UDP → Docker-Receiver → Gemini Cloud
 - Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und via `setup.py` entry_points installiert
 
+## Launch-Argumente (full_stack.launch.py)
+
+Haeufig genutzte Toggles (`use_<name>:=True/False`):
+
+| Argument | Default | Funktion |
+|---|---|---|
+| `use_slam` | True | SLAM Toolbox (Kartierung) |
+| `use_nav` | True | Nav2 (Navigation) |
+| `use_rviz` | True | RViz2 (Visualisierung) |
+| `use_sensors` | True | Sensor-Node micro-ROS Agent |
+| `use_cliff_safety` | True | Cliff + Ultraschall Sicherheitslogik |
+| `use_camera` | False | v4l2 Kamera-Node |
+| `use_dashboard` | False | WebSocket/MJPEG Bridge |
+| `use_vision` | False | Hailo UDP Receiver + Gemini |
+| `use_audio` | False | Audio-Feedback-Node |
+| `use_can` | False | CAN-Bus Bridge |
+| `use_respeaker` | False | ReSpeaker DoA |
+
+Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_dashboard:=True use_rviz:=False`
+
 ## Feste Architekturregeln
 
 - Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten
@@ -66,7 +86,17 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
 - Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
 - Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
+- Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0`
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
+
+## Neues ROS2-Skript hinzufuegen
+
+Das Symlink-Pattern erfordert vier Schritte:
+
+1. Skript anlegen: `amr/scripts/<name>.py`
+2. Symlink erzeugen: `cd amr/pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../scripts/<name>.py`
+3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
+4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
 ## Build-Befehle
 
@@ -140,6 +170,13 @@ Einmalig einrichten: `pip3 install pre-commit && pre-commit install`
 sudo ./scripts/rover_wartung.sh            # Vollstaendig mit apt-Updates
 sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
 ```
+
+## Code-Style-Kurzreferenz
+
+- **Python**: Zeilenlaenge 100, Python 3.10, Double Quotes, isort-Import-Sortierung (ruff.toml)
+- **C++**: Zeilenlaenge 100, 4 Spaces, LLVM-basiert, Braces Attach, C++17 (.clang-format)
+- **C++ Benennung** (.clang-tidy): `CamelCase` Klassen, `camelBack` Methoden, `lower_case` Funktionen/Variablen/Parameter
+- **TypeScript**: ESLint Flat Config, React Hooks Plugin (dashboard/eslint.config.js)
 
 ## Relevante Projektpfade
 
