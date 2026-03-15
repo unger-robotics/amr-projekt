@@ -72,15 +72,17 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 
 ### MCU Firmware (PlatformIO, zwei getrennte Projekte)
 
+**Wichtig:** Beim Upload immer `-e <environment>` angeben! `pio run -t upload` ohne `-e` flasht ALLE Environments — das letzte ueberschreibt die vorherigen.
+
 ```bash
 # Drive-Node (Antrieb, PID, Odometrie, LED):
-cd amr/mcu_firmware/drive_node && pio run                      # Kompilieren
-cd amr/mcu_firmware/drive_node && pio run -t upload -t monitor # Upload + Monitor
-cd amr/mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor  # LED-Diagnose
+cd amr/mcu_firmware/drive_node && pio run -e drive_node                      # Kompilieren
+cd amr/mcu_firmware/drive_node && pio run -e drive_node -t upload -t monitor # Upload + Monitor
+cd amr/mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # LED-Diagnose
 
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
-cd amr/mcu_firmware/sensor_node && pio run                      # Kompilieren
-cd amr/mcu_firmware/sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd amr/mcu_firmware/sensor_node && pio run -e sensor_node                      # Kompilieren
+cd amr/mcu_firmware/sensor_node && pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 cd amr/mcu_firmware/sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung
 ```
 
@@ -165,7 +167,7 @@ Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_f
 
 ## Harte Randbedingungen
 
-- Serielle Geraetepfade und Parallelzugriffe vorsichtig behandeln
+- Serielle Geraetepfade und Parallelzugriffe vorsichtig behandeln (Docker-Container benoetigt Symlink-Update via `run.sh` nach ESP32-Flash)
 - micro-ROS-Konfigurationen sind node-spezifisch
 - Schnittstellen zwischen ESP32, ROS2 und Dashboard nur konsistent aendern
 - Hardware-nahe Parameter nicht ohne Begruendung umbenennen oder verschieben
