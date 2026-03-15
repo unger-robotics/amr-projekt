@@ -50,6 +50,7 @@ setup(
             "respeaker_doa_node = my_bot.respeaker_doa_node:main",
             "sensor_test = my_bot.sensor_test:main",
             "cliff_latency_test = my_bot.cliff_latency_test:main",
+            "dashboard_latency_test = my_bot.dashboard_latency_test:main",
         ],
     },
 )

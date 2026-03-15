@@ -251,6 +251,9 @@ class WebSocketServer:
             key = msg.get("sound_key", "")
             if key in ("cliff_alarm", "nav_start", "nav_reached", "startup"):
                 self.node.publish_audio_play(key)
+        elif op == "audio_volume":
+            vol = max(0, min(100, int(msg.get("volume_percent", 80))))
+            self.node.publish_audio_volume(vol)
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""
@@ -493,6 +496,8 @@ class DashboardBridge(Node):
         self.pub_servo_cmd = self.create_publisher(Point, "/servo_cmd", 10)
         self.pub_hardware_cmd = self.create_publisher(Point, "/hardware_cmd", 10)
         self.pub_audio_play = self.create_publisher(String, "/audio/play", 10)
+        self.pub_audio_volume = self.create_publisher(Int32, "/audio/volume", 10)
+        self.audio_volume_pct = 80  # Default-Lautstaerke
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)
@@ -797,6 +802,13 @@ class DashboardBridge(Node):
         msg = String()
         msg.data = str(sound_key)
         self.pub_audio_play.publish(msg)
+
+    def publish_audio_volume(self, volume_pct):
+        """Publiziert Lautstaerke (0-100%) auf /audio/volume."""
+        self.audio_volume_pct = volume_pct
+        msg = Int32()
+        msg.data = volume_pct
+        self.pub_audio_volume.publish(msg)
 
     # --- Daten-Abfragen (thread-safe) ---
 
@@ -1270,6 +1282,7 @@ class DashboardBridge(Node):
                 "ts": round(time.time(), 3),
                 "direction_deg": self.sound_direction,
                 "is_voice": self.is_voice,
+                "volume_percent": self.audio_volume_pct,
             }
 
     def build_detections_msg(self):

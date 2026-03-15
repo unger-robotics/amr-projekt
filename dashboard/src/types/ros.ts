@@ -181,6 +181,7 @@ export interface AudioStatusMsg {
   ts: number;
   direction_deg: number;
   is_voice: boolean;
+  volume_percent: number;
 }
 
 /** Audio-Abspielbefehl ans Backend */
@@ -189,5 +190,11 @@ export interface AudioPlayMsg {
   sound_key: string;
 }
 
+/** Lautstaerke-Aenderung ans Backend */
+export interface AudioVolumeMsg {
+  op: 'audio_volume';
+  volume_percent: number;
+}
+
 export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg;

@@ -16,7 +16,7 @@ import subprocess
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Int32, String
 
 # ===========================================================================
 # Sound-Mapping
@@ -30,6 +30,11 @@ SOUND_MAP = {
 }
 
 PRIORITY_SOUNDS = {"cliff_alarm"}
+
+# ALSA-Konfiguration: softvol-Device und Mixer-Control
+ALSA_DEVICE = "default"  # Nutzt softvol via /etc/asound.conf
+ALSA_MIXER_CONTROL = "SoftMaster"  # softvol-Kontrollname
+DEFAULT_VOLUME_PCT = 80
 
 
 # ===========================================================================
@@ -49,10 +54,18 @@ class AudioFeedbackNode(Node):
 
         self._sounds_dir = self._resolve_sounds_dir()
         self._current_proc = None
+        self._volume_pct = DEFAULT_VOLUME_PCT
 
         self.create_subscription(String, "/audio/play", self._play_callback, 10)
+        self.create_subscription(Int32, "/audio/volume", self._volume_callback, 10)
 
-        self.get_logger().info(f"Audio-Feedback-Node gestartet. Sounds: {self._sounds_dir}")
+        # Initiale Lautstaerke setzen
+        self._apply_volume(self._volume_pct)
+
+        self.get_logger().info(
+            f"Audio-Feedback-Node gestartet. Sounds: {self._sounds_dir}, "
+            f"Lautstaerke: {self._volume_pct}%"
+        )
 
     def _resolve_sounds_dir(self):
         """Ermittelt den Pfad zum sounds/-Verzeichnis."""
@@ -69,6 +82,36 @@ class AudioFeedbackNode(Node):
         fallback = "/ros2_ws/src/my_bot/sounds/"
         self.get_logger().info(f"ament_index nicht verfuegbar, Fallback: {fallback}")
         return fallback
+
+    def _volume_callback(self, msg):
+        """Callback fuer /audio/volume — setzt ALSA-Lautstaerke (0-100%)."""
+        vol = max(0, min(100, msg.data))
+        if vol == self._volume_pct:
+            return
+        self._volume_pct = vol
+        self._apply_volume(vol)
+
+    def _apply_volume(self, volume_pct):
+        """Setzt die ALSA-Softwarelautstaerke via amixer."""
+        try:
+            subprocess.run(
+                ["amixer", "-q", "sset", ALSA_MIXER_CONTROL, f"{volume_pct}%"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            )
+            self.get_logger().info(f"Lautstaerke: {volume_pct}%")
+        except FileNotFoundError:
+            self.get_logger().warning("amixer nicht gefunden — Lautstaerke nicht einstellbar")
+        except subprocess.TimeoutExpired:
+            self.get_logger().warning("amixer Timeout")
+        except OSError as e:
+            self.get_logger().warning(f"amixer Fehler: {e}")
+
+    @property
+    def volume_pct(self):
+        """Aktuelle Lautstaerke in Prozent."""
+        return self._volume_pct
 
     def _play_callback(self, msg):
         """Callback fuer /audio/play — spielt den angeforderten Sound ab."""
@@ -97,7 +140,7 @@ class AudioFeedbackNode(Node):
 
         try:
             self._current_proc = subprocess.Popen(
-                ["aplay", "-q", "-D", "plughw:CARD=sndrpihifiberry", filepath],
+                ["aplay", "-q", "-D", ALSA_DEVICE, filepath],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

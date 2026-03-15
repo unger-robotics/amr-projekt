@@ -37,6 +37,7 @@ ERGEBNIS_DATEIEN = {
     "docking": "docking_results.json",
     "rplidar": "rplidar_results.json",
     "sensor": "sensor_results.json",
+    "dashboard": "dashboard_results.json",
 }
 
 # ===========================================================================
@@ -278,6 +279,39 @@ KRITERIEN: list[dict[str, Any]] = [
         "pfad": "cliff_ground.cliff_false_alarms",
         "pruef": lambda v: v == 0 if v is not None else None,
     },
+    # --- Dashboard ---
+    {
+        "bereich": "Dashboard",
+        "kriterium": "cmd_vel-Latenz (p95)",
+        "anforderung": "< 100 ms",
+        "datei": "dashboard",
+        "pfad": None,
+        "pruef_fn": lambda daten: _dashboard_latenz_check(daten),
+    },
+    {
+        "bereich": "Dashboard",
+        "kriterium": "Telemetrie-Vollstaendigkeit",
+        "anforderung": "5/5 Pflicht-Typen",
+        "datei": "dashboard",
+        "pfad": None,
+        "pruef_fn": lambda daten: _dashboard_telemetrie_check(daten),
+    },
+    {
+        "bereich": "Dashboard",
+        "kriterium": "Deadman-Timer",
+        "anforderung": "< 500 ms",
+        "datei": "dashboard",
+        "pfad": None,
+        "pruef_fn": lambda daten: _dashboard_deadman_check(daten),
+    },
+    {
+        "bereich": "Dashboard",
+        "kriterium": "Audio-Feedback",
+        "anforderung": "4/4 Keys",
+        "datei": "dashboard",
+        "pfad": None,
+        "pruef_fn": lambda daten: _dashboard_audio_check(daten),
+    },
 ]
 
 # Projektfragen-Zuordnung
@@ -393,6 +427,68 @@ def _nav_yaw_check(daten):
         return (None, None)
     max_err = max(errors)
     return (f"{max_err:.4f} rad", max_err < 0.15)
+
+
+def _dashboard_find_test(daten, test_name):
+    """Findet einen Test in dashboard_results.json per name."""
+    if not isinstance(daten, dict):
+        return None
+    tests = daten.get("tests")
+    if not isinstance(tests, list):
+        return None
+    for t in tests:
+        if isinstance(t, dict) and t.get("name") == test_name:
+            return t
+    return None
+
+
+def _dashboard_latenz_check(daten):
+    """cmd_vel-Latenz p95, pruefe < 100 ms."""
+    t = _dashboard_find_test(daten, "cmd_vel_latenz")
+    if t is None:
+        return (None, None)
+    m = t.get("metrics", {})
+    val = m.get("p95_ms")
+    if val is None:
+        return (None, None)
+    return (f"{val} ms", val < 100.0)
+
+
+def _dashboard_telemetrie_check(daten):
+    """Telemetrie-Vollstaendigkeit, pruefe empfangen >= erwartet."""
+    t = _dashboard_find_test(daten, "telemetrie_vollstaendigkeit")
+    if t is None:
+        return (None, None)
+    m = t.get("metrics", {})
+    empfangen = m.get("empfangen")
+    erwartet = m.get("erwartet")
+    if empfangen is None or erwartet is None:
+        return (None, None)
+    return (f"{empfangen}/{erwartet}", empfangen >= erwartet)
+
+
+def _dashboard_deadman_check(daten):
+    """Deadman-Timer, pruefe stopp_ms < 500."""
+    t = _dashboard_find_test(daten, "deadman_timer")
+    if t is None:
+        return (None, None)
+    m = t.get("metrics", {})
+    val = m.get("stopp_ms")
+    if val is None:
+        return (None, None)
+    return (f"{val} ms", val < 500.0)
+
+
+def _dashboard_audio_check(daten):
+    """Audio-Feedback, pruefe empfangen >= 4."""
+    t = _dashboard_find_test(daten, "audio_feedback")
+    if t is None:
+        return (None, None)
+    m = t.get("metrics", {})
+    val = m.get("empfangen")
+    if val is None:
+        return (None, None)
+    return (f"{val}/4", val >= 4)
 
 
 def _docking_versatz_check(daten):

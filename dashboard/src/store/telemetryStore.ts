@@ -98,6 +98,7 @@ interface TelemetryState {
   isVoiceActive: boolean;
   audioNodeActive: boolean;
   respeakerActive: boolean;
+  audioVolume: number;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -135,7 +136,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
-  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false,
+  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -249,5 +250,6 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   updateAudioStatus: (msg) => set({
     soundDirection: msg.direction_deg,
     isVoiceActive: msg.is_voice,
+    audioVolume: msg.volume_percent ?? 80,
   }),
 }));

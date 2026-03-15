@@ -33,7 +33,7 @@ function App() {
     [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, updateNavStatus, updateSensorStatus, updateAudioStatus],
   );
 
-  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume } = useWebSocket(onMessage);
 
   return (
     <div className="h-dvh bg-hud-bg text-hud-text flex flex-col overflow-hidden">
@@ -72,7 +72,7 @@ function App() {
           sendNavCancel={sendNavCancel}
         />
       ) : (
-        <DetailPage sendAudioPlay={sendAudioPlay} />
+        <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
       )}
     </div>
   );
