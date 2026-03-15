@@ -1,21 +1,25 @@
 /**
  * @file main.cpp
  * @brief Hauptprogramm fuer den AMR Sensor-Node (ESP32-S3 #2)
- * @version 2.0.0
- * @date 2026-03-04
+ * @version 2.1.0
+ * @date 2026-03-15
  *
  * Dual-Core-Architektur fuer Sensorik + I2C-Geraete (IMU, Batterie, Servo):
  *
  * - Core 1 (FreeRTOS Task "Sensors", 10 ms Basistakt): Ultraschall-Messung
- *   (10 Hz, pulseIn blockiert bis 25 ms), Cliff-Erkennung (20 Hz, digitalRead),
- *   IMU-Read (50 Hz, I2C mit i2c_mutex).
- * - Core 0 (Arduino loop): micro-ROS Executor (2 Publisher + 3 Subscriber +
- *   IMU/Battery Publisher), Deferred Servo I2C (Rampe), LED-Heartbeat,
- *   Inter-Core-Watchdog, CAN-Bus Dual-Path (TWAI, parallel zu micro-ROS).
+ *   (10 Hz, ISR-basiert), Cliff-Erkennung (20 Hz, digitalRead),
+ *   IMU-Read (50 Hz, I2C mit i2c_mutex), Batterie-Read (2 Hz, I2C).
+ * - Core 0 (Arduino loop): micro-ROS Executor (5 Publisher + 3 Subscriber),
+ *   Servo-I2C (5 Hz Polling, i2c_mutex), LED-Heartbeat, Inter-Core-Watchdog,
+ *   CAN-Bus Dual-Path (TWAI, parallel zu micro-ROS).
+ *
+ * I2C-Aufteilung: Lese-Operationen (IMU, INA260) auf Core 1,
+ * Schreib-Operationen (PCA9685 Servo) auf Core 0. Beide ueber i2c_mutex.
+ * PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen Bus).
  *
  * Thread-Safety: `mutex` schuetzt SharedSensorData zwischen Cores,
- * `i2c_mutex` (5 ms Timeout) arbitriert alle I2C-Zugriffe — Arduino Wire
- * ist NICHT thread-safe. Kein I2C in Subscriber-Callbacks (Deferred-Pattern).
+ * `i2c_mutex` (5-10 ms Timeout) arbitriert alle I2C-Zugriffe.
+ * Kein I2C in Subscriber-Callbacks (Deferred-Pattern fuer RAM-Writes).
  *
  * Topics: /range/front (10 Hz), /cliff (20 Hz),
  *         /imu (50 Hz), /battery (2 Hz), /battery_shutdown (2 Hz),
@@ -83,7 +87,7 @@ bool imu_ok = false;
 INA260 ina260;
 bool ina260_ok = false;
 PCA9685 pca9685;
-bool pca9685_ok = false;
+volatile bool pca9685_ok = false;
 
 // --- CAN-Bus (TWAI) ---
 TwaiCan can;
@@ -175,18 +179,18 @@ static float estimateSOC(float voltage) {
 
 // --- Subscriber-Callbacks (Deferred-Pattern: RAM-only, kein I2C) ---
 
-/** /servo_cmd Subscriber-Callback: Speichert Pan/Tilt in ServoCommand (RAM, kein I2C). */
+/** /servo_cmd Subscriber-Callback: Speichert Pan/Tilt in ServoCommand (RAM, kein I2C).
+ *  Werte werden immer aktualisiert (kein pca9685_ok-Guard), da nur RAM-Writes.
+ *  Die I2C-Ausfuehrung in loop() prueft pca9685_ok separat. */
 void servo_cmd_callback(const void *m) {
     if (m == nullptr)
         return;
     const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
-    if (pca9685_ok) {
-        servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::pan_limit_min_deg,
-                                   amr::servo::pan_limit_max_deg);
-        servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::tilt_limit_min_deg,
-                                    amr::servo::tilt_limit_max_deg);
-        servo_cmd.update_pending = true;
-    }
+    servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::pan_limit_min_deg,
+                               amr::servo::pan_limit_max_deg);
+    servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::tilt_limit_min_deg,
+                                amr::servo::tilt_limit_max_deg);
+    servo_cmd.update_pending = true;
 }
 
 /** /hardware_cmd Subscriber-Callback: Servo-Speed (RAM, kein I2C). */
@@ -323,25 +327,7 @@ void sensorTask(void *p) {
             }
         }
 
-        // 5. Deferred Servo I2C (Core 1, da Wire nicht cross-core-sicher ist)
-        if (pca9685_ok && servo_cmd.update_pending) {
-            servo_cmd.update_pending = false;
-            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
-                pca9685.setAngle(amr::servo::ch_pan, servo_cmd.pan);
-                pca9685.setAngle(amr::servo::ch_tilt, servo_cmd.tilt);
-                xSemaphoreGive(i2c_mutex);
-            } else {
-                servo_cmd.update_pending = true;
-                i2c_contention_errors++;
-            }
-        }
-
-        // 6. Deferred Hardware Command (Servo-Speed, RAM-only)
-        if (hw_cmd.update_pending) {
-            hw_cmd.update_pending = false;
-            if (pca9685_ok)
-                pca9685.setRampSpeed(hw_cmd.servo_speed * 0.5f);
-        }
+        // 5. Servo + Hardware-Command: jetzt in loop() (Core 0) statt hier
 
         // 7. Deferred Batterie-Servo-Power (allOff/clearAllOff)
         if (pca9685_ok && deferred_servo_power != 0) {
@@ -390,15 +376,22 @@ void setup() {
     pinMode(amr::hal::pin_led_internal, OUTPUT);
     digitalWrite(amr::hal::pin_led_internal, HIGH);
 
-    // GPIO-Sensoren initialisieren
-    sonar.init(us_echo_isr, &us_echo_start, &us_echo_end, &us_meas_ready, &us_echo_active);
-    cliff_sensor.init();
-
-    // I2C-Bus explizit initialisieren (fuer alle I2C-Geraete)
+    // I2C-Bus VOR GPIO-Sensoren initialisieren (Ultraschall-ISR kann I2C stoeren)
+    delay(2000); // Stabilisierung wie servo_test (USB-CDC + I2C-Geraete)
     Wire.begin(amr::hal::pin_i2c_sda, amr::hal::pin_i2c_scl);
     Wire.setClock(amr::i2c::master_freq_hz);
 
-    // I2C-Geraete initialisieren
+    // I2C-Geraete initialisieren (PCA9685 zuerst fuer sauberen Bus)
+    for (int attempt = 0; attempt < 3 && !pca9685_ok; attempt++) {
+        if (attempt > 0)
+            delay(50);
+        pca9685_ok = pca9685.init();
+    }
+    if (pca9685_ok) {
+        pca9685.setAngle(amr::servo::ch_pan, 90.0f);
+        pca9685.setAngle(amr::servo::ch_tilt, 90.0f);
+    }
+
     imu_ok = imu.init(amr::hal::pin_i2c_sda, amr::hal::pin_i2c_scl, amr::i2c::addr_mpu6050);
     if (imu_ok) {
         imu.calibrateGyro(amr::imu::calibration_samples);
@@ -406,11 +399,9 @@ void setup() {
 
     ina260_ok = ina260.init();
 
-    pca9685_ok = pca9685.init();
-    if (pca9685_ok) {
-        pca9685.setAngle(amr::servo::ch_pan, 90.0f);
-        pca9685.setAngle(amr::servo::ch_tilt, 90.0f);
-    }
+    // GPIO-Sensoren NACH I2C initialisieren (Ultraschall-ISR vor I2C kann Bus stoeren)
+    sonar.init(us_echo_isr, &us_echo_start, &us_echo_end, &us_meas_ready, &us_echo_active);
+    cliff_sensor.init();
 
     // CAN-Bus (TWAI) initialisieren — fehlschlag nicht fatal
     can_ok = can.init();
@@ -542,7 +533,7 @@ void setup() {
  * Hauptschleife auf Core 0 (~50 Hz durch spin_some + delay).
  *
  * Reihenfolge pro Zyklus: Inter-Core-Watchdog → spin_some (Callbacks) →
- * LED-Heartbeat → Deferred Servo I2C (Rampe) → Deferred Hardware →
+ * LED-Heartbeat → Servo I2C Polling (5 Hz, Core 0) → Hardware-Command →
  * Cliff Publish (20 Hz) → Range Publish (10 Hz) →
  * IMU Publish (50 Hz) → Battery Publish (2 Hz).
  *
@@ -576,8 +567,25 @@ void loop() {
         digitalWrite(amr::hal::pin_led_internal, hb_on ? LOW : HIGH);
     }
 
-    // Servo + Hardware-Command I2C: laeuft in sensorTask (Core 1),
-    // da Wire auf dem ESP32-S3 nicht cross-core-sicher ist.
+    // Servo I2C: Polling statt update_pending (5 Hz, Core 0)
+    if (pca9685_ok) {
+        static uint32_t last_servo_apply = 0;
+        if (millis() - last_servo_apply >= 200) {
+            last_servo_apply = millis();
+            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(10))) {
+                pca9685.setAngle(amr::servo::ch_pan, servo_cmd.pan);
+                pca9685.setAngle(amr::servo::ch_tilt, servo_cmd.tilt);
+                xSemaphoreGive(i2c_mutex);
+            }
+        }
+    }
+
+    // Hardware-Command (Servo-Speed) auf Core 0
+    if (hw_cmd.update_pending) {
+        hw_cmd.update_pending = false;
+        if (pca9685_ok)
+            pca9685.setRampSpeed(hw_cmd.servo_speed * 0.5f);
+    }
 
     // --- 1. Cliff publizieren (20 Hz) ---
     static unsigned long last_pub_cliff = 0;

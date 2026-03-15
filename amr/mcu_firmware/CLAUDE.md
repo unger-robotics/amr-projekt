@@ -15,7 +15,9 @@ Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS 
 | **Drive-Node** (#1) | `drive_node/` | `/dev/amr_drive` | Antrieb, PID, Odometrie, LED | 50 Hz |
 | **Sensor-Node** (#2) | `sensor_node/` | `/dev/amr_sensor` | Ultraschall, Cliff, IMU (MPU6050), Batterie (INA260), Servo (PCA9685) | 50 Hz (IMU), 10/20 Hz (Sonar/Cliff), 2 Hz (Bat) |
 
-Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Deferred I2C (Sensor-Node), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+
+**I2C-Aufteilung Sensor-Node**: Lese-Operationen (MPU6050 IMU, INA260 Batterie) auf Core 1 (`sensorTask`), Schreib-Operationen (PCA9685 Servo) auf Core 0 (`loop()`, 5 Hz Polling). Beide ueber `i2c_mutex`. PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen I2C-Bus, `delay(2000)` vor `Wire.begin()`). GPIO-Sensoren (Ultraschall-ISR, Cliff) erst NACH I2C-Init.
 
 ### Sensor-Node: ISR-basierter Ultraschall + I2C-Contention-Fixes
 
@@ -135,7 +137,7 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 - **Typen**: `int32_t`/`uint8_t`/`int16_t` statt `int`/`long`, Encoder-Zaehler `volatile int32_t`
 - **ISR**: Alle ISR-Funktionen mit `IRAM_ATTR` markieren, globaler Scope (kein Namespace). Volatile ISR-Variablen als Globals in `main.cpp` (nicht `inline constexpr` im Header — verursacht "dangerous relocation: l32r" Linker-Fehler). GPIO-Pin-Zustand via `GPIO.in >> pin & 0x1` lesen (nicht `digitalRead()` in ISR)
 - **Speicher**: Keine dynamische Allokation zur Laufzeit
-- **I2C in Callbacks**: Wire-Operationen schlagen STILL FEHL in `rclc_executor_spin_some()` — Deferred-Pattern verwenden (Sensor-Node betroffen: MPU6050, INA260, PCA9685 via `i2c_mutex`)
+- **I2C in Callbacks**: Keine Wire-Operationen in `rclc_executor_spin_some()` Callbacks — Deferred-Pattern verwenden (Callback schreibt in volatile RAM-Struct, loop()/sensorTask fuehrt I2C aus). Sensor-Node: I2C-Reads auf Core 1, I2C-Writes (PCA9685) auf Core 0
 - **micro-ROS QoS**: `rclc_publisher_init_default()` (Reliable) fuer Nachrichten > 512 Bytes (XRCE-DDS MTU), da Best-Effort keine Fragmentierung unterstuetzt
 
 ## Detaillierte Dokumentation
