@@ -86,6 +86,8 @@ _setup_serial_symlinks() {
 
 # Normaler Modus: Container starten, Befehl ausfuehren
 _ensure_container
+# Symlinks bei jedem Aufruf aktualisieren (USB-Zuordnung kann sich aendern)
+_setup_serial_symlinks
 
 # TTY-Flags: -it nur wenn stdin ein Terminal ist
 DOCKER_FLAGS="-i"

@@ -77,16 +77,66 @@ gestartet werden.
 
 ## Phase 4: Navigation (F04)
 
-### Testfall 4.1: Waypoint-Navigation (1 m x 1 m Rechteck)
+### Testfall 4.1: Waypoint-Navigation (1 m x 1 m Rechteck, zweistufig)
 
-**Platzbedarf:** Freie Flaeche >= 1,5 m x 1,5 m im kartierten Raum
+**Platzbedarf:** Freie Flaeche >= 1,5 m x 1,5 m
 **Stack:** `use_slam:=True use_nav:=True use_cliff_safety:=True`
-**Steuerung:** Automatisch via `nav_test.py`
 
-**Wichtig:** Das Skript muss direkt aus `/amr_scripts` im Container
+**Wichtig:** Skripte muessen direkt aus `/amr_scripts` im Container
 aufgerufen werden (nicht ueber `ros2 run`), da das `amr_utils`-Modul
 nur dort im PYTHONPATH liegt. Die Ausgabe wird in ein beschreibbares
 Verzeichnis umgeleitet.
+
+Der Test erfolgt in drei Schritten: Zuerst faehrt der Roboter das Quadrat
+per cmd_vel ab, waehrend SLAM die Karte aufbaut. Dann wird die Karte
+gespeichert. Anschliessend faehrt Nav2 dieselbe Strecke autonom ab.
+
+#### Schritt 1: Karte aufzeichnen (cmd_vel-Quadrat)
+
+Das Skript `nav_square_test.py` faehrt ein 1x1 m Quadrat rein ueber
+Geschwindigkeitsbefehle mit Odometrie-Feedback. SLAM laeuft parallel
+und baut dabei die Karte des Testfelds auf.
+
+```bash
+cd amr/docker/
+
+# Stack starten (SLAM + Nav2, aber noch keine Nav2-Goals):
+./run.sh ros2 launch my_bot full_stack.launch.py \
+  use_slam:=True use_nav:=True use_rviz:=False \
+  use_cliff_safety:=True
+
+# Warten (15-20 s), dann Quadrat abfahren:
+./run.sh bash -c "cd /amr_scripts && python3 nav_square_test.py \
+  --speed 0.10 \
+  --output /ros2_ws/build/my_bot/my_bot/"
+```
+
+**Ablauf Schritt 1:**
+1. Stack mit SLAM und Navigation starten (ESP32-Reset, 15-20 s warten)
+2. Roboter auf Startecke der freien Flaeche positionieren
+3. `nav_square_test.py` starten
+4. Roboter faehrt 4 Seiten (je 1 m) mit 90-Grad-Drehungen (IMU-gestuetzt)
+5. SLAM baut waehrenddessen die Karte auf
+6. Ergebnisse (Odometrie-Genauigkeit) werden als JSON gespeichert
+
+#### Schritt 2: Karte speichern
+
+Nach dem cmd_vel-Durchlauf die aktuelle SLAM-Karte sichern:
+
+```bash
+cd amr/docker/
+
+./run.sh bash -c "ros2 run nav2_map_server map_saver_cli \
+  -f /ros2_ws/src/my_bot/maps/testfeld"
+```
+
+Die Karte wird als `testfeld.yaml` + `testfeld.pgm` gespeichert.
+Stack bleibt laufen — kein Neustart noetig.
+
+#### Schritt 3: Nav2-Waypoint-Navigation
+
+Mit der gespeicherten Karte und denselben Koordinaten faehrt Nav2
+die 4 Waypoints autonom ab.
 
 ```bash
 cd amr/docker/
@@ -97,21 +147,20 @@ cd amr/docker/
   --output /ros2_ws/build/my_bot/my_bot/"
 ```
 
-**Ablauf:**
-1. Stack mit Navigation starten (ESP32-Reset, 15-20 s warten)
-2. Roboter in der Mitte der freien Flaeche positionieren (Startpose)
-3. `nav_test.py` starten (siehe oben)
-4. Roboter faehrt automatisch 4 Waypoints (1 m Rechteck):
+**Ablauf Schritt 3:**
+1. Roboter zurueck auf Startecke positionieren (gleiche Position wie Schritt 1)
+2. `nav_test.py` starten
+3. Roboter faehrt automatisch 4 Waypoints (1 m Rechteck) via Nav2:
    - WP1: 1 m geradeaus
    - WP2: 1 m links
    - WP3: 1 m zurueck (x-Richtung)
    - WP4: Startpunkt
-5. Pro Waypoint: Pose-Abweichung wird via TF (map->base_link) gemessen
-6. Visuell pruefen: keine physische Kollision waehrend der Fahrt
-7. Bei blockiertem Pfad: Recovery-Verhalten beobachten (Spin/Backup/Wait)
-8. Ergebnisse werden als JSON + Markdown-Report gespeichert
+4. Pro Waypoint: Pose-Abweichung wird via TF (map->base_link) gemessen
+5. Visuell pruefen: keine physische Kollision waehrend der Fahrt
+6. Bei blockiertem Pfad: Recovery-Verhalten beobachten (Spin/Backup/Wait)
+7. Ergebnisse werden als JSON + Markdown-Report gespeichert
 
-**Akzeptanzkriterien:**
+**Akzeptanzkriterien (Schritt 3 — Nav2):**
 - Alle 4 Waypoints erreicht (Status: ERREICHT)
 - xy-Fehler < 0,10 m pro Waypoint
 - Gier-Fehler < 0,15 rad (~8,6 Grad) pro Waypoint
@@ -156,9 +205,9 @@ docker compose down
    a. Roboter manuell ca. 1,5-2 m vor Marker positionieren (Marker sichtbar)
    b. `s` + Enter druecken
    c. Kamera erfasst Marker und steuert Roboter darauf zu (0,08 m/s)
-   d. Andocken gilt als abgeschlossen (DOCKED), sobald der
-      Ultraschallsensor einen Abstand von <= 60 cm misst und der
-      Marker innerhalb der letzten 2 s sichtbar war
+   d. Andocken gilt als abgeschlossen (DOCKED), sobald drei
+      Bedingungen gleichzeitig erfuellt sind: Ultraschall <= 0,30 m,
+      Marker aktuell sichtbar und lateraler Versatz <= 5 cm
    e. Roboter stoppt, Ergebnis wird protokolliert
 4. Benutzer positioniert Roboter manuell fuer naechsten Versuch
 5. Nach 10 Versuchen: Auswertung + JSON-Export
@@ -189,10 +238,12 @@ Fuer saubere Ergebnisse:
 
 1. Dashboard-Frontend starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
 2. Stack starten mit `use_slam:=True use_nav:=True use_cliff_safety:=True` (ESP32-Reset)
-3. Test 4.1: Waypoint-Navigation
-4. Stack stoppen, ESP32-Reset
-5. Stack neu starten mit `use_camera:=True use_dashboard:=True`
-6. Test 4.2: ArUco-Docking (10 Versuche)
+3. Test 4.1 Schritt 1: Quadrat per cmd_vel abfahren (SLAM baut Karte)
+4. Test 4.1 Schritt 2: Karte speichern (`map_saver_cli`)
+5. Test 4.1 Schritt 3: Nav2-Waypoint-Navigation auf derselben Strecke
+6. Stack stoppen, ESP32-Reset
+7. Stack neu starten mit `use_camera:=True use_dashboard:=True`
+8. Test 4.2: ArUco-Docking (10 Versuche)
 
 ## JSON-Ergebnisse auslesen
 

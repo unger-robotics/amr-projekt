@@ -45,7 +45,7 @@ from amr_utils import normalize_angle, quaternion_to_yaw, yaw_to_quaternion
 # Waypoints im map-Frame (1m x 1m Rechteck)
 # ---------------------------------------------------------------------------
 
-WAYPOINTS = [
+WAYPOINTS: list[dict[str, float | str]] = [
     {"x": 1.0, "y": 0.0, "yaw": 0.0, "name": "WP1: 1m geradeaus"},
     {"x": 1.0, "y": 1.0, "yaw": 1.5708, "name": "WP2: 1m links"},
     {"x": 0.0, "y": 1.0, "yaw": 3.1416, "name": "WP3: zurueck (x-Richtung)"},
@@ -249,8 +249,26 @@ class NavTestNode(Node):
             f"Startposition: x={start_pose[0]:.3f}, y={start_pose[1]:.3f}, yaw={start_pose[2]:.3f}"
         )
 
+        # Waypoints relativ zur Startposition transformieren
+        sx, sy, syaw = start_pose
+        cos_yaw = math.cos(syaw)
+        sin_yaw = math.sin(syaw)
+
         for wp in WAYPOINTS:
-            result = self.navigate_to_waypoint(wp)
+            # Lokale Koordinaten in map-Frame rotieren + verschieben
+            wp_x = float(wp["x"])
+            wp_y = float(wp["y"])
+            wp_yaw = float(wp["yaw"])
+            wp_abs = dict(wp)
+            wp_abs["x"] = sx + cos_yaw * wp_x - sin_yaw * wp_y
+            wp_abs["y"] = sy + sin_yaw * wp_x + cos_yaw * wp_y
+            wp_abs["yaw"] = normalize_angle(syaw + wp_yaw)
+            self.get_logger().info(
+                f"  {wp['name']}: lokal ({wp_x:.2f}, {wp_y:.2f}) "
+                f"-> map ({wp_abs['x']:.3f}, {wp_abs['y']:.3f}, "
+                f"yaw={wp_abs['yaw']:.3f})"
+            )
+            result = self.navigate_to_waypoint(wp_abs)
             self.results.append(result)
 
             # Bei kritischem Fehler (Server weg) abbrechen

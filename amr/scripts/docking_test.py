@@ -13,12 +13,20 @@ Ablauf pro Versuch:
   5. Roboter faehrt 3 s rueckwaerts zur Ausgangsposition
 
 Zustaende:
-  SEARCHING   — Marker nicht sichtbar, Roboter dreht sich suchend
+  SEARCHING   — Marker nicht sichtbar, Roboter dreht sich um Hochachse suchend.
+                Nach Ruecksetzen wegen Fehlausrichtung ebenfalls SEARCHING.
   APPROACHING — Marker sichtbar, Kamera steuert Richtung, Roboter faehrt vor.
                 Bei kurzem Marker-Verlust: Drehung um Hochachse bis Marker
                 wieder sichtbar, dann geradeaus weiter.
-  DOCKED      — Ultraschall <= 0.60 m UND Marker sichtbar, Roboter stoppt (Erfolg)
+  DOCKED      — Dreifach-Bedingung erfuellt: Ultraschall <= 0.30 m UND
+                Marker aktuell sichtbar UND lateraler Versatz <= 5 cm.
+                Roboter stoppt (Erfolg).
   TIMEOUT     — 60 s ohne Docking (Fehlschlag)
+
+Fehlausrichtungs-Recovery:
+  Wenn Ultraschall nah aber Marker nicht sichtbar oder Versatz > 5 cm:
+  Roboter setzt 1.5 s zurueck, wechselt zu SEARCHING, dreht um Hochachse
+  bis Marker wieder per Kamera erkannt wird, dann erneute Anfahrt.
 
 Topics:
   - Subscribes: /camera/image_raw, /odom, /range/front
@@ -56,6 +64,10 @@ DIST_COEFFS = np.array([-0.573493, 1.144172, -0.009577, -0.000665, -3.194487])
 
 # Akzeptanzkriterium lateraler Versatz
 VERSATZ_AKZEPTANZ_CM = 2.0
+
+# Maximaler lateraler Versatz fuer Docking-Akzeptanz waehrend Anfahrt [cm]
+# Wenn Ultraschall nah aber Versatz groesser: zuruecksetzen + neu ausrichten
+DOCKING_VERSATZ_MAX_CM = 5.0
 
 
 class DockingTestNode(Node):
@@ -109,6 +121,7 @@ class DockingTestNode(Node):
         self.last_marker_corners = None
         self.image_width = None
         self.test_aktiv = False
+        self.backup_until = 0.0  # Zeitpunkt bis Rueckwaertsfahrt endet
 
         # Ultraschall-Distanz
         self.range_m = float("inf")
@@ -126,8 +139,10 @@ class DockingTestNode(Node):
         self.get_logger().info('Eingabe "s" + Enter im Terminal startet den naechsten Versuch.')
 
     def range_callback(self, msg):
-        """Speichert aktuelle Ultraschall-Distanz."""
-        self.range_m = float(msg.range)
+        """Speichert aktuelle Ultraschall-Distanz. Werte <= min_range werden ignoriert."""
+        val = float(msg.range)
+        if val > msg.min_range:
+            self.range_m = val
 
     def odom_callback(self, msg):
         """Speichert aktuelle Gier-Orientierung aus Odometrie."""
@@ -135,23 +150,63 @@ class DockingTestNode(Node):
         self.odom_yaw = quaternion_to_yaw(q)
 
     def _check_docked(self):
-        """Prueft ob Ultraschall <= 0.40 m UND Marker kuerzlich sichtbar (< 2 s)."""
-        marker_kuerzlich = self.last_marker_time > 0 and (time.time() - self.last_marker_time) < 2.0
-        if self.range_m <= self.docking_distance_m and marker_kuerzlich:
-            self.state = self.DOCKED
-            self.get_logger().info(
-                f"  Versuch {self.aktueller_versuch}: DOCKED (Ultraschall: {self.range_m:.2f} m)"
+        """Prueft Dreifach-Bedingung: Ultraschall nah + Marker sichtbar + Versatz akzeptabel."""
+        if self.range_m > self.docking_distance_m:
+            return False
+
+        marker_aktuell = self.last_marker_time > 0 and (time.time() - self.last_marker_time) < 0.5
+
+        if marker_aktuell and self.last_marker_corners is not None:
+            versatz_cm = self._estimate_lateral_offset_cm(self.last_marker_corners)
+            if versatz_cm is not None and abs(versatz_cm) <= DOCKING_VERSATZ_MAX_CM:
+                self.state = self.DOCKED
+                self.get_logger().info(
+                    f"  Versuch {self.aktueller_versuch}: DOCKED "
+                    f"(Ultraschall: {self.range_m:.2f} m, Versatz: {versatz_cm:.1f} cm)"
+                )
+                self.stop_robot()
+                self.versuch_abschliessen()
+                return True
+            else:
+                versatz_str = f"{versatz_cm:.1f}" if versatz_cm is not None else "N/A"
+                self.get_logger().warning(
+                    f"  Versuch {self.aktueller_versuch}: Nah ({self.range_m:.2f} m) "
+                    f"aber Versatz {versatz_str} cm -> zuruecksetzen + suchen",
+                    throttle_duration_sec=2.0,
+                )
+                self._backup_and_search()
+                return False
+        else:
+            self.get_logger().warning(
+                f"  Versuch {self.aktueller_versuch}: Ultraschall nah ({self.range_m:.2f} m) "
+                f"aber Marker nicht sichtbar -> zuruecksetzen + suchen",
+                throttle_duration_sec=2.0,
             )
-            self.stop_robot()
-            self.versuch_abschliessen()
-            return True
-        return False
+            self._backup_and_search()
+            return False
+
+    def _backup_and_search(self):
+        """Faehrt 1.5 s rueckwaerts und wechselt in SEARCHING."""
+        self.state = self.SEARCHING
+        self.backup_until = time.time() + 1.5
+        self.last_marker_time = 0.0
+        cmd = Twist()
+        cmd.linear.x = -self.approach_vel
+        self.cmd_pub.publish(cmd)
 
     def image_callback(self, msg):
         """Verarbeitet Kamerabild waehrend aktivem Docking-Versuch."""
         if not self.test_aktiv:
             return
         if self.state in (self.DOCKED, self.TIMEOUT):
+            return
+
+        # Waehrend Rueckwaertsfahrt keine Steuerung
+        now = time.time()
+        if now < self.backup_until:
+            cmd = Twist()
+            cmd.linear.x = -self.approach_vel
+            self.cmd_pub.publish(cmd)
             return
 
         try:
@@ -168,7 +223,7 @@ class DockingTestNode(Node):
             gray, self.aruco_dict, parameters=self.aruco_params
         )
 
-        # DOCKED wenn Ultraschall <= 0.40 m UND Marker kuerzlich sichtbar
+        # Dreifach-Pruefung: Ultraschall nah + Marker sichtbar + Versatz ok
         if self._check_docked():
             return
 
@@ -186,7 +241,7 @@ class DockingTestNode(Node):
             self.last_marker_center_x = center_x
             self.last_marker_width = marker_width
             self.last_marker_corners = corners[index]
-            self.last_marker_time = time.time()
+            self.last_marker_time = now
 
             error_x = (center_x - img_center_x) / img_center_x
 
@@ -206,12 +261,8 @@ class DockingTestNode(Node):
                 throttle_duration_sec=1.0,
             )
 
-        elif self.state == self.APPROACHING:
-            # --- Marker kurz verloren: geradeaus weiterfahren ---
-            cmd.linear.x = self.approach_vel
-
         else:
-            # --- SEARCHING: Drehung um Marker zu finden ---
+            # --- Kein Marker sichtbar: Drehung um Hochachse suchen ---
             cmd.angular.z = self.search_vel
 
         self.cmd_pub.publish(cmd)
@@ -245,6 +296,7 @@ class DockingTestNode(Node):
         self.last_marker_corners = None
         self.range_m = float("inf")
         self.odom_yaw_start = self.odom_yaw
+        self.backup_until = 0.0
         self.test_aktiv = True
 
         self.get_logger().info(
@@ -261,11 +313,23 @@ class DockingTestNode(Node):
         if self.state in (self.DOCKED, self.TIMEOUT):
             return
 
+        now = time.time()
+
+        # Waehrend Rueckwaertsfahrt: nur Timeout pruefen
+        if now < self.backup_until:
+            if (now - self.versuch_start_time) > self.timeout_sec:
+                self.backup_until = 0.0
+                self.state = self.TIMEOUT
+                self.get_logger().warning(
+                    f"  Versuch {self.aktueller_versuch}: TIMEOUT nach {self.timeout_sec:.0f} s"
+                )
+                self.stop_robot()
+                self.versuch_abschliessen()
+            return
+
         # Ultraschall-Docking pruefen (10 Hz, unabhaengig von Kamera-Framerate)
         if self._check_docked():
             return
-
-        now = time.time()
 
         if (now - self.versuch_start_time) > self.timeout_sec:
             self.state = self.TIMEOUT
@@ -315,7 +379,7 @@ class DockingTestNode(Node):
             "lat_versatz_cm": round(lat_versatz_cm, 2) if lat_versatz_cm is not None else None,
             "orient_fehler_deg": round(orient_fehler_deg, 2),
             "ultraschall_m": round(self.range_m, 3),
-            "marker_breite_px": round(self.last_marker_width, 0)
+            "marker_breite_px": float(round(self.last_marker_width, 0))
             if self.last_marker_width
             else None,
             "state": self.state,
