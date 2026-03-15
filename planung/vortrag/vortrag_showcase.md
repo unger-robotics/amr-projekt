@@ -108,7 +108,7 @@ Systematische Messdaten validieren den Architekturansatz:
 * **Sicherheitslogik:** Die End-to-End-Latenz vom Ausloesen des Kanten-Sensors bis zum Motorstopp betraegt gemessene $2{,}0\,\mathrm{ms}$.
 * **Regelungs-Jitter:** Die Architektur haelt die $50\,\mathrm{Hz}$-Regelschleife stabil und drueckt den Jitter auf unter $2\,\mathrm{ms}$.
 * **Navigationsgenauigkeit:** Der Absolute Trajectory Error (ATE) liegt nach SLAM-Korrektur bei $0{,}16\,\mathrm{m}$.
-* **Docking:** Die Erkennung von ArUco-Markern ermoeglicht eine erfolgreiche Zielanfahrt mit einer Quote von $80\,\%$.
+* **Docking:** Die Erkennung von ArUco-Markern ermoeglicht eine erfolgreiche Zielanfahrt mit einer Quote von $100\,\%$ (10/10, Dreifach-Bedingung bei $0{,}30\,\mathrm{m}$).
 
 ---
 

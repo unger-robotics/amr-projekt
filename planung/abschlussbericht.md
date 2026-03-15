@@ -62,7 +62,7 @@ Die experimentelle Validierung beantwortet die Projektfragen anhand quantitative
 
 **Zu PF2 (Navigationsgenauigkeit):** Die UMBmark-Kalibrierung reduzierte den Odometriefehler um den Faktor 10. Diese Kalibrierung, kombiniert mit IMU-Fusion, ermöglicht eine präzise SLAM-Kartierung. Der Absolute Trajectory Error (ATE) liegt bei 0,16 m und erfüllt damit das Akzeptanzkriterium (< 0,20 m).
 
-**Zu PF3 (Vision und Docking):** Die Ergebnisse bestätigen die Hypothese bedingt. Die Edge-Inferenz erreicht praxistaugliche 34 ms Latenz. Das ArUco-Docking arbeitet mit einer Erfolgsquote von 80 Prozent (10 Versuche) ausreichend präzise für den Ladekontakt. Die mittlere Navigationsgenauigkeit über zehn Fahrten liegt bei 6,4 cm (Position) und 4,2 Grad (Gierwinkel). Systemgrenzen zeigen sich bei ungünstiger Beleuchtung oder verdeckten Markern.
+**Zu PF3 (Vision und Docking):** Die Ergebnisse bestätigen die Hypothese. Die Edge-Inferenz erreicht praxistaugliche 34 ms Latenz. Das ArUco-Docking arbeitet nach Optimierung der Dreifach-Bedingung (Ultraschall ≤ 0,30 m, Marker sichtbar, Versatz ≤ 5 cm) mit einer Erfolgsquote von 100 Prozent (10 Versuche, 15.03.2026) bei einem mittleren lateralen Versatz von 0,73 cm. Die mittlere Navigationsgenauigkeit über zehn Fahrten liegt bei 6,4 cm (Position) und 4,2 Grad (Gierwinkel). Systemgrenzen zeigen sich bei ungünstiger Beleuchtung oder verdeckten Markern.
 
 ## 7. Fazit
 
@@ -265,4 +265,4 @@ Die berechnete Odometrie ist jedoch prinzipbedingt fehleranfällig gegenüber Ra
 
 **Frage:** Warum wird Projektfrage 3 (PF3) zur Umgebungswahrnehmung und zum Docking im Fazit des Berichts nur als "bedingt bestätigt" bewertet?
 
-**Lösung:** Die hybride Vision-Pipeline kombiniert lokale Edge-Inferenz (Hailo-8L) erfolgreich mit Cloud-Semantik, um die Latenz der Objekterkennung auf etwa 34 ms zu senken. Das ArUco-basierte Docking erzielt eine Erfolgsquote von 80 Prozent. Das System stößt jedoch an physikalische und architektonische Grenzen: Ungünstige Beleuchtung, ein eingeschränktes Sichtfeld oder verdeckte Marker mindern die Zuverlässigkeit der monokularen Kamera deutlich. Zudem verursachen die externen Cloud-Dienste hohe Netzwerklatenzen bei der semantischen Auswertung, was schnelle autonome Reaktionen einschränkt.
+**Lösung:** Die hybride Vision-Pipeline kombiniert lokale Edge-Inferenz (Hailo-8L) erfolgreich mit Cloud-Semantik, um die Latenz der Objekterkennung auf etwa 34 ms zu senken. Das ArUco-basierte Docking erzielt nach Optimierung eine Erfolgsquote von 100 Prozent (10/10, Dreifach-Bedingung bei 0,30 m). Das System stößt jedoch an physikalische und architektonische Grenzen: Ungünstige Beleuchtung, ein eingeschränktes Sichtfeld oder verdeckte Marker mindern die Zuverlässigkeit der monokularen Kamera deutlich. Zudem verursachen die externen Cloud-Dienste hohe Netzwerklatenzen bei der semantischen Auswertung, was schnelle autonome Reaktionen einschränkt.

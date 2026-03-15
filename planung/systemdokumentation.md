@@ -68,7 +68,7 @@ Die Topic-Struktur trennt Fahrkommandos, Odometrie, IMU und Laserscan. Die strik
 
 Die Navigation erfolgt in drei Schritten. Zuerst erzeugt `slam_toolbox` eine Belegungskarte. Danach verfeinert AMCL die Pose und publiziert die Transformation `map -> odom`. Abschließend berechnet NavFn einen globalen Pfad, während Regulated Pure Pursuit die lokale Bahnverfolgung übernimmt.
 
-Die lokale Costmap (Kostenkarte zur Hindernisvermeidung) nutzt ein Rolling Window von 3x3 m. Sie kombiniert einen VoxelLayer (3D-Hinderniserfassung) und einen InflationLayer (Sicherheitsabstand) bei einem Inflationsradius von 35 cm. Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 10 cm und einer Yaw-Toleranz von 8,6 Grad.
+Die lokale Costmap (Kostenkarte zur Hindernisvermeidung) nutzt ein Rolling Window von 3x3 m. Sie kombiniert einen VoxelLayer (3D-Hinderniserfassung) und einen InflationLayer (Sicherheitsabstand) bei einem Inflationsradius von 25 cm. Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 5 cm und einer Yaw-Toleranz von 5,7 Grad (0,10 rad).
 
 ## 6. Schnittstellen und Parameter
 
@@ -82,7 +82,7 @@ Lokale Objekterkennung beansprucht hohe Rechenleistung. Das System lagert die In
 
 ### 7.2 Audio und Leitstand
 
-Der Knoten `audio_feedback_node` abonniert `/audio/play`. Nach Eingang einer Nachricht startet ein nicht blockierender Unterprozess, der direkt auf den I2S-Audio-DAC (PCM5102A) zugreift. Die Prozessentkopplung verhindert Latenzen in der Echtzeitschleife.
+Der Knoten `audio_feedback_node` abonniert `/audio/play`. Nach Eingang einer Nachricht startet ein nicht blockierender Unterprozess, der direkt auf den I2S-Verstärker (MAX98357A) zugreift. Die Prozessentkopplung verhindert Latenzen in der Echtzeitschleife.
 
 Eine Vite-basierte Weboberfläche überträgt den Videostream über TCP-Port 8082 und wickelt Telemetrie sowie manuelle Steuerbefehle über WebSocket auf TCP-Port 9090 ab.
 
@@ -90,7 +90,7 @@ Eine Vite-basierte Weboberfläche überträgt den Videostream über TCP-Port 808
 
 Die Kanten-Erkennung auf dem ESP32-S3 arbeitet zeitlich schneller als die Verarbeitung derselben Information im Nav2-Stack auf dem Raspberry Pi 5. Aus den gemessenen Latenzen folgt die Regel: Direkte Sensorsignale überstimmen algorithmisch berechnete Bewegungsbefehle stets.
 
-Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer. Der Sensor-Knoten publiziert den Status des Infrarot-Sensors mit 20 Hz auf `/cliff`. Der Multiplexer leitet Bewegungsbefehle aus der Navigation im Normalbetrieb durch. Meldet `/cliff` eine Kante, blockiert der Multiplexer die Navigation und erzeugt eigenständig einen harten Stopp (v = 0 m/s, w = 0 rad/s). Die Übertragung an den Drive-Knoten erfolgt in weniger als 50 ms.
+Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer. Der Sensor-Knoten publiziert den Status des Infrarot-Sensors mit 20 Hz auf `/cliff` und die Ultraschall-Distanz auf `/range/front`. Der Multiplexer leitet Bewegungsbefehle aus der Navigation im Normalbetrieb durch. Meldet `/cliff` eine Kante oder unterschreitet die Ultraschall-Distanz 80 mm, blockiert der Multiplexer die Navigation und erzeugt eigenständig einen harten Stopp (v = 0 m/s, w = 0 rad/s). Die Freigabe erfolgt erst bei einer Distanz über 120 mm (Hysterese). Die Übertragung an den Drive-Knoten erfolgt in weniger als 50 ms.
 
 Zusätzlich übermittelt der CAN-Bus ein redundantes Cliff-Signal direkt vom Sensor-Knoten an den Drive-Knoten. Die Reaktionszeit des CAN-Pfads beträgt weniger als 20 ms.
 

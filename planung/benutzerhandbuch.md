@@ -14,7 +14,7 @@ Für den Betrieb werden die folgenden Hardware-Komponenten benötigt:
 * Raspberry Pi Global Shutter Camera IMX296 mit CSI-Adapter von 22-polig Mini auf 15-polig.
 * MPU6050-IMU, per I2C an D4 und D5 des Sensor-Knotens angebunden.
 * Hailo-8L PCIe-KI-Beschleuniger über M.2-Anbindung am Raspberry Pi 5.
-* PCM5102A-I2S-DAC (HifiBerry DAC) mit Lautsprecher an den I2S-Pins des Raspberry Pi 5.
+* MAX98357A-I2S-Verstärker mit Lautsprecher an den I2S-Pins des Raspberry Pi 5.
 * Infrarot-Kanten-Sensor MH-B an den GPIOs des Sensor-Knotens.
 
 ### 1.2 Software
@@ -270,7 +270,7 @@ Für alle Befehle in diesem Abschnitt müssen die micro-ROS-Agenten laufen.
 * `./run.sh exec ros2 run my_bot slam_validation`: Berechnung des Absolute Trajectory Error und Prüfung der TF-Kette.
 * `./run.sh exec ros2 run my_bot nav_test`: Navigationstest mit vier Wegpunkten und Fehlermessung.
 * `./run.sh exec ros2 run my_bot docking_test`: ArUco-Docking-Test mit 10 Versuchen.
-* `./run.sh exec ros2 run my_bot cliff_test`: Prüfung des Kanten-Notstopps über die Sicherheitslogik.
+* `./run.sh exec ros2 run my_bot cliff_latency_test`: Prüfung des Kanten-Notstopps über die Sicherheitslogik.
 
 Gesamt-Report aus allen JSON-Ergebnissen erzeugen:
 
