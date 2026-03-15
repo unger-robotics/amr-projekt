@@ -30,6 +30,7 @@ Vom Client empfangene Nachrichten (`op`-Feld):
 | `heartbeat` | Deadman-Timer zuruecksetzen (300 ms Timeout) |
 | `nav_goal` | Navigationsziel senden (`x`, `y`, `yaw` in Map-Koordinaten) |
 | `nav_cancel` | Laufendes Navigationsziel abbrechen |
+| `audio_play` | Sound-Wiedergabe ausloesen (`sound_key`, z.B. `cliff_alarm`, `nav_start`) |
 
 Vom Server gesendete Nachrichten:
 
@@ -42,6 +43,37 @@ Vom Server gesendete Nachrichten:
 | `nav_status` | 1 Hz | Navigationsstatus (`idle`, `navigating`, `reached`, `failed`, `cancelled`) mit Zielkoordinaten und Restdistanz |
 | `detections` | 5 Hz | Vision-Detektionen (Hailo) |
 | `semantics` | 0,5 Hz | Semantische Analyse (Gemini) |
+| `sensor_status` | 2 Hz | Detailwerte: Ultraschall (Distanz, Hz), Cliff (Zustand, Hz), IMU Hz, Sensor-Node-Status |
+| `audio_status` | 2 Hz | Schallrichtung (DoA), Spracherkennung (VAD) |
+
+### Dashboard-Seiten
+
+Die Benutzeroberflaeche hat zwei Seiten, erreichbar ueber einen Tab-Switcher:
+
+**Steuerung** (Standardansicht):
+- Joystick-Fernsteuerung, Servo-Steuerung, Hardware-Parameter (Motor-Limit, LED)
+- SLAM-Karte mit Klick-Navigation (sendet `nav_goal`)
+- LiDAR-Polardarstellung, Kamera-Stream (MJPEG)
+- Telemetrie-Statusanzeige, Batterie, Notaus-Button
+
+**Details** (Detailansicht):
+- ActiveDevicesPanel: Online/Offline-Status aller ROS2-Knoten und Hardware
+- SensorDetailPanel: Ultraschall-Distanz, Cliff-Zustand, IMU-Raten, Sensor-Node-Status
+- AudioPanel: Sound-Wiedergabe per WebSocket (`audio_play`), verfuegbare Sounds
+- RobotInfoPanel: Systemmetriken (CPU, RAM, Disk), IP, Uptime
+
+### ROS2-Subscriptions im dashboard_bridge
+
+Der `dashboard_bridge` subscribt folgende Topics fuer die Detail-Seite:
+
+| Topic | Typ | Zweck |
+|---|---|---|
+| `/range/front` | `sensor_msgs/Range` | Ultraschall-Distanz fuer SensorDetailPanel |
+| `/cliff` | `std_msgs/Bool` | Cliff-Zustand fuer SensorDetailPanel (Best-Effort QoS) |
+| `/sound_direction` | `std_msgs/Int32` | Schallrichtung fuer AudioPanel (ReSpeaker DoA) |
+| `/is_voice` | `std_msgs/Bool` | Spracherkennung fuer AudioPanel (ReSpeaker VAD) |
+
+Zusaetzlich publiziert der `dashboard_bridge` auf `/audio/play` (`std_msgs/String`) bei Empfang der WebSocket-Operation `audio_play`.
 
 ### Entwicklungsmodus
 

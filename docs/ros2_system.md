@@ -22,7 +22,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `micro_ros_agent_sensor` | `micro_ros_agent` | `micro_ros_agent` | `use_sensors` | Serial-Bridge zum Sensor-Node ESP32-S3 (`/dev/amr_sensor`), 921600 Baud |
 | `odom_to_tf` | `my_bot` | `odom_to_tf` | immer | Dynamischer TF `odom` → `base_link` aus `/odom` |
 | `slam_toolbox` | `slam_toolbox` | `async_slam_toolbox_node` | `use_slam` | SLAM Toolbox im async Online-Modus |
-| Nav2-Stack | `nav2_bringup` | `navigation_launch.py` | `use_nav` | Navigation (RPP Controller, NavFn Planer, 10 Hz) |
+| Nav2-Stack | `nav2_bringup` | `navigation_launch.py` | `use_nav` | Navigation (RPP Controller 20 Hz, NavFn Planer 10 Hz) |
 | `rviz2` | `rviz2` | `rviz2` | `use_rviz` | Visualisierung (Nav2-Standardansicht) |
 | `v4l2_camera_node` | `v4l2_camera` | `v4l2_camera_node` | `use_camera` | Kamera via v4l2loopback-Bridge, 640x480, YUYV→bgr8 |
 | `camera_tf_publisher` | `tf2_ros` | `static_transform_publisher` | `use_camera` | Statischer TF `base_link` → `camera_link` |
@@ -30,7 +30,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `dashboard_bridge` | `my_bot` | `dashboard_bridge` | `use_dashboard` | WebSocket :9090, MJPEG :8082, Telemetrie und Fernsteuerung |
 | `hailo_udp_receiver` | `my_bot` | `hailo_udp_receiver_node` | `use_vision` | Empfaengt Hailo-8L Inferenz via UDP 127.0.0.1:5005 |
 | `gemini_semantic_node` | `my_bot` | `gemini_semantic_node` | `use_vision` | Gemini-Cloud-Semantik aus Kamerabild und Detektionen |
-| `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff-Sicherheits-Multiplexer, blockiert `/cmd_vel` bei Abgrund |
+| `cliff_safety_node` | `my_bot` | `cliff_safety_node` | `use_cliff_safety` | Cliff- und Hindernisstopp-Multiplexer, blockiert `/cmd_vel` bei Abgrund oder Ultraschall < 80 mm |
 | `audio_feedback_node` | `my_bot` | `audio_feedback_node` | `use_audio` | WAV-Wiedergabe via aplay/PCM5102A DAC |
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN, publiziert /imu, /cliff, /range, /battery via CAN) |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD via USB (pyusb) |
@@ -133,9 +133,9 @@ ros2 launch my_bot full_stack.launch.py use_sensors:=False use_rviz:=False
 
 ---
 
-## 5. Cliff-Safety cmd_vel-Remapping
+## 5. Cliff-Safety und Hindernisstopp
 
-Der `cliff_safety_node` ist ein Sicherheits-Multiplexer, der Fahrbefehle bei Cliff-Erkennung blockiert. Er ist per Default aktiv (`use_cliff_safety:=True`).
+Der `cliff_safety_node` ist ein Sicherheits-Multiplexer, der Fahrbefehle bei Cliff-Erkennung oder Ultraschall-Hindernis blockiert. Er ist per Default aktiv (`use_cliff_safety:=True`).
 
 ### 5.1 Datenfluss mit Cliff-Safety (Default)
 
@@ -143,15 +143,24 @@ Der `cliff_safety_node` ist ein Sicherheits-Multiplexer, der Fahrbefehle bei Cli
 Nav2 controller_server ──→ /nav_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel ──→ Drive-Node
 Dashboard Joystick ──→ /dashboard_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel ──→ Drive-Node
 Sensor-Node ──→ /cliff ──→ cliff_safety_node (blockiert bei true)
+Sensor-Node ──→ /range/front ──→ cliff_safety_node (Stopp < 80 mm, Freigabe > 120 mm)
 cliff_safety_node ──→ /audio/play ──→ audio_feedback_node (einmaliger Alarm)
 ```
 
-Bei aktiver Cliff-Erkennung (`/cliff` = true):
+Der Knoten blockiert Fahrbefehle wenn `_blocked = cliff_detected OR obstacle_too_close`:
+
+**Cliff-Erkennung** (`/cliff` = true):
 - Alle Fahrbefehle werden blockiert
-- Ein Null-Twist wird mit 20 Hz auf `/cmd_vel` gesendet
 - Ein einmaliger Audio-Alarm (`cliff_alarm`) wird auf `/audio/play` publiziert
 
-Bei aufgehobener Cliff-Erkennung (`/cliff` = false):
+**Ultraschall-Hindernisstopp** (`/range/front`):
+- Stopp bei Distanz < 80 mm (`_obstacle_stop_m`)
+- Freigabe bei Distanz > 120 mm (`_obstacle_clear_m`, Hysterese)
+
+Bei aktivem Stopp:
+- Ein Null-Twist wird mit 20 Hz auf `/cmd_vel` gesendet
+
+Bei aufgehobener Blockierung:
 - Fahrbefehle von `/nav_cmd_vel` und `/dashboard_cmd_vel` werden an `/cmd_vel` weitergeleitet
 
 **Remapping im Launch-File:**

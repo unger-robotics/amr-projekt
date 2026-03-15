@@ -54,6 +54,7 @@ cd ~/amr-projekt/amr/docker
 | `rplidar_test` | RPLidar-Rate, Aufloesung, Noise und Scan-Qualitaet |
 | `slam_validation` | SLAM-Genauigkeit: Odom-Drift vs. SLAM-korrigierte Pose |
 | `nav_test` | Nav2-Wegplanung und Zielpunktanfahrt |
+| `nav_square_test` | Quadrat-Navigationstest (1 m x 1 m) via /cmd_vel mit Vektornavigation |
 | `docking_test` | ArUco-Marker-Erkennung und Docking-Anfahrt |
 | `sensor_test` | Ultraschall- und Cliff-Validierung (siehe oben) |
 | `cliff_latency_test` | Cliff-Latenztest (Kanten-Stopp End-to-End) |
@@ -87,7 +88,25 @@ Testanleitung: `planung/testanleitung_phase3.md`, Messprotokoll: `planung/messpr
 
 ## Navigationstest (Phase 4)
 
-`amr/scripts/nav_test.py` — ROS2-Knoten, sendet Waypoints (1 m x 1 m Rechteck) ueber den Nav2 NavigateToPose Action-Server.
+Test 4.1 ist zweistufig: Zuerst wird per Quadrat-Test eine Karte aufgebaut, dann wird die gespeicherte Karte fuer Nav2-Waypoint-Navigation verwendet.
+
+### Quadrat-Test (Test 4.1, Schritt 1)
+
+`amr/scripts/nav_square_test.py` — ROS2-Knoten, faehrt ein 1 m x 1 m Quadrat via `/cmd_vel` mit Vektornavigation. Nutzt Odometrie als Regelgroesse, IMU-Gyro fuer PD-Daempfung und SLAM-Map-Pose fuer Heading-Korrektur (Schwelle 2 deg) vor/nach jedem Segment.
+
+```bash
+./run.sh ros2 run my_bot nav_square_test
+```
+
+Akzeptanzkriterien:
+- Positionsfehler (xy): < 0.05 m
+- Orientierungsfehler (yaw): < 0.10 rad (~5.7 Grad)
+
+Ergebnis: Sensorfusion-Snapshots (Odom, IMU, Map-Pose) pro Segment. Export als `nav_square_results.json`.
+
+### Nav2-Waypoint-Navigation (Test 4.1, Schritt 2)
+
+`amr/scripts/nav_test.py` — ROS2-Knoten, sendet Waypoints (1 m x 1 m Rechteck) ueber den Nav2 NavigateToPose Action-Server. Setzt eine gespeicherte SLAM-Karte voraus.
 
 ```bash
 ./run.sh ros2 run my_bot nav_test
@@ -97,13 +116,24 @@ Akzeptanzkriterien:
 - Positionsfehler (xy): < 0.10 m
 - Orientierungsfehler (yaw): < 0.15 rad (~8.6 Grad)
 
-## Docking-Test (Phase 4)
+## Docking-Test (Phase 4, Test 4.2)
 
 `amr/scripts/docking_test.py` — ROS2-Knoten, fuehrt 10 Docking-Versuche mit ArUco-Marker durch.
 
 ```bash
 ./run.sh ros2 run my_bot docking_test
 ```
+
+Parameter:
+
+| Parameter | Wert |
+|---|---|
+| Docking-Distanz | 0,30 m (Ultraschall-basiert) |
+| Approach-Geschwindigkeit | 0,08 m/s |
+| Marker | ArUco DICT_4X4_50, ID 0, 10 cm |
+| Dreifach-Bedingung | Ultraschall <= 0,30 m UND Marker sichtbar UND Versatz <= 5 cm |
+| Fehlausrichtungs-Recovery | 1,5 s Rueckwaertsfahrt + Neuausrichtung per Markersuche |
+| Timeout pro Versuch | 60 s |
 
 Ergebnis: Erfolgsquote, lateraler Versatz und Orientierungsfehler. Export als `docking_results.json`.
 

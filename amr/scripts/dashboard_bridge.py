@@ -75,7 +75,7 @@ SEMANTICS_BROADCAST_HZ = 0.5  # Semantische Analyse Broadcast-Rate
 NAV_STATUS_BROADCAST_HZ = 1.0  # Navigationsstatus Broadcast-Rate
 
 # Batterie: OCV-SOC-Tabelle (3S Li-Ion, Samsung INR18650-35E)
-BATTERY_CAPACITY_MAH = 3500.0
+BATTERY_CAPACITY_MAH = 3350.0
 BATTERY_EMA_ALPHA = 0.05
 OCV_SOC_TABLE = [
     (12.60, 100.0),
