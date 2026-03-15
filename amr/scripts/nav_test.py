@@ -8,8 +8,8 @@ und misst die Abweichung zwischen Soll- und Ist-Position.
 Testparcours: 1m x 1m Rechteck im 10x10m Testfeld.
 
 Akzeptanzkriterien:
-  - Positionsfehler (xy): < 0.05 m
-  - Orientierungsfehler (yaw): < 0.10 rad (~5.7 Grad)
+  - Positionsfehler (xy): < 0.03 m
+  - Orientierungsfehler (yaw): < 0.05 rad (~2.9 Grad)
 
 Verwendung:
   python3 nav_test.py
@@ -53,8 +53,8 @@ WAYPOINTS: list[dict[str, float | str]] = [
 ]
 
 # Akzeptanzkriterien (passend zu nav2_params.yaml goal_checker)
-XY_TOLERANCE = 0.05  # 5 cm
-YAW_TOLERANCE = 0.10  # ~5.7 Grad
+XY_TOLERANCE = 0.03  # 3 cm (passend zu nav2_params.yaml)
+YAW_TOLERANCE = 0.05  # ~2.9 Grad (passend zu nav2_params.yaml)
 
 
 # ---------------------------------------------------------------------------
@@ -180,13 +180,20 @@ class NavTestNode(Node):
             else:
                 status_str = f"FEHLGESCHLAGEN (Status: {result.status})"
 
-        # Kurz warten, damit Odometrie aktuell ist
-        time.sleep(0.5)
+        # Laengere Settle-Time fuer TF-Konvergenz
+        time.sleep(1.0)
         rclpy.spin_once(self, timeout_sec=0.1)
 
-        # Ist-Position auslesen
-        current = self.get_current_pose()
-        if current is None:
+        # Mehrfach-TF-Messung (3 Samples, Mittelwert)
+        samples = []
+        for _ in range(3):
+            rclpy.spin_once(self, timeout_sec=0.1)
+            pose = self.get_current_pose()
+            if pose is not None:
+                samples.append(pose)
+            time.sleep(0.3)
+
+        if not samples:
             self.get_logger().warning("Keine TF-Daten verfuegbar!")
             return {
                 "waypoint": name,
@@ -197,8 +204,14 @@ class NavTestNode(Node):
                 "passed": False,
             }
 
-        x_ist, y_ist, yaw_ist = current
-
+        # Mittelwert aus Samples bilden
+        x_ist = sum(s[0] for s in samples) / len(samples)
+        y_ist = sum(s[1] for s in samples) / len(samples)
+        # Yaw-Mittelwert ueber sin/cos (Winkel-Wrapping vermeiden)
+        yaw_ist = math.atan2(
+            sum(math.sin(s[2]) for s in samples) / len(samples),
+            sum(math.cos(s[2]) for s in samples) / len(samples),
+        )
         # Fehler berechnen
         dx = waypoint["x"] - x_ist
         dy = waypoint["y"] - y_ist

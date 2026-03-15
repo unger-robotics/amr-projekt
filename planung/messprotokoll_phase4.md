@@ -44,33 +44,39 @@ Karte gespeichert: Ja / Nein
 
 | Parameter | Wert |
 |---|---|
-| Skript | `nav_test.py --timeout 60` |
+| Skript | `nav_test.py --timeout 90` |
 | Karte | testfeld (aus Schritt 2) |
 | Waypoints | 4 (1 m x 1 m Rechteck, Nav2) |
-| WP1 xy-Fehler | ___ m |
-| WP1 Gier-Fehler | ___ rad |
-| WP1 Dauer | ___ s |
-| WP1 Status | ___ |
-| WP2 xy-Fehler | ___ m |
-| WP2 Gier-Fehler | ___ rad |
-| WP2 Dauer | ___ s |
-| WP2 Status | ___ |
-| WP3 xy-Fehler | ___ m |
-| WP3 Gier-Fehler | ___ rad |
-| WP3 Dauer | ___ s |
-| WP3 Status | ___ |
-| WP4 xy-Fehler | ___ m |
-| WP4 Gier-Fehler | ___ rad |
-| WP4 Dauer | ___ s |
-| WP4 Status | ___ |
-| Max. xy-Fehler | ___ m |
-| Max. Gier-Fehler | ___ rad |
-| Kollision | Nein / Ja (___) |
-| Recovery beobachtet | Nein / Ja (___) |
-| Cliff-Safety aktiv | Ja / Nein |
-| Akzeptanz xy | < 0,10 m |
-| Akzeptanz Gier | < 0,15 rad (~8,6 Grad) |
-| **Ergebnis** | **ausstehend** |
+| Nav2 Goal-Toleranzen | xy: 0,03 m, yaw: 0,05 rad |
+| Nav2 Geschwindigkeit | 0,15 m/s (RPP), 0,5 rad/s (Drehung) |
+| Messmethode | 3-fach TF-Mittelwert (0,3 s Abstand) |
+| WP1 xy-Fehler | 0,0033 m |
+| WP1 Gier-Fehler | 0,0341 rad |
+| WP1 Dauer | 11,7 s |
+| WP1 Status | ERREICHT |
+| WP2 xy-Fehler | 0,0217 m |
+| WP2 Gier-Fehler | 0,0285 rad |
+| WP2 Dauer | 29,4 s |
+| WP2 Status | ERREICHT |
+| WP3 xy-Fehler | 0,0030 m |
+| WP3 Gier-Fehler | 0,0363 rad |
+| WP3 Dauer | 17,1 s |
+| WP3 Status | ERREICHT |
+| WP4 xy-Fehler | 0,0125 m |
+| WP4 Gier-Fehler | 0,0366 rad |
+| WP4 Dauer | 27,7 s |
+| WP4 Status | ERREICHT |
+| Mittl. xy-Fehler | 0,0101 m |
+| Max. xy-Fehler | 0,0217 m |
+| Mittl. Gier-Fehler | 0,0339 rad |
+| Max. Gier-Fehler | 0,0366 rad |
+| Gesamtdauer | 85,8 s |
+| Kollision | Nein |
+| Recovery beobachtet | Nein |
+| Cliff-Safety aktiv | Ja |
+| Akzeptanz xy | < 0,10 m: **PASS** (max 0,0217 m) |
+| Akzeptanz Gier | < 0,15 rad: **PASS** (max 0,0366 rad) |
+| **Ergebnis** | **PASS** |
 
 ### Testfall 4.2: ArUco-Docking (10 Versuche)
 
@@ -122,7 +128,7 @@ Karte gespeichert: Ja / Nein
 ### Bewertung Phase 4
 
 F04 (Navigation):
-- Test 4.1: **ausstehend**
+- Test 4.1: **PASS** (4/4 WP, mittl. xy 0,0101 m, mittl. yaw 0,0339 rad)
 - Test 4.2: **PASS** (100% Erfolgsquote, 0,73 cm mittl. Versatz)
 
 ---
@@ -134,7 +140,7 @@ F04 (Navigation):
 | 1 | F01 Fahrkern | erfuellt | 3/3 PASS |
 | 2 | F02 Sensor- und Sicherheitsbasis | erfuellt | 11/11 PASS |
 | 3 | F03 Lokalisierung und Kartierung | erfuellt | 2/2 PASS |
-| 4 | F04 Navigation | ausstehend | 4.1 ausstehend, 4.2 PASS |
+| 4 | F04 Navigation | erfuellt | 4.1 PASS, 4.2 PASS |
 
 JSON-Ergebnisdateien:
 - `nav_results.json`

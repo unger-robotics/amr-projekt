@@ -79,8 +79,11 @@ class NavSquareTestNode(Node):
         now = time.time()
         if self._imu_active and self._imu_t is not None:
             dt = now - self._imu_t
-            if 0.0 < dt < 0.2:
-                self.imu_heading = normalize_angle(self.imu_heading + self.imu_gyro_z * dt)
+            if dt <= 0 or dt > 0.5:
+                self._imu_t = now
+                self.imu_received = True
+                return
+            self.imu_heading = normalize_angle(self.imu_heading + self.imu_gyro_z * dt)
         self._imu_t = now
         self.imu_received = True
 
