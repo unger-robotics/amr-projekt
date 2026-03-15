@@ -59,6 +59,9 @@ class AudioFeedbackNode(Node):
         self.create_subscription(String, "/audio/play", self._play_callback, 10)
         self.create_subscription(Int32, "/audio/volume", self._volume_callback, 10)
 
+        # softvol-Control initialisieren (lazy — entsteht erst beim ersten Abspielen)
+        self._init_softvol()
+
         # Initiale Lautstaerke setzen
         self._apply_volume(self._volume_pct)
 
@@ -66,6 +69,36 @@ class AudioFeedbackNode(Node):
             f"Audio-Feedback-Node gestartet. Sounds: {self._sounds_dir}, "
             f"Lautstaerke: {self._volume_pct}%"
         )
+
+    def _init_softvol(self):
+        """Initialisiert ALSA softvol-Control durch kurze Stille-Wiedergabe.
+
+        softvol-Controls werden von ALSA erst beim ersten Oeffnen des PCM-Geraets
+        angelegt. Ohne diesen Schritt schlaegt amixer sset SoftMaster fehl.
+        """
+        try:
+            subprocess.run(
+                [
+                    "aplay",
+                    "-q",
+                    "-D",
+                    ALSA_DEVICE,
+                    "/dev/zero",
+                    "-d",
+                    "1",
+                    "-f",
+                    "S16_LE",
+                    "-r",
+                    "8000",
+                    "-c",
+                    "1",
+                ],
+                capture_output=True,
+                timeout=3,
+            )
+            self.get_logger().info("ALSA softvol-Control initialisiert")
+        except Exception:
+            self.get_logger().warning("softvol-Initialisierung fehlgeschlagen")
 
     def _resolve_sounds_dir(self):
         """Ermittelt den Pfad zum sounds/-Verzeichnis."""
@@ -94,13 +127,18 @@ class AudioFeedbackNode(Node):
     def _apply_volume(self, volume_pct):
         """Setzt die ALSA-Softwarelautstaerke via amixer."""
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["amixer", "-q", "sset", ALSA_MIXER_CONTROL, f"{volume_pct}%"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
                 timeout=2,
             )
-            self.get_logger().info(f"Lautstaerke: {volume_pct}%")
+            if result.returncode != 0:
+                self.get_logger().warning(
+                    f"amixer Fehler (rc={result.returncode}): {result.stderr.strip()}"
+                )
+            else:
+                self.get_logger().info(f"Lautstaerke: {volume_pct}%")
         except FileNotFoundError:
             self.get_logger().warning("amixer nicht gefunden — Lautstaerke nicht einstellbar")
         except subprocess.TimeoutExpired:

@@ -46,6 +46,9 @@ services:
       # Hardware-Konfiguration (read-only)
       - ../../hardware:/hardware:ro
 
+      # ALSA softvol-Konfiguration (Software-Lautstaerke fuer MAX98357A)
+      - ./asound.conf:/etc/asound.conf:ro
+
       # X11-Socket fuer RViz2
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
 

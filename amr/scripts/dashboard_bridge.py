@@ -776,6 +776,7 @@ class DashboardBridge(Node):
         point.y = float(tilt)
         point.z = 0.0
         self.pub_servo_cmd.publish(point)
+        self.get_logger().debug(f"Servo-Cmd: pan={pan:.0f}, tilt={tilt:.0f}")
         with self.lock:
             self.servo_pan = float(pan)
             self.servo_tilt = float(tilt)
