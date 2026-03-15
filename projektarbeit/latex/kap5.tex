@@ -20,11 +20,11 @@ Die Stützstruktur wurde so positioniert, dass ein möglichst großer Anteil der
 
 Die Low-Level-Ebene wurde mit zwei physisch getrennten XIAO-ESP32-S3-Knoten aufgebaut. Diese Trennung folgt direkt dem Entwurf aus Kapitel 4: Der Drive-Knoten verarbeitet ausschließlich fahrkritische Funktionen, während der Sensor-Knoten I2C-basierte Peripherie und sicherheitsnahe Signale übernimmt. Die Verdrahtung bildet diese Zuständigkeiten eindeutig ab.
 
-Am Drive-Knoten sind die Hall-Encoder mit den Phasen A und B an die Pins D6 bis D9 angeschlossen. Die PWM-Signale für den Cytron-MDD3A-Motortreiber liegen im Dual-PWM-Modus an den Pins D0 bis D3 an. Die Signalleitungen der Encoder wurden räumlich getrennt von den PWM-führenden Motorleitungen verlegt, um kapazitive Einkopplungen der Schaltflanken zu verringern. Die PWM-Frequenz beträgt
+Am Drive-Knoten sind die Hall-Encoder mit den Phasen A und B an die Pins D4 und D5 (Phase A) sowie D8 und D9 (Phase B) angeschlossen. Die PWM-Signale für den Cytron-MDD3A-Motortreiber liegen im Dual-PWM-Modus an den Pins D0 bis D3 an. Die Signalleitungen der Encoder wurden räumlich getrennt von den PWM-führenden Motorleitungen verlegt, um kapazitive Einkopplungen der Schaltflanken zu verringern. Die PWM-Frequenz beträgt
 
 $$f_{\mathrm{PWM}} = 20\,\mathrm{kHz}$$
 
-Am Sensor-Knoten bindet der I2C-Bus mit SDA auf D4 und SCL auf D5 die MPU6050, den INA260 und den PCA9685 an. Zwei MH-B-Kanten-Sensoren sind direkt an digitale GPIO-Pins angeschlossen. Diese Aufteilung vermeidet, dass I2C-Zugriffe den Fahrkern blockieren.
+Am Sensor-Knoten bindet der I2C-Bus mit SDA auf D4 und SCL auf D5 die MPU6050, den INA260 und den PCA9685 an. Ein MH-B-Kanten-Sensor ist direkt an einen digitalen GPIO-Pin angeschlossen. Diese Aufteilung vermeidet, dass I2C-Zugriffe den Fahrkern blockieren.
 
 \subsection{Host-nahe Peripherie}
 
@@ -130,7 +130,7 @@ Die Implementierung enthält eine eigene Sicherheitslogik, die reguläre Fahrkom
 
 \subsection{Cliff-Sicherheitsmultiplexer}
 
-Der \texttt{cliff\_safety\_node} bildet den sicherheitsnahen Multiplexer für Kantenerkennung. Er abonniert \texttt{/cliff} und überwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante, unterbricht der Multiplexer den regulären Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic \texttt{/cmd\_vel}.
+Der \texttt{cliff\_safety\_node} bildet den sicherheitsnahen Multiplexer für Kanten- und Hinderniserkennung. Er abonniert \texttt{/cliff} sowie \texttt{/range/front} und überwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante oder unterschreitet die Ultraschall-Distanz $80\,\mathrm{mm}$, unterbricht der Multiplexer den regulären Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic \texttt{/cmd\_vel}. Die Freigabe erfolgt erst bei einer Distanz über $120\,\mathrm{mm}$ (Hysterese).
 
 Der sichere Halt entspricht im Auslösefall der Vorgabe
 

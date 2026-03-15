@@ -32,7 +32,7 @@ Am Sensor-Knoten bindet der I2C-Bus mit SDA auf D4 und SCL auf D5 die MPU6050, d
 
 ### 5.1.3 Host-nahe Peripherie
 
-Der Raspberry Pi 5 bindet die hostseitigen Komponenten fuer Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene sowie spaetere Interaktion an. Der RPLIDAR A1 ist per USB angeschlossen und liefert die Distanzdaten fuer Kartenaufbau und Navigation. Eine frontseitig montierte Sony-IMX296-Kamera ist ueber CSI angebunden. Fuer hardwarebeschleunigte Bildverarbeitung wurde ein Hailo-8L-Beschleuniger ueber ein M.2-HAT integriert. Der Audiopfad nutzt einen PCM5102A-DAC als Ausgabestufe.
+Der Raspberry Pi 5 bindet die hostseitigen Komponenten fuer Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene sowie spaetere Interaktion an. Der RPLIDAR A1 ist per USB angeschlossen und liefert die Distanzdaten fuer Kartenaufbau und Navigation. Eine frontseitig montierte Sony-IMX296-Kamera ist ueber CSI angebunden. Fuer hardwarebeschleunigte Bildverarbeitung wurde ein Hailo-8L-Beschleuniger ueber ein M.2-HAT integriert. Der Audiopfad nutzt einen MAX98357A-Verstaerker als Ausgabestufe.
 
 Diese Peripherie liegt bewusst ausserhalb des Low-Level-Regelpfads. Damit bleiben Kamera, Vision und Audio anschlussfaehig, ohne die Zykluszeit der Motorregelung direkt zu beeinflussen.
 
@@ -158,7 +158,7 @@ Die Implementierung enthaelt eine eigene Sicherheitslogik, die regulaere Fahrkom
 
 ### 5.4.1 Cliff-Sicherheitsmultiplexer
 
-Der `cliff_safety_node` bildet den sicherheitsnahen Multiplexer fuer Kantenerkennung. Er abonniert `/cliff` und ueberwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante, unterbricht der Multiplexer den regulaeren Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic `/cmd_vel`.
+Der `cliff_safety_node` bildet den sicherheitsnahen Multiplexer fuer Kanten- und Hinderniserkennung. Er abonniert `/cliff` sowie `/range/front` und ueberwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante oder unterschreitet die Ultraschall-Distanz $80\,\mathrm{mm}$, unterbricht der Multiplexer den regulaeren Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic `/cmd_vel`. Die Freigabe erfolgt erst bei einer Distanz ueber $120\,\mathrm{mm}$ (Hysterese).
 
 Der sichere Halt entspricht im Ausloesefall der Vorgabe
 

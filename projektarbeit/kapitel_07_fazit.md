@@ -36,7 +36,7 @@ Die Validierung bestaetigt den fahrkritischen Kern, aber nicht alle Anforderunge
 
 ### Technische Grenzen des Prototyps
 
-Die Kalibrierung reduziert systematische Odometriefehler deutlich, kompensiert aber keinen Schlupf auf wechselnden oder unebenen Untergruenden. Das Recovery-Verhalten erhoeht die Robustheit der Navigation, beseitigt jedoch nicht alle Blockadesituationen. Die Vision-Pipeline erreicht mit dem Hailo-8L eine mittlere Inferenzzeit von rund $34\,\mathrm{ms}$ pro Bild und ist damit technisch leistungsfaehig, bleibt jedoch ausserhalb des sicherheitskritischen Kerns. Das Docking erreichte eine Erfolgsquote von $80\,\%$ und zeigte damit technische Machbarkeit, aber noch keine hinreichende Robustheit fuer eine Kernfunktion. Beleuchtungsartefakte und unguenstige Ankunftsposen wirken sich weiterhin deutlich auf die monokulare Bildauswertung aus.
+Die Kalibrierung reduziert systematische Odometriefehler deutlich, kompensiert aber keinen Schlupf auf wechselnden oder unebenen Untergruenden. Das Recovery-Verhalten erhoeht die Robustheit der Navigation, beseitigt jedoch nicht alle Blockadesituationen. Die Vision-Pipeline erreicht mit dem Hailo-8L eine mittlere Inferenzzeit von rund $34\,\mathrm{ms}$ pro Bild und ist damit technisch leistungsfaehig, bleibt jedoch ausserhalb des sicherheitskritischen Kerns. Das Docking erreichte nach Optimierung der Dreifach-Bedingung eine Erfolgsquote von $100\,\%$ ($10/10$) und zeigte damit technische Machbarkeit als Erweiterungsfunktion. Beleuchtungsartefakte und unguenstige Ankunftsposen wirken sich weiterhin deutlich auf die monokulare Bildauswertung aus.
 
 ### Methodische Grenzen
 

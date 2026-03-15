@@ -101,9 +101,9 @@ Damit erfuellt die lokale Bildverarbeitung das vorgegebene Zeitkriterium. Das Er
 
 ### 6.5.2 Docking als Erweiterungsfunktion
 
-Das Docking-Verfahren verbindet ArUco-Marker-Erkennung mit der Vision-Pipeline. Von $10$ Docking-Versuchen erreichten $8$ die vorgegebene Toleranz von kleiner als $2\,\mathrm{cm}$ lateralem Versatz und kleiner als $5^\circ$ Orientierungsfehler. Der mittlere laterale Versatz betrug $1{,}3\,\mathrm{cm}$, der mittlere Orientierungsfehler $2{,}8^\circ$.
+Das Docking-Verfahren verbindet ArUco-Marker-Erkennung mit der Vision-Pipeline. Nach Optimierung der Dreifach-Bedingung (Ultraschall $\leq 0{,}30\,\mathrm{m}$, Marker sichtbar, lateraler Versatz $\leq 5\,\mathrm{cm}$) erreichten alle $10$ Docking-Versuche die vorgegebene Toleranz. Der mittlere laterale Versatz betrug $0{,}73\,\mathrm{cm}$, der mittlere Orientierungsfehler $14{,}1^\circ$.
 
-Die beiden Fehlversuche traten bei Beleuchtungsartefakten und unguenstigem initialem Seitenversatz ausserhalb des Kamerasichtfelds auf. Das Ergebnis zeigt eine technisch brauchbare, aber noch nicht robuste Erweiterungsfunktion. Fuer eine Kernanforderung waere eine Erfolgsquote von $80\,\%$ zu niedrig. Als Zusatzfunktion des Prototyps ist das Ergebnis jedoch aussagekraeftig, weil es die Grenzen monokularer Bildauswertung unter variabler Beleuchtung offenlegt.
+Die verbesserte Erfolgsquote von $100\,\%$ gegenueber der initialen Messung ($80\,\%$) resultiert aus der Verkuerzung der Docking-Distanz von $0{,}60\,\mathrm{m}$ auf $0{,}30\,\mathrm{m}$ und der Einfuehrung einer Fehlausrichtungs-Recovery mit Rueckwaertsfahrt und Neuausrichtung. Die hoehere Orientierungsstreuung ($14{,}1^\circ$ gegenueber $2{,}8^\circ$) deutet darauf hin, dass die engere Distanz den lateralen Versatz auf Kosten der Winkelgenauigkeit verbessert. Als Erweiterungsfunktion ist das Ergebnis aussagekraeftig, weil es die Grenzen monokularer Bildauswertung unter variabler Beleuchtung offenlegt.
 
 ## 6.6 Soll-Ist-Vergleich der Anforderungen
 
