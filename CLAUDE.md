@@ -223,6 +223,9 @@ Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_f
 - `docs/quality_checks.md`
 - `docs/projektarbeit_style.md`
 - `docs/literature_workflow.md`
+- `planung/abschlussbericht.md`
+- `planung/systemdokumentation.md`
+- `planung/benutzerhandbuch.md`
 - `planung/testanleitung_phase1_phase2.md`
 - `planung/messprotokoll_phase1_phase2.md`
 - `planung/testanleitung_phase3.md`
