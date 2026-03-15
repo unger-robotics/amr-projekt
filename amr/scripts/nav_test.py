@@ -8,8 +8,8 @@ und misst die Abweichung zwischen Soll- und Ist-Position.
 Testparcours: 1m x 1m Rechteck im 10x10m Testfeld.
 
 Akzeptanzkriterien:
-  - Positionsfehler (xy): < 0.10 m
-  - Orientierungsfehler (yaw): < 0.15 rad (~8.6 Grad)
+  - Positionsfehler (xy): < 0.05 m
+  - Orientierungsfehler (yaw): < 0.10 rad (~5.7 Grad)
 
 Verwendung:
   python3 nav_test.py
@@ -52,9 +52,9 @@ WAYPOINTS: list[dict[str, float | str]] = [
     {"x": 0.0, "y": 0.0, "yaw": 0.0, "name": "WP4: Start"},
 ]
 
-# Akzeptanzkriterien
-XY_TOLERANCE = 0.10  # 10 cm
-YAW_TOLERANCE = 0.15  # ~8.6 Grad
+# Akzeptanzkriterien (passend zu nav2_params.yaml goal_checker)
+XY_TOLERANCE = 0.05  # 5 cm
+YAW_TOLERANCE = 0.10  # ~5.7 Grad
 
 
 # ---------------------------------------------------------------------------

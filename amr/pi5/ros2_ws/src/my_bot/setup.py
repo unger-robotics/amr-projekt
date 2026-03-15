@@ -31,6 +31,7 @@ setup(
             "kinematic_test = my_bot.kinematic_test:main",
             "slam_validation = my_bot.slam_validation:main",
             "nav_test = my_bot.nav_test:main",
+            "nav_square_test = my_bot.nav_square_test:main",
             "docking_test = my_bot.docking_test:main",
             "imu_test = my_bot.imu_test:main",
             "rotation_test = my_bot.rotation_test:main",

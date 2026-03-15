@@ -1,0 +1,1 @@
+../../../../../scripts/nav_square_test.py
