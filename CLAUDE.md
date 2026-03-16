@@ -87,7 +87,7 @@ Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_d
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
 - Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
 - Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
-- Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0`
+- Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0` (HTTPS via mkcert)
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
 
 ## Neues ROS2-Skript hinzufuegen
@@ -135,10 +135,15 @@ docker compose build                        # Image bauen (~15-20 Min)
 
 ```bash
 cd dashboard/
-npm install && npm run dev     # Entwicklung (http://localhost:5173)
+npm install && npm run dev     # Entwicklung (https://amr.local:5173)
 npm run build                  # Produktion (tsc + vite build)
 npm run lint                   # ESLint
 ```
+
+HTTPS via mkcert-Zertifikate (`amr.local+5.pem` / `amr.local+5-key.pem` in `dashboard/`).
+WebSocket-Server (`wss://`, Port 9090) und MJPEG-Server (`https://`, Port 8082) nutzen
+dieselben Zertifikate via Volume-Mount (`/dashboard:ro` im Container). Ohne Zertifikate
+Fallback auf unverschluesseltes HTTP/WS.
 
 ### LaTeX-Dokumente
 

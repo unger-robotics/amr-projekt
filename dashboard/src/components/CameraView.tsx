@@ -47,7 +47,8 @@ export function CameraView() {
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const semanticAnalysis = useTelemetryStore((s) => s.semanticAnalysis);
 
-  const streamUrl = `http://${window.location.hostname}:${STREAM_PORT}/stream`;
+  const streamProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const streamUrl = `${streamProtocol}//${window.location.hostname}:${STREAM_PORT}/stream`;
 
   const handleError = useCallback(() => {
     setError(true);

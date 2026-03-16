@@ -46,6 +46,9 @@ services:
       # Hardware-Konfiguration (read-only)
       - ../../hardware:/hardware:ro
 
+      # TLS-Zertifikate fuer Dashboard HTTPS/WSS (mkcert)
+      - ../../dashboard:/dashboard:ro
+
       # ALSA softvol-Konfiguration (Software-Lautstaerke fuer MAX98357A)
       - ./asound.conf:/etc/asound.conf:ro
 

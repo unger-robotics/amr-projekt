@@ -23,6 +23,7 @@ import json
 import math
 import os
 import socket
+import ssl
 import threading
 import time
 from collections import deque
@@ -73,6 +74,26 @@ MAP_PNG_QUALITY = 6  # PNG-Kompressionsgrad (0-9)
 DETECTION_BROADCAST_HZ = 5.0  # Vision-Detektionen Broadcast-Rate
 SEMANTICS_BROADCAST_HZ = 0.5  # Semantische Analyse Broadcast-Rate
 NAV_STATUS_BROADCAST_HZ = 1.0  # Navigationsstatus Broadcast-Rate
+
+# TLS-Zertifikate (mkcert, im Container unter /dashboard/ gemountet)
+TLS_CERT_DIR = "/dashboard"
+
+
+def _create_ssl_context():
+    """Erzeugt SSL-Kontext aus mkcert-Zertifikaten, falls vorhanden."""
+    cert_file = None
+    key_file = None
+    for f in sorted(globmod.glob(os.path.join(TLS_CERT_DIR, "*.pem"))):
+        if f.endswith("-key.pem"):
+            key_file = f
+        elif f.endswith(".pem"):
+            cert_file = f
+    if cert_file and key_file and os.path.isfile(cert_file) and os.path.isfile(key_file):
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        return ctx
+    return None
+
 
 # Batterie: OCV-SOC-Tabelle (3S Li-Ion, Samsung INR18650-35E)
 BATTERY_CAPACITY_MAH = 3350.0
@@ -175,14 +196,17 @@ class MjpegHandler(BaseHTTPRequestHandler):
                 break
 
 
-def start_mjpeg_server(node):
-    """Startet den MJPEG-HTTP-Server in einem Daemon-Thread."""
+def start_mjpeg_server(node, ssl_ctx=None):
+    """Startet den MJPEG-HTTP(S)-Server in einem Daemon-Thread."""
     MjpegHandler.bridge_node = node
     server = ThreadingHTTPServer(("0.0.0.0", MJPEG_PORT), MjpegHandler)
+    if ssl_ctx:
+        server.socket = ssl_ctx.wrap_socket(server.socket, server_side=True)
     server.daemon_threads = True
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    node.get_logger().info(f"MJPEG-Server gestartet auf http://0.0.0.0:{MJPEG_PORT}/stream")
+    proto = "https" if ssl_ctx else "http"
+    node.get_logger().info(f"MJPEG-Server gestartet auf {proto}://0.0.0.0:{MJPEG_PORT}/stream")
 
 
 # =========================================================================
@@ -191,11 +215,12 @@ def start_mjpeg_server(node):
 class WebSocketServer:
     """Asyncio-basierter WebSocket-Server fuer Telemetrie und Steuerung."""
 
-    def __init__(self, node):
+    def __init__(self, node, ssl_ctx=None):
         self.node = node
         self.clients = set()
         self.controller_ws = None  # Nur ein Client darf cmd_vel senden
         self.loop = None
+        self.ssl_ctx = ssl_ctx
 
     async def handler(self, ws):
         """Verbindungs-Handler fuer neue WebSocket-Clients."""
@@ -279,8 +304,12 @@ class WebSocketServer:
             WS_PORT,
             ping_interval=20,
             ping_timeout=10,
+            ssl=self.ssl_ctx,
         ):
-            self.node.get_logger().info(f"WebSocket-Server gestartet auf ws://0.0.0.0:{WS_PORT}")
+            proto = "wss" if self.ssl_ctx else "ws"
+            self.node.get_logger().info(
+                f"WebSocket-Server gestartet auf {proto}://0.0.0.0:{WS_PORT}"
+            )
             # Telemetrie-, Scan-, System-, Map-, Vision- und Sensor-Broadcast parallel
             await asyncio.gather(
                 self._telemetry_loop(),
@@ -502,6 +531,13 @@ class DashboardBridge(Node):
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)
 
+        # --- TLS-Kontext (optional, fuer HTTPS/WSS) ---
+        ssl_ctx = _create_ssl_context()
+        if ssl_ctx:
+            self.get_logger().info("TLS-Zertifikate geladen -> HTTPS/WSS aktiv")
+        else:
+            self.get_logger().info("Keine TLS-Zertifikate gefunden -> HTTP/WS (unverschluesselt)")
+
         # --- WebSocket-Server ---
         if websockets is None:
             self.get_logger().error(
@@ -509,12 +545,12 @@ class DashboardBridge(Node):
             )
             self.ws_server = None
         else:
-            self.ws_server = WebSocketServer(self)
+            self.ws_server = WebSocketServer(self, ssl_ctx=ssl_ctx)
             self.ws_server.start()
 
         # --- MJPEG-Server ---
         if HAS_CAMERA:
-            start_mjpeg_server(self)
+            start_mjpeg_server(self, ssl_ctx=ssl_ctx)
         else:
             self.get_logger().warn("cv2/cv_bridge nicht verfuegbar -> MJPEG-Server deaktiviert")
 

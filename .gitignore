@@ -60,6 +60,7 @@ dashboard/dist/
 
 # Secrets / Credentials
 amr/docker/.env
+*.pem
 
 # Logs
 hailort.log

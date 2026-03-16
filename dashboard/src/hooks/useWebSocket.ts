@@ -21,7 +21,8 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
 
   const getUrl = useCallback(() => {
     const host = window.location.hostname || 'localhost';
-    return `ws://${host}:${WS_PORT}`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${host}:${WS_PORT}`;
   }, []);
 
   const connect = useCallback(() => {
