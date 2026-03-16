@@ -47,6 +47,8 @@ slam_validation_plot.png
 *.MOV
 *.mov
 *.mp4
+*.HEIC
+*.heic
 
 # Grosse Datasheets (lokal behalten, nicht in Git)
 hardware/datasheet/Raspi 5 Pinout.pdf
@@ -71,6 +73,12 @@ gstshark_*/
 
 # LaTeX-Build-Artefakte
 planung/vortrag/out/
+
+# Generierte LaTeX-PDFs (reproduzierbar via make)
+projektarbeit/latex/main.pdf
+projektarbeit/latex/farbdesign.pdf
+hardware/latex/main.pdf
+planung/vortrag/*.pdf
 
 # Linting-Caches
 .ruff_cache/
