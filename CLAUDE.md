@@ -55,7 +55,8 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 
 - MCU Dual-Core: Core 0 = micro-ROS Executor, Core 1 = Echtzeit-Datenerfassung + CAN
 - `full_stack.launch.py` orchestriert alle ROS2-Nodes (micro-ROS Agents, SLAM, Nav2, Dashboard, Vision)
-- Vision-Pipeline: Host-seitiger Hailo-8L Runner → UDP → Docker-Receiver → Gemini Cloud
+- Vision-Pipeline: Host-seitiger Hailo-8L Runner (HTTPS MJPEG) → UDP → Docker-Receiver → Gemini Cloud
+- Vision-Toggle: Dashboard AI-Schalter steuert Broadcast-Gate in Bridge + `/vision/enable` Topic fuer TTS
 - Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und via `setup.py` entry_points installiert
 
 ## Launch-Argumente (full_stack.launch.py)
@@ -85,7 +86,9 @@ Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_d
 - Drive-Knoten und Sensor-Knoten werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
-- Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision, Audio und ReSpeaker sind optionale Teilsysteme
+- Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision (AI-Toggle), Audio und ReSpeaker sind optionale Teilsysteme
+- Dashboard-Steuerung: Sidebar (Status, System, Kommandofeld) + Kamera + SLAM-Karte + LiDAR + Joystick + Servo/Hardware
+- Dashboard-Details: ActiveDevicesPanel (6 Geraete), SensorDetail, Audio, Roboter-Daten
 - Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
 - Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0` (HTTPS via mkcert)
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
