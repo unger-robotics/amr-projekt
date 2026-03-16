@@ -243,3 +243,5 @@ Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_f
 - `planung/messprotokoll_phase4.md`
 - `planung/testanleitung_phase5.md`
 - `planung/messprotokoll_phase5.md`
+- `planung/https-setup-amr-dashboard.md`
+- `planung/Netzwerkkonfiguration.md`
