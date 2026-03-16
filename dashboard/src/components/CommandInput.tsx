@@ -25,12 +25,12 @@ export default function CommandInput({ send }: CommandInputProps) {
         Kommando
       </h2>
       {history.length > 0 && (
-        <div className="flex flex-col gap-0.5 mb-2 max-h-[80px] overflow-y-auto">
+        <div className="flex flex-col gap-0.5 mb-2 max-h-[120px] overflow-y-auto">
           {history.map((h, i) => (
             <span
               key={i}
               className={`text-[10px] font-mono truncate ${
-                h.isCmd ? 'text-hud-text-dim' : h.success ? 'text-hud-green' : 'text-hud-red'
+                h.isCmd ? 'text-hud-text-dim' : h.pending ? 'text-yellow-400' : h.success ? 'text-hud-green' : 'text-hud-red'
               }`}
             >
               {h.isCmd ? '> ' : '  '}{h.text}
@@ -46,7 +46,7 @@ export default function CommandInput({ send }: CommandInputProps) {
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="nav 1.0 2.0 | stop | cancel"
+          placeholder="nav 1 2 | forward 1 | test list | help"
           className="flex-1 bg-hud-bg border border-hud-border text-hud-text text-xs font-mono px-2 py-1.5 placeholder:text-hud-text-dim/40 focus:border-hud-cyan focus:outline-none"
         />
         <button

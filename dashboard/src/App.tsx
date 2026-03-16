@@ -33,7 +33,7 @@ function App() {
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
-      else if (msg.op === 'command_response') appendCommandResponse(msg.text, msg.success);
+      else if (msg.op === 'command_response') appendCommandResponse(msg.text, msg.success, msg.pending);
     },
     [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, appendCommandResponse],
   );

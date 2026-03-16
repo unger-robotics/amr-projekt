@@ -207,6 +207,7 @@ export interface CommandResponseMsg {
   op: 'command_response';
   text: string;
   success: boolean;
+  pending?: boolean;
 }
 
 /** Vision-Steuerung ans Backend (ein/aus) */

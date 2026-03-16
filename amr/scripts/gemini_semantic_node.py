@@ -62,7 +62,7 @@ class GeminiSemanticNode(Node):
         super().__init__("gemini_semantic_node")
 
         # Parameter
-        self.declare_parameter("model", "gemini-3-flash-preview")
+        self.declare_parameter("model", "gemini-3.1-flash-lite-preview")
         self.declare_parameter("max_tokens", 256)
 
         model_name = self.get_parameter("model").get_parameter_value().string_value

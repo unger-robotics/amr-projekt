@@ -23,6 +23,7 @@ import glob as globmod
 import json
 import math
 import os
+import re
 import socket
 import ssl
 import threading
@@ -210,6 +211,28 @@ def start_mjpeg_server(node, ssl_ctx=None):
     node.get_logger().info(f"MJPEG-Server gestartet auf {proto}://0.0.0.0:{MJPEG_PORT}/stream")
 
 
+# ---------------------------------------------------------------------------
+# Verfuegbare Tests (Mapping Kurzname -> ROS2 Entry-Point)
+# ---------------------------------------------------------------------------
+AVAILABLE_TESTS = {
+    "rplidar": "rplidar_test",
+    "imu": "imu_test",
+    "motor": "motor_test",
+    "encoder": "encoder_test",
+    "sensor": "sensor_test",
+    "kinematic": "kinematic_test",
+    "straight_drive": "straight_drive_test",
+    "rotation": "rotation_test",
+    "cliff_latency": "cliff_latency_test",
+    "docking": "docking_test",
+    "nav_square": "nav_square_test",
+    "nav": "nav_test",
+    "slam": "slam_validation",
+    "dashboard_latency": "dashboard_latency_test",
+    "can": "can_validation_test",
+}
+
+
 # =========================================================================
 # WebSocket Server (asyncio)
 # =========================================================================
@@ -222,6 +245,8 @@ class WebSocketServer:
         self.controller_ws = None  # Nur ein Client darf cmd_vel senden
         self.loop = None
         self.ssl_ctx = ssl_ctx
+        self._motion_active = False
+        self._motion_cancel = False
 
     async def handler(self, ws):
         """Verbindungs-Handler fuer neue WebSocket-Clients."""
@@ -301,15 +326,80 @@ class WebSocketServer:
                 asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
         elif op == "command":
             text = str(msg.get("text", "")).strip()
-            resp = self._handle_command(text)
-            with contextlib.suppress(Exception):
-                asyncio.get_event_loop().create_task(ws.send(json.dumps(resp)))
+            resp = self._handle_command(text, ws)
+            if resp is not None:
+                with contextlib.suppress(Exception):
+                    asyncio.get_event_loop().create_task(ws.send(json.dumps(resp)))
 
-    def _handle_command(self, text):
+    def _handle_command(self, text, ws=None):
         """Parst Freitext-Kommandos und fuehrt sie aus."""
         parts = text.split()
         if not parts:
             return {"op": "command_response", "text": "Leeres Kommando", "success": False}
+
+        # -- Natuerlichsprachlicher Parser (vor cmd-Parser) --
+        text_lower = text.lower()
+
+        # "navigiere zu X Y" oder "fahre zu X Y"
+        m = re.match(
+            r"(?:navigiere|fahre)\s+zu\s+(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s*(-?\d+\.?\d*)?",
+            text_lower,
+        )
+        if m:
+            x, y = float(m.group(1)), float(m.group(2))
+            yaw = float(m.group(3)) if m.group(3) else 0.0
+            self.node.send_nav_goal(x, y, yaw)
+            return {
+                "op": "command_response",
+                "text": f"Nav-Ziel: x={x}, y={y}, yaw={yaw}",
+                "success": True,
+            }
+
+        # "fahre X m vorwaerts/geradeaus"
+        m = re.match(
+            r"fahre\s+(\d+\.?\d*)\s*(?:m|meter)?\s*(?:vorwaerts|geradeaus|vor)", text_lower
+        )
+        if m:
+            dist = float(m.group(1))
+            if dist <= 0 or dist > 5.0:
+                return {
+                    "op": "command_response",
+                    "text": "Distanz muss 0-5 m sein",
+                    "success": False,
+                }
+            if self._motion_active:
+                return {
+                    "op": "command_response",
+                    "text": "Bewegung bereits aktiv",
+                    "success": False,
+                }
+            asyncio.run_coroutine_threadsafe(self._execute_forward(ws, dist), self.loop)
+            return None
+
+        # "dreh(e) X grad links/rechts"
+        m = re.match(
+            r"dreh(?:e)?\s*(?:dich\s+)?(\d+\.?\d*)\s*(?:grad|°)?\s*(links|rechts)?", text_lower
+        )
+        if m:
+            angle = float(m.group(1))
+            if m.group(2) == "rechts":
+                angle = -angle
+            if abs(angle) > 360:
+                return {
+                    "op": "command_response",
+                    "text": "Winkel muss -360..360 sein",
+                    "success": False,
+                }
+            if self._motion_active:
+                return {
+                    "op": "command_response",
+                    "text": "Bewegung bereits aktiv",
+                    "success": False,
+                }
+            asyncio.run_coroutine_threadsafe(self._execute_turn(ws, angle), self.loop)
+            return None
+
+        # -- Keyword-basierter Parser --
         cmd = parts[0].lower()
         try:
             if cmd == "nav" and len(parts) >= 3:
@@ -325,6 +415,7 @@ class WebSocketServer:
             elif cmd == "stop":
                 self.node.publish_stop()
                 self.node.cancel_nav_goal()
+                self._motion_cancel = True
                 return {
                     "op": "command_response",
                     "text": "Stopp + Nav abgebrochen",
@@ -333,14 +424,234 @@ class WebSocketServer:
             elif cmd == "cancel":
                 self.node.cancel_nav_goal()
                 return {"op": "command_response", "text": "Navigation abgebrochen", "success": True}
+            elif cmd in ("forward", "vor", "vorwaerts") and len(parts) >= 2:
+                dist = float(parts[1])
+                if dist <= 0 or dist > 5.0:
+                    return {
+                        "op": "command_response",
+                        "text": "Distanz muss 0-5 m sein",
+                        "success": False,
+                    }
+                if self._motion_active:
+                    return {
+                        "op": "command_response",
+                        "text": "Bewegung bereits aktiv",
+                        "success": False,
+                    }
+                asyncio.run_coroutine_threadsafe(self._execute_forward(ws, dist), self.loop)
+                return None
+            elif cmd in ("turn", "dreh", "drehe") and len(parts) >= 2:
+                angle = float(parts[1])
+                if abs(angle) > 360:
+                    return {
+                        "op": "command_response",
+                        "text": "Winkel muss -360..360 sein",
+                        "success": False,
+                    }
+                if self._motion_active:
+                    return {
+                        "op": "command_response",
+                        "text": "Bewegung bereits aktiv",
+                        "success": False,
+                    }
+                asyncio.run_coroutine_threadsafe(self._execute_turn(ws, angle), self.loop)
+                return None
+            elif cmd == "help":
+                return {
+                    "op": "command_response",
+                    "text": (
+                        "Befehle: nav X Y [YAW], stop, cancel, "
+                        "forward DIST, turn GRAD, "
+                        "test list, test <name>, help"
+                    ),
+                    "success": True,
+                }
+            elif cmd == "test" and len(parts) >= 2:
+                sub = parts[1].lower()
+                if sub == "list":
+                    names = ", ".join(sorted(AVAILABLE_TESTS.keys()))
+                    return {
+                        "op": "command_response",
+                        "text": f"Tests: {names}",
+                        "success": True,
+                    }
+                elif sub in AVAILABLE_TESTS:
+                    asyncio.run_coroutine_threadsafe(self._execute_test(ws, sub), self.loop)
+                    return None
+                else:
+                    return {
+                        "op": "command_response",
+                        "text": f"Unbekannter Test: {sub}. 'test list' fuer Uebersicht.",
+                        "success": False,
+                    }
+            elif cmd == "test":
+                return {
+                    "op": "command_response",
+                    "text": "Verwendung: test list | test <name>",
+                    "success": False,
+                }
             else:
                 return {
                     "op": "command_response",
-                    "text": f"Unbekannt: {text}. Verfuegbar: nav X Y [YAW], stop, cancel",
+                    "text": f"Unbekannt: {text}. Tippe 'help' fuer Befehle.",
                     "success": False,
                 }
         except (ValueError, IndexError) as e:
             return {"op": "command_response", "text": f"Fehler: {e}", "success": False}
+
+    async def _send_response(self, ws, text, success, pending=False):
+        """Sendet command_response an einen spezifischen Client."""
+        resp = {"op": "command_response", "text": text, "success": success}
+        if pending:
+            resp["pending"] = True
+        with contextlib.suppress(Exception):
+            await ws.send(json.dumps(resp))
+
+    async def _execute_forward(self, ws, distance_m):
+        """Faehrt distance_m Meter geradeaus mittels cmd_vel + Odometrie-Feedback."""
+        self._motion_active = True
+        self._motion_cancel = False
+        await self._send_response(ws, f"Fahre {distance_m} m vorwaerts...", True, pending=True)
+
+        odom = self.node.latest_odom
+        if odom is None:
+            self._motion_active = False
+            await self._send_response(ws, "Keine Odometrie verfuegbar", False)
+            return
+
+        start_x = odom.pose.pose.position.x
+        start_y = odom.pose.pose.position.y
+        timeout = distance_m / 0.10 + 5.0
+        start_time = asyncio.get_event_loop().time()
+        vel = 0.15  # m/s
+        traveled = 0.0
+
+        try:
+            while not self._motion_cancel:
+                self.node.publish_cmd_vel(vel, 0.0)
+                await asyncio.sleep(0.05)  # 20 Hz
+
+                odom = self.node.latest_odom
+                if odom is None:
+                    continue
+                dx = odom.pose.pose.position.x - start_x
+                dy = odom.pose.pose.position.y - start_y
+                traveled = math.sqrt(dx * dx + dy * dy)
+
+                if traveled >= distance_m:
+                    break
+                if (asyncio.get_event_loop().time() - start_time) > timeout:
+                    self.node.publish_stop()
+                    self._motion_active = False
+                    await self._send_response(ws, f"Timeout nach {traveled:.2f} m", False)
+                    return
+        finally:
+            self.node.publish_stop()
+            self._motion_active = False
+
+        if self._motion_cancel:
+            await self._send_response(ws, "Bewegung abgebrochen", False)
+        else:
+            await self._send_response(
+                ws, f"Vorwaerts {distance_m} m abgeschlossen ({traveled:.2f} m)", True
+            )
+
+    async def _execute_turn(self, ws, angle_deg):
+        """Dreht um angle_deg Grad (positiv=links, negativ=rechts)."""
+        self._motion_active = True
+        self._motion_cancel = False
+        direction = "links" if angle_deg > 0 else "rechts"
+        await self._send_response(
+            ws, f"Drehe {abs(angle_deg)} Grad {direction}...", True, pending=True
+        )
+
+        odom = self.node.latest_odom
+        if odom is None:
+            self._motion_active = False
+            await self._send_response(ws, "Keine Odometrie verfuegbar", False)
+            return
+
+        start_yaw = quaternion_to_yaw(odom.pose.pose.orientation)
+        target_rad = math.radians(angle_deg)
+        omega = 0.3 if angle_deg > 0 else -0.3  # rad/s
+        timeout = abs(angle_deg) / 15.0 + 5.0  # mind. 15 deg/s
+        start_time = asyncio.get_event_loop().time()
+        accumulated = 0.0
+        prev_yaw = start_yaw
+
+        try:
+            while not self._motion_cancel:
+                self.node.publish_cmd_vel(0.0, omega)
+                await asyncio.sleep(0.05)  # 20 Hz
+
+                odom = self.node.latest_odom
+                if odom is None:
+                    continue
+                current_yaw = quaternion_to_yaw(odom.pose.pose.orientation)
+
+                # Winkel-Differenz mit Wrapping
+                diff = current_yaw - prev_yaw
+                if diff > math.pi:
+                    diff -= 2 * math.pi
+                elif diff < -math.pi:
+                    diff += 2 * math.pi
+                accumulated += diff
+                prev_yaw = current_yaw
+
+                if abs(accumulated) >= abs(target_rad):
+                    break
+                if (asyncio.get_event_loop().time() - start_time) > timeout:
+                    self.node.publish_stop()
+                    self._motion_active = False
+                    await self._send_response(
+                        ws, f"Timeout nach {math.degrees(accumulated):.1f} Grad", False
+                    )
+                    return
+        finally:
+            self.node.publish_stop()
+            self._motion_active = False
+
+        if self._motion_cancel:
+            await self._send_response(ws, "Drehung abgebrochen", False)
+        else:
+            await self._send_response(
+                ws,
+                f"Drehung {abs(angle_deg)} Grad {direction} abgeschlossen"
+                f" ({math.degrees(accumulated):.1f} Grad)",
+                True,
+            )
+
+    async def _execute_test(self, ws, test_key):
+        """Startet einen Test als Subprocess und sendet das Ergebnis."""
+        entry_point = AVAILABLE_TESTS[test_key]
+        await self._send_response(ws, f"Starte Test: {entry_point}...", True, pending=True)
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "ros2",
+                "run",
+                "my_bot",
+                entry_point,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            try:
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=300.0)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                await self._send_response(ws, f"Test {entry_point}: Timeout (300s)", False)
+                return
+
+            output = stdout.decode(errors="replace") if stdout else ""
+            # Letzte nicht-leere Zeilen fuer Ergebnis
+            lines = [l.strip() for l in output.splitlines() if l.strip()]
+            tail = "\n".join(lines[-5:]) if lines else "(keine Ausgabe)"
+
+            success = proc.returncode == 0
+            status = "PASS" if success else f"FAIL (rc={proc.returncode})"
+            await self._send_response(ws, f"Test {entry_point}: {status}\n{tail}", success)
+        except Exception as e:
+            await self._send_response(ws, f"Test {entry_point}: Fehler: {e}", False)
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""

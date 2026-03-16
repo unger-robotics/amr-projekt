@@ -101,7 +101,7 @@ interface TelemetryState {
   respeakerActive: boolean;
   audioVolume: number;
   // Command
-  commandHistory: { text: string; isCmd: boolean; success: boolean }[];
+  commandHistory: { text: string; isCmd: boolean; success: boolean; pending?: boolean }[];
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -114,7 +114,7 @@ interface TelemetryState {
   updateSensorStatus: (msg: SensorStatusMsg) => void;
   updateAudioStatus: (msg: AudioStatusMsg) => void;
   appendCommand: (text: string) => void;
-  appendCommandResponse: (text: string, success: boolean) => void;
+  appendCommandResponse: (text: string, success: boolean, pending?: boolean) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -265,9 +265,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   }),
 
   appendCommand: (text) => set((state) => ({
-    commandHistory: [...state.commandHistory.slice(-8), { text, isCmd: true, success: true }],
+    commandHistory: [...state.commandHistory.slice(-14), { text, isCmd: true, success: true }],
   })),
-  appendCommandResponse: (text, success) => set((state) => ({
-    commandHistory: [...state.commandHistory.slice(-8), { text, isCmd: false, success }],
+  appendCommandResponse: (text, success, pending) => set((state) => ({
+    commandHistory: [...state.commandHistory.slice(-14), { text, isCmd: false, success, pending }],
   })),
 }));

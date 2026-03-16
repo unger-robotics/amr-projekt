@@ -28,7 +28,7 @@ Docker (Python 3.10, ROS2 Humble):
       v  /vision/detections (ROS2 Topic)
       |
       v
-  gemini_semantic_node (Gemini Cloud API, gemini-3-flash-preview)
+  gemini_semantic_node (Gemini Cloud API, gemini-3.1-flash-lite-preview)
       |
       v  /vision/semantics (ROS2 Topic)
       |
@@ -104,7 +104,7 @@ Abhaengigkeiten im Docker-Image: `gTTS` (pip), `mpg123` (apt). Internetzugang er
 
 ## Gemini-Modell
 
-Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-3-flash-preview`. Das Modell kann per ROS2-Parameter geaendert werden:
+Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-3.1-flash-lite-preview`. Das Modell kann per ROS2-Parameter geaendert werden:
 
 ```bash
 ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash
