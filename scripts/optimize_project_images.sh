@@ -1,24 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# optimize_project_images.sh - Alle PNG-Dateien im Projekt optimieren
+# optimize_project_images.sh - PNG- und HEIC-Dateien im Zielordner optimieren
 # =============================================================================
-# Durchsucht alle Unterordner und optimiert PNG-Dateien verlustfrei
+# Durchsucht alle Unterordner. Skaliert PNG/HEIC verlustbehaftet auf Max-Breite.
+# Komprimiert PNGs zusätzlich verlustfrei. Keine JPG-Konvertierung.
 # Kompatibel mit macOS bash 3.2
-#
-# Verwendung:
-#   ./optimize_project_images.sh              # Trockenlauf (zeigt nur an)
-#   ./optimize_project_images.sh --run        # Wirklich ausführen
-#   ./optimize_project_images.sh --run --max-width 2400
-#
-# Autor: Jan Unger | Stand: 2025-12-27
 # =============================================================================
 
 set -e
 
 # Konfiguration
+TARGET_DIR="hardware/media"
 MAX_WIDTH=1920
 DRY_RUN=true
-BACKUP_DIR="originals_backup"
+BACKUP_DIR="${TARGET_DIR}/originals_backup"
 MIN_SIZE_KB=500  # Nur Dateien > 500 KB optimieren
 
 # Argumente
@@ -37,6 +32,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ ! -d "$TARGET_DIR" ]]; then
+    echo "Fehler: Zielordner '$TARGET_DIR' nicht gefunden."
+    exit 1
+fi
+
 # Helfer
 format_size() {
     local bytes=$(stat -f%z "$1" 2>/dev/null)
@@ -49,7 +49,7 @@ format_size() {
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║  Projekt-weite PNG-Optimierung                            ║"
+echo "║  Bild-Optimierung (PNG & HEIC) für $TARGET_DIR"
 echo "╠═══════════════════════════════════════════════════════════╣"
 echo "║  Max. Breite:  ${MAX_WIDTH}px                                     ║"
 echo "║  Min. Größe:   ${MIN_SIZE_KB} KB                                     ║"
@@ -66,24 +66,21 @@ if command -v oxipng &>/dev/null; then
     echo "✓ oxipng installiert"
 else
     echo "○ oxipng nicht installiert (nur Resize)"
-    echo "  Installieren: brew install oxipng"
 fi
 echo ""
 
-# Alle PNG-Dateien finden (ohne build/, out/, _site/, backup)
-echo "Suche PNG-Dateien..."
+echo "Suche PNG- und HEIC-Dateien in $TARGET_DIR..."
 echo ""
 
-# Temporäre Datei für die zu optimierenden Dateien
 tmp_file=$(mktemp)
 tmp_all=$(mktemp)
 
-# Alle PNG-Dateien sammeln
-find . -type f -iname "*.png" \
-    ! -path "./build/*" \
-    ! -path "./out/*" \
-    ! -path "./*/_site/*" \
-    ! -path "./$BACKUP_DIR/*" \
+# Alle PNG- und HEIC-Dateien im Zielordner sammeln
+find "$TARGET_DIR" -type f \( -iname "*.png" -o -iname "*.heic" \) \
+    ! -path "*/build/*" \
+    ! -path "*/out/*" \
+    ! -path "*/_site/*" \
+    ! -path "$BACKUP_DIR/*" \
     2>/dev/null | sort > "$tmp_all"
 
 printf "%-50s %10s %10s %s\n" "DATEI" "GRÖSSE" "BREITE" "AKTION"
@@ -95,20 +92,27 @@ while read -r file; do
     size_display=$(format_size "$file")
     width=$(sips -g pixelWidth "$file" 2>/dev/null | awk '/pixelWidth:/{print $2}')
 
+    ext="${file##*.}"
+    ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+
     # Entscheiden ob optimieren
     action="übersprungen"
     if [[ $size_kb -ge $MIN_SIZE_KB ]]; then
         if [[ $width -gt $MAX_WIDTH ]]; then
-            action="RESIZE ${width}→${MAX_WIDTH}"
+            if [[ "$ext_lower" == "png" ]]; then
+                action="RESIZE+OXIPNG"
+            else
+                action="RESIZE (HEIC)"
+            fi
             echo "$file" >> "$tmp_file"
-        else
+        elif [[ "$ext_lower" == "png" ]]; then
             action="OXIPNG"
             echo "$file" >> "$tmp_file"
         fi
     fi
 
     # Kürzen des Pfads für Anzeige
-    short_path="${file:2}"
+    short_path="${file#./}"
     if [[ ${#short_path} -gt 48 ]]; then
         short_path="...${short_path: -45}"
     fi
@@ -119,11 +123,9 @@ done < "$tmp_all"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Zählen
 total_files=$(wc -l < "$tmp_all" | tr -d ' ')
 optimize_files=$(wc -l < "$tmp_file" 2>/dev/null | tr -d ' ')
 
-# Gesamtgröße berechnen
 total_size=0
 while read -r file; do
     size=$(stat -f%z "$file" 2>/dev/null)
@@ -150,14 +152,17 @@ if $DRY_RUN; then
 fi
 
 # Ausführen
-echo "Erstelle Backup in $BACKUP_DIR/..."
+echo "Erstelle Backup in $BACKUP_DIR..."
 mkdir -p "$BACKUP_DIR"
 
 while read -r file; do
     filename=$(basename "$file")
     dirname=$(dirname "$file")
 
-    # Backup mit Pfad-Info
+    ext="${file##*.}"
+    ext_lower=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+
+    # Backup
     backup_name="${dirname//\//_}_${filename}"
     backup_name="${backup_name#._}"
     cp "$file" "$BACKUP_DIR/$backup_name"
@@ -168,14 +173,14 @@ while read -r file; do
     echo ""
     echo "📄 $file"
 
-    # Resize
+    # Resize (für PNG und HEIC)
     if [[ $width -gt $MAX_WIDTH ]]; then
         echo "   Resize: ${width}px → ${MAX_WIDTH}px"
         sips --resampleWidth $MAX_WIDTH "$file" &>/dev/null
     fi
 
-    # oxipng
-    if command -v oxipng &>/dev/null; then
+    # oxipng (ausschließlich für PNG)
+    if [[ "$ext_lower" == "png" ]] && command -v oxipng &>/dev/null; then
         echo "   oxipng: Kompression optimieren..."
         oxipng -o 4 --strip safe "$file" 2>/dev/null
     fi
@@ -187,7 +192,7 @@ done < "$tmp_file"
 
 rm -f "$tmp_file"
 
-# Nachher
+# Nachher berechnen
 total_after=0
 while read -r file; do
     [[ -f "$file" ]] && size=$(stat -f%z "$file" 2>/dev/null) && total_after=$((total_after + size))
@@ -206,7 +211,7 @@ echo "╠═══════════════════════�
 printf "║  Vorher:    %-10s                                  ║\n" "${total_size_mb} MB"
 printf "║  Nachher:   %-10s                                  ║\n" "${total_after_mb} MB"
 printf "║  Ersparnis: %-10s                                  ║\n" "${saved_mb} MB"
-echo "║  Backup:    $BACKUP_DIR/                              ║"
+echo "║  Backup:    $BACKUP_DIR/         ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
 echo "Wiederherstellen: cp $BACKUP_DIR/[datei] [ziel]"

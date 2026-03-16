@@ -4,11 +4,11 @@ set -euo pipefail
 # Batch-Konvertierung: *.MOV/*.mov -> *.mp4 (H.264 + AAC, kompatibel)
 # Usage:
 #   ./scripts/convert_mov_to_mp4.sh
-#   ./scripts/convert_mov_to_mp4.sh assets/video
-#   ./scripts/convert_mov_to_mp4.sh -f assets/video
+#   ./scripts/convert_mov_to_mp4.sh hardware/media
+#   ./scripts/convert_mov_to_mp4.sh -f hardware/media
 #
 # Optional:
-#   CRF=20 PRESET=slow ./scripts/convert_mov_to_mp4.sh assets/video
+#   CRF=20 PRESET=slow ./scripts/convert_mov_to_mp4.sh hardware/media
 
 FORCE=0
 if [[ "${1:-}" == "-f" || "${1:-}" == "--force" ]]; then
@@ -16,7 +16,8 @@ if [[ "${1:-}" == "-f" || "${1:-}" == "--force" ]]; then
   shift
 fi
 
-INPUT_DIR="${1:-assets/video}"
+# Standardpfad auf hardware/media aktualisiert
+INPUT_DIR="${1:-hardware/media}"
 CRF="${CRF:-20}"          # 18..23: kleiner = bessere Qualität
 PRESET="${PRESET:-slow}"  # ultrafast..veryslow
 
@@ -37,7 +38,7 @@ while IFS= read -r -d '' in; do
 
   if [[ -f "$out" && "$FORCE" -eq 0 ]]; then
     echo "SKIP: $out existiert"
-    ((skipped++))
+    skipped=$((skipped + 1))
     continue
   fi
 
@@ -61,7 +62,7 @@ while IFS= read -r -d '' in; do
     audio_opts=(-an)
   fi
 
-  ffmpeg -hide_banner -loglevel error -stats \
+  ffmpeg -nostdin -hide_banner -loglevel error -stats \
     -i "$in" \
     -map 0:v:0 "${audio_map[@]}" \
     -c:v libx264 -pix_fmt yuv420p -preset "$PRESET" -crf "$CRF" \
@@ -72,7 +73,7 @@ while IFS= read -r -d '' in; do
     "$tmp"
 
   mv -f "$tmp" "$out"
-  ((converted++))
+  converted=$((converted + 1))
 done < <(find "$INPUT_DIR" -type f -iname '*.mov' -print0)
 
 echo "Fertig: ${converted} konvertiert, ${skipped} übersprungen."
