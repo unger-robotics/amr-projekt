@@ -165,16 +165,16 @@ rcl_node_t node;
 
 /**
  * SOC-Schaetzung per linearer Interpolation zwischen Cutoff- und Ladeschlussspannung.
- * @param voltage Packspannung [V] (3S, 7.95..12.60 V)
+ * @param voltage Packspannung [V] (3S, 7.5..12.60 V)
  * @return State of Charge [0.0..1.0]
  */
 static float estimateSOC(float voltage) {
     if (voltage >= amr::battery::pack_charge_max_v)
         return 1.0f;
-    if (voltage <= amr::battery::pack_cutoff_v)
+    if (voltage <= amr::battery::threshold_bms_disconnect_v)
         return 0.0f;
-    return (voltage - amr::battery::pack_cutoff_v) /
-           (amr::battery::pack_charge_max_v - amr::battery::pack_cutoff_v);
+    return (voltage - amr::battery::threshold_bms_disconnect_v) /
+           (amr::battery::pack_charge_max_v - amr::battery::threshold_bms_disconnect_v);
 }
 
 // --- Subscriber-Callbacks (Deferred-Pattern: RAM-only, kein I2C) ---

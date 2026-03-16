@@ -193,7 +193,7 @@ def collect_project_info() -> dict[str, Any]:
                 "addr_pca9685": r"addr_pca9685\s*=\s*(0x[0-9a-fA-F]+)",
                 "addr_mpu6050": r"addr_mpu6050\s*=\s*(0x[0-9a-fA-F]+)",
                 "threshold_motor_shutdown_v": r"threshold_motor_shutdown_v\s*=\s*([\d.]+)f?",
-                "pack_cutoff_v": r"pack_cutoff_v\s*=\s*([\d.]+)f?",
+                "threshold_bms_disconnect_v": r"threshold_bms_disconnect_v\s*=\s*([\d.]+)f?",
             }
             for key, pattern in patterns.items():
                 m = re.search(pattern, content)

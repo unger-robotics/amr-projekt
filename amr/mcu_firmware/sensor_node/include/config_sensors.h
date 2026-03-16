@@ -78,12 +78,14 @@ inline constexpr uint16_t calibration_samples = 500;
 
 namespace amr::battery {
 
-inline constexpr float threshold_motor_shutdown_v = 9.5f;
+inline constexpr float threshold_warning_v = 10.0f;        // Stufe 1: Soft-Warnung
+inline constexpr float threshold_motor_shutdown_v = 9.5f;  // Stufe 2: Motoren aus
+inline constexpr float threshold_system_shutdown_v = 9.0f; // Stufe 3: System-Shutdown
+inline constexpr float threshold_bms_disconnect_v = 7.5f;  // Stufe 4: BMS trennt Last
 inline constexpr float threshold_hysteresis_v = 0.3f;
 inline constexpr float pack_charge_max_v = 12.60f;
-inline constexpr float pack_cutoff_v = 7.95f;
 inline constexpr float capacity_design_ah = 3.35f;
-inline constexpr float fuse_rating_a = 10.0f;            // KFZ-Flachsicherung 10 A
+inline constexpr float fuse_rating_a = 10.0f; // KFZ-Flachsicherung 10 A
 
 } // namespace amr::battery
 
@@ -94,7 +96,7 @@ inline constexpr float fuse_rating_a = 10.0f;            // KFZ-Flachsicherung 1
 namespace amr::ina260 {
 
 inline constexpr uint16_t config_register = 0x6527;
-inline constexpr uint16_t alert_voltage_limit = 7600;
+inline constexpr uint16_t alert_voltage_limit = 8000;
 inline constexpr float current_lsb_ma = 1.25f;
 inline constexpr float voltage_lsb_mv = 1.25f;
 inline constexpr float power_lsb_mw = 10.0f;
@@ -227,20 +229,28 @@ static_assert(amr::imu::complementary_alpha > 0.0f && amr::imu::complementary_al
 static_assert(amr::imu::calibration_samples > 0, "Kalibrierproben > 0");
 
 // --- Batterie ---
-static_assert(amr::battery::pack_cutoff_v < amr::battery::pack_charge_max_v,
-              "Cutoff < Charge-Max");
-static_assert(amr::battery::threshold_motor_shutdown_v > amr::battery::pack_cutoff_v,
-              "Motor-Shutdown > Cutoff");
+static_assert(amr::battery::pack_charge_max_v > amr::battery::threshold_warning_v,
+              "Charge-Max > Warning");
+static_assert(amr::battery::threshold_warning_v > amr::battery::threshold_motor_shutdown_v,
+              "Warning > Motor-Shutdown");
+static_assert(amr::battery::threshold_motor_shutdown_v > amr::battery::threshold_system_shutdown_v,
+              "Motor-Shutdown > System-Shutdown");
+static_assert(amr::battery::threshold_system_shutdown_v > amr::battery::threshold_bms_disconnect_v,
+              "System-Shutdown > BMS-Disconnect");
+static_assert(amr::battery::threshold_hysteresis_v > 0.0f, "Hysterese muss positiv sein");
 static_assert(amr::battery::fuse_rating_a > 0.0f, "Sicherungsbewertung muss positiv sein");
 
 // --- Servo ---
 static_assert(amr::servo::ticks_min < amr::servo::ticks_max, "Servo Ticks: Min < Max");
 static_assert(amr::servo::angle_min_deg < amr::servo::angle_max_deg, "Servo: 0 < 180 deg");
 static_assert(amr::servo::pan_limit_min_deg >= amr::servo::angle_min_deg, "Pan-Min im PWM-Bereich");
-static_assert(amr::servo::pan_limit_max_deg + amr::servo::pan_offset_deg <= amr::servo::angle_max_deg,
+static_assert(amr::servo::pan_limit_max_deg + amr::servo::pan_offset_deg <=
+                  amr::servo::angle_max_deg,
               "Pan-Max + Offset im PWM-Bereich");
-static_assert(amr::servo::tilt_limit_min_deg >= amr::servo::angle_min_deg, "Tilt-Min im PWM-Bereich");
-static_assert(amr::servo::tilt_limit_max_deg + amr::servo::tilt_offset_deg <= amr::servo::angle_max_deg,
+static_assert(amr::servo::tilt_limit_min_deg >= amr::servo::angle_min_deg,
+              "Tilt-Min im PWM-Bereich");
+static_assert(amr::servo::tilt_limit_max_deg + amr::servo::tilt_offset_deg <=
+                  amr::servo::angle_max_deg,
               "Tilt-Max + Offset im PWM-Bereich");
 
 // --- CAN-Bus ---

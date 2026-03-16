@@ -239,7 +239,7 @@ class CanBridgeNode(Node):
     def _estimate_soc(voltage: float) -> float:
         """SOC-Schaetzung (linear, identisch zu Firmware)."""
         pack_charge_max = 12.60
-        pack_cutoff = 7.95
+        pack_cutoff = 7.5
         if voltage >= pack_charge_max:
             return 1.0
         if voltage <= pack_cutoff:
