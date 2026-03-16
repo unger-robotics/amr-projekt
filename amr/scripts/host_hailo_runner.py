@@ -19,6 +19,7 @@ Verwendung:
 
 import argparse
 import json
+import os
 import socket
 import sys
 import time
@@ -198,7 +199,9 @@ INPUT_WIDTH = 640
 INPUT_HEIGHT = 640
 UDP_HOST = "127.0.0.1"
 UDP_PORT = 5005
-MJPEG_URL = "http://127.0.0.1:8082/stream"
+# MJPEG-Quelle: HTTPS (mkcert TLS) mit deaktivierter Zertifikatsverifikation (localhost)
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "tls_verify;0")
+MJPEG_URL = "https://127.0.0.1:8082/stream"
 
 
 def preprocess(frame: np.ndarray) -> np.ndarray:
@@ -333,7 +336,7 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
     retry_delay = 2.0
     cap = None
     for attempt in range(1, MAX_STARTUP_RETRIES + 1):
-        cap = cv2.VideoCapture(MJPEG_URL)
+        cap = cv2.VideoCapture(MJPEG_URL, cv2.CAP_FFMPEG)
         if cap.isOpened():
             print(f"[HAILO] MJPEG-Stream verbunden (Versuch {attempt})")
             break
@@ -367,7 +370,7 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
                 # Reconnect bei Stream-Abbruch
                 cap.release()
                 time.sleep(1.0)
-                cap = cv2.VideoCapture(MJPEG_URL)
+                cap = cv2.VideoCapture(MJPEG_URL, cv2.CAP_FFMPEG)
                 continue
 
             # Kamera ist 180° gedreht montiert — Bild vor Inference drehen

@@ -20,9 +20,10 @@ interface DashboardProps {
   sendHardwareCmd: (motorLimit: number, servoSpeed: number, ledPwm: number) => void;
   sendNavGoal: (x: number, y: number, yaw: number) => void;
   sendNavCancel: () => void;
+  sendVisionControl: (enabled: boolean) => void;
 }
 
-export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel }: DashboardProps) {
+export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendVisionControl }: DashboardProps) {
   const [statusVisible, setStatusVisible] = useState(false);
 
   const navStatus = useTelemetryStore((s) => s.navStatus);
@@ -50,7 +51,7 @@ export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwa
 
       {/* Kamera (Zeile 1-3, Spalte 2) */}
       <div className="min-h-[200px] lg:min-h-0 lg:col-start-2 lg:row-start-1 lg:row-end-4 overflow-hidden">
-        <CameraView />
+        <CameraView sendVisionControl={sendVisionControl} />
       </div>
 
       {/* SLAM-Karte (Zeile 1-3, Spalte 3) */}

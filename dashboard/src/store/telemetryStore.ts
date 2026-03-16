@@ -48,6 +48,7 @@ interface TelemetryState {
   robotMapY: number;
   robotMapYaw: number;
   // Vision
+  visionEnabled: boolean;
   visionDetections: Detection[];
   inferenceMs: number;
   detectionHz: number;
@@ -106,6 +107,7 @@ interface TelemetryState {
   updateMap: (msg: MapMsg) => void;
   updateVisionDetections: (msg: VisionDetectionsMsg) => void;
   updateVisionSemantics: (msg: VisionSemanticsMsg) => void;
+  setVisionEnabled: (enabled: boolean) => void;
   updateNavStatus: (msg: NavStatusMsg) => void;
   updateSensorStatus: (msg: SensorStatusMsg) => void;
   updateAudioStatus: (msg: AudioStatusMsg) => void;
@@ -125,7 +127,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   hostIp: '',
   mapPngB64: null, mapWidth: 0, mapHeight: 0, mapResolution: 0.05,
   mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
-  visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
+  visionEnabled: false, visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
   semanticAnalysis: '', semanticModel: '', lastSemanticsTs: 0,
   batteryVoltage: 0, batteryCurrent: 0, batteryPower: 0, batteryPercentage: 0, batteryRuntimeMin: -1,
   cpuLoad5m: 0, cpuLoad15m: 0, cpuFreqMhz: [], cpuPerCorePct: [], uptimeS: 0,
@@ -228,6 +230,11 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     semanticAnalysis: msg.analysis,
     semanticModel: msg.model,
     lastSemanticsTs: msg.ts,
+  }),
+
+  setVisionEnabled: (enabled) => set({
+    visionEnabled: enabled,
+    ...(enabled ? {} : { visionDetections: [], inferenceMs: 0, semanticAnalysis: '' }),
   }),
 
   updateNavStatus: (msg) => set({

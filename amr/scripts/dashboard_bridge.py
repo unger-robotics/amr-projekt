@@ -226,6 +226,12 @@ class WebSocketServer:
         """Verbindungs-Handler fuer neue WebSocket-Clients."""
         self.clients.add(ws)
         self.node.get_logger().info(f"WebSocket-Client verbunden ({len(self.clients)} aktiv)")
+        # Aktuellen Vision-Status an neuen Client senden
+        try:
+            status = json.dumps({"op": "vision_status", "enabled": self.node.vision_enabled})
+            await ws.send(status)
+        except Exception:
+            pass
         try:
             async for raw in ws:
                 try:
@@ -279,6 +285,19 @@ class WebSocketServer:
         elif op == "audio_volume":
             vol = max(0, min(100, int(msg.get("volume_percent", 80))))
             self.node.publish_audio_volume(vol)
+        elif op == "vision_control":
+            self.node.vision_enabled = bool(msg.get("enabled", False))
+            self.node.get_logger().info(
+                f"Vision {'aktiviert' if self.node.vision_enabled else 'deaktiviert'}"
+            )
+            # ROS2-Topic fuer TTS und andere Nodes
+            enable_msg = Bool()
+            enable_msg.data = self.node.vision_enabled
+            self.node.pub_vision_enable.publish(enable_msg)
+            # WebSocket-Status an alle Clients
+            status = json.dumps({"op": "vision_status", "enabled": self.node.vision_enabled})
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""
@@ -358,21 +377,23 @@ class WebSocketServer:
             await asyncio.sleep(interval)
 
     async def _detections_loop(self):
-        """Sendet Vision-Detektionen mit 5 Hz."""
+        """Sendet Vision-Detektionen mit 5 Hz (nur wenn vision_enabled)."""
         interval = 1.0 / DETECTION_BROADCAST_HZ
         while True:
-            data = self.node.build_detections_msg()
-            if data is not None:
-                await self.broadcast(json.dumps(data))
+            if self.node.vision_enabled:
+                data = self.node.build_detections_msg()
+                if data is not None:
+                    await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
 
     async def _semantics_loop(self):
-        """Sendet semantische Analyse mit 0.5 Hz."""
+        """Sendet semantische Analyse mit 0.5 Hz (nur wenn vision_enabled)."""
         interval = 1.0 / SEMANTICS_BROADCAST_HZ
         while True:
-            data = self.node.build_semantics_msg()
-            if data is not None:
-                await self.broadcast(json.dumps(data))
+            if self.node.vision_enabled:
+                data = self.node.build_semantics_msg()
+                if data is not None:
+                    await self.broadcast(json.dumps(data))
             await asyncio.sleep(interval)
 
     async def _nav_status_loop(self):
@@ -526,7 +547,9 @@ class DashboardBridge(Node):
         self.pub_hardware_cmd = self.create_publisher(Point, "/hardware_cmd", 10)
         self.pub_audio_play = self.create_publisher(String, "/audio/play", 10)
         self.pub_audio_volume = self.create_publisher(Int32, "/audio/volume", 10)
+        self.pub_vision_enable = self.create_publisher(Bool, "/vision/enable", 10)
         self.audio_volume_pct = 80  # Default-Lautstaerke
+        self.vision_enabled = False  # Vision-Broadcast Default: aus
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)

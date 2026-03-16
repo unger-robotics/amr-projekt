@@ -37,12 +37,17 @@ function DetectionBox({ det, fitW, fitH }: { det: Detection; fitW: number; fitH:
   );
 }
 
-export function CameraView() {
+interface CameraViewProps {
+  sendVisionControl: (enabled: boolean) => void;
+}
+
+export function CameraView({ sendVisionControl }: CameraViewProps) {
   const [error, setError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const fit = useImageFit(containerRef, imgRef);
 
+  const visionEnabled = useTelemetryStore((s) => s.visionEnabled);
   const visionDetections = useTelemetryStore((s) => s.visionDetections);
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const semanticAnalysis = useTelemetryStore((s) => s.semanticAnalysis);
@@ -88,8 +93,8 @@ export function CameraView() {
         />
       )}
 
-      {/* BBox Overlay — positioniert auf der tatsaechlichen Bildflaeche */}
-      {!error && fit.width > 0 && visionDetections.length > 0 && (
+      {/* BBox Overlay — nur wenn Vision aktiviert */}
+      {visionEnabled && !error && fit.width > 0 && visionDetections.length > 0 && (
         <div
           className="absolute pointer-events-none"
           style={{
@@ -105,15 +110,15 @@ export function CameraView() {
         </div>
       )}
 
-      {/* Inference HUD Label */}
-      {inferenceMs > 0 && (
+      {/* Inference HUD Label — nur wenn Vision aktiviert */}
+      {visionEnabled && inferenceMs > 0 && (
         <div className="absolute top-2 right-7 text-[10px] font-mono uppercase tracking-widest pointer-events-none text-orange-400/70">
           HAILO {inferenceMs.toFixed(0)} MS
         </div>
       )}
 
-      {/* Gemini Semantic Streifen */}
-      {semanticAnalysis && (
+      {/* Gemini Semantic Streifen — nur wenn Vision aktiviert */}
+      {visionEnabled && semanticAnalysis && (
         <div className="absolute bottom-0 left-0 right-0 bg-hud-bg/70 backdrop-blur-sm px-2 py-1 pointer-events-none">
           <p className="text-[10px] font-mono text-hud-cyan/80 line-clamp-2 leading-tight">
             {semanticAnalysis}
@@ -140,6 +145,18 @@ export function CameraView() {
       <div className="absolute top-2 left-7 text-hud-cyan/60 text-[10px] uppercase tracking-widest pointer-events-none">
         CAM IMX296
       </div>
+
+      {/* AI Vision Toggle */}
+      <button
+        onClick={() => sendVisionControl(!visionEnabled)}
+        className={`absolute top-2 left-[6.5rem] text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 border transition-colors z-10
+          ${visionEnabled
+            ? 'text-orange-400 border-orange-400/50 bg-orange-400/10'
+            : 'text-hud-text-dim border-hud-border bg-hud-bg/50 hover:text-hud-text'
+          }`}
+      >
+        AI {visionEnabled ? 'ON' : 'OFF'}
+      </button>
     </div>
   );
 }

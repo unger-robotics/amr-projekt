@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg, VisionControlMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
@@ -125,5 +125,10 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send(msg);
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume };
+  const sendVisionControl = useCallback((enabled: boolean) => {
+    const msg: VisionControlMsg = { op: 'vision_control', enabled };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl };
 }

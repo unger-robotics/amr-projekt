@@ -24,7 +24,7 @@ import time
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 
 try:
     from gtts import gTTS
@@ -57,17 +57,23 @@ class TtsSpeakNode(Node):
 
         self._speaking = False
         self._last_speak_time = 0.0
+        self._vision_enabled = False
 
         self.create_subscription(String, "/vision/semantics", self._semantics_cb, 10)
+        self.create_subscription(Bool, "/vision/enable", self._vision_enable_cb, 10)
 
         self.get_logger().info(
             f"TTS-Speak-Node gestartet (Sprache: {TTS_LANG}, "
             f"Mindestintervall: {MIN_SPEAK_INTERVAL_S}s)"
         )
 
+    def _vision_enable_cb(self, msg):
+        """Callback fuer /vision/enable — aktiviert/deaktiviert TTS."""
+        self._vision_enabled = msg.data
+
     def _semantics_cb(self, msg):
         """Callback fuer /vision/semantics — spricht die Gemini-Analyse."""
-        if self._speaking:
+        if not self._vision_enabled or self._speaking:
             return
 
         now = time.monotonic()

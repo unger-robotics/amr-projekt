@@ -14,6 +14,7 @@ function App() {
   const updateMap = useTelemetryStore((s) => s.updateMap);
   const updateVisionDetections = useTelemetryStore((s) => s.updateVisionDetections);
   const updateVisionSemantics = useTelemetryStore((s) => s.updateVisionSemantics);
+  const setVisionEnabled = useTelemetryStore((s) => s.setVisionEnabled);
   const updateNavStatus = useTelemetryStore((s) => s.updateNavStatus);
   const updateSensorStatus = useTelemetryStore((s) => s.updateSensorStatus);
   const updateAudioStatus = useTelemetryStore((s) => s.updateAudioStatus);
@@ -26,14 +27,15 @@ function App() {
       else if (msg.op === 'map') updateMap(msg);
       else if (msg.op === 'vision_detections') updateVisionDetections(msg);
       else if (msg.op === 'vision_semantics') updateVisionSemantics(msg);
+      else if (msg.op === 'vision_status') setVisionEnabled(msg.enabled);
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, updateNavStatus, updateSensorStatus, updateAudioStatus],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus],
   );
 
-  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl } = useWebSocket(onMessage);
 
   return (
     <div className="h-dvh bg-hud-bg text-hud-text flex flex-col overflow-hidden">
@@ -70,6 +72,7 @@ function App() {
           sendHardwareCmd={sendHardwareCmd}
           sendNavGoal={sendNavGoal}
           sendNavCancel={sendNavCancel}
+          sendVisionControl={sendVisionControl}
         />
       ) : (
         <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
