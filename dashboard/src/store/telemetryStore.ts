@@ -100,6 +100,8 @@ interface TelemetryState {
   audioNodeActive: boolean;
   respeakerActive: boolean;
   audioVolume: number;
+  // Command
+  commandHistory: { text: string; isCmd: boolean; success: boolean }[];
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -111,6 +113,8 @@ interface TelemetryState {
   updateNavStatus: (msg: NavStatusMsg) => void;
   updateSensorStatus: (msg: SensorStatusMsg) => void;
   updateAudioStatus: (msg: AudioStatusMsg) => void;
+  appendCommand: (text: string) => void;
+  appendCommandResponse: (text: string, success: boolean) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -138,7 +142,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
-  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
+  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80, commandHistory: [],
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -259,4 +263,11 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     isVoiceActive: msg.is_voice,
     audioVolume: msg.volume_percent ?? 80,
   }),
+
+  appendCommand: (text) => set((state) => ({
+    commandHistory: [...state.commandHistory.slice(-8), { text, isCmd: true, success: true }],
+  })),
+  appendCommandResponse: (text, success) => set((state) => ({
+    commandHistory: [...state.commandHistory.slice(-8), { text, isCmd: false, success }],
+  })),
 }));

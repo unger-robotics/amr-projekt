@@ -18,6 +18,7 @@ Verwendung:
 """
 
 import base64
+import contextlib
 import glob as globmod
 import json
 import math
@@ -298,6 +299,48 @@ class WebSocketServer:
             status = json.dumps({"op": "vision_status", "enabled": self.node.vision_enabled})
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
+        elif op == "command":
+            text = str(msg.get("text", "")).strip()
+            resp = self._handle_command(text)
+            with contextlib.suppress(Exception):
+                asyncio.get_event_loop().create_task(ws.send(json.dumps(resp)))
+
+    def _handle_command(self, text):
+        """Parst Freitext-Kommandos und fuehrt sie aus."""
+        parts = text.split()
+        if not parts:
+            return {"op": "command_response", "text": "Leeres Kommando", "success": False}
+        cmd = parts[0].lower()
+        try:
+            if cmd == "nav" and len(parts) >= 3:
+                x = float(parts[1])
+                y = float(parts[2])
+                yaw = float(parts[3]) if len(parts) >= 4 else 0.0
+                self.node.send_nav_goal(x, y, yaw)
+                return {
+                    "op": "command_response",
+                    "text": f"Nav-Ziel: x={x}, y={y}, yaw={yaw}",
+                    "success": True,
+                }
+            elif cmd == "stop":
+                self.node.publish_stop()
+                self.node.cancel_nav_goal()
+                return {
+                    "op": "command_response",
+                    "text": "Stopp + Nav abgebrochen",
+                    "success": True,
+                }
+            elif cmd == "cancel":
+                self.node.cancel_nav_goal()
+                return {"op": "command_response", "text": "Navigation abgebrochen", "success": True}
+            else:
+                return {
+                    "op": "command_response",
+                    "text": f"Unbekannt: {text}. Verfuegbar: nav X Y [YAW], stop, cancel",
+                    "success": False,
+                }
+        except (ValueError, IndexError) as e:
+            return {"op": "command_response", "text": f"Fehler: {e}", "success": False}
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""

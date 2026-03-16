@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useJoystick } from '../hooks/useJoystick';
 import { useTelemetryStore } from '../store/telemetryStore';
 import type { ClientMessage } from '../types/ros';
@@ -6,11 +6,11 @@ import { StatusPanel } from './StatusPanel';
 import { CameraView } from './CameraView';
 import { LidarView } from './LidarView';
 import { Joystick } from './Joystick';
-import { EmergencyStop } from './EmergencyStop';
 import { SystemMetrics } from './SystemMetrics';
 import { MapView } from './MapView';
 import ServoControl from './ServoControl';
 import HardwareControl from './HardwareControl';
+import CommandInput from './CommandInput';
 
 interface DashboardProps {
   connected: boolean;
@@ -33,20 +33,13 @@ export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwa
 
   const { onJoystickMove, onJoystickEnd } = useJoystick(send);
 
-  const handleEmergencyStop = useCallback(() => {
-    for (let i = 0; i < 5; i++) {
-      send({ op: 'cmd_vel', linear_x: 0, angular_z: 0 });
-    }
-    onJoystickEnd();
-  }, [send, onJoystickEnd]);
-
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[320px_1fr_1fr_1fr] lg:grid-rows-[repeat(6,minmax(0,1fr))]">
       {/* Sidebar: alle 6 Zeilen, scrollbar */}
       <aside className="hidden lg:flex lg:flex-col lg:col-start-1 lg:row-start-1 lg:row-end-7 border-r border-hud-border overflow-y-auto">
         <StatusPanel connected={connected} latencyMs={latencyMs} />
         <SystemMetrics />
-        <HardwareControl sendHardwareCmd={sendHardwareCmd} />
+        <CommandInput send={send} />
       </aside>
 
       {/* Kamera (Zeile 1-3, Spalte 2) */}
@@ -101,14 +94,10 @@ export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwa
         />
       </div>
 
-      {/* ServoControl — unter SLAM (Zeile 4-6, Spalte 3) */}
-      <div className="shrink-0 lg:shrink lg:col-start-3 lg:row-start-4 lg:row-end-7 flex flex-col justify-center border-t border-hud-border lg:border-t-0">
+      {/* ServoControl + HardwareControl — unter SLAM (Zeile 4-6, Spalte 3-4) */}
+      <div className="shrink-0 lg:shrink lg:col-start-3 lg:col-end-5 lg:row-start-4 lg:row-end-7 flex flex-col justify-center gap-2 border-t border-hud-border lg:border-t-0 overflow-y-auto">
         <ServoControl sendServoCmd={sendServoCmd} />
-      </div>
-
-      {/* EmergencyStop — unter LiDAR (Zeile 4-6, Spalte 4) */}
-      <div className="shrink-0 lg:shrink lg:col-start-4 lg:row-start-4 lg:row-end-7 flex items-center justify-center p-4 border-t border-hud-border lg:border-t-0">
-        <EmergencyStop onStop={handleEmergencyStop} />
+        <HardwareControl sendHardwareCmd={sendHardwareCmd} />
       </div>
 
       {/* Mobile status toggle button */}

@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { useTelemetryStore } from '../store/telemetryStore';
 
 const specs = [
   { label: 'Gewicht', value: '2,04 kg' },
@@ -10,11 +11,21 @@ const specs = [
 ];
 
 export default function RobotInfoPanel() {
+  const hostIp = useTelemetryStore((s) => s.hostIp);
+
   return (
     <div className="bg-hud-panel border border-hud-border p-4">
       <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-3">
         Roboter-Daten
       </h2>
+
+      {/* Netzwerk */}
+      {hostIp && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-3 pb-3 border-b border-hud-border">
+          <span className="text-hud-text-dim">Pi5 IP</span>
+          <span className="text-hud-text font-mono">{hostIp}</span>
+        </div>
+      )}
 
       {/* Side-view SVG: hinten (links) → vorne (rechts) */}
       {/* HA+LiDAR → Koerper → Stuetzrad → US+IR → Kamera */}

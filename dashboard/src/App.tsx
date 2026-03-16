@@ -3,6 +3,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useTelemetryStore } from './store/telemetryStore';
 import { Dashboard } from './components/Dashboard';
 import DetailPage from './components/DetailPage';
+import { EmergencyStop } from './components/EmergencyStop';
 import type { ServerMessage } from './types/ros';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
   const updateNavStatus = useTelemetryStore((s) => s.updateNavStatus);
   const updateSensorStatus = useTelemetryStore((s) => s.updateSensorStatus);
   const updateAudioStatus = useTelemetryStore((s) => s.updateAudioStatus);
+  const appendCommandResponse = useTelemetryStore((s) => s.appendCommandResponse);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
@@ -31,11 +33,18 @@ function App() {
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
+      else if (msg.op === 'command_response') appendCommandResponse(msg.text, msg.success);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, appendCommandResponse],
   );
 
   const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl } = useWebSocket(onMessage);
+
+  const handleEmergencyStop = useCallback(() => {
+    for (let i = 0; i < 5; i++) {
+      send({ op: 'cmd_vel', linear_x: 0, angular_z: 0 });
+    }
+  }, [send]);
 
   return (
     <div className="h-dvh bg-hud-bg text-hud-text flex flex-col overflow-hidden">
@@ -55,10 +64,11 @@ function App() {
         >
           Details
         </button>
-        {/* Connection indicator on the right */}
-        <div className="ml-auto px-3 flex items-center gap-2">
+        {/* Connection indicator + Emergency Stop on the right */}
+        <div className="ml-auto px-3 flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-hud-green' : 'bg-hud-red'}`} />
           <span className="text-[10px] text-hud-text-dim">{connected ? 'Verbunden' : 'Getrennt'}</span>
+          <EmergencyStop onStop={handleEmergencyStop} inline />
         </div>
       </div>
 

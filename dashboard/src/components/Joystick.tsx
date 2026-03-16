@@ -32,7 +32,7 @@ export function Joystick({ onMove, onEnd, disabled, compact }: JoystickProps) {
       mode: 'static',
       position: { bottom: '50%', left: '50%' },
       color: '#00e5ff',
-      size: compact ? 100 : JOYSTICK_SIZE,
+      size: compact ? 140 : JOYSTICK_SIZE,
     });
     managerRef.current = manager;
 
@@ -59,7 +59,7 @@ export function Joystick({ onMove, onEnd, disabled, compact }: JoystickProps) {
     };
   }, [disabled, compact]);
 
-  const sizeClass = compact ? 'w-[120px] h-[120px]' : 'w-[180px] h-[180px]';
+  const sizeClass = compact ? 'w-[170px] h-[170px]' : 'w-[180px] h-[180px]';
 
   return (
     <div className="flex items-center justify-center h-full w-full">

@@ -63,21 +63,6 @@ function BatteryBar({ label, value, min, max, unit, voltage }: {
   );
 }
 
-function DeviceIndicator({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span
-        className={`inline-block w-2 h-2 ${
-          active
-            ? 'bg-hud-green shadow-[0_0_6px_rgba(0,230,118,0.6)]'
-            : 'bg-hud-red shadow-[0_0_6px_rgba(255,23,68,0.6)]'
-        }`}
-      />
-      <span className="text-hud-text-dim uppercase tracking-wider">{label}</span>
-    </div>
-  );
-}
-
 function formatUptime(seconds: number): string {
   if (seconds <= 0) return '--';
   const d = Math.floor(seconds / 86400);
@@ -94,19 +79,11 @@ export function SystemMetrics() {
   const ramUsedMb = useTelemetryStore((s) => s.ramUsedMb);
   const ramTotalMb = useTelemetryStore((s) => s.ramTotalMb);
   const diskUsagePct = useTelemetryStore((s) => s.diskUsagePct);
-  const esp32Active = useTelemetryStore((s) => s.esp32Active);
-  const lidarActive = useTelemetryStore((s) => s.lidarActive);
-  const cameraActive = useTelemetryStore((s) => s.cameraActive);
-  const hailoDetected = useTelemetryStore((s) => s.hailoDetected);
-  const ina260Active = useTelemetryStore((s) => s.ina260Active);
-  const hostIp = useTelemetryStore((s) => s.hostIp);
   const cpuLoad5m = useTelemetryStore((s) => s.cpuLoad5m);
   const cpuLoad15m = useTelemetryStore((s) => s.cpuLoad15m);
   const cpuFreqMhz = useTelemetryStore((s) => s.cpuFreqMhz);
   const cpuPerCorePct = useTelemetryStore((s) => s.cpuPerCorePct);
   const uptimeS = useTelemetryStore((s) => s.uptimeS);
-  const processesRunning = useTelemetryStore((s) => s.processesRunning);
-  const processesTotal = useTelemetryStore((s) => s.processesTotal);
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const detectionHz = useTelemetryStore((s) => s.detectionHz);
   const visionDetections = useTelemetryStore((s) => s.visionDetections);
@@ -119,19 +96,6 @@ export function SystemMetrics() {
 
   return (
     <div className="bg-hud-panel text-hud-text p-4 flex flex-col gap-4 border-t border-hud-border">
-      {/* Netzwerk */}
-      {hostIp && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
-            Netzwerk
-          </h2>
-          <div className="flex justify-between text-xs">
-            <span className="text-hud-text-dim uppercase tracking-wider">Pi5 IP</span>
-            <span className="text-hud-cyan font-medium font-mono">{hostIp}</span>
-          </div>
-        </section>
-      )}
-
       {/* Batterie */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
@@ -209,13 +173,6 @@ export function SystemMetrics() {
             <span className="text-hud-text-dim uppercase tracking-wider">Uptime</span>
             <span className="text-hud-cyan font-mono">{formatUptime(uptimeS)}</span>
           </div>
-          {/* Prozesse */}
-          {processesTotal > 0 && (
-            <div className="flex justify-between text-xs">
-              <span className="text-hud-text-dim uppercase tracking-wider">Prozesse</span>
-              <span className="text-hud-cyan font-mono">{processesRunning} / {processesTotal}</span>
-            </div>
-          )}
         </div>
       </section>
 
@@ -242,19 +199,6 @@ export function SystemMetrics() {
         </section>
       )}
 
-      {/* Geraete */}
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
-          Geraete
-        </h2>
-        <div className="flex flex-col gap-1.5">
-          <DeviceIndicator label="ESP32-S3" active={esp32Active} />
-          <DeviceIndicator label="RPLidar A1" active={lidarActive} />
-          <DeviceIndicator label="IMX296 Cam" active={cameraActive} />
-          <DeviceIndicator label="Hailo-8" active={hailoDetected} />
-          <DeviceIndicator label="INA260" active={ina260Active} />
-        </div>
-      </section>
     </div>
   );
 }

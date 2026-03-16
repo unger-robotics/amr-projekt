@@ -196,6 +196,19 @@ export interface AudioVolumeMsg {
   volume_percent: number;
 }
 
+/** Freitext-Kommando ans Backend */
+export interface CommandMsg {
+  op: 'command';
+  text: string;
+}
+
+/** Kommando-Antwort vom Backend */
+export interface CommandResponseMsg {
+  op: 'command_response';
+  text: string;
+  success: boolean;
+}
+
 /** Vision-Steuerung ans Backend (ein/aus) */
 export interface VisionControlMsg {
   op: 'vision_control';
@@ -208,5 +221,5 @@ export interface VisionStatusMsg {
   enabled: boolean;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg;
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg;
