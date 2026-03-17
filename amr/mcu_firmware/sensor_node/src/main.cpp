@@ -122,9 +122,8 @@ SharedSensorData shared;
 SemaphoreHandle_t mutex;
 volatile uint32_t core1_heartbeat = 0;
 
-/** Deferred Servo: Callback schreibt Zielwinkel (RAM), sensorTask (Core 1) fuehrt I2C aus.
- *  Alle I2C-Operationen muessen auf Core 1 laufen, da die ESP32-S3 Wire-Bibliothek
- *  nicht cross-core-sicher ist (I2C-Writes von Core 0 schlagen still fehl). */
+/** Deferred Servo: Callback schreibt Zielwinkel (RAM), loop() (Core 0) fuehrt I2C aus
+ *  (5 Hz Polling). Kein I2C in Subscriber-Callbacks — nur RAM-Writes auf volatile Struct. */
 struct ServoCommand {
     volatile float pan = 90.0f;
     volatile float tilt = 90.0f;
@@ -399,7 +398,15 @@ void setup() {
         imu.calibrateGyro(amr::imu::calibration_samples);
     }
 
-    ina260_ok = ina260.init();
+    for (int attempt = 0; attempt < 3 && !ina260_ok; attempt++) {
+        if (attempt > 0)
+            delay(50);
+        ina260_ok = ina260.init();
+    }
+
+    // Diagnose I2C-Status (vor micro-ROS Transport, danach ist Serial belegt)
+    Serial.printf("[INIT] PCA9685=%s IMU=%s INA260=%s\n", pca9685_ok ? "OK" : "FAIL",
+                  imu_ok ? "OK" : "FAIL", ina260_ok ? "OK" : "FAIL");
 
     // GPIO-Sensoren NACH I2C initialisieren (Ultraschall-ISR vor I2C kann Bus stoeren)
     sonar.init(us_echo_isr, &us_echo_start, &us_echo_end, &us_meas_ready, &us_echo_active);
