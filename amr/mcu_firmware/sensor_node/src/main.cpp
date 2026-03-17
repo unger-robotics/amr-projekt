@@ -185,11 +185,11 @@ static float estimateSOC(float voltage) {
 void servo_cmd_callback(const void *m) {
     if (m == nullptr)
         return;
-    const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
-    servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::pan_limit_min_deg,
-                               amr::servo::pan_limit_max_deg);
-    servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::tilt_limit_min_deg,
-                                amr::servo::tilt_limit_max_deg);
+    // DEBUG-TEST: Feste Werte um zu pruefen ob Callback die Servos bewegt.
+    // Wenn Servo auf 60/120 faehrt: Callback funktioniert, msg-Daten pruefen.
+    // Wenn Servo nicht faehrt: Callback wird nicht erreicht oder loop() ignoriert Werte.
+    servo_cmd.pan = 60.0f;
+    servo_cmd.tilt = 120.0f;
     servo_cmd.update_pending = true;
 }
 
@@ -417,6 +417,8 @@ void setup() {
     memset(&msg_imu, 0, sizeof(msg_imu));
     memset(&msg_bat, 0, sizeof(msg_bat));
     memset(&msg_bat_shutdown, 0, sizeof(msg_bat_shutdown));
+    memset(&msg_servo_in, 0, sizeof(msg_servo_in));
+    memset(&msg_hardware_in, 0, sizeof(msg_hardware_in));
 
     allocator = rcl_get_default_allocator();
 
@@ -567,14 +569,27 @@ void loop() {
         digitalWrite(amr::hal::pin_led_internal, hb_on ? LOW : HIGH);
     }
 
+    // DIAGNOSE: Nach 10s Servos auf 60/120 fahren (ohne Callback, direkt im Loop)
+    static bool servo_diag_done = false;
+    if (pca9685_ok && !servo_diag_done && millis() > 15000) {
+        servo_diag_done = true;
+        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(50))) {
+            pca9685.setAngle(amr::servo::ch_pan, 60.0f);
+            pca9685.setAngle(amr::servo::ch_tilt, 120.0f);
+            xSemaphoreGive(i2c_mutex);
+        }
+    }
+
     // Servo I2C: Polling statt update_pending (5 Hz, Core 0)
     if (pca9685_ok) {
         static uint32_t last_servo_apply = 0;
         if (millis() - last_servo_apply >= 200) {
             last_servo_apply = millis();
+            float cur_pan = servo_cmd.pan;
+            float cur_tilt = servo_cmd.tilt;
             if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(10))) {
-                pca9685.setAngle(amr::servo::ch_pan, servo_cmd.pan);
-                pca9685.setAngle(amr::servo::ch_tilt, servo_cmd.tilt);
+                pca9685.setAngle(amr::servo::ch_pan, cur_pan);
+                pca9685.setAngle(amr::servo::ch_tilt, cur_tilt);
                 xSemaphoreGive(i2c_mutex);
             }
         }
