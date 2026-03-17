@@ -51,6 +51,9 @@ SYSTEM_PROMPT = (
 # Rate-Limiting: Mindestabstand zwischen API-Aufrufen
 MIN_REQUEST_INTERVAL_S = 4.0
 
+# Backoff bei Quota-Erschoepfung (429): 5 Minuten Pause statt Log-Spam
+QUOTA_BACKOFF_S = 300.0
+
 # Maximale Bildgroesse fuer Gemini (laengste Seite in Pixel)
 MAX_IMAGE_DIM = 640
 
@@ -191,7 +194,14 @@ class GeminiSemanticNode(Node):
                 self.get_logger().warn("Gemini: Leere Antwort erhalten")
 
         except Exception as e:
-            self.get_logger().error(f"Gemini-API-Fehler: {e}")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                self.last_request_time = time.monotonic() + QUOTA_BACKOFF_S - MIN_REQUEST_INTERVAL_S
+                self.get_logger().warn(
+                    f"Gemini-Quota erschoepft — pausiere {QUOTA_BACKOFF_S:.0f}s. {err_str[:120]}"
+                )
+            else:
+                self.get_logger().error(f"Gemini-API-Fehler: {e}")
 
         finally:
             self.pending_request = False

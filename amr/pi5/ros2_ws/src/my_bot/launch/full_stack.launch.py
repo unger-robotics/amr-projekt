@@ -58,8 +58,8 @@ def generate_launch_description():
     )
     declare_use_rviz = DeclareLaunchArgument(
         "use_rviz",
-        default_value="True",
-        description="RViz2 Visualisierung starten",
+        default_value="False",
+        description="RViz2 Visualisierung starten (erfordert X11-Display)",
     )
     declare_drive_serial_port = DeclareLaunchArgument(
         "drive_serial_port",
@@ -224,7 +224,7 @@ def generate_launch_description():
         executable="async_slam_toolbox_node",
         name="slam_toolbox",
         output="screen",
-        parameters=[LaunchConfiguration("slam_params_file")],
+        parameters=[LaunchConfiguration("slam_params_file"), {"minimum_laser_range": 0.2}],
         condition=IfCondition(LaunchConfiguration("use_slam")),
     )
 
