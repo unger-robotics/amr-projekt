@@ -14,6 +14,9 @@ Sensorfusion:
 Bewertung: Odom-Frame (Soll vs. Ist), Segment-Vektoren (Odom vs. Map).
 """
 
+# HINWEIS: Publiziert direkt auf /cmd_vel (umgeht cliff_safety_node).
+# Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
+
 import argparse
 import json
 import math

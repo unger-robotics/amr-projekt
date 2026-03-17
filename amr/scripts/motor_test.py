@@ -13,6 +13,9 @@ Sicherheit: Ctrl+C sendet sofort cmd_vel=0.
 Ergebnis: Markdown-Protokoll + JSON.
 """
 
+# HINWEIS: Publiziert direkt auf /cmd_vel (umgeht cliff_safety_node).
+# Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
+
 import datetime
 import json
 import os

@@ -35,6 +35,9 @@ Topics:
 Ergebnis: Markdown-Tabelle + JSON-Export (docking_results.json)
 """
 
+# HINWEIS: Publiziert direkt auf /cmd_vel (umgeht cliff_safety_node).
+# Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
+
 import argparse
 import json
 import math

@@ -14,22 +14,35 @@ import os
 import sys
 
 # ===========================================================================
-# Konfiguration (aus mcu_firmware/drive_node/include/config_drive.h)
+# Konfiguration (Zwei-Node-Architektur)
 # ===========================================================================
 
-PIN_MAPPING = {
+# --- Drive-Node (aus mcu_firmware/drive_node/include/config_drive.h) ---
+DRIVE_PIN_MAPPING = {
     "PIN_MOTOR_LEFT_A": ("D0", "GPIO1", "MDD3A M1A (Vorwaerts-PWM)"),
     "PIN_MOTOR_LEFT_B": ("D1", "GPIO2", "MDD3A M1B (Rueckwaerts-PWM)"),
     "PIN_MOTOR_RIGHT_A": ("D2", "GPIO3", "MDD3A M2A (Vorwaerts-PWM)"),
     "PIN_MOTOR_RIGHT_B": ("D3", "GPIO4", "MDD3A M2B (Rueckwaerts-PWM)"),
-    "PIN_ENC_LEFT_A": ("D6", "GPIO43", "Encoder Links (Hall, Interrupt)"),
-    "PIN_ENC_RIGHT_A": ("D7", "GPIO44", "Encoder Rechts (Hall, Interrupt)"),
-    "PIN_SERVO_PAN": ("D8", "GPIO7", "Servo Pan (Signal, Power extern 5V)"),
-    "PIN_SERVO_TILT": ("D9", "GPIO8", "Servo Tilt (Signal, Power extern 5V)"),
+    "PIN_ENC_LEFT_A": ("D4", "GPIO5", "Encoder Links Phase A (Interrupt)"),
+    "PIN_ENC_RIGHT_A": ("D5", "GPIO6", "Encoder Rechts Phase A (Interrupt)"),
+    "PIN_ENC_LEFT_B": ("D8", "GPIO7", "Encoder Links Phase B (Richtung)"),
+    "PIN_ENC_RIGHT_B": ("D9", "GPIO8", "Encoder Rechts Phase B (Richtung)"),
+    "PIN_CAN_TX": ("D6", "GPIO43", "CAN-Bus TX (TWAI, SN65HVD230)"),
+    "PIN_CAN_RX": ("D7", "GPIO44", "CAN-Bus RX (TWAI, SN65HVD230)"),
     "PIN_LED_MOSFET": ("D10", "GPIO9", "IRLZ24N Low-Side MOSFET"),
-    "PIN_I2C_SDA": ("D4", "GPIO5", "I2C SDA (MPU6050, optional)"),
-    "PIN_I2C_SCL": ("D5", "GPIO6", "I2C SCL (MPU6050, optional)"),
 }
+
+# --- Sensor-Node (aus mcu_firmware/sensor_node/include/config_sensors.h) ---
+SENSOR_PIN_MAPPING = {
+    "PIN_US_TRIG": ("D0", "GPIO1", "HC-SR04 Trigger (Ausgang)"),
+    "PIN_US_ECHO": ("D1", "GPIO2", "HC-SR04 Echo (Eingang via Spannungsteiler)"),
+    "PIN_IR_CLIFF": ("D2", "GPIO3", "MH-B Cliff OUT (LOW = Boden)"),
+    "PIN_I2C_SDA": ("D4", "GPIO5", "I2C SDA (MPU6050, INA260, PCA9685)"),
+    "PIN_I2C_SCL": ("D5", "GPIO6", "I2C SCL (MPU6050, INA260, PCA9685)"),
+    "PIN_CAN_TX": ("D6", "GPIO43", "CAN-Bus TX (TWAI, SN65HVD230)"),
+    "PIN_CAN_RX": ("D7", "GPIO44", "CAN-Bus RX (TWAI, SN65HVD230)"),
+}
+# Servos: PCA9685 I2C (Adresse 0x41), Kanal 0 = Pan, Kanal 1 = Tilt
 
 VOLTAGE_SPECS = {
     "3S Li-Ion Akku": ("11.1 - 12.6 V", "Messung am Akku-Connector"),
@@ -209,26 +222,39 @@ def check_spannungsversorgung(result):
 
 
 def check_pin_belegung(result):
-    """Interaktive Pruefung der Pin-Belegung gegen config_drive.h."""
-    print_header("3. Pin-Belegung (gegen config_drive.h)")
+    """Interaktive Pruefung der Pin-Belegung gegen config_drive.h und config_sensors.h."""
+    print_header("3. Pin-Belegung (Zwei-Node-Architektur)")
     print("  Bitte physische Verdrahtung mit Soll-Belegung vergleichen.")
-    print()
 
-    for define_name, (dx_pin, gpio, funktion) in PIN_MAPPING.items():
+    print()
+    print("  --- Drive-Node (config_drive.h) ---")
+    for define_name, (dx_pin, gpio, funktion) in DRIVE_PIN_MAPPING.items():
         print(f"  {define_name}: {dx_pin} ({gpio}) -> {funktion}")
+
+    print()
+    print("  --- Sensor-Node (config_sensors.h) ---")
+    for define_name, (dx_pin, gpio, funktion) in SENSOR_PIN_MAPPING.items():
+        print(f"  {define_name}: {dx_pin} ({gpio}) -> {funktion}")
+    print("  Servos: PCA9685 I2C (Adresse 0x41), Kanal 0 = Pan, Kanal 1 = Tilt")
 
     print()
     ok = ask_yes_no("Stimmt die physische Verdrahtung mit der Tabelle ueberein?")
     kommentar = "Visuelle Inspektion" if ok else "Abweichung festgestellt"
 
-    # Kritische Motor-Pins einzeln abfragen bei Fail
     if ok is False:
         print("  Bitte einzelne Pins pruefen:")
-        for define_name, (dx_pin, gpio, funktion) in PIN_MAPPING.items():
+        print("  --- Drive-Node ---")
+        for define_name, (dx_pin, gpio, funktion) in DRIVE_PIN_MAPPING.items():
             pin_ok = ask_yes_no(f"{define_name} = {dx_pin} ({gpio}) -> {funktion}?")
             pin_kommentar = f"{dx_pin} ({gpio}) -> {funktion}"
-            print_result_line(pin_ok, f"{define_name}")
-            result.add("Pins", define_name, pin_ok, pin_kommentar)
+            print_result_line(pin_ok, f"Drive: {define_name}")
+            result.add("Pins", f"Drive: {define_name}", pin_ok, pin_kommentar)
+        print("  --- Sensor-Node ---")
+        for define_name, (dx_pin, gpio, funktion) in SENSOR_PIN_MAPPING.items():
+            pin_ok = ask_yes_no(f"{define_name} = {dx_pin} ({gpio}) -> {funktion}?")
+            pin_kommentar = f"{dx_pin} ({gpio}) -> {funktion}"
+            print_result_line(pin_ok, f"Sensor: {define_name}")
+            result.add("Pins", f"Sensor: {define_name}", pin_ok, pin_kommentar)
         return
 
     print_result_line(ok, "Pin-Belegung gesamt")
@@ -238,7 +264,7 @@ def check_pin_belegung(result):
     print()
     print("  --- Encoder VCC/GND Anschluss ---")
     print("  Beide Hall-Encoder (Links + Rechts) benoetigen VCC und GND zusaetzlich")
-    print("  zur Signalleitung (Phase A). VCC = 3.3 V oder 5 V (mit Pegelanpassung).")
+    print("  zur Signalleitung (Phase A + B). VCC = 3.3 V oder 5 V (mit Pegelanpassung).")
     enc_pwr_ok = ask_yes_no("Encoder VCC und GND an beiden Motoren angeschlossen?")
     print_result_line(enc_pwr_ok, "Encoder VCC/GND Anschluss")
     result.add(

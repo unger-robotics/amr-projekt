@@ -11,6 +11,9 @@ Verwendung:
     ros2 run my_bot rotation_test -- -90       # -90 Grad (rueckwaerts)
 """
 
+# HINWEIS: Publiziert direkt auf /cmd_vel (umgeht cliff_safety_node).
+# Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
+
 import math
 import sys
 import time
