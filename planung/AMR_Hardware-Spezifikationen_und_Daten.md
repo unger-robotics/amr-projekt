@@ -37,8 +37,8 @@ Die Hardware-Architektur gliedert sich in zwei funktionale Ebenen:
 | **RPLIDAR A1**               | 2D-LiDAR                         | Lokalisierung und Kartierung, Navigation                                       | USB `/dev/ttyUSB0` am Pi 5              |        |
 | **IMX296**                   | Global-Shutter-Kamera            | Objekterfassung, CS-Mount **6 mm**                                             | CSI am Raspberry Pi 5                   |        |
 | **Hailo-8L**                 | KI-Beschleuniger                 | Objekterkennung, **13 TOPS**                                                   | PCIe Gen 2/3 am Pi 5                    |        |
-| **PCM5102A (HifiBerry DAC)** | I2S-Audio-DAC                    | 32-Bit, 384 kHz, 112 dB SNR                                                    | I2S Pins 12/35/40 am Pi 5               |        |
-| **ADA3351**                  | Lautsprecher                     | **3 W**, **4 Ohm**, Mono                                                       | Analog vom PCM5102A                     |        |
+| **MAX98357A I2S-Verstaerker** | I2S Class-D Verstaerker          | 3,2 W, Mono, filterlos                                                         | I2S Pins 12/35/40 am Pi 5               |        |
+| **ADA3351**                  | Lautsprecher                     | **3 W**, **4 Ohm**, Mono                                                       | Lautsprecher am MAX98357A               |        |
 | **ReSpeaker Mic Array v2.0** | Sprachschnittstelle              | 4 Mikrofone                                                                    | USB am Raspberry Pi 5                   |        |
 
 ---
@@ -48,11 +48,11 @@ Die Hardware-Architektur gliedert sich in zwei funktionale Ebenen:
 | Ziel-Komponente              | Schnittstelle / Pin | GPIO   | Signal / Bemerkung                                  | Quelle |
 |------------------------------|---------------------|--------|-----------------------------------------------------|--------|
 | **DC/DC-Wandler**            | USB-C Power         | –      | **5 V** Haupteinspeisung, bis **5 A**               |        |
-| **PCM5102A (BCLK)**          | Pin 12              | GPIO18 | I2S Bit-Clock                                       |        |
-| **PCM5102A (DIN)**           | Pin 40              | GPIO21 | I2S Daten-Eingang                                   |        |
-| **PCM5102A (GND)**           | Pin 6               | –      | gemeinsame Audiomasse                               |        |
-| **PCM5102A (LRC)**           | Pin 35              | GPIO19 | I2S Word-Select / Left-Right-Clock                  |        |
-| **PCM5102A (VIN)**           | Pin 2               | –      | **5 V** Versorgung des DAC                          |        |
+| **MAX98357A (BCLK)**         | Pin 12              | GPIO18 | I2S Bit-Clock                                       |        |
+| **MAX98357A (DIN)**          | Pin 40              | GPIO21 | I2S Daten-Eingang                                   |        |
+| **MAX98357A (GND)**          | Pin 6               | –      | gemeinsame Audiomasse                               |        |
+| **MAX98357A (LRC)**          | Pin 35              | GPIO19 | I2S Word-Select / Left-Right-Clock                  |        |
+| **MAX98357A (VIN)**          | Pin 2               | –      | **5 V** Versorgung des Verstaerkers                 |        |
 | **Hailo-8L**                 | PCIe (FFC)          | –      | Datenanbindung KI-Beschleuniger, M.2 / PCIe Gen 2/3 |        |
 | **ReSpeaker Mic Array v2.0** | USB-A, Port 2       | –      | Audio-Eingabe der Sprachschnittstelle               |        |
 | **RPLIDAR A1**               | USB-A, Port 1       | –      | serielle Daten ueber `/dev/ttyUSB0`                 |        |
@@ -208,7 +208,7 @@ Die Parallelschaltung erzeugt einen resultierenden Pull-up von **10 kOhm || 10 k
                 │      ├── RPLIDAR A1 (USB)
                 │      ├── ReSpeaker Mic Array v2.0 (USB)
                 │      ├── IMX296 (CSI)
-                │      ├── PCM5102A HifiBerry DAC (I2S) ─ ADA3351
+                │      ├── MAX98357A I2S-Verstaerker ─ ADA3351
                 │      ├── MCP2515 CAN-Modul (SPI0)
                 │      │    │
                 │      │    └── CAN-Bus (CANH / CANL)

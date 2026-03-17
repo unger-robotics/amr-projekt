@@ -44,15 +44,17 @@ mcu_firmware/
 
 ## Build-Befehle
 
+**Wichtig:** Beim Upload immer `-e <environment>` angeben! `pio run -t upload` ohne `-e` flasht ALLE Environments — das letzte ueberschreibt die vorherigen.
+
 ```bash
 # Drive-Node (Antrieb):
-cd drive_node && pio run                      # Kompilieren
-cd drive_node && pio run -t upload -t monitor # Upload + Monitor
-cd drive_node && pio run -e led_test -t upload -t monitor  # MOSFET-Diagnose (ohne micro-ROS, ~5s)
+cd drive_node && pio run -e drive_node                      # Kompilieren
+cd drive_node && pio run -e drive_node -t upload -t monitor # Upload + Monitor
+cd drive_node && pio run -e led_test -t upload -t monitor   # LED/MOSFET-Diagnose (ohne micro-ROS, ~5s)
 
 # Sensor-Node (Ultraschall + Cliff):
-cd sensor_node && pio run                      # Kompilieren
-cd sensor_node && pio run -t upload -t monitor # Upload + Monitor
+cd sensor_node && pio run -e sensor_node                      # Kompilieren
+cd sensor_node && pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 cd sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung (Pan/Tilt)
 ```
 
@@ -66,6 +68,11 @@ Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via
 - `sensor_node/include/config_sensors.h` (v3.0.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
 
 Beide Configs verwenden `inline constexpr` in `amr::`-Namespaces mit `static_assert` Compile-Time-Validierung. Keine `#define`-Makros fuer Pins oder PWM-Kanaele — alle in `amr::hal::` als typisierte Konstanten.
+
+## Library-Abhaengigkeiten
+
+- **Drive-Node**: Nur micro-ROS (keine I2C-Libraries)
+- **Sensor-Node**: micro-ROS + Adafruit BusIO/INA260/MPU6050/PWM Servo/Unified Sensor als PlatformIO-Abhaengigkeiten. Die Adafruit-Libraries dienen als transitive Abhaengigkeit — die eigentlichen I2C-Treiber sind eigene Header-Only-Implementierungen in `include/` (`mpu6050.hpp`, `ina260.hpp`, `pca9685.hpp`)
 
 ## Namespace-Konvention
 
@@ -139,6 +146,8 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 - **Speicher**: Keine dynamische Allokation zur Laufzeit
 - **I2C in Callbacks**: Keine Wire-Operationen in `rclc_executor_spin_some()` Callbacks — Deferred-Pattern verwenden (Callback schreibt in volatile RAM-Struct, loop()/sensorTask fuehrt I2C aus). Sensor-Node: I2C-Reads auf Core 1, I2C-Writes (PCA9685) auf Core 0
 - **micro-ROS QoS**: `rclc_publisher_init_default()` (Reliable) fuer Nachrichten > 512 Bytes (XRCE-DDS MTU), da Best-Effort keine Fragmentierung unterstuetzt
+- **Kein Reconnect**: Verlust der micro-ROS-Agent-Verbindung erfordert ESP32 Power-Cycle (kein automatisches Wiederverbinden)
+- **USB-CDC**: `-DARDUINO_USB_CDC_ON_BOOT=1` in beiden `platformio.ini` (Serial = USB, nicht UART0)
 
 ## Detaillierte Dokumentation
 

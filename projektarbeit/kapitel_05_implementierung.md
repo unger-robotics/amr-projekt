@@ -130,7 +130,7 @@ $$
 
 Aktorkommandos, etwa fuer Servos, werden nicht direkt im Kommunikations-Callback ausgefuehrt. Stattdessen nutzt der Knoten ein Deferred-Pattern: Der Callback schreibt nur den Sollzustand in den Arbeitsspeicher, die eigentliche I2C-Ausgabe erfolgt in der regulaeren Ablaufsteuerung. Dieses Muster reduziert Jitter und vermeidet blockierende Buszugriffe im Callback-Kontext.
 
-Der Ultraschallsensor HC-SR04 nutzt eine ISR-basierte, nicht blockierende Messung. Eine Interrupt-Service-Routine auf dem Echo-Pin erfasst die Laufzeit ueber GPIO-Register-Zugriffe. Das Trigger-Echo-Pattern ersetzt das blockierende `pulseIn()` und gibt die Rechenzeit des Sensor-Tasks fuer IMU-Abfragen frei. Die Entfernungsdaten erscheinen auf `/range/front` mit einer Rate von etwa $8\,\mathrm{Hz}$.
+Der Ultraschallsensor HC-SR04 nutzt eine ISR-basierte, nicht blockierende Messung. Eine Interrupt-Service-Routine auf dem Echo-Pin erfasst die Laufzeit ueber GPIO-Register-Zugriffe. Das Trigger-Echo-Pattern ersetzt das blockierende `pulseIn()` und gibt die Rechenzeit des Sensor-Tasks fuer IMU-Abfragen frei. Die Entfernungsdaten erscheinen auf `/range/front` mit einer konfigurierten Sollrate von $10\,\mathrm{Hz}$.
 
 ## 5.3 Hostseitige ROS-2-Integration
 

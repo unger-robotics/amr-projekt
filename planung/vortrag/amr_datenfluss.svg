@@ -63,7 +63,7 @@
     <text x="80" y="160" text-anchor="middle" class="sub-label" style="font-size:9px">(Pan-Tilt Servos)</text>
 
     <rect x="15" y="195" width="130" height="45" rx="4" fill="#0B131E" stroke="#FF2A40" stroke-width="1" />
-    <text x="80" y="213" text-anchor="middle" class="sub-label">PCM5102A</text>
+    <text x="80" y="213" text-anchor="middle" class="sub-label">MAX98357A</text>
     <text x="80" y="230" text-anchor="middle" class="sub-label" style="font-size:9px">(Audio-Feedback)</text>
   </g>
 

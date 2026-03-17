@@ -14,9 +14,9 @@ PF1 ist damit positiv beantwortet. Eine verteilte Echtzeitarchitektur mit UART-b
 
 \subsection{PF2 — Sensor- und Sicherheitsbasis sowie Lokalisierung und Kartierung}
 
-Die zweite Projektfrage untersucht, welchen Beitrag Odometrie-Kalibrierung, IMU-Integration, Kanten-Erkennung und LiDAR-basierte Kartierung zur belastbaren Zustands- und Umgebungsbasis leisten. Die Validierung zeigt drei zentrale Ergebnisse. Erstens reduzierte die UMBmark-Kalibrierung den systematischen Odometriefehler um den Faktor $10$ bis $20$. Zweitens sank der laterale Drift auf einer Referenzfahrt über $1{,}0\,\mathrm{m}$ mit IMU-Korrektur von $3{,}5\,\mathrm{cm}$ auf $1{,}5\,\mathrm{cm}$, während der Gierfehler von $2{,}12^\circ$ auf $0{,}69^\circ$ sank. Drittens erreichte die Kartierung einen mittleren Absolute Trajectory Error von $0{,}16\,\mathrm{m}$ und blieb damit unter dem Akzeptanzkriterium von $0{,}20\,\mathrm{m}$. Zusätzlich reagierte die Sicherheitskette bei einem Kantenereignis in unter $45\,\mathrm{ms}$.
+Die zweite Projektfrage untersucht, welchen Beitrag Odometrie-Kalibrierung, IMU-Integration, Kanten-Erkennung und LiDAR-basierte Kartierung zur belastbaren Zustands- und Umgebungsbasis leisten. Die Validierung zeigt drei zentrale Ergebnisse. Erstens reduzierte die UMBmark-Kalibrierung den systematischen Odometriefehler um den Faktor $10$ bis $20$. Zweitens sank der laterale Drift auf einer Referenzfahrt über $1{,}0\,\mathrm{m}$ mit IMU-Korrektur von $3{,}6\,\mathrm{cm}$ auf $2{,}1\,\mathrm{cm}$, während der Gierfehler von $5{,}57^\circ$ auf $0{,}06^\circ$ sank. Drittens erreichte die Kartierung einen mittleren Absolute Trajectory Error von $0{,}16\,\mathrm{m}$ und blieb damit unter dem Akzeptanzkriterium von $0{,}20\,\mathrm{m}$. Zusätzlich reagierte die Sicherheitskette bei einem Kantenereignis in unter $50\,\mathrm{ms}$ (gemessen: $2{,}0\,\mathrm{ms}$).
 
-PF2 ist damit weitgehend positiv beantwortet. Odometrie-Kalibrierung, IMU-Stützung, LiDAR-basierte Kartierung und priorisierte Sicherheitslogik bilden gemeinsam eine belastbare Grundlage für den Innenraumbetrieb. Die Einschränkung liegt in der noch unvollständigen Einzelbewertung einzelner Sensorpfade wie Ultraschall, Batterieüberwachung und IMU-Plausibilisierung über alle Betriebszustände.
+PF2 ist damit weitgehend positiv beantwortet. Odometrie-Kalibrierung, IMU-Stützung, LiDAR-basierte Kartierung und priorisierte Sicherheitslogik bilden gemeinsam eine belastbare Grundlage für den Innenraumbetrieb. Die Einzelbewertung aller Sensorpfade einschließlich Ultraschall, Batterieüberwachung und IMU-Plausibilisierung ist mit $11/11$ bestandenen Testfällen abgeschlossen (vgl.\ Kapitel~6, Abschnitt~6.2.4).
 
 \subsection{PF3 — Navigation sowie Bedien- und Leitstandsebene}
 
@@ -32,7 +32,7 @@ Die Arbeit zeigt, dass eine kostengünstige AMR-Architektur für strukturierte I
 
 \subsection{Vollständigkeit des Nachweises}
 
-Die Validierung bestätigt den fahrkritischen Kern, aber nicht alle Anforderungen mit gleicher Tiefe. Für den Fahrkern fehlt noch eine vollständige Messreihe zu reproduzierbaren $360^\circ$-Rotationen und zum Nachlauf nach dem Stopp. In der Sensor- und Sicherheitsbasis ist die Kanten-Erkennung belastbar nachgewiesen, während Ultraschall, Batterieüberwachung und IMU-Plausibilisierung noch nicht mit derselben systematischen Tiefe ausgewertet sind. Für die Bedien- und Leitstandsebene fehlt eine eigenständige Untersuchung der Bedienqualität. Die Sprachschnittstelle ist in der Roadmap als Erweiterung beschrieben, gehört aber nicht zum validierten Kernumfang dieser Arbeit.
+Die Validierung bestätigt den fahrkritischen Kern, aber nicht alle Anforderungen mit gleicher Tiefe. Für den Fahrkern wurde die $360^\circ$-Rotation gemessen und ergab einen Ist-Wert von $358{,}1^\circ$ bei einem Restfehler von $1{,}88^\circ$ (vgl.\ Kapitel~6). Eine systematische Messreihe zum Nachlauf nach dem Stopp steht hingegen noch aus. In der Sensor- und Sicherheitsbasis sind alle $11/11$ Sensorik-Testfälle bestanden, darunter Kanten-Erkennung, Ultraschall, Batterieüberwachung und IMU-Plausibilisierung (vgl.\ Kapitel~6, Abschnitt~6.2.4). Für die Bedien- und Leitstandsebene fehlt eine eigenständige Untersuchung der Bedienqualität. Die Sprachschnittstelle ist in der Roadmap als Erweiterung beschrieben, gehört aber nicht zum validierten Kernumfang dieser Arbeit.
 
 \subsection{Technische Grenzen des Prototyps}
 
@@ -50,7 +50,7 @@ Die Ergebnisse gelten für strukturierte Innenräume mit kontrollierbaren Randbe
 
 \subsection{Kernpfad der Roadmap vervollständigen}
 
-Der nächste Entwicklungsschritt sollte nicht mit zusätzlichen Demonstrationsfunktionen beginnen, sondern mit der vollständigen Schließung des Kernpfads. Dazu gehören eine vollständige Messreihe für den Fahrkern, eine systematische Einzelbewertung von Ultraschall, Batterieüberwachung und IMU-Plausibilisierung sowie eine formale Prüfung aller relevanten Zustandsübergänge der Freigabelogik. Für die Navigation ist insbesondere das Recovery-Verhalten weiter zu verbessern, bis Fehlfahrten, Sackgassen und lokale Blockaden reproduzierbar beherrscht werden. Diese Reihenfolge entspricht der Roadmap-Logik, in der quantitative Stabilität vor zusätzlicher Systemkomplexität steht.
+Der nächste Entwicklungsschritt sollte nicht mit zusätzlichen Demonstrationsfunktionen beginnen, sondern mit der vollständigen Schließung des Kernpfads. Dazu gehören eine erweiterte Messreihe für den Fahrkern, insbesondere zum Nachlaufverhalten nach dem Stopp, sowie eine formale Prüfung aller relevanten Zustandsübergänge der Freigabelogik. Für die Navigation ist insbesondere das Recovery-Verhalten weiter zu verbessern, bis Fehlfahrten, Sackgassen und lokale Blockaden reproduzierbar beherrscht werden. Diese Reihenfolge entspricht der Roadmap-Logik, in der quantitative Stabilität vor zusätzlicher Systemkomplexität steht.
 
 \subsection{Bedien- und Leitstandsebene systematisch ausbauen}
 

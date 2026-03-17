@@ -11,8 +11,8 @@ theme: "metropolis"
 **Wie laesst sich ein fahrerloses Transportsystem fuer Kleinladungstraeger kosteneffizient und echtzeitfaehig realisieren?**
 
 * **Problem:** Industrielle Flotten kosten oft ueber $25.000$ EUR und sind fuer leichte Transporte ueberdimensioniert. Reine Software-Stacks auf Raspberry Pis scheitern haeufig an den harten Echtzeitanforderungen der Motorregelung.
-* **Loesung:** Ein modularer ROS-2-Stack mit einer verteilten Hardware-Architektur entkoppelt die Motorik von der Kuentslichen Intelligenz.
-* **Evidenz:** Das System arbeitet mit Hardwarekosten von rund $513$ EUR und haelt strenge Latenz- sowie Genauigkeitsvorgaben ein.
+* **Loesung:** Ein modularer ROS-2-Stack mit einer verteilten Hardware-Architektur entkoppelt die Motorik von der Kuenstlichen Intelligenz.
+* **Evidenz:** Das System arbeitet mit Hardwarekosten von rund $694$ EUR und haelt strenge Latenz- sowie Genauigkeitsvorgaben ein.
 
 ---
 
@@ -22,9 +22,9 @@ Die Hardware-Basis bildet ein Differentialantrieb mit umfassender Sensor-Suite:
 
 {width=35%}
 
-* **Antrieb:** Zwei JGA25-370-Gleichstrommotoren mit integrierten Hall-Encodern ($748$ Ticks pro Umdrehung).
+* **Antrieb:** Zwei JGA25-370-Gleichstrommotoren mit integrierten Hall-Encodern ($748{,}6$ links / $747{,}2$ rechts Ticks/Umdrehung, UMBmark-kalibriert).
 * **Sensorik:** RPLIDAR A1 ($12\,\mathrm{m}$ Reichweite), MPU6050-IMU und MH-B Kanten-Sensor.
-* **Energieversorgung:** 3S1P-Li-Ion-Akkupack mit einem harten System-Cutoff bei $7{,}95\,\mathrm{V}$ zum Schutz vor Tiefenentladung.
+* **Energieversorgung:** 3S1P-Li-Ion-Akkupack mit vierstufigem Schutz: $10{,}0\,\mathrm{V}$ Soft-Warnung, $9{,}5\,\mathrm{V}$ Motor-Shutdown, $9{,}0\,\mathrm{V}$ System-Shutdown, $7{,}5\,\mathrm{V}$ BMS-Disconnect.
 
 ---
 
@@ -34,8 +34,8 @@ Die Architektur trennt High-Level-Navigation strikt von der Low-Level-Motorik:
 
 {width=45%}
 
-* **Ebene A (Fahrkern & Sensorbasis):** Zwei ESP32-S3 uebernehmen die deterministische Steuerung und Datenerfassung bei $50\,\mathrm{Hz}$.
-* **Ebene B (Leitstandsebene):** Ein Raspberry Pi 5 betreibt die Navigation (Nav2) und das webbasierte Dashboard.
+* **Ebene A (Fahrkern & Sensorbasis):** Drive-Node mit $50\,\mathrm{Hz}$ PID-Regeltakt; Sensor-Node mit $100\,\mathrm{Hz}$ Basistakt (IMU $50\,\mathrm{Hz}$, Cliff $20\,\mathrm{Hz}$, Ultraschall $10\,\mathrm{Hz}$, Batterie $2\,\mathrm{Hz}$).
+* **Ebene B (Bedien- und Leitstandsebene):** Ein Raspberry Pi 5 betreibt die Navigation (Nav2) und das webbasierte Dashboard.
 * **Ebene C (Interaktion):** Beinhaltet die Sprachschnittstelle und die Cloud-Semantik ueber die Gemini API.
 
 ---
@@ -60,7 +60,7 @@ Die Motorregelung erfordert harte Echtzeit, die ein Standard-Betriebssystem wie 
 
 * **Core 0:** Managt ausschliesslich den micro-ROS-Datenstrom.
 * **Core 1:** Fuehrt exklusiv und jitterfrei ($< 2\,\mathrm{ms}$) die PID-Regelschleife und die Inverskinematik aus.
-* **CAN-Redundanz:** Ein direkter CAN-Bus vom Sensor-Knoten stoppt die Motoren bei erkannten Abgruenden in $< 20\,\mathrm{ms}$ – komplett unabhaengig vom Host-System.
+* **CAN-Redundanz:** Ein direkter CAN-Bus vom Sensor-Knoten stoppt die Motoren bei erkannten Abgruenden mit $< 20\,\mathrm{ms}$ CAN-zu-Motor-Reaktion (Drive-Node intern); Gesamtkette Cliff $\rightarrow$ Stopp ca. $73\,\mathrm{ms}$ Worst Case – komplett unabhaengig vom Host-System.
 
 ---
 
@@ -71,7 +71,7 @@ Die lokale Ebene reagiert in Millisekunden auf dynamische Hindernisse:
 {width=35%}
 
 * **Lokalisierung:** `slam_toolbox` und AMCL generieren eine 2D-Gitterkarte mit $5\,\mathrm{cm}$ Aufloesung.
-* **Bahnverfolgung:** Der Regulated Pure Pursuit Controller faehrt geplante Pfade mit bis zu $0{,}4\,\mathrm{m/s}$ ab.
+* **Bahnverfolgung:** Der Regulated Pure Pursuit Controller faehrt geplante Pfade mit $0{,}15\,\mathrm{m/s}$ (Nav2-RPP-Limit) ab. Das Dashboard-Joystick-Limit liegt separat bei $0{,}4\,\mathrm{m/s}$.
 * **Edge-Vision:** Der Hailo-8L-Beschleuniger erkennt per YOLOv8 Hindernisse im Videostream bei ${\sim}34\,\mathrm{ms}$ Latenz, ohne die CPU des Raspberry Pi zu blockieren.
 
 ---
@@ -105,9 +105,9 @@ Die raeumliche Berechnung erfordert eine durchgaengige Koordinaten-Transformatio
 
 Systematische Messdaten validieren den Architekturansatz:
 
-* **Sicherheitslogik:** Die End-to-End-Latenz vom Ausloesen des Kanten-Sensors bis zum Motorstopp betraegt gemessene $2{,}0\,\mathrm{ms}$.
+* **Sicherheitslogik:** $2{,}0\,\mathrm{ms}$ Callback-Latenz im cliff\_safety\_node (ROS2-Pfad). Gesamtkette Cliff $\rightarrow$ Motor-Stopp: ca. $73\,\mathrm{ms}$ Worst Case (inkl. CAN-Pfad).
 * **Regelungs-Jitter:** Die Architektur haelt die $50\,\mathrm{Hz}$-Regelschleife stabil und drueckt den Jitter auf unter $2\,\mathrm{ms}$.
-* **Navigationsgenauigkeit:** Der Absolute Trajectory Error (ATE) liegt nach SLAM-Korrektur bei $0{,}16\,\mathrm{m}$.
+* **Navigationsgenauigkeit:** Der mittlere Positionsfehler liegt nach SLAM-Korrektur bei $0{,}16\,\mathrm{m}$ (ATE RMSE $0{,}19\,\mathrm{m}$).
 * **Docking:** Die Erkennung von ArUco-Markern ermoeglicht eine erfolgreiche Zielanfahrt mit einer Quote von $100\,\%$ (10/10, Dreifach-Bedingung bei $0{,}30\,\mathrm{m}$).
 
 ---

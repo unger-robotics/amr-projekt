@@ -1,5 +1,7 @@
 # Validierung
 
+Bedienorientierte Validierungsanleitung: [benutzerhandbuch.md](benutzerhandbuch.md) Abschnitt 6.
+
 ## Zweck
 
 Beschreibung von Testablaeufen, Validierungsskripten und Nachweisen.

@@ -82,7 +82,7 @@ Das Zielbild folgt der Roadmap mit drei Ebenen. Die Ebenen trennen fahrkritische
     \toprule
     \textbf{Ebene} & \textbf{Hauptfunktionen} & \textbf{Zentrale Recheneinheit} \\
     \midrule
-    Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis & Antrieb, Odometrie, IMU, Ultraschall, Cliff-Sensor, Batterieüberwachung, Servo-Steuerung, Sicherheitsreaktion & 2 x ESP32-S3 und Raspberry Pi 5 \\
+    Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis & Antrieb, Odometrie, LED-Statusanzeige, IMU, Ultraschall, Cliff-Sensor, Batterieüberwachung, Servo-Steuerung, Sicherheitsreaktion & 2 x ESP32-S3 und Raspberry Pi 5 \\
     \addlinespace
     Ebene B – Bedien- und Leitstandsebene & Benutzeroberfläche, Telemetrie, manuelle Kommandos, Videostream, Audio-Rückmeldungen & Raspberry Pi 5 \\
     \addlinespace
@@ -109,7 +109,7 @@ Zusätzliche Hardware für die Bedien- und Leitstandsebene und die intelligente 
 
 Die Software-Architektur kombiniert ROS 2 auf dem Host mit micro-ROS auf den Mikrocontrollern. Auf dem Raspberry Pi 5 laufen die ROS-2-Knoten für Lokalisierung und Kartierung, Navigation, Benutzeroberfläche, Audio und Schnittstellenlogik. Auf den ESP32-S3 läuft FreeRTOS als harte Partitionierung der Low-Level-Aufgaben. Damit entsteht eine verteilte Architektur mit klarer Zuständigkeit pro Knoten.
 
-Der Drive-Knoten verarbeitet ausschließlich fahrkritische Funktionen. Dazu gehören die Umsetzung von Geschwindigkeitsvorgaben, die Encoder-Auswertung, die Odometrie und die Motorregelung mit einem Arbeitstakt von $50\,\mathrm{Hz}$. Die hostseitige Navigation liefert translatorische und rotatorische Sollgrößen, der Drive-Knoten setzt diese über das kinematische Modell in Radgrößen um.
+Der Drive-Knoten verarbeitet primär fahrkritische Funktionen sowie die LED-Statusanzeige. Zu den fahrkritischen Aufgaben gehören die Umsetzung von Geschwindigkeitsvorgaben, die Encoder-Auswertung, die Odometrie und die Motorregelung mit einem Arbeitstakt von $50\,\mathrm{Hz}$. Die hostseitige Navigation liefert translatorische und rotatorische Sollgrößen, der Drive-Knoten setzt diese über das kinematische Modell in Radgrößen um.
 
 Der Sensor-Knoten verarbeitet die Sensor- und Sicherheitsbasis. Er liest IMU, Ultraschall, Batterieüberwachung und Kanten-Erkennung aus und veröffentlicht die Daten als ROS-2-nahe Informationen über micro-ROS. Zusätzlich liefert er sicherheitsnahe Zustände an die hostseitige Sicherheitslogik.
 

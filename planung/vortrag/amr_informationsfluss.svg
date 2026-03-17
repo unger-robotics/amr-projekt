@@ -55,7 +55,7 @@
   <text x="500" y="585" class="txt-sub">Drive &amp; Sensor Basis</text>
 
   <rect x="800" y="250" width="160" height="50" class="box-actuator" />
-  <text x="880" y="280" class="txt-actuator">PCM5102A (Audio)</text>
+  <text x="880" y="280" class="txt-actuator">MAX98357A (Audio)</text>
 
   <rect x="800" y="450" width="160" height="50" class="box-actuator" />
   <text x="880" y="480" class="txt-actuator">Pan-Tilt Servos</text>

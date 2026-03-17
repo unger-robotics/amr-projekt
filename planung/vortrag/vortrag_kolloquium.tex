@@ -90,9 +90,9 @@
 \begin{frame}{Hardwarenahe Sicherheitslogik}
   \textbf{Zwei unabhaengige Sicherheitspfade}
   \begin{itemize}
-    \item \textbf{ROS-2-Pfad (Multiplexer):} Der \texttt{cliff\_safety\_node} blockiert Navigationsbefehle bei erkannter Kante. End-to-End-Latenz (Sensor $\rightarrow$ Stopp): $2{,}0\,\mathrm{ms}$.
+    \item \textbf{ROS-2-Pfad (Multiplexer):} Der \texttt{cliff\_safety\_node} blockiert Navigationsbefehle bei erkannter Kante. Callback-Latenz (\texttt{cliff\_safety\_node}): $2{,}0\,\mathrm{ms}$.
     \item \textbf{CAN-Notstopp-Redundanz:} Ein hardwarenaher CAN-Bus uebertraegt Cliff-Signale (CAN-ID 0x120) direkt zwischen den Mikrocontrollern.
-    \item \textbf{Reaktionszeit:} Der CAN-Pfad greift unabhaengig vom Host-System in $< 20\,\mathrm{ms}$.
+    \item \textbf{Reaktionszeit:} $< 20\,\mathrm{ms}$ CAN-zu-Motor-Reaktion (Drive-Node), Gesamtkette Cliff-Erkennung $\rightarrow$ Motor-Stopp ca.\ $73\,\mathrm{ms}$.
   \end{itemize}
 \end{frame}
 
@@ -138,7 +138,7 @@
     \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
     \midrule
     PID-Regelfrequenz    & $50\,\mathrm{Hz}$ (Jitter $< 2\,\mathrm{ms}$) & erfuellt \\
-    Kanten-Stopp-Latenz  & $2{,}0\,\mathrm{ms}$ (ROS 2 Pfad) & $< 50\,\mathrm{ms}$ \\
+    Callback-Latenz (\texttt{cliff\_safety\_node}) & $2{,}0\,\mathrm{ms}$ & $< 50\,\mathrm{ms}$ \\
     Geradeausfahrt-Drift & $2{,}1\,\mathrm{cm}$ (mit IMU-Fusion) & $< 5{,}0\,\mathrm{cm}$ \\
     \bottomrule
   \end{tabular}}
@@ -152,8 +152,8 @@
     \toprule
     \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
     \midrule
-    ATE (Kartierung)     & $0{,}16\,\mathrm{m}$ & $< 0{,}20\,\mathrm{m}$ \\
-    Positionsgenauigkeit & $6{,}4\,\mathrm{cm}$ & $< 10\,\mathrm{cm}$ \\
+    ATE RMSE (Kartierung) & $0{,}19\,\mathrm{m}$ & $< 0{,}20\,\mathrm{m}$ \\
+    Positionsgenauigkeit & $1{,}01\,\mathrm{cm}$ (max.\ $2{,}17\,\mathrm{cm}$) & $< 10\,\mathrm{cm}$ \\
     \bottomrule
   \end{tabular}}
 \end{frame}
@@ -166,13 +166,13 @@
   \textbf{Kernergebnisse}
   \begin{itemize}
     \item \textbf{PF1 (Bestaetigt):} Die Dual-Knoten-Architektur stabilisiert die Echtzeit. Die UART-Kopplung ($921\,600\,\mathrm{Baud}$) loest Latenzprobleme drahtloser Systeme.
-    \item \textbf{PF2 (Bestaetigt):} Die systematische Odometrie-Kalibrierung reduzierte den Drift um den Faktor 10.
+    \item \textbf{PF2 (Bestaetigt):} UMBmark-Kalibrierung mit theoretisch erwartetem Reduktionsfaktor $\geq 10$ (Borenstein, 1996); gemessene Geradeausfahrt-Drift reduziert von $3{,}6$ auf $2{,}1\,\mathrm{cm}$ (Faktor $1{,}7$) durch IMU-Fusion.
     \item \textbf{PF3 (Bestaetigt):} Visuelles ArUco-Docking erreicht $100\,\%$ Erfolgsquote (10/10, Dreifach-Bedingung bei $0{,}30\,\mathrm{m}$); Grenzen bestehen bei unzureichender Beleuchtung.
   \end{itemize}
 
   \vspace{1em}
   \textbf{Fazit:}\\
-  Ein kostenguenstiges Gesamtsystem (${\sim}\,513\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206. Die Grenzen liegen in den MTU-Beschraenkungen ($512$ Bytes) und Rad-Schlupf.
+  Ein kostenguenstiges Gesamtsystem (${\sim}\,694\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206. Die Grenzen liegen in den MTU-Beschraenkungen ($512$ Bytes) und Rad-Schlupf.
 \end{frame}
 
 \end{document}

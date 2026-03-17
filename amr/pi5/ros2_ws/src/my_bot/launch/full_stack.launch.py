@@ -115,7 +115,7 @@ def generate_launch_description():
     declare_use_audio = DeclareLaunchArgument(
         "use_audio",
         default_value="False",
-        description="Audio-Feedback-Node (PCM5102A HifiBerry DAC)",
+        description="Audio-Feedback-Node (MAX98357A I2S-Verstaerker)",
     )
     declare_use_can = DeclareLaunchArgument(
         "use_can",
@@ -160,7 +160,7 @@ def generate_launch_description():
         arguments=[
             "0.10",
             "0.0",
-            "0.05",
+            "0.235",
             "3.14159",
             "0.0",
             "0.0",
@@ -341,7 +341,7 @@ def generate_launch_description():
         arguments=[
             "0.15",
             "0.0",
-            "0.10",
+            "0.05",
             "0.0",
             "0.0",
             "0.0",
@@ -418,7 +418,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_cliff_safety")),
     )
 
-    # --- 10. Audio-Feedback (PCM5102A HifiBerry DAC, optional) ---
+    # --- 10. Audio-Feedback (MAX98357A I2S-Verstaerker, optional) ---
     audio_feedback_node = Node(
         package="my_bot",
         executable="audio_feedback_node",

@@ -17,7 +17,7 @@ amr/
     sensor_node/           # PlatformIO: Ultraschall, Cliff, IMU (MPU6050), Batterie (INA260), Servo (PCA9685)
   pi5/ros2_ws/src/my_bot/  # ROS2 Humble ament_python-Paket (Nav2, SLAM, Validierung)
   docker/               # Docker-Setup fuer ROS2 auf Pi 5 (Debian Trixie)
-  scripts/              # Validierungsskripte, Runtime-Nodes, Host-Only-Tools
+  scripts/              # Validierungsskripte, Runtime-Knoten, Host-Only-Tools
 ```
 
 ## Build-Befehle
@@ -28,7 +28,7 @@ amr/
 # Drive-Node (Antrieb, PID, Odometrie, LED):
 cd mcu_firmware/drive_node && pio run -e drive_node                      # Kompilieren
 cd mcu_firmware/drive_node && pio run -e drive_node -t upload -t monitor # Upload + Monitor
-cd mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # MOSFET-Diagnose (~5s)
+cd mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # LED/MOSFET-Diagnose (~5s)
 
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
 cd mcu_firmware/sensor_node && pio run -e sensor_node                      # Kompilieren
@@ -52,35 +52,54 @@ docker compose build                        # Image bauen (~15-20 Min)
 ./verify.sh                                 # Gesamttest
 ```
 
-### Dashboard (React)
+### Dashboard (React + Vite + TypeScript + Tailwind)
 
 ```bash
 cd ../dashboard/
-npm install && npm run dev     # Entwicklung (http://localhost:5173)
-npm run build                  # Produktion
-npx tsc --noEmit               # TypeScript Type-Check
+npm install && npm run dev -- --host 0.0.0.0   # Entwicklung (https://amr.local:5173)
+npm run build                                   # Produktion (tsc + vite build)
+npm run lint                                    # ESLint
+npx tsc --noEmit                                # TypeScript Type-Check
 ```
 
-### Linting
+Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0`. HTTPS via mkcert-Zertifikate in `dashboard/`.
+
+### Linting (aus amr/ ausfuehren)
 
 ```bash
-ruff check amr/               # Python-Lint
-ruff format --check amr/      # Python-Format
-mypy --config-file ../mypy.ini # Type-Check
-clang-format --dry-run --Werror mcu_firmware/drive_node/src/*.cpp mcu_firmware/drive_node/include/*.hpp mcu_firmware/sensor_node/src/*.cpp mcu_firmware/sensor_node/include/*.hpp
-pre-commit run --all-files     # Alle Hooks
+cd .. && ruff check amr/                    # Python-Lint (muss aus Projekt-Root laufen)
+cd .. && ruff format --check amr/           # Python-Format
+cd .. && mypy --config-file mypy.ini        # Type-Check
+clang-format --dry-run --Werror mcu_firmware/drive_node/src/*.cpp mcu_firmware/drive_node/include/*.hpp mcu_firmware/sensor_node/src/*.cpp mcu_firmware/sensor_node/include/*.hpp  # C++ Format
+cd .. && pre-commit run --all-files         # Alle Hooks (ruff, mypy, clang-format, eslint, trailing-whitespace)
 ```
+
+## Code-Style-Kurzreferenz
+
+- **Python**: Zeilenlaenge 100, Python 3.10, Double Quotes, isort-Import-Sortierung (`../ruff.toml`)
+- **C++**: Zeilenlaenge 100, 4 Spaces, LLVM-basiert, Braces Attach, C++17 (`../.clang-format`)
+- **C++ Benennung** (`../.clang-tidy`): `CamelCase` Klassen, `camelBack` Methoden/Funktionen, `lower_case` Variablen/Parameter
+- **TypeScript**: ESLint Flat Config, React Hooks Plugin (`../dashboard/eslint.config.js`)
+
+## Neues ROS2-Skript hinzufuegen
+
+Das Symlink-Pattern erfordert vier Schritte:
+
+1. Skript anlegen: `scripts/<name>.py`
+2. Symlink erzeugen: `cd pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../../scripts/<name>.py`
+3. Entry-Point in `pi5/ros2_ws/src/my_bot/setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
+4. Rebuild: `cd docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
 ## Architektur (Big Picture)
 
-### Zwei-Ebenen-System
+### Systemarchitektur
 
 ```
 [Drive-Node ESP32-S3]  <-- micro-ROS/UART 921600 (/dev/amr_drive) -->  [Raspberry Pi 5 (Docker)]
   50 Hz PID, Odometrie, LED                                             Navigation, SLAM, Vision
   Kein I2C                                                              Nav2, SLAM Toolbox
 
-[Sensor-Node ESP32-S3] <-- micro-ROS/UART 921600 (/dev/amr_sensor) --> Dashboard, Hailo-8 AI
+[Sensor-Node ESP32-S3] <-- micro-ROS/UART 921600 (/dev/amr_sensor) --> Benutzeroberflaeche, Hailo-8L AI
   IMU (50 Hz), Batterie (2 Hz), Servos                                  /battery_shutdown → Drive-Node
   Ultraschall (10 Hz ISR), Cliff (20 Hz)
 
@@ -101,7 +120,7 @@ Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
 ### ROS2 Stack (pi5/ros2_ws/src/my_bot/)
 
-Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Node (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker. TTS-Speak-Node (`tts_speak_node`, `use_tts:=True`) spricht Gemini-Semantik via gTTS Cloud-Synthese ueber den Lautsprecher (Deutsch, Rate-Limiting 10 s).
+Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) schaltet `/cmd_vel` bei Cliff-Erkennung auf Null. CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Knoten (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker. TTS-Speak-Knoten (`tts_speak_node`, `use_tts:=True`) spricht Gemini-Semantik via gTTS Cloud-Synthese ueber den Lautsprecher (Deutsch, Rate-Limiting 10 s).
 
 TF-Baum: `odom → base_link → laser (180° Yaw) / camera_link (optional) / ultrasonic_link (optional)`
 
@@ -112,7 +131,7 @@ Skripte leben in `scripts/`, werden als Symlinks in `my_bot/my_bot/` referenzier
 ### Vision-Pipeline (Hybrid)
 
 ```
-Host: host_hailo_runner.py (Python 3.13, Hailo-8 YOLOv8 @ 5 Hz)
+Host: host_hailo_runner.py (Python 3.13, Hailo-8L YOLOv8 @ 5 Hz)
   → UDP 127.0.0.1:5005 →
 Docker: hailo_udp_receiver_node → /vision/detections
         gemini_semantic_node (Gemini Cloud) → /vision/semantics
@@ -138,5 +157,5 @@ Validierung erfolgt experimentell ueber ROS2-Nodes auf dem Pi 5 (V-Modell-Phasen
 - Zwei separate micro-ROS Agents: `/dev/amr_drive` (Drive-Node) und `/dev/amr_sensor` (Sensor-Node), 921600 Baud
 - XRCE-DDS MTU = 512 Bytes. Best-Effort hat KEINE Fragmentierung
 - Odometrie (~725 Bytes, Drive-Node) MUSS mit Reliable QoS publiziert werden (`rclc_publisher_init_default()`)
-- Sensor-Node Topics (`Range`, `Bool`) sind klein genug fuer Best-Effort. `Imu` und `BatteryState` vom Sensor-Node nutzen ebenfalls Reliable QoS
+- Alle Sensor-Node Publisher (`Range`, `Bool`, `Imu`, `BatteryState`) nutzen `rclc_publisher_init_default()` = Reliable QoS
 - Nachrichten > 2048 Bytes (MTU * STREAM_HISTORY) sind nicht moeglich

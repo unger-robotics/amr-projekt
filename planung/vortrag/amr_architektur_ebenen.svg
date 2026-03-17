@@ -58,7 +58,7 @@
 
     <rect x="40" y="110" width="150" height="40" class="node"/><text x="115" y="135" class="node-text">Gemini API (Cloud)</text>
     <rect x="230" y="110" width="150" height="40" class="node"/><text x="305" y="135" class="node-text">PCA9685 (Pan-Tilt)</text>
-    <rect x="420" y="110" width="150" height="40" class="node"/><text x="495" y="135" class="node-text">PCM5102A (I2S)</text>
+    <rect x="420" y="110" width="150" height="40" class="node"/><text x="495" y="135" class="node-text">MAX98357A (I2S)</text>
     <rect x="610" y="110" width="150" height="40" class="node"/><text x="685" y="135" class="node-text">Web-Dashboard</text>
   </g>
 

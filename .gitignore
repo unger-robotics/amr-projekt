@@ -21,6 +21,7 @@ log/
 
 # Claude Code local settings
 .claude/
+scripts/.gemini_api.key
 
 # rosbag recordings
 *.db3

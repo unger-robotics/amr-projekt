@@ -104,7 +104,7 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
         </div>
       </div>
 
-      {/* Lautsprecher (HifiBerry DAC) */}
+      {/* Lautsprecher (MAX98357A I2S-Verstaerker) */}
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span
@@ -114,7 +114,7 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
                 : 'bg-hud-red shadow-[0_0_6px_rgba(255,23,68,0.6)]'
             }`}
           />
-          <span className="text-xs text-hud-text-dim uppercase tracking-wider">Lautsprecher (PCM5102A)</span>
+          <span className="text-xs text-hud-text-dim uppercase tracking-wider">Lautsprecher (MAX98357A)</span>
         </div>
         <div className="flex items-center gap-2 ml-4 mb-3">
           <span className="text-xs text-hud-text-dim w-8 font-mono">{audioVolume}%</span>

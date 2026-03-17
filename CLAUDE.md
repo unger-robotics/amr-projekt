@@ -70,10 +70,10 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 | `use_rviz` | True | RViz2 (Visualisierung) |
 | `use_sensors` | True | Sensor-Node micro-ROS Agent |
 | `use_cliff_safety` | True | Cliff + Ultraschall Sicherheitslogik |
-| `use_camera` | False | v4l2 Kamera-Node |
+| `use_camera` | False | v4l2 Kamera-Knoten |
 | `use_dashboard` | False | WebSocket/MJPEG Bridge |
 | `use_vision` | False | Hailo UDP Receiver + Gemini |
-| `use_audio` | False | Audio-Feedback-Node |
+| `use_audio` | False | Audio-Feedback-Knoten |
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe (Gemini-Semantik) |
 | `use_respeaker` | False | ReSpeaker DoA |
@@ -98,7 +98,7 @@ Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_d
 Das Symlink-Pattern erfordert vier Schritte:
 
 1. Skript anlegen: `amr/scripts/<name>.py`
-2. Symlink erzeugen: `cd amr/pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../scripts/<name>.py`
+2. Symlink erzeugen: `cd amr/pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../../scripts/<name>.py`
 3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
 4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
@@ -112,7 +112,7 @@ Das Symlink-Pattern erfordert vier Schritte:
 # Drive-Node (Antrieb, PID, Odometrie, LED):
 cd amr/mcu_firmware/drive_node && pio run -e drive_node                      # Kompilieren
 cd amr/mcu_firmware/drive_node && pio run -e drive_node -t upload -t monitor # Upload + Monitor
-cd amr/mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # LED-Diagnose
+cd amr/mcu_firmware/drive_node && pio run -e led_test -t upload -t monitor   # LED/MOSFET-Diagnose
 
 # Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo):
 cd amr/mcu_firmware/sensor_node && pio run -e sensor_node                      # Kompilieren
@@ -138,15 +138,15 @@ docker compose build                        # Image bauen (~15-20 Min)
 
 ```bash
 cd dashboard/
-npm install && npm run dev     # Entwicklung (https://amr.local:5173)
+npm install && npm run dev -- --host 0.0.0.0   # Entwicklung (https://amr.local:5173)
 npm run build                  # Produktion (tsc + vite build)
 npm run lint                   # ESLint
 ```
 
 HTTPS via mkcert-Zertifikate (`amr.local+5.pem` / `amr.local+5-key.pem` in `dashboard/`).
 WebSocket-Server (`wss://`, Port 9090) und MJPEG-Server (`https://`, Port 8082) nutzen
-dieselben Zertifikate via Volume-Mount (`/dashboard:ro` im Container). Ohne Zertifikate
-Fallback auf unverschluesseltes HTTP/WS.
+dieselben Zertifikate via Volume-Mount (`/dashboard:ro` im Container). Ohne Zertifikate:
+Backend (dashboard_bridge.py) faellt auf HTTP/WS zurueck; Vite-Frontend erfordert Zertifikate (crasht ohne).
 
 ### LaTeX-Dokumente
 
@@ -184,23 +184,24 @@ sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
 
 - **Python**: Zeilenlaenge 100, Python 3.10, Double Quotes, isort-Import-Sortierung (ruff.toml)
 - **C++**: Zeilenlaenge 100, 4 Spaces, LLVM-basiert, Braces Attach, C++17 (.clang-format)
-- **C++ Benennung** (.clang-tidy): `CamelCase` Klassen, `camelBack` Methoden, `lower_case` Funktionen/Variablen/Parameter
+- **C++ Benennung** (.clang-tidy): `CamelCase` Klassen, `camelBack` Methoden/Funktionen, `lower_case` Variablen/Parameter
 - **TypeScript**: ESLint Flat Config, React Hooks Plugin (dashboard/eslint.config.js)
 
 ## Relevante Projektpfade
 
 - `amr/mcu_firmware/drive_node/` — ESP32-S3 Firmware Antrieb (eigene CLAUDE.md in `amr/mcu_firmware/`)
 - `amr/mcu_firmware/sensor_node/` — ESP32-S3 Firmware Sensorik
-- `amr/pi5/ros2_ws/src/my_bot/` — ROS2 ament_python-Paket (Launch, Nodes, Config)
+- `amr/pi5/ros2_ws/src/my_bot/` — ROS2 ament_python-Paket (Launch, Knoten, Config)
 - `amr/docker/` — Dockerfile, docker-compose.yml, run.sh, verify.sh
-- `amr/scripts/` — Validierungsskripte, ROS2-Runtime-Nodes, Host-Only-Tools
+- `amr/scripts/` — Validierungsskripte, ROS2-Runtime-Knoten, Host-Only-Tools
 - `scripts/` — Wartungsskripte (update_dependencies.sh, rover_wartung.sh)
+- `docs/` — Architektur-, Build-, System- und Validierungsdokumentation
 - `dashboard/` — React/Vite Benutzeroberflaeche
 - `projektarbeit/` — Projektarbeit (Markdown-Kapitel + LaTeX)
 - `planung/vortrag/` — Beamer-Praesentationen
 - `hardware/` — Hardware-Spezifikationen + LaTeX-Dokument
 
-Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_firmware/CLAUDE.md`.
+Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLAUDE.md` und `dashboard/CLAUDE.md`.
 
 ## Typische Arbeitsreihenfolge
 
@@ -210,6 +211,11 @@ Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_f
 4. Aenderung mit minimalem Umfang umsetzen
 5. Build-, Start- oder Pruefpfad angeben
 6. Auswirkungen auf Architektur, Topics, Parameter und Dokumentation benennen
+
+## Python-Versionen
+
+- **Container (ROS2 Humble):** Python 3.10 — alle ROS2-Nodes und Skripte in `amr/scripts/`
+- **Host (Pi 5):** Python 3.13 — nur `host_hailo_runner.py` (Hailo SDK erfordert Host-Python)
 
 ## Harte Randbedingungen
 
@@ -221,27 +227,22 @@ Detaillierte CLAUDE.md fuer den technischen Kern: `amr/CLAUDE.md` und `amr/mcu_f
 
 ## Detaildokumente
 
-- `docs/architecture.md`
-- `docs/build_and_deploy.md`
-- `docs/ros2_system.md`
-- `docs/dashboard.md`
-- `docs/vision_pipeline.md`
-- `docs/serial_port_management.md`
-- `docs/robot_parameters.md`
-- `docs/validation.md`
-- `docs/quality_checks.md`
-- `docs/projektarbeit_style.md`
-- `docs/literature_workflow.md`
+- `docs/architecture.md` — Systemarchitektur und Komponentenuebersicht
+- `docs/build_and_deploy.md` — Build- und Deployment-Prozesse
+- `docs/ros2_system.md` — ROS2-Topics, TF-Baum, QoS
+- `docs/firmware.md` — MCU-Firmware-Details
+- `docs/dashboard.md` — Dashboard-Architektur und WebSocket-Protokoll
+- `docs/vision_pipeline.md` — Hailo/Gemini Vision-Pipeline
+- `docs/serial_port_management.md` — udev-Regeln und Seriennummern
+- `docs/robot_parameters.md` — Physikalische Parameter (Raddurchmesser, PID, Batterie)
+- `docs/validation.md` — Validierungskonzept
+- `docs/quality_checks.md` — Qualitaetspruefungen
+- `docs/projektarbeit_style.md` — Schreibstil fuer Projektarbeit
+- `docs/literature_workflow.md` — Literaturverwaltung
 - `planung/abschlussbericht.md`
 - `planung/systemdokumentation.md`
 - `planung/benutzerhandbuch.md`
-- `planung/testanleitung_phase1_phase2.md`
-- `planung/messprotokoll_phase1_phase2.md`
-- `planung/testanleitung_phase3.md`
-- `planung/messprotokoll_phase3.md`
-- `planung/testanleitung_phase4.md`
-- `planung/messprotokoll_phase4.md`
-- `planung/testanleitung_phase5.md`
-- `planung/messprotokoll_phase5.md`
+- `planung/testanleitung_phase1_phase2.md` bis `planung/testanleitung_phase5.md`
+- `planung/messprotokoll_phase1_phase2.md` bis `planung/messprotokoll_phase5.md`
 - `planung/https-setup-amr-dashboard.md`
 - `planung/Netzwerkkonfiguration.md`

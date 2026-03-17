@@ -281,7 +281,7 @@ Zulaessig ist die Kette:
 #### Hardware
 
 * ReSpeaker Mic Array v2.0 als USB-Audio-Eingabe am Raspberry Pi 5
-* PCM5102A (HifiBerry DAC) und Lautsprecher als Audio-Ausgabe
+* MAX98357A I2S-Verstaerker und Lautsprecher als Audio-Ausgabe
 
 #### Software-Module
 
@@ -366,7 +366,7 @@ Der Roboter soll natuerlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 #### Hardware
 
 * ReSpeaker Mic Array v2.0
-* PCM5102A (HifiBerry DAC)
+* MAX98357A I2S-Verstaerker
 * Lautsprecher
 
 #### Software-Zuordnung

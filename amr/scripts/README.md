@@ -1,19 +1,20 @@
 # AMR Scripts
 
-Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als `ros2 run my_bot <name>` ausfuehrbar (sofern ROS2-Nodes). Dateien NICHT verschieben — Symlinks und Docker-Dual-Mount haengen von der flachen Struktur ab.
+Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als `ros2 run my_bot <name>` ausfuehrbar (sofern ROS2-Knoten). Dateien NICHT verschieben — Symlinks und Docker-Dual-Mount haengen von der flachen Struktur ab.
 
-## Runtime-Nodes (via full_stack.launch.py)
+## Runtime-Knoten (via full_stack.launch.py)
 
 | Datei | Beschreibung |
 |---|---|
-| `dashboard_bridge.py` | WebSocket (9090) + MJPEG (8082) Bridge fuer Web-Dashboard |
+| `dashboard_bridge.py` | WebSocket (9090) + MJPEG (8082) Bridge fuer Dashboard |
 | `hailo_udp_receiver_node.py` | UDP-Empfaenger fuer Hailo-8 YOLOv8-Detektionen (Port 5005) |
 | `gemini_semantic_node.py` | Gemini Cloud semantische Analyse (`/vision/semantics`) |
 | `hailo_inference_node.py` | (Legacy) Direkter Hailo-8 Zugriff, ersetzt durch UDP-Pattern |
 | `cliff_safety_node.py` | cmd_vel-Multiplexer mit Cliff-Notbremse (subscribt /cliff, muxed Nav2+Dashboard) |
 | `audio_feedback_node.py` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
-| `can_bridge_node.py` | CAN-Bus Diagnostik-Bridge (MCP2515/SocketCAN → /diagnostics/can) |
+| `can_bridge_node.py` | CAN-Bus Bridge: Empfaengt CAN-Frames und publiziert auf Standard-Sensor-Topics (/imu, /range/front, /cliff, /battery) |
 | `respeaker_doa_node.py` | ReSpeaker DoA/VAD (USB, `/sound_direction`, `/is_voice`) |
+| `tts_speak_node.py` | Text-to-Speech Sprachausgabe fuer Gemini-Semantik (gTTS + mpg123, Rate-Limiting 10 s) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)
 
@@ -33,16 +34,21 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `serial_latency_logger.py` | Serial-Transport-Latenz ESP32-Pi (CSV-Export) |
 | `can_validation_test.py` | CAN-Bus Frame-Rate, Heartbeat, Daten-Dekodierung (30s, JSON) |
 | `sensor_test.py` | Ultraschall (HC-SR04) + Cliff (MH-B) Konnektivitaet, Genauigkeit, Sicherheit |
+| `nav_square_test.py` | Quadrat-Navigationstest (1 m x 1 m) via /cmd_vel mit Vektornavigation und Sensorfusion (Odom/IMU/Map) |
+| `cliff_latency_test.py` | End-to-End Cliff-Safety-Latenztest (0.2 m/s Vorwaertsfahrt, misst Zeit bis Motorstopp) |
+| `dashboard_latency_test.py` | Phase-5-Validierung: Dashboard-Latenz, Telemetrie-Vollstaendigkeit, Deadman-Timer, Audio, Notaus |
 
 ## Standalone-Utilities (kein ROS2 erforderlich)
 
 | Datei | Beschreibung |
 |---|---|
 | `amr_utils.py` | Shared-Modul: Kinematik-Konstanten, Quaternionen, Farbcodes |
-| `hardware_info.py` | Hardware-Report-Generator (Zeitstempel-Markdown) |
+| `hardware_info/` | Hardware-Report-Paket (aufrufbar via `python -m hardware_info`): System, Peripherie, Software, Projekt-Info |
 | `pre_flight_check.py` | Interaktive Hardware-Checkliste vor Testfahrt |
 | `umbmark_analysis.py` | UMBmark-Auswertung (numpy/matplotlib) |
 | `validation_report.py` | Gesamt-Report aus JSON-Ergebnissen aggregieren |
+| `camera_calibration.py` | Kamerakalibrierung ueber MJPEG-Stream mit Schachbrettmuster (OpenCV, ROS2-YAML-Export) |
+| `generate_checkerboard.py` | Schachbrettmuster-Generator als PNG fuer Kamerakalibrierung (9x6, A4-optimiert) |
 
 ## Host-Only (ausserhalb Docker, Python 3.13)
 

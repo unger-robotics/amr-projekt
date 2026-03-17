@@ -8,8 +8,8 @@ Der Systementwurf löst diese Anforderung durch ein zweistufiges Echtzeitsystem.
 
 Die Steuerung gliedert sich in drei Ebenen:
 
-* **Ebene A (Fahrkern sowie Sensor- und Sicherheitsbasis):** Der Fahrkern regelt die Gleichstrommotoren mit PID-Reglern bei 50 Hz auf dem Drive-Knoten (ESP32-S3). Die Sensor- und Sicherheitsbasis verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner auf dem Sensor-Knoten (ESP32-S3). Lokalisierung, Kartierung und Navigation mit SLAM Toolbox und Nav2 laufen auf dem Raspberry Pi 5.
-* **Ebene B (Bedien- und Leitstandsebene):** Diese Ebene umfasst Dashboard, Telemetrie, manuelle Kommandos und Audio-Rückmeldungen auf dem Raspberry Pi 5.
+* **Ebene A (Fahrkern sowie Sensor- und Sicherheitsbasis):** Der Fahrkern regelt die Gleichstrommotoren mit PID-Reglern bei 50 Hz auf dem Drive-Knoten (ESP32-S3). Die Sensor- und Sicherheitsbasis verarbeitet Sensordaten aus Odometrie, IMU und Laserscanner auf dem Sensor-Knoten (ESP32-S3).
+* **Ebene B (Bedien- und Leitstandsebene):** Lokalisierung, Kartierung und Navigation mit SLAM Toolbox und Nav2 laufen auf dem Raspberry Pi 5. Zusätzlich umfasst diese Ebene Dashboard, Telemetrie, manuelle Kommandos und Audio-Rückmeldungen.
 * **Ebene C (Intelligente Interaktion):** Die Ebene umfasst Sprachschnittstelle, Vision und semantische Interpretation auf dem Raspberry Pi 5.
 
 Die Kommunikation zwischen ESP32-S3 und Raspberry Pi 5 erfolgt über micro-ROS per UART/USB-CDC über stabile udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`). Der Standard XRCE-DDS (eXtremely Resource Constrained Environments - Data Distribution Service) übernimmt die Middleware-Funktion. Die Trennung der drei Ebenen sichert die deterministische Motorsteuerung und entkoppelt den Fahrkern von den rechenintensiven Navigationsalgorithmen.
@@ -24,7 +24,7 @@ Die kinematischen Parameter definieren das Bewegungsmodell. Der kalibrierte Radd
 
 ### 2.2 Sensorik
 
-Der RPLIDAR A1 ist rückwärts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,5 Hz über `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite beträgt 12 m.
+Der RPLIDAR A1 ist rückwärts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,0 Hz über `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite beträgt 12 m.
 
 Eine MPU6050-IMU (Inertial Measurement Unit) misst Beschleunigungen (+/- 2 g) und Drehraten (+/- 250 deg/s). Der I2C-Bus arbeitet im Fast-Mode (400 kHz). Ein Komplementärfilter (Alpha = 0,98) fusioniert die Daten. Der Filter gewichtet das Gyroskop mit 98 Prozent und das aus den Encodern abgeleitete Heading mit 2 Prozent. Die Soll-Rate der Publikation auf `/imu` liegt bei 50 Hz. Die effektiv erreichte Rate sinkt auf 30 bis 35 Hz ab, da parallele I2C-Buszugriffe (Contention) am Sensor-Knoten Verzögerungen verursachen.
 
@@ -52,7 +52,7 @@ Ein zentrales Launch-File (`full_stack.launch.py`) orchestriert den Stack. Da mi
 
 `slam_toolbox` arbeitet im asynchronen Online-Modus und nutzt den Ceres-Solver zur nichtlinearen Optimierung der Pose. Der Knoten erzeugt eine Belegungskarte mit 5 cm Auflösung. Loop Closure ist aktiv (Suchradius 8 m, Mindestkettenlänge 10 Scans).
 
-Nav2 stellt den Navigations-Stack bereit. AMCL (Adaptive Monte Carlo Localization) lokalisiert den Roboter mit 500 bis 2000 Partikeln. NavFn plant den globalen Pfad. Regulated Pure Pursuit führt die lokale Bahnverfolgung mit maximal 0,4 m/s aus.
+Nav2 stellt den Navigations-Stack bereit. AMCL (Adaptive Monte Carlo Localization) lokalisiert den Roboter mit 500 bis 2000 Partikeln. NavFn plant den globalen Pfad. Regulated Pure Pursuit führt die lokale Bahnverfolgung mit maximal 0,15 m/s aus.
 
 ## 4. Kommunikationsarchitektur
 
@@ -68,7 +68,7 @@ Die Topic-Struktur trennt Fahrkommandos, Odometrie, IMU und Laserscan. Die strik
 
 Die Navigation erfolgt in drei Schritten. Zuerst erzeugt `slam_toolbox` eine Belegungskarte. Danach verfeinert AMCL die Pose und publiziert die Transformation `map -> odom`. Abschließend berechnet NavFn einen globalen Pfad, während Regulated Pure Pursuit die lokale Bahnverfolgung übernimmt.
 
-Die lokale Costmap (Kostenkarte zur Hindernisvermeidung) nutzt ein Rolling Window von 3x3 m. Sie kombiniert einen VoxelLayer (3D-Hinderniserfassung) und einen InflationLayer (Sicherheitsabstand) bei einem Inflationsradius von 25 cm. Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 5 cm und einer Yaw-Toleranz von 5,7 Grad (0,10 rad).
+Die lokale Costmap (Kostenkarte zur Hindernisvermeidung) nutzt ein Rolling Window von 3x3 m. Sie kombiniert einen VoxelLayer (3D-Hinderniserfassung) und einen InflationLayer (Sicherheitsabstand) bei einem Inflationsradius von 25 cm. Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 3 cm (0,03 m) und einer Yaw-Toleranz von 2,9 Grad (0,05 rad).
 
 ## 6. Schnittstellen und Parameter
 
