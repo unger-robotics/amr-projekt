@@ -43,7 +43,7 @@
 
     <rect x="20" y="80" width="170" height="60" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
     <text x="105" y="105" text-anchor="middle" class="text-prim font-normal font-mono">Nav2 / SLAM</text>
-    <text x="105" y="125" text-anchor="middle" class="text-sec font-small">Navigation (0.4 m/s)</text>
+    <text x="105" y="125" text-anchor="middle" class="text-sec font-small">Navigation (0.15 m/s)</text>
 
     <rect x="210" y="80" width="170" height="60" fill="#0B131E" stroke="#517C96" stroke-width="1" rx="4"/>
     <text x="295" y="105" text-anchor="middle" class="text-prim font-normal font-mono">XRCE-DDS</text>

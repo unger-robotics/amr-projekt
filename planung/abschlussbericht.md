@@ -50,7 +50,7 @@ Die Firmware der ESP32-S3 teilt Kommunikations-, Regel- und Messaufgaben in dedi
 Der Raspberry Pi 5 betreibt den ROS-2-Stack (Humble) in einer Docker-Umgebung. Der Stack umfasst vier Hauptkomponenten:
 
 * **Lokalisierung und Kartierung:** `slam_toolbox` generiert Online-Karten (5 cm Auflösung). `odom_to_tf` übersetzt die Odometrie in TF-Transformationen.
-* **Navigation:** Nav2 plant Pfade und regelt die Bahnverfolgung (Regulated Pure Pursuit) mit einer Zielgeschwindigkeit von 0,4 m/s.
+* **Navigation:** Nav2 plant Pfade und regelt die Bahnverfolgung (Regulated Pure Pursuit) mit einer Zielgeschwindigkeit von 0,15 m/s (Nav2) bzw. maximal 0,4 m/s (Joystick).
 * **Sicherheitslogik:** Der `cliff_safety_node` blockiert bei erkannter Kante sofort alle Navigationsbefehle und erzwingt einen Stopp (v = 0 m/s, w = 0 rad/s).
 * **Hybride Vision-Pipeline:** Der `host_hailo_runner` führt Objekterkennung lokal aus, während der `gemini_semantic_node` eine Cloud-Schnittstelle für asynchrone semantische Auswertungen anbindet.
 
@@ -60,7 +60,7 @@ Die experimentelle Validierung beantwortet die Projektfragen anhand quantitative
 
 **Zu PF1 (Echtzeitfähigkeit):** Die Dual-Knoten-Architektur entkoppelt die Motorregelung erfolgreich von der Sensorik. Die Regelschleife arbeitet deterministisch mit 50 Hz bei einer Jitter-Breite von unter 2 ms.
 
-**Zu PF2 (Navigationsgenauigkeit):** Die UMBmark-Kalibrierung reduzierte den Odometriefehler um den Faktor 10. Diese Kalibrierung, kombiniert mit IMU-Fusion, ermöglicht eine präzise SLAM-Kartierung. Der Absolute Trajectory Error (ATE) liegt bei 0,16 m und erfüllt damit das Akzeptanzkriterium (< 0,20 m).
+**Zu PF2 (Navigationsgenauigkeit):** Die UMBmark-Kalibrierung reduzierte den Odometriefehler um den Faktor 10. Diese Kalibrierung, kombiniert mit IMU-Fusion, ermöglicht eine präzise SLAM-Kartierung. Der mittlere Positionsfehler liegt bei 0,16 m (ATE RMSE 0,19 m) und erfüllt damit das Akzeptanzkriterium (< 0,20 m).
 
 **Zu PF3 (Vision und Docking):** Die Ergebnisse bestätigen die Hypothese. Die Edge-Inferenz erreicht praxistaugliche 34 ms Latenz. Das ArUco-Docking arbeitet nach Optimierung der Dreifach-Bedingung (Ultraschall ≤ 0,30 m, Marker sichtbar, Versatz ≤ 5 cm) mit einer Erfolgsquote von 100 Prozent (10 Versuche, 15.03.2026) bei einem mittleren lateralen Versatz von 0,73 cm. Die mittlere Navigationsgenauigkeit über zehn Fahrten liegt bei 6,4 cm (Position) und 4,2 Grad (Gierwinkel). Systemgrenzen zeigen sich bei ungünstiger Beleuchtung oder verdeckten Markern.
 
@@ -68,7 +68,7 @@ Die experimentelle Validierung beantwortet die Projektfragen anhand quantitative
 
 Der entwickelte Prototyp belegt, dass eine verteilte Architektur mit Open-Source-Komponenten belastbare Ergebnisse für die Intralogistik liefern kann. Das V-Modell nach VDI 2206 bot eine belastbare Struktur für die Entwicklung, auch wenn die iterative Softwareentwicklung das Modell an seine Grenzen führt.
 
-Technische Einschränkungen bestehen bei der Schlupfempfindlichkeit der Rad-Odometrie und den Latenzen der Cloud-Dienste. Mit Materialkosten von rund 513 EUR ist das System deutlich günstiger als kommerzielle Plattformen wie der TurtleBot 4, erreicht jedoch nicht die normative Absicherung (z. B. nach ISO 3691-4) industrieller Systeme mit redundanter Sicherheitssensorik. Zukünftige Iterationen sollten robuste Docking-Strategien und eine stärkere Kapselung der Cloud-Funktionen adressieren.
+Technische Einschränkungen bestehen bei der Schlupfempfindlichkeit der Rad-Odometrie und den Latenzen der Cloud-Dienste. Mit Materialkosten von rund 694 EUR ist das System deutlich günstiger als kommerzielle Plattformen wie der TurtleBot 4, erreicht jedoch nicht die normative Absicherung (z. B. nach ISO 3691-4) industrieller Systeme mit redundanter Sicherheitssensorik. Zukünftige Iterationen sollten robuste Docking-Strategien und eine stärkere Kapselung der Cloud-Funktionen adressieren.
 
 ## Fachbegriffe
 

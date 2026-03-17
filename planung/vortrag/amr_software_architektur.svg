@@ -163,7 +163,7 @@
     <rect width="240" height="70" class="node" style="stroke: #00FF66;" />
     <text x="15" y="25" class="node-text" fill="#00FF66">ALSA Sound Subsystem</text>
     <text x="15" y="45" class="sub-text">Device: /dev/snd</text>
-    <text x="15" y="60" class="status-text">I2S PCM5102A</text>
+    <text x="15" y="60" class="status-text">I2S MAX98357A</text>
   </g>
 
   <g transform="translate(920, 550)">

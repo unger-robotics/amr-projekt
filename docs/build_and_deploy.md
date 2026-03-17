@@ -1,5 +1,7 @@
 # Build und Deployment
 
+Fuer eine schrittweise Inbetriebnahme-Anleitung siehe [benutzerhandbuch.md](benutzerhandbuch.md).
+
 ## Firmware (PlatformIO, zwei getrennte Projekte)
 
 Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten mit identischem Dual-Core-Pattern (Core 0: micro-ROS Executor, Core 1: Echtzeit-Datenerfassung + CAN).
@@ -8,17 +10,17 @@ Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten mit identische
 
 ```bash
 cd amr/mcu_firmware/drive_node
-pio run                                    # Kompilieren
-pio run -t upload -t monitor               # Upload + Monitor
-pio run -e led_test -t upload -t monitor   # MOSFET-Diagnose (~5s)
+pio run -e drive_node                      # Kompilieren
+pio run -e drive_node -t upload -t monitor # Upload + Monitor
+pio run -e led_test -t upload -t monitor   # LED/MOSFET-Diagnose (~5s)
 ```
 
 ### Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo)
 
 ```bash
 cd amr/mcu_firmware/sensor_node
-pio run                                    # Kompilieren
-pio run -t upload -t monitor               # Upload + Monitor
+pio run -e sensor_node                      # Kompilieren
+pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 ```
 
 Erster Build pro Node: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
@@ -98,7 +100,7 @@ cd amr/docker/
 | `use_rviz` | `True` | RViz2 Visualisierung |
 | `use_sensors` | `True` | Sensor-Node ESP32-S3 |
 | `use_dashboard` | `False` | Dashboard-Bridge (WebSocket :9090, MJPEG :8082) |
-| `use_camera` | `False` | Kamera-Node (v4l2_camera_node) |
+| `use_camera` | `False` | Kamera-Knoten (v4l2_camera_node) |
 | `use_vision` | `False` | Vision-Pipeline (Hailo UDP + Gemini) |
 | `use_cliff_safety` | `True` | Cliff-Safety cmd_vel-Multiplexer |
 | `use_audio` | `False` | Audio-Feedback (MAX98357A I2S, Docker-Volume `asound.conf` fuer softvol) |
@@ -242,7 +244,7 @@ cd ~/amr-projekt/dashboard
 npm run dev -- --host 0.0.0.0
 ```
 
-Die Benutzeroberflaeche ist danach erreichbar unter `http://<Pi-IP>:5173/`.
+Die Benutzeroberflaeche ist danach erreichbar unter `https://amr.local:5173/`.
 
 ### Verifikation
 
@@ -304,13 +306,13 @@ python3 amr/scripts/can_validation_test.py --duration 30
 
 ```bash
 cd dashboard/
-npm install && npm run dev -- --host 0.0.0.0   # Entwicklung (http://<Pi-IP>:5173)
+npm install && npm run dev -- --host 0.0.0.0   # Entwicklung (https://amr.local:5173)
 npm run build                                   # Produktion (tsc + vite build)
 npm run lint                                    # ESLint
 npx tsc --noEmit                                # TypeScript Type-Check
 ```
 
-Das Dashboard verbindet sich automatisch per WebSocket (`ws://<Pi-IP>:9090`) mit der `dashboard_bridge` im Container. SLAM-Kartenklick sendet ein Nav2 NavigateToPose Goal.
+Die Benutzeroberflaeche verbindet sich automatisch per WebSocket (`wss://amr.local:9090`) mit der `dashboard_bridge` im Container. SLAM-Kartenklick sendet ein Nav2 NavigateToPose Goal.
 
 ## Wartungsskripte
 

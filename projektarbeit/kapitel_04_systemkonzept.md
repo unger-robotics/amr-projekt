@@ -49,7 +49,7 @@ Das Zielbild folgt der Roadmap mit drei Ebenen. Die Ebenen trennen fahrkritische
 
 | Ebene                                                 | Hauptfunktionen                                                                              | Zentrale Recheneinheit                      |
 |-------------------------------------------------------|----------------------------------------------------------------------------------------------|---------------------------------------------|
-| Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis | Antrieb, Odometrie, IMU, Ultraschall, Cliff-Sensor, Batterieueberwachung, Servo-Steuerung, Sicherheitsreaktion | 2 x ESP32-S3 und Raspberry Pi 5             |
+| Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis | Antrieb, Odometrie, IMU, Ultraschall, Cliff-Sensor, Batterieueberwachung, Servo-Steuerung, LED-Statusanzeige, Sicherheitsreaktion | 2 x ESP32-S3 und Raspberry Pi 5             |
 | Ebene B – Bedien- und Leitstandsebene                 | Benutzeroberflaeche, Telemetrie, manuelle Kommandos, Videostream, Audio-Rueckmeldungen         | Raspberry Pi 5                              |
 | Ebene C – Intelligente Interaktion                    | Sprachschnittstelle, semantische Interpretation, Vision, spaetere multimodale Bedienung       | Raspberry Pi 5 mit optionalem Beschleuniger |
 
@@ -97,7 +97,7 @@ Die Daten- und Befehlsfluesse folgen dem Prinzip „Zustand nach oben, Freigabe 
 
 Fuer die Navigation entstehen mindestens drei logisch getrennte Befehlsquellen: autonome Fahrbefehle der Navigation, manuelle Fahrbefehle der Benutzeroberflaeche und Stopp- oder Schutzkommandos der Sicherheitslogik. Die Architektur fuehrt diese Quellen nicht unkontrolliert zusammen, sondern ueber eine Freigabelogik mit eindeutigem Vorrang. Die Sicherheitslogik steht oberhalb der regulaeren Fahrvorgaben. Eine erkannte Kante darf daher eine aktive Zielanfahrt unmittelbar unterbrechen.
 
-Der Cliff-Sicherheitsmultiplexer bildet diese Regel technisch ab. Er verarbeitet den Status des Cliff-Sensors und uebersteuert bei Bedarf eingehende Fahrbefehle. Das Ergebnis ist kein konkurrierender Fahrkanal, sondern eine uebergeordnete Schutzinstanz. Damit trennt das System bewusst zwischen Navigationsfehlern, die Recovery-Verhalten ausloesen koennen, und Schutzereignissen, die unmittelbar zum Halt fuehren muessen.
+Der Cliff-Sicherheitsmultiplexer bildet diese Regel technisch ab. Er blockiert eingehende Fahrbefehle auf dem Topic `/cmd_vel`, sobald der Cliff-Sensor eine Kante erkennt oder die Ultraschall-Distanz unter $80\,\mathrm{mm}$ faellt. Die Freigabe erfolgt erst bei einer Distanz ueber $120\,\mathrm{mm}$ (Hysterese), um ein wiederholtes Umschalten im Grenzbereich zu vermeiden. Intern wird die Blockierung durch die Bedingung `_cliff_detected or _obstacle_too_close` ausgeloest. Das Ergebnis ist kein konkurrierender Fahrkanal, sondern eine uebergeordnete Schutzinstanz. Damit trennt das System bewusst zwischen Navigationsfehlern, die Recovery-Verhalten ausloesen koennen, und Schutzereignissen, die unmittelbar zum Halt fuehren muessen.
 
 Die Freigabelogik regelt zusaetzlich die Uebergaenge zwischen Betriebsarten. Navigation darf nur freigegebene Missionskommandos ausfuehren. Manuelle Eingriffe der Benutzeroberflaeche duerfen den Fahrzustand beeinflussen, aber keine Schutzmechanismen umgehen. Sprachkommandos duerfen nur freigegebene Missionskommandos erzeugen. Dadurch bleibt die gesamte Befehlskette auch bei spaeteren Erweiterungen nachvollziehbar.
 

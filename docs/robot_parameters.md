@@ -93,7 +93,7 @@ Akkupack: Samsung INR18650-35E 3S1P (NCA, 10.80 V / 3.35 Ah).
 | Motor-Abschaltung | < 9.5 V |
 | Hysterese | 0.3 V |
 | Voll geladen | 12.60 V |
-| Tiefentladeschutz (Cutoff) | 7.95 V |
+| Tiefentladeschutz (Cutoff) | 7.5 V |
 | Nennkapazitaet | 3.35 Ah |
 
 ### INA260-Register (amr::ina260)
@@ -101,7 +101,7 @@ Akkupack: Samsung INR18650-35E 3S1P (NCA, 10.80 V / 3.35 Ah).
 | Parameter | Wert |
 |---|---|
 | Config-Register | 0x6527 |
-| Alert-Spannungsgrenze | 7600 mV |
+| Alert-Spannungsgrenze | 8000 mV |
 | Strom-LSB | 1.25 mA |
 | Spannungs-LSB | 1.25 mV |
 | Leistungs-LSB | 10.0 mW |
@@ -125,7 +125,7 @@ Ansteuerung ueber PCA9685 (I2C-PWM-Treiber).
 
 Bitrate: 1 Mbit/s (ISO 11898), Transceiver: SN65HVD230, TX-Timeout: 10 ms (Drive-Knoten) / 3 ms (Sensor-Knoten).
 
-Drive-Knoten CAN-IDs: 0x200-0x2FF. Sensor-Knoten CAN-IDs: 0x110-0x1FF. Heartbeat-Periode: 1000 ms (beide Knoten).
+Drive-Knoten CAN-IDs: 0x200-0x2FF. Sensor-Knoten CAN-IDs: 0x110-0x1F0. Heartbeat-Periode: 1000 ms (beide Knoten).
 
 ## Sensorik (amr::sensor)
 

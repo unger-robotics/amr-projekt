@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 """
-Gemini API CLI-Client
+Zweck: Kommandozeilen-Client zur direkten Textgenerierung über die Gemini API.
+echo "GEMINI_API_KEY" > scripts/.gemini_api.key
+source .venv/bin/activate
+pip install requests
+Aufruf: ./scripts/gemini_abfrage.py [Was ist Docker?]
+Aufruf: ./scripts/gemini_abfrage.py "Beantworte die folgenden 5 Fragen ausschließlich basierend auf dem nachstehenden Text der Dokumentation.
 
-Ein Kommandozeilen-Werkzeug zur direkten Abfrage des Gemini-Modells.
-Sendet Benutzereingaben (Prompts) zusammen mit vordefinierten Systemanweisungen
-an die API und speichert die Antwort in einer Markdown-Datei.
+Fragen:
 
-Voraussetzungen:
-    - Python 3.x
-    - Bibliothek `requests`
-    - Eine Datei namens `GEMINI_API_KEY` (ohne Endung) im selben Verzeichnis
-      wie dieses Skript, welche ausschließlich den API-Schlüssel enthält.
+1. Wie ist das Drei-Ebenen-Modell aufgebaut und welche Komponenten bilden Ebene A?
+
+2. Welche Funktion erfuellt der redundante CAN-Notstopp-Pfad und wie verhaelt sich seine Latenz?
+
+3. Wie teilt das FreeRTOS Dual-Core-Pattern die Aufgaben auf?
+
+4. Warum wird ROS 2 in einem Docker-Container im Host-Network-Modus ausgefuehrt?
+
+5. Wie loest die Vision-Pipeline das Python-Kompatibilitaetsproblem?" -f docs/systemdokumentation.md
+
+Abhängigkeiten: Python 3.x, externe Bibliothek `requests`.
+Umgebung: Linux/macOS/Windows Kommandozeile.
+Einschränkungen: Setzt die Datei `scripts/.gemini_api.key` im Ausführungsverzeichnis voraus.
 """
 
 import os
@@ -19,25 +30,29 @@ from datetime import datetime
 
 import requests
 
-# Globale Verhaltensregeln (System Instructions)
+# Globale Verhaltensregeln für das KI-Modell (System Instructions)
 SYSTEM_VORGABE = (
-    "Agiere als wissenschaftlicher Assistent. Die Zielgruppe umfasst sowohl technische Laien als auch Fachexperten/Ingenieure. "
-    "Formuliere ausschließlich aktiv und neutral. Verwende weder 'du' noch 'wir', verzichte auf jegliche Moderationsfloskeln und vermeide unklare Verweise (wie 'dieser Wert', 'das', 'hier') ohne expliziten Bezug. "
-    "Strukturiere jede Antwort nach dem strikten Ablauf: Daten -> Regel -> Schluss -> Konsequenz. "
-    "Beginne mit einer klaren Leitfrage und behandle in jedem Abschnitt exakt ein Thema. "
+    "Agiere als wissenschaftlich-technischer Assistent und Code-Reviewer. Die Zielgruppe umfasst sowohl technische Laien als auch Fachexperten/Ingenieure. "
+    "Formuliere ausschließlich aktiv und neutral. Verwende weder 'du' noch 'wir', verzichte auf jegliche Moderationsfloskeln und vermeide unklare Verweise ohne expliziten Bezug. "
+    "Beginne den Text mit einer klar formulierten Leitfrage, die den Untersuchungsgegenstand eingrenzt. "
+    "Strukturiere jede Argumentation nach dem strikten Ablaufschema: Daten -> Regel -> Schluss -> Konsequenz. Behandle in jedem Abschnitt exakt ein Thema. "
+    "Nutze zur Strukturierung von Sachtexten Fließtext, Listen, Tabellen, Rechenbeispiele oder Visualisierungen, wenn sie die Verständlichkeit steigern. "
     "Verankere Fachbegriffe beim ersten Auftreten zwingend durch eine kurze, greifbare Erklärung (physische Entsprechung), sodass der Text ohne Zusatzwissen verstanden wird. "
-    "Nenne Annahmen und Randbedingungen immer vor der eigentlichen Bewertung. Evidenz steht zwingend vor dem Urteil. "
-    "Trenne Ursache und Wirkung sauber. Nenne für jede Bewertung das zugrundeliegende Kriterium. "
-    "Versehe jede Zahl ausnahmslos mit Einheit, Bezug, Referenzwert und Quelle. "
-    "Formatiere die Antwort in GFM (GitHub Flavored Markdown). Nutze LaTeX für mathematische Formeln (Inline mit $, Display mit $$). "
-    "Beende die Antwort mit einem knappen, merkfähigen Schluss, der sich ausschließlich auf die zuvor gezeigten Daten zurückführen lässt und die fachliche Klarheit bestätigt."
+    "Nenne Annahmen und Randbedingungen immer vor der eigentlichen Bewertung. Trenne Ursache und Wirkung sauber: Benenne für jede Bewertung das zugrundeliegende Kriterium ohne versteckte Kausalannahmen. "
+    "Versehe jede Zahl ausnahmslos mit Einheit, Bezug, Referenzwert und Quelle (Beispiel: 'Lateraldrift 2,1 cm (Messung Kapitel 6, Referenz: <= 5 cm)'). "
+    "Wende bei ausführbarem Code und Admin-Befehlen das Prinzip 'Simple is best, teile und herrsche' an (Fokus auf C/C++, Python, React+TypeScript+Vite+Tailwind CSS). "
+    "Dokumentiere Skripte zwingend hinsichtlich Zweck, Aufruf, Abhängigkeiten, Umgebung und Einschränkungen. Folge dabei der projektüblichen Kommentarkonvention (Doxygen, JSDoc, Docstrings). "
+    "Fasse Terminal-Befehle stets kompakt zum Kopieren zusammen. "
+    "Gib bei Code-Artefakten immer die Testbarkeit an, einschließlich des erwarteten Ein-/Ausgabeverhaltens und relevanter Grenzwerte. "
+    "Formatiere die Antwort in GFM (GitHub Flavored Markdown). Nutze LaTeX ausschließlich für mathematische Formeln (Inline mit $, Display mit $$). "
+    "Beende die Antwort mit einem knappen, merkfähigen Schluss oder Fazit, das sich ausschließlich auf die zuvor gezeigten Daten zurückführen lässt."
 )
 
 
 def lese_api_schluessel() -> str:
-    """Liest den API-Schlüssel sicher aus der lokalen Konfigurationsdatei."""
+    """Liest den API-Schlüssel sicher aus der versteckten lokalen Konfigurationsdatei."""
     skript_verzeichnis = os.path.dirname(os.path.abspath(__file__))
-    schluessel_datei = os.path.join(skript_verzeichnis, "GEMINI_API_KEY")
+    schluessel_datei = os.path.join(skript_verzeichnis, ".gemini_api.key")
 
     try:
         with open(schluessel_datei, encoding="utf-8") as datei:
@@ -52,10 +67,30 @@ def lese_api_schluessel() -> str:
 
 
 def hole_prompt() -> str:
-    """Extrahiert den Prompt aus den Startargumenten oder der interaktiven Eingabe."""
-    if len(sys.argv) > 1:
-        prompt = " ".join(sys.argv[1:])
-    else:
+    """Extrahiert den Prompt und liest optional referenzierte Dateien ein."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Gemini API CLI-Client")
+    parser.add_argument("prompt_text", nargs="*", help="Der eigentliche Fragstext")
+    parser.add_argument(
+        "-f", "--file", type=str, help="Pfad zu einer Kontext-Datei (z.B. systemdokumentation.md)"
+    )
+
+    args = parser.parse_args()
+
+    prompt = " ".join(args.prompt_text)
+
+    # Dateiinhalt anhaengen, falls Parameter -f gesetzt ist
+    if args.file:
+        try:
+            with open(args.file, encoding="utf-8") as f:
+                datei_inhalt = f.read()
+            prompt += f"\n\n--- KONTEXT AUS DATEI ({args.file}) ---\n{datei_inhalt}"
+        except Exception as e:
+            raise OSError(f"Fehler beim Lesen der Datei '{args.file}': {e}") from e
+
+    # Fallback auf interaktive Eingabe, falls nichts uebergeben wurde
+    if not prompt.strip():
         prompt = input("Gib deinen Prompt an das Modell ein (beende mit Enter):\n> ")
 
     if not prompt.strip():
@@ -63,8 +98,8 @@ def hole_prompt() -> str:
     return prompt
 
 
-def main():
-    # 1. Initialisierung und Datenerfassung
+def main() -> None:
+    """Steuert den Ablauf von Eingabe, API-Aufruf und Dateiexport."""
     try:
         api_key = lese_api_schluessel()
         mein_prompt = hole_prompt()
@@ -72,39 +107,38 @@ def main():
         print(f"Initialisierungsfehler: {fehler}", file=sys.stderr)
         sys.exit(1)
 
-    # 2. API-Endpunkt und Datenstruktur
-    modell_id = "gemini-3.1-pro-preview"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{modell_id}:generateContent?key={api_key}"
+    MODEL_ID = "gemini-3.1-pro-preview"  # "gemini-3.1-flash-lite-preview"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={api_key}"
 
+    # Datenstruktur für die REST-API initialisieren
     daten_nutzlast = {
         "system_instruction": {"parts": [{"text": SYSTEM_VORGABE}]},
         "contents": [{"parts": [{"text": mein_prompt}]}],
     }
     header = {"Content-Type": "application/json"}
 
-    print("Anfrage wird verarbeitet, bitte warten...")
+    print("Anfrage wird verarbeitet, bitte warten...\n")
 
-    # 3. HTTP-Anfrage und Fehlerbehandlung
     try:
         antwort = requests.post(url, headers=header, json=daten_nutzlast, timeout=120)
-        antwort.raise_for_status()  # Wirft Exception bei HTTP-Fehlercodes (4xx, 5xx)
+        antwort.raise_for_status()
 
         antwort_daten = antwort.json()
         generierter_text = antwort_daten["candidates"][0]["content"]["parts"][0]["text"]
 
     except requests.exceptions.RequestException as netzwerk_fehler:
-        print(f"\nNetzwerk- oder API-Fehler: {netzwerk_fehler}", file=sys.stderr)
+        print(f"Netzwerk- oder API-Fehler: {netzwerk_fehler}", file=sys.stderr)
         if "antwort" in locals() and antwort.text:
             print(f"Details von der API: {antwort.text}", file=sys.stderr)
         sys.exit(1)
     except (KeyError, IndexError) as parse_fehler:
         print(
-            f"\nFehler beim Lesen der API-Antwort (unerwartetes Datenformat): {parse_fehler}",
+            f"Fehler beim Lesen der API-Antwort (unerwartetes Datenformat): {parse_fehler}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    # 4. Dateiexport
+    # Dateiexport mit Zeitstempel
     zeitstempel = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     dateiname = f"antwort_{zeitstempel}.md"
 
@@ -112,9 +146,9 @@ def main():
         with open(dateiname, "w", encoding="utf-8") as export_datei:
             export_datei.write(f"# Prompt: {mein_prompt}\n\n")
             export_datei.write(generierter_text)
-        print(f"\nErfolg: Die Antwort wurde in '{dateiname}' gespeichert.")
+        print(f"Erfolg: Die Antwort wurde in '{dateiname}' gespeichert.")
     except OSError as io_fehler:
-        print(f"\nSchreibfehler beim Speichern der Datei: {io_fehler}", file=sys.stderr)
+        print(f"Schreibfehler beim Speichern der Datei: {io_fehler}", file=sys.stderr)
         sys.exit(1)
 
 

@@ -4,7 +4,7 @@ Diese Notizen sind dein roter Faden fuer die Pandoc-Praesentation (`vortrag_show
 
 ---\n
 ## Folie 1: AMR Showcase
-* **Begruessung:** Willkommen! Wir schauen uns heute an, wie man moderne Edge-KI und klassische Robotik fuer 500 Euro verheiratet.
+* **Begruessung:** Willkommen! Wir schauen uns heute an, wie man moderne Edge-KI und klassische Robotik fuer rund 700 Euro verheiratet.
 * **Fokus:** Wir gehen den Weg des Datenflusses durch – vom dummen Sensorwert bis zur schlauen Cloud-Entscheidung.
 
 ## Folie 2: Das Ziel

@@ -8,7 +8,7 @@ lateralen Versatz und Orientierungsfehler.
 Ablauf pro Versuch:
   1. Benutzer positioniert Roboter manuell (~1.5 m vor Marker)
   2. Kamera erkennt ArUco-Marker und steuert Roboter darauf zu
-  3. DOCKED sobald Ultraschall <= 0.40 m misst, Roboter stoppt
+  3. DOCKED sobald Ultraschall <= 0.30 m misst, Roboter stoppt
   4. Ergebnis messen (lateraler Versatz via solvePnP, Orientierung)
   5. Roboter faehrt 3 s rueckwaerts zur Ausgangsposition
 

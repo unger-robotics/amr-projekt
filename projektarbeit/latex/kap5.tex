@@ -44,7 +44,7 @@ $$U = 3{,}3\,\mathrm{V}$$
 
 über interne Regler. Der Motortreiber schaltet die Akkuspannung direkt auf die Antriebe. Der Leistungsbereich liegt damit im Bereich von
 
-$$U = 11{,}1\,\mathrm{V}\ \text{bis}\ 12{,}6\,\mathrm{V}$$
+$$U = 10{,}8\,\mathrm{V}\ \text{bis}\ 12{,}6\,\mathrm{V}$$
 
 Ein gemeinsamer Sternpunkt für die Masse reduziert Ausgleichsströme und erschwert Masseschleifen zwischen Host, Mikrocontrollern und Leistungsstufe.
 
@@ -102,7 +102,7 @@ $$f_{\mathrm{cliff}} = 20\,\mathrm{Hz}$$
 
 Aktorkommandos, etwa für Servos, werden nicht direkt im Kommunikations-Callback ausgeführt. Stattdessen nutzt der Knoten ein Deferred-Pattern: Der Callback schreibt nur den Sollzustand in den Arbeitsspeicher, die eigentliche I2C-Ausgabe erfolgt in der regulären Ablaufsteuerung. Dieses Muster reduziert Jitter und vermeidet blockierende Buszugriffe im Callback-Kontext.
 
-Der Ultraschallsensor HC-SR04 nutzt eine ISR-basierte, nicht blockierende Messung. Eine Interrupt-Service-Routine auf dem Echo-Pin erfasst die Laufzeit über GPIO-Register-Zugriffe. Das Trigger-Echo-Pattern ersetzt das blockierende \texttt{pulseIn()} und gibt die Rechenzeit des Sensor-Tasks für IMU-Abfragen frei. Die Entfernungsdaten erscheinen auf \texttt{/range/front} mit einer Rate von etwa $8\,\mathrm{Hz}$.
+Der Ultraschallsensor HC-SR04 nutzt eine ISR-basierte, nicht blockierende Messung. Eine Interrupt-Service-Routine auf dem Echo-Pin erfasst die Laufzeit über GPIO-Register-Zugriffe. Das Trigger-Echo-Pattern ersetzt das blockierende \texttt{pulseIn()} und gibt die Rechenzeit des Sensor-Tasks für IMU-Abfragen frei. Die Entfernungsdaten erscheinen auf \texttt{/range/front} mit einer Rate von $10\,\mathrm{Hz}$.
 
 \section{Hostseitige ROS-2-Integration}
 

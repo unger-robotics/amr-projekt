@@ -4,7 +4,7 @@ Docker-basierte ROS2 Humble Umgebung fuer den Autonomen Mobilen Roboter (Differe
 
 ## Voraussetzungen
 
-- Raspberry Pi 5 (aarch64, Debian Trixie oder Bookworm)
+- Raspberry Pi 5 (aarch64, Debian Trixie)
 - Docker >= 20.10 mit Compose V2 (`docker compose`)
 - Benutzer in den Gruppen `docker`, `dialout`, `video`
 - Optional: X11-Display fuer RViz2
@@ -54,13 +54,16 @@ docker compose build
 
 **Volumes:**
 
-| Mount (Host) | Ziel im Container | Modus | Zweck |
-|---|---|---|---|
-| `ros2_ws/src/my_bot` | `/ros2_ws/src/my_bot` | rw | ROS2-Paket (Quellcode) |
-| `amr/scripts` | `/amr_scripts` | ro | Validierungsskripte |
-| `hardware/` | `/hardware` | ro | HEF-Modelle (`models/`), Dokumentation (`docs/`) |
-| `/tmp/.X11-unix` | `/tmp/.X11-unix` | rw | X11-Socket fuer RViz2 |
-| Docker Volumes | `/ros2_ws/build,install,log` | rw | Persistenter Build-Cache |
+| Mount (Host)         | Ziel im Container            | Modus | Zweck                                            |
+|----------------------|------------------------------|-------|--------------------------------------------------|
+| `ros2_ws/src/my_bot` | `/ros2_ws/src/my_bot`        | rw    | ROS2-Paket (Quellcode)                           |
+| `amr/scripts`        | `/amr_scripts`               | ro    | Validierungsskripte                              |
+| `amr/scripts`        | `/scripts`                   | ro    | Symlink-Aufloesung fuer `my_bot/my_bot/`         |
+| `hardware/`          | `/hardware`                  | ro    | HEF-Modelle (`models/`), Dokumentation (`docs/`) |
+| `dashboard/`         | `/dashboard`                 | ro    | TLS-Zertifikate fuer HTTPS/WSS                   |
+| `asound.conf`        | `/etc/asound.conf`           | ro    | ALSA-Konfiguration                               |
+| `/tmp/.X11-unix`     | `/tmp/.X11-unix`             | rw    | X11-Socket fuer RViz2                            |
+| Docker Volumes       | `/ros2_ws/build,install,log` | rw    | Persistenter Build-Cache                         |
 
 **Entrypoint:** `entrypoint.sh` sourced automatisch alle Workspaces (ROS2 Humble, micro-ROS Agent, Projekt-Workspace). Kein manuelles `source setup.bash` noetig.
 
@@ -93,32 +96,6 @@ v4l2-ctl -d /dev/video10 --all
 # ROS2-Stack mit Kamera starten (ArUco-Docking)
 ./run.sh ros2 launch my_bot full_stack.launch.py use_camera:=True
 ```
-
-## Troubleshooting
-
-**Serial-Port belegt:** Der ESP32-Port wird von mehreren Projekten geteilt. Vor dem Start pruefen:
-
-```bash
-sudo fuser -v /dev/amr_drive
-sudo systemctl stop embedded-bridge.service   # Falls aktiv
-```
-
-**Docker-Image ohne Cache oder Build-Cache zuruecksetzen:**
-
-```bash
-docker compose build --no-cache
-docker volume rm amr-docker_ros2_build amr-docker_ros2_install amr-docker_ros2_log
-```
-
-**Kamera-Bridge (/dev/video10 fehlt):**
-
-```bash
-sudo modprobe -r v4l2loopback
-sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
-sudo systemctl restart camera-v4l2-bridge.service
-```
-
-Weitere Hinweise: siehe `CLAUDE.md` (Abschnitt Troubleshooting).
 
 ## Lizenz
 

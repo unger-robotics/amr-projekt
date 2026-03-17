@@ -36,7 +36,7 @@
     <text x="20" y="30" class="title title-pi">Raspberry Pi 5 (Host)</text>
     <text x="20" y="55" class="sub">ROS 2 Humble (Docker)</text>
     <text x="20" y="75" class="sub">PCIe → Hailo-8L (Edge-KI)</text>
-    <text x="20" y="95" class="sub">I2S → PCM5102A (DAC)</text>
+    <text x="20" y="95" class="sub">I2S → MAX98357A (Amp)</text>
     <text x="20" y="115" class="sub">USB → RPLIDAR &amp; ReSpeaker</text>
   </g>
 
@@ -64,7 +64,7 @@
   </g>
   <g transform="translate(820, 120)">
     <rect width="180" height="45" class="box"/>
-    <text x="15" y="27" class="title">PCM5102A (Audio)</text>
+    <text x="15" y="27" class="title">MAX98357A (Audio)</text>
   </g>
 
   <g transform="translate(820, 250)">

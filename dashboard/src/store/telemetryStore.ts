@@ -94,7 +94,7 @@ interface TelemetryState {
   cliffHz: number;
   ultrasonicRange: number;
   cliffDetected: boolean;
-  // Audio (ReSpeaker + HifiBerry)
+  // Audio (ReSpeaker + MAX98357A)
   soundDirection: number;
   isVoiceActive: boolean;
   audioNodeActive: boolean;

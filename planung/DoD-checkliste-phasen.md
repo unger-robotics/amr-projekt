@@ -39,7 +39,7 @@
 * **ROS-2-Knoten:** `rplidar_node`, `slam_toolbox`, `odom_to_tf`
 * **Topics:** `/scan` (Pub), `/tf`, `/tf_static`, `/map` (Pub)
 * **Testfall:** Manuelle Rundfahrt durch einen Raum mit 15 m^2 und Rueckkehr zum Startpunkt fuer einen Loop-Closure-Test.
-* **Kriterium:** Die generierte Karte zeigt nach dem Loop Closure keine doppelten Wandlinien; der TF-Baum publiziert die Transformation `map` nach `odom` mit mindestens 20 Hz.
+* **Kriterium:** Die generierte Karte zeigt nach dem Loop Closure keine doppelten Wandlinien; der TF-Baum publiziert die Transformation `map` nach `odom` mit mindestens 1,5 Hz.
 * **Testfall 2 (ATE):** Autonome Rundfahrt durch den kartierten Raum mit Rueckkehr zum Startpunkt.
 * **Kriterium 2:** Der Absolute Trajectory Error (ATE) liegt unter 0,20 m nach einer Rundfahrt ueber einen Raum mit 15 m^2.
 

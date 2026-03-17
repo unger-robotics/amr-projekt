@@ -1,7 +1,7 @@
 import { useRef, useCallback } from 'react';
 import type { ClientMessage } from '../types/ros';
 
-const MAX_LINEAR = 0.4;   // m/s (from nav2_params.yaml)
+const MAX_LINEAR = 0.4;   // m/s (Dashboard-Joystick-Limit)
 const MAX_ANGULAR = 1.0;  // rad/s
 const SEND_INTERVAL_MS = 100; // 10 Hz rate limit
 const HEARTBEAT_INTERVAL_MS = 200;

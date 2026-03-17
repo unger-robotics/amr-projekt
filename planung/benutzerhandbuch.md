@@ -459,7 +459,7 @@ Wie wird das System vor einer schädlichen Tiefenentladung geschützt? Die Strom
 
 * **Betriebsgrenzen:** Die maximale Ladespannung beträgt 12,60 V.
 * **Sicherheitsabschaltung (Motor-Shutdown):** Fällt die Spannung unter den Schwellenwert von 9,5 V, stoppt der Drive-Knoten die Motorversorgung automatisch, um unkontrolliertes Fahrverhalten zu verhindern.
-* **System-Cutoff:** Ein harter Cutoff erfolgt bei 7,95 V. Das System muss vor Erreichen dieses Wertes manuell heruntergefahren und der Akku geladen werden.
+* **System-Cutoff:** Ein System-Shutdown erfolgt bei 9,0 V. Das BMS trennt den Akku bei 7,5 V (BMS-Disconnect). Das System muss vor Erreichen dieser Schwellen manuell heruntergefahren und der Akku geladen werden.
 * **Überwachung:** Die aktuelle Akkuspannung wird mit 2 Hz auf dem Topic `/battery` publiziert.
 
 Zur manuellen Abfrage der Batteriespannung während des Betriebs:
