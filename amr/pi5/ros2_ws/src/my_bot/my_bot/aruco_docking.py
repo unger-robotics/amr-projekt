@@ -1,1 +1,1 @@
-../scripts/aruco_docking.py
+../../../../../scripts/aruco_docking.py

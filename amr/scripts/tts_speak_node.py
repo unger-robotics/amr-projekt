@@ -9,7 +9,7 @@ damit nicht jede Gemini-Antwort sofort gesprochen wird.
 
 Subscriptions:
   /vision/semantics (std_msgs/String) - Gemini-Analyse als JSON
-  /audio/volume (std_msgs/Int32) - Lautstaerke-Aenderungen mitlesen
+  /vision/enable (std_msgs/Bool) - TTS aktivieren/deaktivieren (AI-Toggle)
 
 Verwendung:
   ros2 run my_bot tts_speak_node

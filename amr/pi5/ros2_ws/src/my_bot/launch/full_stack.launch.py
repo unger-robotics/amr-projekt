@@ -30,7 +30,7 @@ from launch.actions import (
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetRemap
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -229,11 +229,12 @@ def generate_launch_description():
     )
 
     # --- 3. Nav2 Navigation Stack ---
-    # Nav2 MIT Cliff-Safety: cmd_vel Remapping via launch_arguments
-    # (Humble hat kein SetRemap — erst ab Iron verfuegbar)
-    # Nav2 publiziert auf /cmd_vel; cliff_safety_node fungiert als Multiplexer
+    # Nav2 MIT Cliff-Safety: SetRemap lenkt /cmd_vel -> /nav_cmd_vel um.
+    # cliff_safety_node subscribt /nav_cmd_vel + /dashboard_cmd_vel und
+    # publiziert gefilterte Befehle auf /cmd_vel.
     nav2_with_remap = GroupAction(
         actions=[
+            SetRemap(src="/cmd_vel", dst="/nav_cmd_vel"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     PathJoinSubstitution([nav2_bringup_share, "launch", "navigation_launch.py"])

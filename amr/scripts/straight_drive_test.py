@@ -12,6 +12,9 @@ Verwendung:
     ros2 run my_bot straight_drive_test uncorrected   # Nur ohne Korrektur
 """
 
+# HINWEIS: Publiziert direkt auf /cmd_vel (umgeht cliff_safety_node).
+# Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
+
 import math
 import os
 import sys
