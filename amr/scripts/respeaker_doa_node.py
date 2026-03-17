@@ -24,7 +24,7 @@ from std_msgs.msg import Bool, Int32
 
 # XMOS XVF-3000 USB Register-Adressen
 _DOAANGLE = 21  # Read-Only, int 0-359
-_SPEECHDETECTED = 19  # Read-Only, int 0/1
+_SPEECHDETECTED = 19  # Read-Only, int 0/1 — Spracherkennung (VAD)
 
 # USB Vendor Control Transfer Parameter
 _CTRL_IN = 0xC0  # Device-to-host, Vendor, Device
@@ -49,14 +49,36 @@ class RespeakerDoaNode(Node):
 
         try:
             import usb.core  # noqa: PLC0415
+            import usb.util  # noqa: PLC0415
 
             self._usb_core = usb.core
+            self._usb_util = usb.util
             dev = usb.core.find(idVendor=0x2886, idProduct=0x0018)
             if dev is None:
                 self.get_logger().warning(
                     "ReSpeaker Mic Array nicht gefunden — DoA/VAD deaktiviert"
                 )
                 return
+            # USB-Reset: XVF-3000 kann in fehlerhaftem Zustand sein
+            try:
+                dev.reset()
+                import time  # noqa: PLC0415
+
+                time.sleep(1.5)
+                dev = usb.core.find(idVendor=0x2886, idProduct=0x0018)
+                if dev is None:
+                    self.get_logger().warning("ReSpeaker nach USB-Reset nicht mehr gefunden")
+                    return
+                self.get_logger().info("USB-Reset erfolgreich")
+            except Exception as e:  # noqa: BLE001
+                self.get_logger().warning(f"USB-Reset fehlgeschlagen (nicht fatal): {e}")
+            # Kernel-Audio-Treiber detachen (snd-usb-audio beansprucht Interfaces)
+            for iface in range(5):
+                try:
+                    if dev.is_kernel_driver_active(iface):
+                        dev.detach_kernel_driver(iface)
+                except Exception:  # noqa: BLE001
+                    pass
             self._dev = dev
             self._available = True
         except ImportError:
