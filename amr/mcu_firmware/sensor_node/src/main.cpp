@@ -1,8 +1,8 @@
 /**
  * @file main.cpp
  * @brief Hauptprogramm fuer den AMR Sensor-Node (ESP32-S3 #2)
- * @version 2.1.0
- * @date 2026-03-15
+ * @version 2.2.0
+ * @date 2026-03-17
  *
  * Dual-Core-Architektur fuer Sensorik + I2C-Geraete (IMU, Batterie, Servo):
  *
@@ -16,6 +16,8 @@
  * I2C-Aufteilung: Lese-Operationen (IMU, INA260) auf Core 1,
  * Schreib-Operationen (PCA9685 Servo) auf Core 0. Beide ueber i2c_mutex.
  * PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen Bus).
+ * WICHTIG: set_microros_serial_transports() NACH Wire.begin() und allen
+ * I2C-Inits aufrufen (Serial-Transport stoert I2C auf ESP32-S3).
  *
  * Thread-Safety: `mutex` schuetzt SharedSensorData zwischen Cores,
  * `i2c_mutex` (5-10 ms Timeout) arbitriert alle I2C-Zugriffe.
@@ -185,11 +187,11 @@ static float estimateSOC(float voltage) {
 void servo_cmd_callback(const void *m) {
     if (m == nullptr)
         return;
-    // DEBUG-TEST: Feste Werte um zu pruefen ob Callback die Servos bewegt.
-    // Wenn Servo auf 60/120 faehrt: Callback funktioniert, msg-Daten pruefen.
-    // Wenn Servo nicht faehrt: Callback wird nicht erreicht oder loop() ignoriert Werte.
-    servo_cmd.pan = 60.0f;
-    servo_cmd.tilt = 120.0f;
+    const geometry_msgs__msg__Point *msg = (const geometry_msgs__msg__Point *)m;
+    servo_cmd.pan = std::clamp(static_cast<float>(msg->x), amr::servo::pan_limit_min_deg,
+                               amr::servo::pan_limit_max_deg);
+    servo_cmd.tilt = std::clamp(static_cast<float>(msg->y), amr::servo::tilt_limit_min_deg,
+                                amr::servo::tilt_limit_max_deg);
     servo_cmd.update_pending = true;
 }
 
@@ -370,7 +372,7 @@ void sensorTask(void *p) {
 void setup() {
     Serial.begin(921600);
     Serial.setTxTimeoutMs(50);
-    set_microros_serial_transports(Serial);
+    // micro-ROS Transport wird NACH I2C-Init gesetzt (Serial-Transport kann I2C stoeren)
 
     // Interne LED als Statusanzeige
     pinMode(amr::hal::pin_led_internal, OUTPUT);
@@ -420,6 +422,8 @@ void setup() {
     memset(&msg_servo_in, 0, sizeof(msg_servo_in));
     memset(&msg_hardware_in, 0, sizeof(msg_hardware_in));
 
+    // micro-ROS Transport NACH I2C-Init setzen (verhindert Bus-Stoerung)
+    set_microros_serial_transports(Serial);
     allocator = rcl_get_default_allocator();
 
     // Warten auf Host-Verbindung
@@ -567,17 +571,6 @@ void loop() {
         hb_counter = 0;
         hb_on = !hb_on;
         digitalWrite(amr::hal::pin_led_internal, hb_on ? LOW : HIGH);
-    }
-
-    // DIAGNOSE: Nach 10s Servos auf 60/120 fahren (ohne Callback, direkt im Loop)
-    static bool servo_diag_done = false;
-    if (pca9685_ok && !servo_diag_done && millis() > 15000) {
-        servo_diag_done = true;
-        if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(50))) {
-            pca9685.setAngle(amr::servo::ch_pan, 60.0f);
-            pca9685.setAngle(amr::servo::ch_tilt, 120.0f);
-            xSemaphoreGive(i2c_mutex);
-        }
     }
 
     // Servo I2C: Polling statt update_pending (5 Hz, Core 0)
