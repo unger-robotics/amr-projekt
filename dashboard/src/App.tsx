@@ -4,11 +4,12 @@ import { useTelemetryStore } from './store/telemetryStore';
 import { Dashboard } from './components/Dashboard';
 import DetailPage from './components/DetailPage';
 import ValidationPage from './components/ValidationPage';
+import VoicePage from './components/VoicePage';
 import { EmergencyStop } from './components/EmergencyStop';
 import type { ServerMessage } from './types/ros';
 
 function App() {
-  const [tab, setTab] = useState<'steuerung' | 'details' | 'validierung'>('steuerung');
+  const [tab, setTab] = useState<'steuerung' | 'details' | 'validierung' | 'sprache'>('steuerung');
 
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
@@ -21,6 +22,7 @@ function App() {
   const updateSensorStatus = useTelemetryStore((s) => s.updateSensorStatus);
   const updateAudioStatus = useTelemetryStore((s) => s.updateAudioStatus);
   const updateVoiceTranscript = useTelemetryStore((s) => s.updateVoiceTranscript);
+  const setMicMuted = useTelemetryStore((s) => s.setMicMuted);
   const appendCommandResponse = useTelemetryStore((s) => s.appendCommandResponse);
   const setAvailableTests = useTelemetryStore((s) => s.setAvailableTests);
   const addTestResult = useTelemetryStore((s) => s.addTestResult);
@@ -37,7 +39,8 @@ function App() {
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
-      else if (msg.op === 'voice_transcript') updateVoiceTranscript(msg.text, msg.ts);
+      else if (msg.op === 'voice_transcript') updateVoiceTranscript(msg.text, msg.command ?? '', msg.ts);
+      else if (msg.op === 'voice_mute_status') setMicMuted(msg.muted);
       else if (msg.op === 'command_response') {
         appendCommandResponse(msg.text, msg.success, msg.pending);
         // Testergebnis erkennen und im Store ablegen
@@ -55,10 +58,10 @@ function App() {
       }
       else if (msg.op === 'test_list') setAvailableTests(msg.tests);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, updateVoiceTranscript, appendCommandResponse, setAvailableTests, addTestResult],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, updateVoiceTranscript, setMicMuted, appendCommandResponse, setAvailableTests, addTestResult],
   );
 
-  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute } = useWebSocket(onMessage);
 
   // Testliste beim Verbindungsaufbau anfordern
   useEffect(() => {
@@ -98,6 +101,13 @@ function App() {
         >
           Validierung
         </button>
+        <button
+          onClick={() => setTab('sprache')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
+            ${tab === 'sprache' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
+        >
+          Sprache
+        </button>
         {/* Connection indicator + Emergency Stop on the right */}
         <div className="ml-auto px-3 flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-hud-green' : 'bg-hud-red'}`} />
@@ -124,6 +134,9 @@ function App() {
       )}
       {tab === 'validierung' && (
         <ValidationPage send={send} />
+      )}
+      {tab === 'sprache' && (
+        <VoicePage send={send} sendVoiceMute={sendVoiceMute} />
       )}
     </div>
   );

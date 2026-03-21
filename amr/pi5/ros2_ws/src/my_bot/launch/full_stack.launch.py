@@ -466,11 +466,14 @@ def generate_launch_description():
     )
 
     # --- 14. Sprachsteuerung (ReSpeaker + Gemini STT, optional) ---
+    # audio_device explizit setzen, da /proc/asound im Container den
+    # ReSpeaker nicht enumeriert (Device-Node via Bind-Mount vorhanden)
     voice_command_node = Node(
         package="my_bot",
         executable="voice_command_node",
         name="voice_command_node",
         output="screen",
+        parameters=[{"audio_device": "plughw:CARD=ArrayUAC10,DEV=0"}],
         condition=IfCondition(LaunchConfiguration("use_voice")),
     )
 

@@ -23,7 +23,9 @@ Parameter:
   cooldown_s     (float, 0.5)               — VAD-Cooldown nach Sprachende [s]
   rate_limit_s   (float, 2.0)               — Min. Zeit zwischen Gemini-Calls [s]
   barge_in_s     (float, 2.0)               — Aufnahme-Sperre nach eigenem TTS [s]
+  dedup_s        (float, 5.0)               — Deduplizierung: gleicher Befehl innerhalb [s] unterdrueckt
   confirm_tts    (bool, True)               — TTS-Bestaetigung nach Befehl
+  min_vad_s      (float, 0.3)              — Min. kontinuierliche VAD-Dauer vor Aufnahme [s]
 
 Verwendung:
   ros2 run my_bot voice_command_node
@@ -94,6 +96,12 @@ Beispiele:
 - "Stopp!" -> {"command": "stop", "transcript": "stopp"}
 - "Wie weit ist das Hindernis?" -> {"command": "wie weit", "transcript": "wie weit ist das hindernis"}
 - [Hintergrundgeraeusch] -> {"command": "", "transcript": ""}
+- [kurzes Geraeusch, Piepen, Klicken] -> {"command": "", "transcript": ""}
+- [unverstaendliches Gemurmel] -> {"command": "", "transcript": ""}
+
+WICHTIG: Im Zweifel IMMER leeren command zurueckgeben. Nur bei klar
+verstaendlichen deutschen Saetzen einen Befehl erkennen. Einzelne Silben,
+Atemgeraeusche, Umgebungslaerm oder unklare Fragmente sind KEIN Befehl.
 """
 
 
@@ -111,7 +119,9 @@ class VoiceCommandNode(Node):
         self.declare_parameter("cooldown_s", 0.5)
         self.declare_parameter("rate_limit_s", 2.0)
         self.declare_parameter("barge_in_s", 2.0)
+        self.declare_parameter("dedup_s", 5.0)
         self.declare_parameter("confirm_tts", True)
+        self.declare_parameter("min_vad_s", 0.3)
 
         model_name = self.get_parameter("gemini_model").get_parameter_value().string_value
         self._max_record_s = self.get_parameter("max_record_s").value
@@ -119,7 +129,9 @@ class VoiceCommandNode(Node):
         self._cooldown_s = self.get_parameter("cooldown_s").value
         self._rate_limit_s = self.get_parameter("rate_limit_s").value
         self._barge_in_s = self.get_parameter("barge_in_s").value
+        self._dedup_s = self.get_parameter("dedup_s").value
         self._confirm_tts = self.get_parameter("confirm_tts").value
+        self._min_vad_s = self.get_parameter("min_vad_s").value
 
         # -- Abhaengigkeiten pruefen --
         if not HAS_GENAI:
@@ -159,15 +171,20 @@ class VoiceCommandNode(Node):
         self._pub_text = self.create_publisher(String, "/voice/text", 10)
         self._pub_audio_play = self.create_publisher(String, "/audio/play", 10)
         self.create_subscription(Bool, "/is_voice", self._vad_cb, 10)
+        self.create_subscription(Bool, "/voice/mute", self._mute_cb, 10)
 
         # -- State Machine --
+        self._muted = False
         self._state = _IDLE
         self._vad_active = False
         self._vad_last_true = 0.0
+        self._vad_continuous_start = 0.0  # Beginn der aktuellen VAD-Aktivphase
         self._record_proc: subprocess.Popen | None = None
         self._record_start = 0.0
         self._last_gemini_time = 0.0
         self._last_tts_time = 0.0
+        self._last_command = ""
+        self._last_command_time = 0.0
         self._pending = False
 
         # Timer: 20 Hz State-Machine Tick
@@ -207,11 +224,20 @@ class VoiceCommandNode(Node):
     # VAD Callback
     # -----------------------------------------------------------------
 
+    def _mute_cb(self, msg: Bool) -> None:
+        """Mute-Callback: Mikrofon stumm schalten / aktivieren."""
+        self._muted = msg.data
+        self.get_logger().info(f"Mikrofon {'stumm' if msg.data else 'aktiv'}")
+
     def _vad_cb(self, msg: Bool) -> None:
         """VAD-Callback: Aktualisiert Zeitstempel bei Spracherkennung."""
+        was_active = self._vad_active
         self._vad_active = msg.data
         if msg.data:
             self._vad_last_true = time.monotonic()
+            # Beginn einer neuen kontinuierlichen VAD-Phase merken
+            if not was_active:
+                self._vad_continuous_start = time.monotonic()
 
     # -----------------------------------------------------------------
     # State Machine
@@ -226,8 +252,13 @@ class VoiceCommandNode(Node):
             return
 
         if self._state == _IDLE:
-            # Warte auf VAD=True + Rate-Limit einhalten
-            if self._vad_active and now - self._last_gemini_time >= self._rate_limit_s:
+            # Warte auf VAD=True fuer mindestens min_vad_s + Rate-Limit (nicht im Mute-Modus)
+            if (
+                self._vad_active
+                and not self._muted
+                and now - self._last_gemini_time >= self._rate_limit_s
+                and now - self._vad_continuous_start >= self._min_vad_s
+            ):
                 self._start_recording()
                 self._state = _LISTENING
                 self.get_logger().debug("IDLE -> LISTENING: VAD aktiv")
@@ -360,9 +391,24 @@ class VoiceCommandNode(Node):
             command = result.get("command", "").strip()
             transcript = result.get("transcript", "").strip()
 
+            # Deduplizierung: gleichen Befehl innerhalb dedup_s unterdruecken
+            now = time.monotonic()
+            is_duplicate = (
+                command
+                and command == self._last_command
+                and now - self._last_command_time < self._dedup_s
+            )
+
             # Befehl publizieren (VOR Transkript, damit Bridge den Befehl
             # bereits gespeichert hat, wenn das Transkript eintrifft)
-            if command:
+            if command and is_duplicate:
+                self.get_logger().info(
+                    f"Duplikat unterdrueckt: '{command}' "
+                    f"({now - self._last_command_time:.1f} s seit letztem)"
+                )
+            elif command:
+                self._last_command = command
+                self._last_command_time = now
                 cmd_msg = String()
                 cmd_msg.data = command
                 self._pub_command.publish(cmd_msg)
@@ -377,8 +423,8 @@ class VoiceCommandNode(Node):
             else:
                 self.get_logger().info(f"Kein Befehl erkannt (Transkription: '{transcript}')")
 
-            # Rohtranskription publizieren (NACH Befehl)
-            if transcript:
+            # Rohtranskription publizieren (NACH Befehl), bei Duplikat unterdruecken
+            if transcript and not is_duplicate:
                 txt_msg = String()
                 txt_msg.data = transcript
                 self._pub_text.publish(txt_msg)

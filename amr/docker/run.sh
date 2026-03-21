@@ -89,6 +89,20 @@ _ensure_container
 # Symlinks bei jedem Aufruf aktualisieren (USB-Zuordnung kann sich aendern)
 _setup_serial_symlinks
 
+# ALSA-Devices synchronisieren (/dev/snd Bind-Mount erfasst spaet erkannte
+# USB-Audio-Geraete wie den ReSpeaker nicht automatisch)
+for snd_dev in /dev/snd/*; do
+    name=$(basename "$snd_dev")
+    if ! docker exec amr_ros2 test -e "/dev/snd/$name" 2>/dev/null; then
+        major=$(stat -c '%t' "$snd_dev" 2>/dev/null) || continue
+        minor=$(stat -c '%T' "$snd_dev" 2>/dev/null) || continue
+        major_dec=$((16#$major))
+        minor_dec=$((16#$minor))
+        docker exec amr_ros2 mknod "/dev/snd/$name" c "$major_dec" "$minor_dec" 2>/dev/null
+        docker exec amr_ros2 chmod 666 "/dev/snd/$name" 2>/dev/null
+    fi
+done
+
 # TTY-Flags: -it nur wenn stdin ein Terminal ist
 DOCKER_FLAGS="-i"
 if [ -t 0 ]; then

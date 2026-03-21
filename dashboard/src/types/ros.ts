@@ -222,10 +222,11 @@ export interface VisionStatusMsg {
   enabled: boolean;
 }
 
-/** Test-Info (Key + Entry-Point) */
+/** Test-Info (Key + Entry-Point + Beschreibung) */
 export interface TestInfo {
   key: string;
   entry_point: string;
+  description?: string;
 }
 
 /** Testliste vom Backend (einmalig bei Verbindung) */
@@ -238,6 +239,11 @@ export interface TestListMsg {
 export interface TestRunMsg {
   op: 'test_run';
   test_key: string;
+}
+
+/** Test-Abbruch ans Backend */
+export interface TestStopMsg {
+  op: 'test_stop';
 }
 
 /** Testliste anfordern ans Backend */
@@ -266,4 +272,4 @@ export interface VoiceMuteStatusMsg {
 }
 
 export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg | VoiceMuteStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestListRequestMsg | VoiceMuteMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestStopMsg | TestListRequestMsg | VoiceMuteMsg;

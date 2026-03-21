@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""ROS2-Node: Text-to-Speech Sprachausgabe fuer Gemini-Semantik.
+"""ROS2-Node: Text-to-Speech Sprachausgabe fuer Gemini-Semantik und Kommandos.
 
 Subscribt /vision/semantics (std_msgs/String, JSON) und spricht die
 semantische Analyse ueber den Lautsprecher (MAX98357A) via gTTS + mpg123.
+Subscribt /tts/speak (std_msgs/String) fuer direkte Sprachausgabe von
+Kommando-Antworten (z.B. Batteriestatus, Navigationsfeedback).
 
-Rate-Limiting: Mindestens 10 Sekunden zwischen Sprachausgaben,
-damit nicht jede Gemini-Antwort sofort gesprochen wird.
+Rate-Limiting: Mindestens 10 Sekunden zwischen Semantik-Sprachausgaben,
+Kommando-Antworten werden ohne Wartezeit gesprochen.
 
 Subscriptions:
   /vision/semantics (std_msgs/String) - Gemini-Analyse als JSON
   /vision/enable (std_msgs/Bool) - TTS aktivieren/deaktivieren (AI-Toggle)
+  /tts/speak (std_msgs/String) - Direkte Sprachausgabe (Kommando-Antworten)
 
 Verwendung:
   ros2 run my_bot tts_speak_node
@@ -61,6 +64,7 @@ class TtsSpeakNode(Node):
 
         self.create_subscription(String, "/vision/semantics", self._semantics_cb, 10)
         self.create_subscription(Bool, "/vision/enable", self._vision_enable_cb, 10)
+        self.create_subscription(String, "/tts/speak", self._tts_speak_cb, 10)
 
         self.get_logger().info(
             f"TTS-Speak-Node gestartet (Sprache: {TTS_LANG}, "
@@ -91,6 +95,21 @@ class TtsSpeakNode(Node):
 
         self._speaking = True
         self._last_speak_time = now
+
+        thread = threading.Thread(target=self._speak, args=(text,), daemon=True)
+        thread.start()
+
+    def _tts_speak_cb(self, msg):
+        """Callback fuer /tts/speak — spricht Kommando-Antworten direkt aus."""
+        if self._speaking:
+            return
+
+        text = msg.data.strip()
+        if not text:
+            return
+
+        self._speaking = True
+        self.get_logger().info(f"Kommando-TTS: {text[:80]}")
 
         thread = threading.Thread(target=self._speak, args=(text,), daemon=True)
         thread.start()

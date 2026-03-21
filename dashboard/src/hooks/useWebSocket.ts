@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg, VisionControlMsg } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg, VisionControlMsg, VoiceMuteMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
@@ -49,6 +49,9 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     };
 
     ws.onclose = () => {
+      // Nur reagieren wenn dies noch die aktive Verbindung ist
+      // (React StrictMode schliesst die erste Verbindung beim Remount)
+      if (wsRef.current !== ws) return;
       setConnected(false);
       wsRef.current = null;
       const delay = RECONNECT_DELAYS[
@@ -71,9 +74,10 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
 
   useEffect(() => {
     connect();
+    const ws = wsRef.current;
     return () => {
       clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
+      ws?.close();
     };
   }, [connect]);
 
@@ -130,5 +134,10 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send(msg);
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl };
+  const sendVoiceMute = useCallback((muted: boolean) => {
+    const msg: VoiceMuteMsg = { op: 'voice_mute', muted };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute };
 }

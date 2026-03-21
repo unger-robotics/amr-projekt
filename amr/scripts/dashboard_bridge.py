@@ -232,6 +232,24 @@ AVAILABLE_TESTS = {
     "can": "can_validation_test",
 }
 
+TEST_DESCRIPTIONS = {
+    "rplidar": "RPLidar-Scan Frequenz und Reichweite",
+    "imu": "MPU6050 Heading-Drift und Datenrate",
+    "motor": "Motoransteuerung PWM und Drehrichtung",
+    "encoder": "Encoder-Ticks und Distanzmessung",
+    "sensor": "Alle Sensoren Gesamttest",
+    "kinematic": "Differentialkinematik Vorwaerts/Kurve",
+    "straight_drive": "Geradeausfahrt Abweichung",
+    "rotation": "Drehung 90/180/360 Grad Genauigkeit",
+    "cliff_latency": "Cliff-Sensor Reaktionszeit",
+    "docking": "ArUco-Marker Docking-Anfahrt",
+    "nav_square": "Nav2 Quadratfahrt Wiederholgenauigkeit",
+    "nav": "Nav2 Punkt-zu-Punkt Navigation",
+    "slam": "SLAM Toolbox Kartierung Konsistenz",
+    "dashboard_latency": "WebSocket Round-Trip Latenz",
+    "can": "CAN-Bus Nachrichtentransport",
+}
+
 
 # =========================================================================
 # WebSocket Server (asyncio)
@@ -247,6 +265,8 @@ class WebSocketServer:
         self.ssl_ctx = ssl_ctx
         self._motion_active = False
         self._motion_cancel = False
+        self._test_proc = None  # asyncio.subprocess.Process des laufenden Tests
+        self._test_key = None  # Key des laufenden Tests
 
     async def handler(self, ws):
         """Verbindungs-Handler fuer neue WebSocket-Clients."""
@@ -335,7 +355,14 @@ class WebSocketServer:
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
         elif op == "test_list":
-            tests = [{"key": k, "entry_point": v} for k, v in sorted(AVAILABLE_TESTS.items())]
+            tests = [
+                {
+                    "key": k,
+                    "entry_point": v,
+                    "description": TEST_DESCRIPTIONS.get(k, ""),
+                }
+                for k, v in sorted(AVAILABLE_TESTS.items())
+            ]
             resp = json.dumps({"op": "test_list", "tests": tests})
             if self.loop:
                 asyncio.run_coroutine_threadsafe(ws.send(resp), self.loop)
@@ -353,6 +380,8 @@ class WebSocketServer:
                 )
                 if self.loop:
                     asyncio.run_coroutine_threadsafe(ws.send(resp), self.loop)
+        elif op == "test_stop":
+            asyncio.run_coroutine_threadsafe(self._stop_test(ws), self.loop)
         elif op == "command":
             text = str(msg.get("text", "")).strip()
             resp = self._handle_command(text, ws)
@@ -788,14 +817,20 @@ class WebSocketServer:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )
+            self._test_proc = proc
+            self._test_key = test_key
             try:
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=300.0)
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
+                self._test_proc = None
+                self._test_key = None
                 await self._send_response(ws, f"Test {entry_point}: Timeout (300s)", False)
                 return
 
+            self._test_proc = None
+            self._test_key = None
             output = stdout.decode(errors="replace") if stdout else ""
             # Letzte nicht-leere Zeilen fuer Ergebnis
             lines = [l.strip() for l in output.splitlines() if l.strip()]
@@ -805,7 +840,30 @@ class WebSocketServer:
             status = "PASS" if success else f"FAIL (rc={proc.returncode})"
             await self._send_response(ws, f"Test {entry_point}: {status}\n{tail}", success)
         except Exception as e:
+            self._test_proc = None
+            self._test_key = None
             await self._send_response(ws, f"Test {entry_point}: Fehler: {e}", False)
+
+    async def _stop_test(self, ws):
+        """Stoppt den laufenden Test-Subprocess."""
+        proc = self._test_proc
+        test_key = self._test_key
+        if proc is None or proc.returncode is not None:
+            await self._send_response(ws, "Kein Test aktiv", False)
+            return
+        entry_point = AVAILABLE_TESTS.get(test_key, test_key)
+        try:
+            proc.terminate()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+        except ProcessLookupError:
+            pass
+        self._test_proc = None
+        self._test_key = None
+        await self._send_response(ws, f"Test {entry_point}: Abgebrochen", False)
 
     async def broadcast(self, data_str):
         """Sendet JSON-String an alle verbundenen Clients."""
@@ -1064,6 +1122,7 @@ class DashboardBridge(Node):
         self.pub_audio_volume = self.create_publisher(Int32, "/audio/volume", 10)
         self.pub_vision_enable = self.create_publisher(Bool, "/vision/enable", 10)
         self.pub_voice_mute = self.create_publisher(Bool, "/voice/mute", 10)
+        self.pub_tts_speak = self.create_publisher(String, "/tts/speak", 10)
         self.audio_volume_pct = 80  # Default-Lautstaerke
         self.vision_enabled = False  # Vision-Broadcast Default: aus
         self.mic_muted = False  # Mikrofon-Mute Default: aus
@@ -1255,6 +1314,12 @@ class DashboardBridge(Node):
                 asyncio.run_coroutine_threadsafe(
                     self.ws_server.broadcast(resp_str), self.ws_server.loop
                 )
+            # Antwort per TTS aussprechen
+            resp_text = resp.get("text", "")
+            if resp_text:
+                tts_msg = String()
+                tts_msg.data = resp_text
+                self.pub_tts_speak.publish(tts_msg)
         # Falls Transkript bereits da ist, sofort mergen und senden
         self._try_send_voice_transcript()
 
