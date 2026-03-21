@@ -3,11 +3,12 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useTelemetryStore } from './store/telemetryStore';
 import { Dashboard } from './components/Dashboard';
 import DetailPage from './components/DetailPage';
+import ValidationPage from './components/ValidationPage';
 import { EmergencyStop } from './components/EmergencyStop';
 import type { ServerMessage } from './types/ros';
 
 function App() {
-  const [tab, setTab] = useState<'steuerung' | 'details'>('steuerung');
+  const [tab, setTab] = useState<'steuerung' | 'details' | 'validierung'>('steuerung');
 
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
@@ -90,6 +91,13 @@ function App() {
         >
           Details
         </button>
+        <button
+          onClick={() => setTab('validierung')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
+            ${tab === 'validierung' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
+        >
+          Validierung
+        </button>
         {/* Connection indicator + Emergency Stop on the right */}
         <div className="ml-auto px-3 flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-hud-green' : 'bg-hud-red'}`} />
@@ -99,7 +107,7 @@ function App() {
       </div>
 
       {/* Active page */}
-      {tab === 'steuerung' ? (
+      {tab === 'steuerung' && (
         <Dashboard
           connected={connected}
           latencyMs={latencyMs}
@@ -110,8 +118,12 @@ function App() {
           sendNavCancel={sendNavCancel}
           sendVisionControl={sendVisionControl}
         />
-      ) : (
-        <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} send={send} />
+      )}
+      {tab === 'details' && (
+        <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
+      )}
+      {tab === 'validierung' && (
+        <ValidationPage send={send} />
       )}
     </div>
   );

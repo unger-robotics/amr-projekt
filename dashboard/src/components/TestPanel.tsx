@@ -72,7 +72,7 @@ export default function TestPanel({ send }: TestPanelProps) {
   };
 
   return (
-    <div className="border border-hud-border bg-hud-panel p-3 lg:col-span-2">
+    <div className="border border-hud-border bg-hud-panel p-3">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-hud-cyan/70 border-b border-hud-border pb-1 mb-2">
         Validierungstests ({availableTests.length})
       </h3>
