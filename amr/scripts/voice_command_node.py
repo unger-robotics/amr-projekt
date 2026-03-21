@@ -17,7 +17,7 @@ Umgebungsvariable:
 
 Parameter:
   audio_device   (string, "auto")           — ALSA-Device (auto = ReSpeaker erkennen)
-  gemini_model   (string, "gemini-2.0-flash-lite") — Gemini-Modell
+  gemini_model   (string, "gemini-3.1-flash-lite-preview") — Gemini-Modell
   max_record_s   (float, 10.0)              — Max. Aufnahmedauer [s]
   min_record_s   (float, 0.5)               — Min. Aufnahmedauer [s]
   cooldown_s     (float, 0.5)               — VAD-Cooldown nach Sprachende [s]
@@ -105,7 +105,7 @@ class VoiceCommandNode(Node):
 
         # -- Parameter --
         self.declare_parameter("audio_device", "auto")
-        self.declare_parameter("gemini_model", "gemini-2.0-flash-lite")
+        self.declare_parameter("gemini_model", "gemini-3.1-flash-lite-preview")
         self.declare_parameter("max_record_s", 10.0)
         self.declare_parameter("min_record_s", 0.5)
         self.declare_parameter("cooldown_s", 0.5)
@@ -360,14 +360,8 @@ class VoiceCommandNode(Node):
             command = result.get("command", "").strip()
             transcript = result.get("transcript", "").strip()
 
-            # Rohtranskription publizieren
-            if transcript:
-                txt_msg = String()
-                txt_msg.data = transcript
-                self._pub_text.publish(txt_msg)
-                self.get_logger().info(f"Transkription: '{transcript}'")
-
-            # Befehl publizieren
+            # Befehl publizieren (VOR Transkript, damit Bridge den Befehl
+            # bereits gespeichert hat, wenn das Transkript eintrifft)
             if command:
                 cmd_msg = String()
                 cmd_msg.data = command
@@ -382,6 +376,13 @@ class VoiceCommandNode(Node):
                     self._last_tts_time = time.monotonic()
             else:
                 self.get_logger().info(f"Kein Befehl erkannt (Transkription: '{transcript}')")
+
+            # Rohtranskription publizieren (NACH Befehl)
+            if transcript:
+                txt_msg = String()
+                txt_msg.data = transcript
+                self._pub_text.publish(txt_msg)
+                self.get_logger().info(f"Transkription: '{transcript}'")
 
         except json.JSONDecodeError as e:
             self.get_logger().warn(f"Gemini-JSON ungueltig: {e}")
