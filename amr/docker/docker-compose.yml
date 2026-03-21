@@ -67,6 +67,7 @@ services:
       - TERM=xterm-256color
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
+      - AMR_LOCATION=${AMR_LOCATION:-Wuppertal Vohwinkel}
 
     # Container bleibt interaktiv
     stdin_open: true
