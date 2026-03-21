@@ -12,6 +12,7 @@ const VOICE_COMMANDS = [
   { command: 'nav X Y', example: '"Fahr zu Position eins drei"', description: 'Navigation zu Koordinaten (Meter)' },
   { command: 'forward X', example: '"Fahr zwei Meter nach vorne"', description: 'X Meter geradeaus fahren (0-5 m)' },
   { command: 'turn X', example: '"Dreh dich 90 Grad nach links"', description: 'X Grad drehen (+links, -rechts)' },
+  { command: 'turn_to_speaker', example: '"Dreh dich zu mir"', description: 'Zum Sprecher drehen (DoA-basiert)' },
   { command: 'stop', example: '"Stopp!"', description: 'Sofortstopp aller Motoren' },
   { command: 'cancel', example: '"Navigation abbrechen"', description: 'Laufende Navigation abbrechen' },
   { command: 'schau nach links', example: '"Schau nach links"', description: 'Kamera nach links schwenken' },
@@ -41,6 +42,8 @@ export default function VoicePage({ send, sendVoiceMute }: VoicePageProps) {
   const isVoiceActive = useTelemetryStore((s) => s.isVoiceActive);
   const micMuted = useTelemetryStore((s) => s.micMuted);
   const soundDirection = useTelemetryStore((s) => s.soundDirection);
+  const doaFiltered = useTelemetryStore((s) => s.doaFiltered);
+  const doaQuadrant = useTelemetryStore((s) => s.doaQuadrant);
   const voiceHistory = useTelemetryStore((s) => s.voiceHistory);
 
   const handleSendCommand = (command: string) => {
@@ -114,7 +117,10 @@ export default function VoicePage({ send, sendVoiceMute }: VoicePageProps) {
             {/* DoA */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-hud-text-dim uppercase tracking-wider">Richtung</span>
-              <span className="text-xs text-hud-cyan font-mono">{soundDirection.toFixed(0)}&deg;</span>
+              <span className="text-xs text-hud-cyan font-mono">{(doaFiltered || soundDirection).toFixed(0)}&deg;</span>
+              {doaQuadrant && (
+                <span className="text-[10px] text-hud-amber uppercase tracking-wider">{doaQuadrant}</span>
+              )}
             </div>
           </div>
         </div>

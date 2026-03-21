@@ -14,6 +14,8 @@ const SOUND_BUTTONS = [
 
 export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPanelProps) {
   const soundDirection = useTelemetryStore((s) => s.soundDirection);
+  const doaFiltered = useTelemetryStore((s) => s.doaFiltered);
+  const doaQuadrant = useTelemetryStore((s) => s.doaQuadrant);
   const isVoiceActive = useTelemetryStore((s) => s.isVoiceActive);
   const respeakerActive = useTelemetryStore((s) => s.respeakerActive);
   const audioNodeActive = useTelemetryStore((s) => s.audioNodeActive);
@@ -26,7 +28,8 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
   const cy = compassSize / 2;
   const r = cx - 15;
   // Map compass degrees (0=North, clockwise) to SVG coordinates
-  const rad = ((soundDirection - 90) * Math.PI) / 180;
+  const displayDeg = doaFiltered || soundDirection;
+  const rad = ((displayDeg - 90) * Math.PI) / 180;
   const lineX = cx + r * Math.cos(rad);
   const lineY = cy + r * Math.sin(rad);
 
@@ -109,7 +112,13 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
             {/* Center dot */}
             <circle cx={cx} cy={cy} r={3} fill="currentColor" className="text-hud-cyan" />
           </svg>
-          <span className="text-xs text-hud-cyan font-mono">{soundDirection.toFixed(0)}&deg;</span>
+          <span className="text-xs text-hud-cyan font-mono">{displayDeg.toFixed(0)}&deg;</span>
+          {doaQuadrant && (
+            <span className="text-[10px] text-hud-amber uppercase tracking-wider">{doaQuadrant}</span>
+          )}
+          {doaFiltered > 0 && (
+            <span className="text-[10px] text-hud-text-dim font-mono">roh: {soundDirection.toFixed(0)}&deg;</span>
+          )}
         </div>
       </div>
 

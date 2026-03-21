@@ -77,6 +77,7 @@ Verfuegbare Befehle (Feld "command"):
 - "cancel"            Navigation abbrechen
 - "forward X"         X Meter geradeaus fahren (0-5 m)
 - "turn X"            X Grad drehen (positiv=links, negativ=rechts)
+- "turn_to_speaker"   Zum Sprecher drehen (Richtung per Mikrofon-Array)
 - "test <name>"       Test ausfuehren (rplidar, imu, motor, encoder, sensor,
                        kinematic, straight_drive, rotation, cliff_latency,
                        slam, nav, nav_square, docking, dashboard_latency, can)
@@ -95,6 +96,8 @@ Beispiele:
 - "Dreh dich neunzig Grad nach links" -> {"command": "turn 90", "transcript": "dreh dich neunzig grad nach links"}
 - "Stopp!" -> {"command": "stop", "transcript": "stopp"}
 - "Wie weit ist das Hindernis?" -> {"command": "wie weit", "transcript": "wie weit ist das hindernis"}
+- "Dreh dich zu mir" -> {"command": "turn_to_speaker", "transcript": "dreh dich zu mir"}
+- "Schau mich an" -> {"command": "turn_to_speaker", "transcript": "schau mich an"}
 - [Hintergrundgeraeusch] -> {"command": "", "transcript": ""}
 - [kurzes Geraeusch, Piepen, Klicken] -> {"command": "", "transcript": ""}
 - [unverstaendliches Gemurmel] -> {"command": "", "transcript": ""}

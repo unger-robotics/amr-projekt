@@ -96,6 +96,8 @@ interface TelemetryState {
   cliffDetected: boolean;
   // Audio (ReSpeaker + MAX98357A)
   soundDirection: number;
+  doaFiltered: number;
+  doaQuadrant: string;
   isVoiceActive: boolean;
   audioNodeActive: boolean;
   respeakerActive: boolean;
@@ -156,7 +158,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
-  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
+  soundDirection: 0, doaFiltered: 0, doaQuadrant: '', isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
   micMuted: false, voiceTranscript: '', voiceTranscriptTs: 0, voiceHistory: [],
   commandHistory: [],
   availableTests: [], runningTest: null, testResults: {},
@@ -277,6 +279,8 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
 
   updateAudioStatus: (msg) => set({
     soundDirection: msg.direction_deg,
+    doaFiltered: msg.direction_filtered_deg ?? 0,
+    doaQuadrant: msg.quadrant ?? '',
     isVoiceActive: msg.is_voice,
     audioVolume: msg.volume_percent ?? 80,
   }),

@@ -180,6 +180,8 @@ export interface AudioStatusMsg {
   op: 'audio_status';
   ts: number;
   direction_deg: number;
+  direction_filtered_deg: number;
+  quadrant: string;
   is_voice: boolean;
   volume_percent: number;
 }
