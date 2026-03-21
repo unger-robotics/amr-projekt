@@ -1010,6 +1010,10 @@ class DashboardBridge(Node):
         )
         self.sub_is_voice = self.create_subscription(Bool, "/is_voice", self._is_voice_cb, 10)
 
+        # --- Voice Command (Sprachsteuerung, optional) ---
+        self.create_subscription(String, "/voice/command", self._voice_command_cb, 10)
+        self.create_subscription(String, "/voice/text", self._voice_text_cb, 10)
+
         # --- Map / TF State (geschuetzt durch Lock) ---
         self.latest_map_png = None  # Base64 string
         self.map_metadata = None  # dict
@@ -1210,6 +1214,38 @@ class DashboardBridge(Node):
         """Speichert Spracherkennungsstatus (Bool)."""
         with self.lock:
             self.is_voice = msg.data
+
+    def _voice_command_cb(self, msg):
+        """Verarbeitet Sprachbefehle via voice_command_node."""
+        text = msg.data.strip()
+        if not text or self.ws_server is None:
+            return
+        self.get_logger().info(f"Sprachbefehl empfangen: {text}")
+        resp = self.ws_server._handle_command(text)
+        if resp is not None:
+            resp["source"] = "voice"
+            resp_str = json.dumps(resp)
+            if self.ws_server.loop:
+                asyncio.run_coroutine_threadsafe(
+                    self.ws_server.broadcast(resp_str), self.ws_server.loop
+                )
+
+    def _voice_text_cb(self, msg):
+        """Broadcastet Sprach-Transkript an alle Dashboard-Clients."""
+        text = msg.data.strip()
+        if not text or self.ws_server is None:
+            return
+        transcript_msg = json.dumps(
+            {
+                "op": "voice_transcript",
+                "text": text,
+                "ts": round(time.time(), 3),
+            }
+        )
+        if self.ws_server.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.ws_server.broadcast(transcript_msg), self.ws_server.loop
+            )
 
     def _map_cb(self, msg):
         """OccupancyGrid -> RGBA PNG -> Base64."""

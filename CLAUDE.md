@@ -77,6 +77,7 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe (Gemini-Semantik) |
 | `use_respeaker` | False | ReSpeaker DoA |
+| `use_voice` | False | Sprachsteuerung (ReSpeaker + Gemini STT) |
 
 Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_dashboard:=True use_rviz:=False`
 

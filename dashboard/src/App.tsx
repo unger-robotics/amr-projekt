@@ -19,6 +19,7 @@ function App() {
   const updateNavStatus = useTelemetryStore((s) => s.updateNavStatus);
   const updateSensorStatus = useTelemetryStore((s) => s.updateSensorStatus);
   const updateAudioStatus = useTelemetryStore((s) => s.updateAudioStatus);
+  const updateVoiceTranscript = useTelemetryStore((s) => s.updateVoiceTranscript);
   const appendCommandResponse = useTelemetryStore((s) => s.appendCommandResponse);
   const setAvailableTests = useTelemetryStore((s) => s.setAvailableTests);
   const addTestResult = useTelemetryStore((s) => s.addTestResult);
@@ -35,6 +36,7 @@ function App() {
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
+      else if (msg.op === 'voice_transcript') updateVoiceTranscript(msg.text, msg.ts);
       else if (msg.op === 'command_response') {
         appendCommandResponse(msg.text, msg.success, msg.pending);
         // Testergebnis erkennen und im Store ablegen
@@ -52,7 +54,7 @@ function App() {
       }
       else if (msg.op === 'test_list') setAvailableTests(msg.tests);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, appendCommandResponse, setAvailableTests, addTestResult],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, updateVoiceTranscript, appendCommandResponse, setAvailableTests, addTestResult],
   );
 
   const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl } = useWebSocket(onMessage);

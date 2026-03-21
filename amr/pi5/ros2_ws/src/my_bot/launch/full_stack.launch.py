@@ -133,6 +133,12 @@ def generate_launch_description():
         default_value="False",
         description="TTS-Sprachausgabe fuer Gemini-Semantik (gTTS + mpg123)",
     )
+    declare_use_voice = DeclareLaunchArgument(
+        "use_voice",
+        default_value="False",
+        description="Sprachsteuerung via ReSpeaker + Gemini Flash STT "
+        "(erfordert use_respeaker:=True und GEMINI_API_KEY)",
+    )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
     rplidar_node = Node(
@@ -459,6 +465,15 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_respeaker")),
     )
 
+    # --- 14. Sprachsteuerung (ReSpeaker + Gemini STT, optional) ---
+    voice_command_node = Node(
+        package="my_bot",
+        executable="voice_command_node",
+        name="voice_command_node",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("use_voice")),
+    )
+
     return LaunchDescription(
         [
             # Launch Arguments
@@ -479,6 +494,7 @@ def generate_launch_description():
             declare_use_can,
             declare_use_tts,
             declare_use_respeaker,
+            declare_use_voice,
             # Nodes / Prozesse
             rplidar_node,
             laser_tf,
@@ -501,5 +517,6 @@ def generate_launch_description():
             can_bridge_node,
             tts_speak_node,
             respeaker_doa_node,
+            voice_command_node,
         ]
     )
