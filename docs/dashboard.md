@@ -112,7 +112,7 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | Batterie | batteryVoltage, batteryCurrent, batteryPower, batteryPercentage | `telemetry` (10 Hz) |
 | Navigation | navStatus, navGoalX/Y/Yaw, navRemainingM | `nav_status` (1 Hz) |
 | Sensoren | imuHz, ultrasonicHz, cliffHz, ultrasonicRange, cliffDetected | `sensor_status` (2 Hz) |
-| Audio | soundDirection, isVoiceActive, audioVolume | `audio_status` (2 Hz) |
+| Audio | soundDirection, isVoiceActive, audioVolume, voiceTranscript | `audio_status` (2 Hz), `voice_transcript` (event) |
 | Tests | availableTests, runningTest, testResults | `test_list` (einmalig), `command_response` |
 | Geraete | esp32Active, lidarActive, cameraActive, hailoDetected, ina260Active | `system` (1 Hz) |
 
@@ -141,6 +141,7 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `nav_status` | 1 Hz | Navigationsstatus + Ziel + Restdistanz |
 | `sensor_status` | 2 Hz | Ultraschall, Cliff, IMU-Hz |
 | `audio_status` | 2 Hz | ReSpeaker DoA, Voice Activity |
+| `voice_transcript` | event | Sprach-Transkription (Text + Zeitstempel) |
 | `command_response` | — | Antwort auf Freitext-Kommando |
 | `test_list` | einmalig | Verfuegbare Tests (Key + Entry-Point) |
 

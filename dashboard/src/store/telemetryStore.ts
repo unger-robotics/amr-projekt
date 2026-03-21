@@ -100,6 +100,9 @@ interface TelemetryState {
   audioNodeActive: boolean;
   respeakerActive: boolean;
   audioVolume: number;
+  // Voice
+  voiceTranscript: string;
+  voiceTranscriptTs: number;
   // Command
   commandHistory: { text: string; isCmd: boolean; success: boolean; pending?: boolean }[];
   // Tests
@@ -117,6 +120,7 @@ interface TelemetryState {
   updateNavStatus: (msg: NavStatusMsg) => void;
   updateSensorStatus: (msg: SensorStatusMsg) => void;
   updateAudioStatus: (msg: AudioStatusMsg) => void;
+  updateVoiceTranscript: (text: string, ts: number) => void;
   appendCommand: (text: string) => void;
   appendCommandResponse: (text: string, success: boolean, pending?: boolean) => void;
   setAvailableTests: (tests: TestInfo[]) => void;
@@ -149,7 +153,9 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   navStatus: 'idle', navGoalX: 0, navGoalY: 0, navGoalYaw: 0, navRemainingM: 0,
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
-  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80, commandHistory: [],
+  soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
+  voiceTranscript: '', voiceTranscriptTs: 0,
+  commandHistory: [],
   availableTests: [], runningTest: null, testResults: {},
 
   updateTelemetry: (msg) => set({
@@ -270,6 +276,11 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     soundDirection: msg.direction_deg,
     isVoiceActive: msg.is_voice,
     audioVolume: msg.volume_percent ?? 80,
+  }),
+
+  updateVoiceTranscript: (text, ts) => set({
+    voiceTranscript: text,
+    voiceTranscriptTs: ts,
   }),
 
   appendCommand: (text) => set((state) => ({

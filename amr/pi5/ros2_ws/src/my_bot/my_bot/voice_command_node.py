@@ -1,0 +1,1 @@
+../../../../../scripts/voice_command_node.py

@@ -18,6 +18,7 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
   const respeakerActive = useTelemetryStore((s) => s.respeakerActive);
   const audioNodeActive = useTelemetryStore((s) => s.audioNodeActive);
   const audioVolume = useTelemetryStore((s) => s.audioVolume);
+  const voiceTranscript = useTelemetryStore((s) => s.voiceTranscript);
 
   // DoA compass geometry
   const compassSize = 120;
@@ -62,6 +63,14 @@ export default function AudioPanel({ sendAudioPlay, sendAudioVolume }: AudioPane
             {isVoiceActive ? 'Sprache erkannt' : 'Stille'}
           </span>
         </div>
+
+        {/* Sprach-Transkript */}
+        {voiceTranscript && (
+          <div className="ml-4 mb-3 px-2 py-1 border border-hud-border/50 bg-hud-bg/50">
+            <span className="text-[10px] text-hud-text-dim uppercase tracking-wider">Letzter Sprachbefehl</span>
+            <p className="text-xs text-hud-cyan italic truncate">&ldquo;{voiceTranscript}&rdquo;</p>
+          </div>
+        )}
 
         {/* DoA Compass */}
         <div className="flex flex-col items-center gap-1">

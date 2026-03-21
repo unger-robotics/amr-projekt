@@ -245,5 +245,12 @@ export interface TestListRequestMsg {
   op: 'test_list';
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg;
+/** Sprach-Transkript vom Backend */
+export interface VoiceTranscriptMsg {
+  op: 'voice_transcript';
+  text: string;
+  ts: number;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg;
 export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestListRequestMsg;

@@ -35,6 +35,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `tts_speak_node` | `my_bot` | `tts_speak_node` | `use_tts` | TTS via gTTS + mpg123 |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD (USB, pyusb) |
+| `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Flash STT |
 
 ---
 
@@ -63,6 +64,8 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `/dashboard_cmd_vel` | `geometry_msgs/Twist` | — | Reliable | dashboard_bridge (Pub) | Dashboard-Joystick (nur mit Cliff-Safety) |
 | `/sound_direction` | `std_msgs/Int32` | 10 Hz | Reliable | respeaker_doa_node (Pub) | Azimut 0–359 Grad |
 | `/is_voice` | `std_msgs/Bool` | 10 Hz | Reliable | respeaker_doa_node (Pub) | Sprache erkannt (VAD) |
+| `/voice/command` | `std_msgs/String` | event | Reliable | voice_command_node (Pub) | Strukturierter Sprachbefehl (Freitext) |
+| `/voice/text` | `std_msgs/String` | event | Reliable | voice_command_node (Pub) | Rohtranskription |
 | `/vision/detections` | `std_msgs/String` | ~5 Hz | Reliable | hailo_udp_receiver (Pub) | Hailo-8L YOLOv8 (JSON) |
 | `/vision/semantics` | `std_msgs/String` | — | Reliable | gemini_semantic_node (Pub) | Gemini Szenenbeschreibung (JSON) |
 | `/diagnostics/can` | `diagnostic_msgs/DiagnosticArray` | — | Reliable | can_bridge_node (Pub) | CAN-Bus Diagnostik |
@@ -195,7 +198,7 @@ Skripte leben in `amr/scripts/`, werden als Symlinks in `my_bot/my_bot/` referen
 
 ### Entry-Points (28 Executables)
 
-Runtime-Knoten: `odom_to_tf`, `dashboard_bridge`, `cliff_safety_node`, `can_bridge_node`, `hailo_udp_receiver_node`, `hailo_inference_node`, `gemini_semantic_node`, `audio_feedback_node`, `tts_speak_node`, `respeaker_doa_node`
+Runtime-Knoten: `odom_to_tf`, `dashboard_bridge`, `cliff_safety_node`, `can_bridge_node`, `hailo_udp_receiver_node`, `hailo_inference_node`, `gemini_semantic_node`, `audio_feedback_node`, `tts_speak_node`, `respeaker_doa_node`, `voice_command_node`
 
 Validierungstests: `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `slam_validation`, `nav_test`, `nav_square_test`, `docking_test`, `sensor_test`, `serial_latency_logger`, `aruco_docking`, `can_validation_test`, `cliff_latency_test`, `dashboard_latency_test`
 

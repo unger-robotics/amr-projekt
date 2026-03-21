@@ -194,6 +194,22 @@ Lautstaerke: /audio/volume (Int32 0-100) → amixer sset SoftMaster
 - **Prioritaet**: `cliff_alarm` terminiert laufende Sounds sofort
 - Volume-Steuerung ueber Dashboard (Rate-Limit 5 Hz)
 
+### Sprachsteuerung (optional, `use_voice:=True`)
+
+```
+[respeaker_doa_node] → /is_voice (VAD-Gate)
+       │
+       ▼
+[voice_command_node]
+  arecord → WAV (16 kHz, mono) → Gemini Flash (STT + Intent)
+  → /voice/command → dashboard_bridge → _handle_command → Aktorik
+  → /voice/text → Dashboard (Transkriptions-Anzeige)
+```
+
+- Erfordert `use_respeaker:=True` und `GEMINI_API_KEY`
+- Barge-In-Schutz: 2 s Aufnahme-Sperre nach eigener TTS-Ausgabe
+- Rate-Limit: min. 2 s zwischen Gemini-Calls, 429-Backoff 300 s
+
 ## Dashboard-Anbindung
 
 ### Datenfluss
