@@ -712,7 +712,8 @@ void loop() {
                     if (pca9685_ok)
                         deferred_servo_power = 1; // Core 1: allOff()
                     msg_bat_shutdown.data = true;
-                    rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                    rcl_ret_t sd_rc = rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                    (void)sd_rc;
                     if (can_ok)
                         can.sendBatteryShutdown(true);
                 } else if (voltage > amr::battery::threshold_motor_shutdown_v +
@@ -722,7 +723,9 @@ void loop() {
                         if (pca9685_ok)
                             deferred_servo_power = 2; // Core 1: clearAllOff()
                         msg_bat_shutdown.data = false;
-                        rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                        rcl_ret_t sd_rc2 =
+                            rcl_publish(&pub_battery_shutdown, &msg_bat_shutdown, NULL);
+                        (void)sd_rc2;
                         if (can_ok)
                             can.sendBatteryShutdown(false);
                     }
