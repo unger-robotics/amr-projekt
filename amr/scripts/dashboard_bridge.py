@@ -443,6 +443,10 @@ class WebSocketServer:
             asyncio.run_coroutine_threadsafe(self._execute_forward(ws, dist), self.loop)
             return None
 
+        # "dreh dich zu mir" / "schau zu mir" / "schau mich an"
+        if re.match(r"dreh.*zu\s+mir|schau.*(?:zu\s+mir|mich\s+an)|komm.*zu\s+mir", text_lower):
+            return self._handle_turn_to_speaker(ws)
+
         # "dreh(e) X grad links/rechts"
         m = re.match(
             r"dreh(?:e)?\s*(?:dich\s+)?(\d+\.?\d*)\s*(?:grad|°)?\s*(links|rechts)?", text_lower
@@ -635,6 +639,8 @@ class WebSocketServer:
                     }
                 asyncio.run_coroutine_threadsafe(self._execute_turn(ws, angle), self.loop)
                 return None
+            elif cmd == "turn_to_speaker":
+                return self._handle_turn_to_speaker(ws)
             elif cmd == "help":
                 return {
                     "op": "command_response",
@@ -739,14 +745,51 @@ class WebSocketServer:
                 True,
             )
 
-    async def _execute_turn(self, ws, angle_deg):
+    def _handle_turn_to_speaker(self, ws):
+        """Dreht den Roboter in Richtung der letzten erkannten Stimme."""
+        with self.node.lock:
+            doa = self.node.doa_filtered
+            quadrant = self.node.doa_quadrant
+            last_time = self.node._last_doa_time
+
+        # DoA muss aktuell sein (max 30 s)
+        if time.time() - last_time > 30.0 or not quadrant:
+            return {
+                "op": "command_response",
+                "text": "Keine aktuelle Sprachrichtung verfuegbar",
+                "success": False,
+            }
+
+        # Kuerzester Drehweg: 0-180 → links, 181-359 → rechts
+        turn_angle = doa if doa <= 180 else doa - 360
+
+        # Totzone: Sprecher bereits vorne
+        if abs(turn_angle) < 10:
+            return {
+                "op": "command_response",
+                "text": f"Sprecher bereits vorne (DoA {doa}°)",
+                "success": True,
+            }
+
+        if self._motion_active:
+            return {
+                "op": "command_response",
+                "text": "Bewegung bereits aktiv",
+                "success": False,
+            }
+
+        direction = "links" if turn_angle > 0 else "rechts"
+        label = f"Drehe zum Sprecher ({quadrant}, DoA {doa}°, {abs(turn_angle)}° {direction})..."
+        asyncio.run_coroutine_threadsafe(self._execute_turn(ws, turn_angle, label=label), self.loop)
+        return None
+
+    async def _execute_turn(self, ws, angle_deg, label=None):
         """Dreht um angle_deg Grad (positiv=links, negativ=rechts)."""
         self._motion_active = True
         self._motion_cancel = False
         direction = "links" if angle_deg > 0 else "rechts"
-        await self._send_response(
-            ws, f"Drehe {abs(angle_deg)} Grad {direction}...", True, pending=True
-        )
+        start_msg = label or f"Drehe {abs(angle_deg)} Grad {direction}..."
+        await self._send_response(ws, start_msg, True, pending=True)
 
         odom = self.node.latest_odom
         if odom is None:
@@ -1040,6 +1083,9 @@ class DashboardBridge(Node):
         self.sound_direction = 0
         self.is_voice = False
         self._last_sound_dir_time = 0.0
+        self.doa_filtered = 0
+        self.doa_quadrant = ""
+        self._last_doa_time = 0.0
         self._last_voice_command = ""  # Letzter erkannter Sprachbefehl
         self._last_voice_transcript = ""  # Letztes Transkript (Merge-Buffer)
         self._voice_merge_timer = None  # Timer fuer Command/Transcript-Merge
@@ -1088,6 +1134,12 @@ class DashboardBridge(Node):
             Int32, "/sound_direction", self._sound_dir_cb, 10
         )
         self.sub_is_voice = self.create_subscription(Bool, "/is_voice", self._is_voice_cb, 10)
+        self.sub_doa_filtered = self.create_subscription(
+            Int32, "/doa/filtered", self._doa_filtered_cb, 10
+        )
+        self.sub_doa_quadrant = self.create_subscription(
+            String, "/doa/quadrant", self._doa_quadrant_cb, 10
+        )
 
         # --- Voice Command (Sprachsteuerung, optional) ---
         self.create_subscription(String, "/voice/command", self._voice_command_cb, 10)
@@ -1296,6 +1348,17 @@ class DashboardBridge(Node):
         """Speichert Spracherkennungsstatus (Bool)."""
         with self.lock:
             self.is_voice = msg.data
+
+    def _doa_filtered_cb(self, msg):
+        """Speichert gefilterte Schallrichtung (Int32, Grad)."""
+        with self.lock:
+            self.doa_filtered = msg.data
+            self._last_doa_time = time.time()
+
+    def _doa_quadrant_cb(self, msg):
+        """Speichert DoA-Quadrant (String: vorne/hinten/links/rechts)."""
+        with self.lock:
+            self.doa_quadrant = msg.data
 
     def _voice_command_cb(self, msg):
         """Verarbeitet Sprachbefehle via voice_command_node."""
@@ -1990,6 +2053,8 @@ class DashboardBridge(Node):
                 "op": "audio_status",
                 "ts": round(time.time(), 3),
                 "direction_deg": self.sound_direction,
+                "direction_filtered_deg": self.doa_filtered,
+                "quadrant": self.doa_quadrant,
                 "is_voice": self.is_voice,
                 "volume_percent": self.audio_volume_pct,
             }
