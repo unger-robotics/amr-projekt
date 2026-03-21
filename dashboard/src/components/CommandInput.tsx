@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTelemetryStore } from '../store/telemetryStore';
 import type { ClientMessage } from '../types/ros';
 
@@ -63,6 +63,13 @@ export default function CommandInput({ send }: CommandInputProps) {
   const history = useTelemetryStore((s) => s.commandHistory);
   const appendCommand = useTelemetryStore((s) => s.appendCommand);
   const inputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (historyRef.current) {
+      historyRef.current.scrollTop = historyRef.current.scrollHeight;
+    }
+  }, [history]);
 
   const fillCommand = useCallback((example: string) => {
     setValue(example);
@@ -106,11 +113,11 @@ export default function CommandInput({ send }: CommandInputProps) {
         </div>
       )}
       {history.length > 0 && (
-        <div className="flex flex-col gap-0.5 mb-2 max-h-[120px] overflow-y-auto">
+        <div ref={historyRef} className="flex flex-col gap-0.5 mb-2 max-h-[120px] overflow-y-auto">
           {history.map((h, i) => (
             <span
               key={i}
-              className={`text-[10px] font-mono truncate ${
+              className={`text-[10px] font-mono whitespace-pre-wrap break-words ${
                 h.isCmd ? 'text-hud-text-dim' : h.pending ? 'text-yellow-400' : h.success ? 'text-hud-green' : 'text-hud-red'
               }`}
             >
