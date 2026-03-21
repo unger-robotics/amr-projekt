@@ -238,7 +238,7 @@ sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
 - **Python**: Zeilenlaenge 100, Python 3.10, Double Quotes, isort-Import-Sortierung (ruff.toml)
 - **C++**: Zeilenlaenge 100, 4 Spaces, LLVM-basiert, Braces Attach, C++17 (.clang-format)
 - **C++ Benennung** (.clang-tidy): `CamelCase` Klassen, `camelBack` Methoden/Funktionen, `lower_case` Variablen/Parameter
-- **TypeScript**: ESLint Flat Config, React Hooks Plugin (dashboard/eslint.config.js)
+- **TypeScript**: ESLint Flat Config (neues Format, kein `.eslintrc`), React Hooks Plugin (dashboard/eslint.config.js). React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4
 
 ## Relevante Projektpfade
 
@@ -269,10 +269,22 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 - **Container (ROS2 Humble):** Python 3.10 — alle ROS2-Nodes und Skripte in `amr/scripts/`
 - **Host (Pi 5):** Python 3.13 — nur `host_hailo_runner.py` (Hailo SDK erfordert Host-Python)
+- **Syntax-Einschraenkung:** ROS2-Code muss Python-3.10-kompatibel bleiben — kein `match/case`, kein `X | Y` Type-Union, kein `ExceptionGroup`. `ruff.toml` und `mypy.ini` erzwingen `target-version = py310`
 
 ## Umgebungsvariablen
 
 - `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`), TTS (`use_tts`) und Sprachsteuerung (`use_voice`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten die betroffenen Knoten mit Fehler.
+
+## Bekannte Fallstricke
+
+- **Cliff-Safety/Dashboard-Remapping**: Bei `use_cliff_safety:=True` UND `use_dashboard:=True` wird `/cmd_vel` der Dashboard-Bridge auf `/dashboard_cmd_vel` remapped — die Cliff-Safety-Node multiplext dann zwischen Dashboard- und Nav2-Befehlen. Bei `use_cliff_safety:=False` entfaellt das Remapping
+- **micro-ROS kein Reconnect**: Verlust der Agent-Verbindung erfordert ESP32 Power-Cycle (kein automatisches Wiederverbinden). Serielle Symlinks nach Flash erst beim naechsten `./run.sh`-Aufruf aktualisiert
+- **run.sh ALSA-Sync**: `run.sh` synchronisiert `/dev/snd/*`-Geraete in den Container, da USB-Audio (ReSpeaker) nach Container-Start enumeriert werden kann. Audio-Device-Name fuer Voice: `plughw:CARD=ArrayUAC10,DEV=0` (hardcoded in Launch)
+- **Dashboard-Zertifikate**: Ohne mkcert-Zertifikate (`amr.local+5.pem`) crasht `npm run dev` sofort — `vite.config.ts` liest sie synchron, kein Fallback
+- **Mypy Moderate Mode**: `disallow_untyped_defs = false` — bestehender Code hat wenig Type-Hints. ROS2-Pakete sind in `mypy.ini` als `ignore_missing_imports` konfiguriert
+- **ruff-Ausschluesse**: `amr/pi5/ros2_ws/src/my_bot/my_bot/` (Symlink-Verzeichnis), `dashboard/`, `build/`, `install/` sind in `ruff.toml` ausgeschlossen. Mehrere Skripte haben Per-File-Ignores
+- **Host-Hailo-Runner**: `host_hailo_runner.py` MUSS auf dem Host laufen (nicht im Container) — sendet UDP an `127.0.0.1:5005`. Ohne laufenden Runner haengt `hailo_udp_receiver_node` wartend
+- **Docker Micro-ROS Fallback**: Falls `ros-humble-micro-ros-agent` apt-Paket auf arm64 fehlt, baut das Dockerfile es aus Source (~30+ Min zusaetzlich)
 
 ## Harte Randbedingungen
 
