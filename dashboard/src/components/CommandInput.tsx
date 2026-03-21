@@ -32,7 +32,7 @@ const COMMAND_REFERENCE: { category: string; commands: CommandRef[] }[] = [
     commands: [
       { syntax: "halt an / anhalten", example: "halt an", desc: "Sofortstopp" },
       { syntax: "schau nach links/rechts", example: "schau nach links", desc: "Kamera schwenken" },
-      { syntax: "licht an/aus", example: "licht an", desc: "LED-Streifen" },
+      { syntax: "licht an [%]/aus", example: "licht an 50", desc: "LED (0-100%)" },
       { syntax: "wie weit / abstand", example: "wie weit", desc: "Ultraschall-Distanz" },
       { syntax: "akku / batterie", example: "akku", desc: "Batteriestatus" },
       { syntax: "fahr zurueck X m", example: "fahr zurueck 1 m", desc: "Rueckwaerts" },

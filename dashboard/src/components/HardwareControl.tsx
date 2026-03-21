@@ -86,7 +86,7 @@ export default function HardwareControl({ sendHardwareCmd }: HardwareControlProp
 
       <HardwareSlider label="Motor-Limit" value={motorLimit} min={0} max={100} unit="%" onChange={handleMotorLimit} />
       <HardwareSlider label="Servo-Speed" value={servoSpeed} min={1} max={10} unit="" onChange={handleServoSpeed} />
-      <HardwareSlider label="LED-PWM" value={ledPwm} min={0} max={255} unit="" onChange={handleLedPwm} />
+      <HardwareSlider label="LED" value={ledPwm} min={0} max={100} unit="%" onChange={handleLedPwm} />
 
       <button
         onClick={handleReset}

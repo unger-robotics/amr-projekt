@@ -79,7 +79,7 @@ export interface HardwareCmdMsg {
   op: 'hardware_cmd';
   motor_limit: number;   // 0-100 (%)
   servo_speed: number;   // 1-10 (Grad/Schritt)
-  led_pwm: number;       // 0-255 (0 = Auto-Heartbeat)
+  led_pwm: number;       // 0-100 (%, 0 = Auto-Heartbeat)
 }
 
 /** Hardware-Daten (Telemetrie-Feedback) */
@@ -249,8 +249,21 @@ export interface TestListRequestMsg {
 export interface VoiceTranscriptMsg {
   op: 'voice_transcript';
   text: string;
+  command: string;
   ts: number;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestListRequestMsg;
+/** Mikrofon-Mute Steuerung ans Backend */
+export interface VoiceMuteMsg {
+  op: 'voice_mute';
+  muted: boolean;
+}
+
+/** Mikrofon-Mute Status vom Backend */
+export interface VoiceMuteStatusMsg {
+  op: 'voice_mute_status';
+  muted: boolean;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg | VoiceMuteStatusMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestListRequestMsg | VoiceMuteMsg;
