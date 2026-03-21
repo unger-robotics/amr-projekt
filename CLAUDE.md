@@ -86,9 +86,7 @@ Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_d
 - Drive-Knoten und Sensor-Knoten werden getrennt gebaut, geflasht und betrieben
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
-- Dashboard (zwei Seiten: Steuerung + Details), Kamera, Vision (AI-Toggle), Audio und ReSpeaker sind optionale Teilsysteme
-- Dashboard-Steuerung: Sidebar (Status, System, Kommandofeld) + Kamera + SLAM-Karte + LiDAR + Joystick + Servo/Hardware
-- Dashboard-Details: ActiveDevicesPanel (6 Geraete), SensorDetail, Audio, Roboter-Daten
+- Dashboard, Kamera, Vision (AI-Toggle), Audio und ReSpeaker sind optionale Teilsysteme
 - Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
 - Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0` (HTTPS via mkcert)
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
@@ -131,8 +129,18 @@ docker compose build                        # Image bauen (~15-20 Min)
 ./run.sh ros2 launch my_bot full_stack.launch.py                    # Full-Stack
 ./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false     # Nur SLAM
 ./run.sh exec bash                          # Zweites Terminal im Container
-./verify.sh                                 # Gesamttest
+./verify.sh                                 # Gesamttest (Packages, Devices, Build)
 ```
+
+**run.sh-Verhalten:** `run.sh` ist der zentrale Container-Wrapper. Bei jedem Aufruf:
+- Startet den Container via `docker compose up -d` falls nicht laufend
+- Aktualisiert serielle Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) im Container (Host-udev greift im Container nicht)
+- Gibt Ports 5173, 5174, 8082, 9090 frei falls belegt
+- Prueft `camera-v4l2-bridge.service` bei `use_camera:=True`
+
+Nach ESP32-Flash muessen Symlinks aktualisiert werden — naechster `./run.sh`-Aufruf erledigt das automatisch.
+
+**Docker Named Volumes:** Build-Artefakte (`ros2_build`, `ros2_install`, `ros2_log`) sind persistente Docker Volumes. Colcon-Rebuilds sind dadurch ueber Container-Neustarts hinweg gecached.
 
 ### Dashboard (React + Vite + TypeScript + Tailwind)
 
@@ -168,6 +176,26 @@ pre-commit run --all-files         # Alle Hooks (ruff, mypy, clang-format, eslin
 ```
 
 Einmalig einrichten: `pip3 install pre-commit && pre-commit install`
+
+### Tests und Validierung
+
+Keine automatisierten Unit-Tests — Validierung erfolgt experimentell ueber ROS2-Testknoten auf dem Pi 5 (V-Modell-Phasenplan):
+
+```bash
+cd amr/docker/
+./run.sh ros2 run my_bot motor_test          # Motortest
+./run.sh ros2 run my_bot encoder_test        # Encoder-Validierung
+./run.sh ros2 run my_bot pid_tuning          # PID-Abstimmung
+./run.sh ros2 run my_bot imu_test            # IMU-Kalibrierung
+./run.sh ros2 run my_bot sensor_test         # Sensor-Gesamttest
+./run.sh ros2 run my_bot slam_validation     # SLAM-Validierung
+./run.sh ros2 run my_bot nav_test            # Navigationstest
+./run.sh ros2 run my_bot nav_square_test     # Quadratfahrt-Test
+./run.sh ros2 run my_bot docking_test        # ArUco-Docking-Test
+./run.sh ros2 run my_bot can_validation_test # CAN-Bus-Validierung
+```
+
+Testprozeduren und erwartete Messwerte: `planung/testanleitung_phase*.md` und `planung/messprotokoll_phase*.md`
 
 ### Wartung und Abhaengigkeiten
 
@@ -227,22 +255,16 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 ## Detaildokumente
 
-- `docs/architecture.md` — Systemarchitektur und Komponentenuebersicht
-- `docs/build_and_deploy.md` — Build- und Deployment-Prozesse
-- `docs/ros2_system.md` — ROS2-Topics, TF-Baum, QoS
-- `docs/firmware.md` — MCU-Firmware-Details
-- `docs/dashboard.md` — Dashboard-Architektur und WebSocket-Protokoll
-- `docs/vision_pipeline.md` — Hailo/Gemini Vision-Pipeline
-- `docs/serial_port_management.md` — udev-Regeln und Seriennummern
-- `docs/robot_parameters.md` — Physikalische Parameter (Raddurchmesser, PID, Batterie)
-- `docs/validation.md` — Validierungskonzept
-- `docs/quality_checks.md` — Qualitaetspruefungen
-- `docs/projektarbeit_style.md` — Schreibstil fuer Projektarbeit
-- `docs/literature_workflow.md` — Literaturverwaltung
-- `planung/abschlussbericht.md`
-- `planung/systemdokumentation.md`
-- `planung/benutzerhandbuch.md`
-- `planung/testanleitung_phase1_phase2.md` bis `planung/testanleitung_phase5.md`
-- `planung/messprotokoll_phase1_phase2.md` bis `planung/messprotokoll_phase5.md`
-- `planung/https-setup-amr-dashboard.md`
-- `planung/Netzwerkkonfiguration.md`
+Technische Referenzen in `docs/`:
+- `architecture.md` — Systemarchitektur und Komponentenuebersicht
+- `ros2_system.md` — ROS2-Topics, TF-Baum, QoS
+- `firmware.md` — MCU-Firmware-Details
+- `dashboard.md` — Dashboard-Architektur und WebSocket-Protokoll
+- `vision_pipeline.md` — Hailo/Gemini Vision-Pipeline
+- `serial_port_management.md` — udev-Regeln und Seriennummern
+- `robot_parameters.md` — Physikalische Parameter (Raddurchmesser, PID, Batterie)
+- `build_and_deploy.md`, `validation.md`, `quality_checks.md` — Build, Validierung, Qualitaet
+
+Schreibstil und Literatur: `docs/projektarbeit_style.md`, `docs/literature_workflow.md`
+
+Planung und Betrieb: `planung/` enthaelt Testanleitungen, Messprotokolle, Systemdokumentation, Benutzerhandbuch und Netzwerkkonfiguration
