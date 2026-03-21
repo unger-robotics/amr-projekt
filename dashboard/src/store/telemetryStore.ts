@@ -101,8 +101,10 @@ interface TelemetryState {
   respeakerActive: boolean;
   audioVolume: number;
   // Voice
+  micMuted: boolean;
   voiceTranscript: string;
   voiceTranscriptTs: number;
+  voiceHistory: { text: string; command: string; ts: number }[];
   // Command
   commandHistory: { text: string; isCmd: boolean; success: boolean; pending?: boolean }[];
   // Tests
@@ -120,7 +122,8 @@ interface TelemetryState {
   updateNavStatus: (msg: NavStatusMsg) => void;
   updateSensorStatus: (msg: SensorStatusMsg) => void;
   updateAudioStatus: (msg: AudioStatusMsg) => void;
-  updateVoiceTranscript: (text: string, ts: number) => void;
+  setMicMuted: (muted: boolean) => void;
+  updateVoiceTranscript: (text: string, command: string, ts: number) => void;
   appendCommand: (text: string) => void;
   appendCommandResponse: (text: string, success: boolean, pending?: boolean) => void;
   setAvailableTests: (tests: TestInfo[]) => void;
@@ -154,7 +157,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
   soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
-  voiceTranscript: '', voiceTranscriptTs: 0,
+  micMuted: false, voiceTranscript: '', voiceTranscriptTs: 0, voiceHistory: [],
   commandHistory: [],
   availableTests: [], runningTest: null, testResults: {},
 
@@ -278,10 +281,13 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     audioVolume: msg.volume_percent ?? 80,
   }),
 
-  updateVoiceTranscript: (text, ts) => set({
+  setMicMuted: (muted) => set({ micMuted: muted }),
+
+  updateVoiceTranscript: (text, command, ts) => set((state) => ({
     voiceTranscript: text,
     voiceTranscriptTs: ts,
-  }),
+    voiceHistory: [...state.voiceHistory.slice(-49), { text, command, ts }],
+  })),
 
   appendCommand: (text) => set((state) => ({
     commandHistory: [...state.commandHistory.slice(-14), { text, isCmd: true, success: true }],

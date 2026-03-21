@@ -10,8 +10,6 @@ import { SystemMetrics } from './SystemMetrics';
 import { MapView } from './MapView';
 import ServoControl from './ServoControl';
 import HardwareControl from './HardwareControl';
-import CommandInput from './CommandInput';
-
 interface DashboardProps {
   connected: boolean;
   latencyMs: number;
@@ -39,7 +37,6 @@ export function Dashboard({ connected, latencyMs, send, sendServoCmd, sendHardwa
       <aside className="hidden lg:flex lg:flex-col lg:col-start-1 lg:row-start-1 lg:row-end-7 border-r border-hud-border overflow-y-auto">
         <StatusPanel connected={connected} latencyMs={latencyMs} />
         <SystemMetrics />
-        <CommandInput send={send} />
       </aside>
 
       {/* Kamera (Zeile 1-3, Spalte 2) */}

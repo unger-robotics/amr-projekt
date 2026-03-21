@@ -45,6 +45,10 @@ export default function TestPanel({ send }: TestPanelProps) {
     send({ op: 'test_run', test_key: key });
   };
 
+  const handleStopTest = () => {
+    send({ op: 'test_stop' });
+  };
+
   // Tests nach Kategorie gruppieren
   const grouped = new Map<string, TestInfo[]>();
   for (const cat of CATEGORY_ORDER) {
@@ -94,6 +98,7 @@ export default function TestPanel({ send }: TestPanelProps) {
                     const result = testResults[test.key];
                     const statusLabel = getStatusLabel(test.key);
                     const isExpanded = expandedTest === test.key;
+                    const isRunning = runningTest === test.key;
                     return (
                       <div key={test.key}>
                         <div className="flex items-center gap-2 text-[10px] font-mono">
@@ -104,15 +109,23 @@ export default function TestPanel({ send }: TestPanelProps) {
                             className={`flex-1 text-left truncate ${result ? 'cursor-pointer hover:text-hud-cyan' : ''} text-hud-text`}
                           >
                             <span className="text-hud-text">{test.key}</span>
-                            <span className="text-hud-text-dim ml-2">{test.entry_point}</span>
+                            {test.description && (
+                              <span className="text-hud-text-dim ml-2 text-[9px]">{test.description}</span>
+                            )}
                           </button>
                           {statusLabel && (
                             <span className={`text-[9px] font-semibold px-1 ${result?.success ? 'text-hud-green' : 'text-hud-red'}`}>
                               {statusLabel}
                             </span>
                           )}
-                          {runningTest === test.key ? (
-                            <span className="text-[9px] text-hud-amber">Laeuft...</span>
+                          {isRunning ? (
+                            <button
+                              type="button"
+                              onClick={handleStopTest}
+                              className="text-[9px] px-1.5 py-0.5 border border-hud-red text-hud-red hover:bg-hud-red/20 transition-colors"
+                            >
+                              Stoppen
+                            </button>
                           ) : (
                             <button
                               type="button"
