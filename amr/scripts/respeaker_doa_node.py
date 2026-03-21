@@ -59,21 +59,9 @@ class RespeakerDoaNode(Node):
                     "ReSpeaker Mic Array nicht gefunden — DoA/VAD deaktiviert"
                 )
                 return
-            # USB-Reset: XVF-3000 kann in fehlerhaftem Zustand sein
-            try:
-                dev.reset()
-                import time  # noqa: PLC0415
-
-                time.sleep(1.5)
-                dev = usb.core.find(idVendor=0x2886, idProduct=0x0018)
-                if dev is None:
-                    self.get_logger().warning("ReSpeaker nach USB-Reset nicht mehr gefunden")
-                    return
-                self.get_logger().info("USB-Reset erfolgreich")
-            except Exception as e:  # noqa: BLE001
-                self.get_logger().warning(f"USB-Reset fehlgeschlagen (nicht fatal): {e}")
-            # Kernel-Audio-Treiber detachen (snd-usb-audio beansprucht Interfaces)
-            for iface in range(5):
+            # Nur HID/Vendor-Interfaces (3, 4) detachen — Audio-Interfaces
+            # (0-2) muessen fuer snd_usb_audio / arecord erhalten bleiben
+            for iface in (3, 4):
                 try:
                     if dev.is_kernel_driver_active(iface):
                         dev.detach_kernel_driver(iface)
