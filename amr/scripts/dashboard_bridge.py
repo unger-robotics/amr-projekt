@@ -293,8 +293,9 @@ class WebSocketServer:
         elif op == "hardware_cmd":
             motor_limit = max(0.0, min(100.0, float(msg.get("motor_limit", 100.0))))
             servo_speed = max(1.0, min(10.0, float(msg.get("servo_speed", 5.0))))
-            led_pwm = max(0.0, min(255.0, float(msg.get("led_pwm", 0.0))))
-            self.node.publish_hardware_cmd(motor_limit, servo_speed, led_pwm)
+            led_pct = max(0.0, min(100.0, float(msg.get("led_pwm", 0.0))))
+            led_pwm = led_pct * 2.55  # 0-100% → 0-255
+            self.node.publish_hardware_cmd(motor_limit, servo_speed, led_pwm, led_pct)
         elif op == "heartbeat":
             self.node.record_heartbeat()
         elif op == "nav_goal":
@@ -322,6 +323,15 @@ class WebSocketServer:
             self.node.pub_vision_enable.publish(enable_msg)
             # WebSocket-Status an alle Clients
             status = json.dumps({"op": "vision_status", "enabled": self.node.vision_enabled})
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
+        elif op == "voice_mute":
+            self.node.mic_muted = bool(msg.get("muted", False))
+            self.node.get_logger().info(f"Mikrofon {'stumm' if self.node.mic_muted else 'aktiv'}")
+            mute_msg = Bool()
+            mute_msg.data = self.node.mic_muted
+            self.node.pub_voice_mute.publish(mute_msg)
+            status = json.dumps({"op": "voice_mute_status", "muted": self.node.mic_muted})
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
         elif op == "test_list":
@@ -491,14 +501,22 @@ class WebSocketServer:
                 "success": True,
             }
 
-        # "licht an/aus"
-        m = re.match(r"(?:licht|led)\s+(an|aus|ein)", text_lower)
+        # "licht an/aus" mit optionalem Prozentwert: "led an 50", "licht an (80%)", "led aus"
+        m = re.match(r"(?:licht|led)\s+(an|aus|ein)(?:\s*\(?(\d{1,3})%?\)?)?", text_lower)
         if m:
-            pwm = 200.0 if m.group(1) in ("an", "ein") else 0.0
-            self.node.publish_hardware_cmd(self.node.hw_motor_limit, self.node.hw_servo_speed, pwm)
+            if m.group(1) == "aus":
+                led_pct = 0.0
+            elif m.group(2):
+                led_pct = max(0.0, min(100.0, float(m.group(2))))
+            else:
+                led_pct = 80.0
+            led_pwm = led_pct * 2.55  # 0-100% → 0-255
+            self.node.publish_hardware_cmd(
+                self.node.hw_motor_limit, self.node.hw_servo_speed, led_pwm, led_pct
+            )
             return {
                 "op": "command_response",
-                "text": f"LED {'an (PWM=200)' if pwm > 0 else 'aus'}",
+                "text": f"LED {'an (' + str(int(led_pct)) + '%)' if led_pct > 0 else 'aus'}",
                 "success": True,
             }
 
@@ -950,7 +968,7 @@ class DashboardBridge(Node):
         self.servo_tilt = 90.0  # Letzte Servo-Tilt-Position (Grad)
         self.hw_motor_limit = 100.0  # Motor-Limit 0-100%
         self.hw_servo_speed = 5.0  # Servo-Speed 1-10
-        self.hw_led_pwm = 0.0  # LED-PWM 0-255 (0 = Auto-Heartbeat)
+        self.hw_led_pwm = 0.0  # LED 0-100% (0 = Auto-Heartbeat)
         self.prev_cpu_stats = None  # /proc/stat Vorheriger Zustand
 
         # --- Sensor-Status (Ultraschall, Cliff, IMU-Hz) ---
@@ -964,6 +982,9 @@ class DashboardBridge(Node):
         self.sound_direction = 0
         self.is_voice = False
         self._last_sound_dir_time = 0.0
+        self._last_voice_command = ""  # Letzter erkannter Sprachbefehl
+        self._last_voice_transcript = ""  # Letztes Transkript (Merge-Buffer)
+        self._voice_merge_timer = None  # Timer fuer Command/Transcript-Merge
 
         # --- CvBridge (Kamera) ---
         self.cv_bridge = CvBridge() if HAS_CAMERA else None
@@ -1042,8 +1063,10 @@ class DashboardBridge(Node):
         self.pub_audio_play = self.create_publisher(String, "/audio/play", 10)
         self.pub_audio_volume = self.create_publisher(Int32, "/audio/volume", 10)
         self.pub_vision_enable = self.create_publisher(Bool, "/vision/enable", 10)
+        self.pub_voice_mute = self.create_publisher(Bool, "/voice/mute", 10)
         self.audio_volume_pct = 80  # Default-Lautstaerke
         self.vision_enabled = False  # Vision-Broadcast Default: aus
+        self.mic_muted = False  # Mikrofon-Mute Default: aus
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)
@@ -1221,6 +1244,9 @@ class DashboardBridge(Node):
         if not text or self.ws_server is None:
             return
         self.get_logger().info(f"Sprachbefehl empfangen: {text}")
+        with self.lock:
+            self._last_voice_command = text
+        # Befehl ausfuehren
         resp = self.ws_server._handle_command(text)
         if resp is not None:
             resp["source"] = "voice"
@@ -1229,16 +1255,47 @@ class DashboardBridge(Node):
                 asyncio.run_coroutine_threadsafe(
                     self.ws_server.broadcast(resp_str), self.ws_server.loop
                 )
+        # Falls Transkript bereits da ist, sofort mergen und senden
+        self._try_send_voice_transcript()
 
     def _voice_text_cb(self, msg):
-        """Broadcastet Sprach-Transkript an alle Dashboard-Clients."""
+        """Speichert Transkript und versucht Merge mit Befehl."""
         text = msg.data.strip()
         if not text or self.ws_server is None:
             return
+        with self.lock:
+            self._last_voice_transcript = text
+        # Falls Befehl bereits da ist, sofort mergen und senden
+        self._try_send_voice_transcript()
+        # Fallback-Timer: nach 200 ms senden, auch ohne Befehl
+        if self._voice_merge_timer is not None:
+            self._voice_merge_timer.cancel()
+        self._voice_merge_timer = self.create_timer(0.2, self._voice_merge_timeout)
+
+    def _voice_merge_timeout(self):
+        """Fallback: Transkript ohne Befehl senden nach Timeout."""
+        if self._voice_merge_timer is not None:
+            self._voice_merge_timer.cancel()
+            self._voice_merge_timer = None
+        self._try_send_voice_transcript()
+
+    def _try_send_voice_transcript(self):
+        """Sendet voice_transcript wenn Transkript vorhanden ist."""
+        with self.lock:
+            transcript = self._last_voice_transcript
+            if not transcript:
+                return
+            command = self._last_voice_command
+            self._last_voice_transcript = ""
+            self._last_voice_command = ""
+        if self._voice_merge_timer is not None:
+            self._voice_merge_timer.cancel()
+            self._voice_merge_timer = None
         transcript_msg = json.dumps(
             {
                 "op": "voice_transcript",
-                "text": text,
+                "text": transcript,
+                "command": command,
                 "ts": round(time.time(), 3),
             }
         )
@@ -1366,8 +1423,11 @@ class DashboardBridge(Node):
             self.servo_pan = float(pan)
             self.servo_tilt = float(tilt)
 
-    def publish_hardware_cmd(self, motor_limit, servo_speed, led_pwm):
-        """Publiziert Hardware-Parameter auf /hardware_cmd (Point: x=motor, y=servo_speed, z=led)."""
+    def publish_hardware_cmd(self, motor_limit, servo_speed, led_pwm, led_pct=None):
+        """Publiziert Hardware-Parameter auf /hardware_cmd (Point: x=motor, y=servo_speed, z=led).
+
+        led_pwm: 0-255 (Firmware-Wert), led_pct: 0-100 (%-Wert fuer Dashboard-Feedback).
+        """
         msg = Point()
         msg.x = float(motor_limit)
         msg.y = float(servo_speed)
@@ -1376,7 +1436,7 @@ class DashboardBridge(Node):
         with self.lock:
             self.hw_motor_limit = motor_limit
             self.hw_servo_speed = servo_speed
-            self.hw_led_pwm = led_pwm
+            self.hw_led_pwm = led_pct if led_pct is not None else led_pwm
 
     def record_heartbeat(self):
         """Aktualisiert den Heartbeat-Zeitstempel."""
