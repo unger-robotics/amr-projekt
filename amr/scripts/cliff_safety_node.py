@@ -29,6 +29,7 @@ class CliffSafetyNode(Node):
         # Zustand
         self._cliff_detected = False
         self._obstacle_too_close = False
+        self._estop_active = False
         self._alarm_sent = False
         self._last_twist = Twist()
 
@@ -47,6 +48,7 @@ class CliffSafetyNode(Node):
         self.create_subscription(
             Twist, "/dashboard_cmd_vel", self._dashboard_cmd_vel_callback, qos_reliable
         )
+        self.create_subscription(Bool, "/emergency_stop", self._estop_callback, 10)
 
         # Publisher
         self._cmd_vel_pub = self.create_publisher(Twist, "/cmd_vel", 10)
@@ -99,10 +101,20 @@ class CliffSafetyNode(Node):
             self._obstacle_too_close = False
             self.get_logger().info("Hindernis frei. Fahrbefehle wieder freigegeben.")
 
+    def _estop_callback(self, msg: Bool):
+        """Verarbeitet /emergency_stop (Totmannschalter)."""
+        if msg.data and not self._estop_active:
+            self._estop_active = True
+            self._cmd_vel_pub.publish(Twist())
+            self.get_logger().warn("E-STOP aktiv! Alle Fahrbefehle blockiert.")
+        elif not msg.data and self._estop_active:
+            self._estop_active = False
+            self.get_logger().info("E-Stop aufgehoben. Fahrbefehle wieder freigegeben.")
+
     @property
     def _blocked(self) -> bool:
-        """True wenn Cliff oder Hindernis aktiv."""
-        return self._cliff_detected or self._obstacle_too_close
+        """True wenn Cliff, Hindernis oder E-Stop aktiv."""
+        return self._cliff_detected or self._obstacle_too_close or self._estop_active
 
     def _nav_cmd_vel_callback(self, msg: Twist):
         """Empfaengt Nav2-Geschwindigkeitsbefehle (remapped)."""

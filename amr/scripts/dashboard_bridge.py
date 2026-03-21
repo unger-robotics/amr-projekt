@@ -293,6 +293,9 @@ class WebSocketServer:
                 self.controller_ws = None
                 self.node.publish_stop()
                 self.node.get_logger().info("Controller-Client getrennt -> Stopp gesendet")
+            # Totmannschalter: alle Clients weg + Dashboard war verbunden → Notstopp
+            if len(self.clients) == 0 and self.node.dashboard_was_connected:
+                self.node.unified_estop("disconnect")
             self.node.get_logger().info(f"WebSocket-Client getrennt ({len(self.clients)} aktiv)")
 
     def _handle_message(self, ws, msg):
@@ -318,6 +321,10 @@ class WebSocketServer:
             self.node.publish_hardware_cmd(motor_limit, servo_speed, led_pwm, led_pct)
         elif op == "heartbeat":
             self.node.record_heartbeat()
+        elif op == "estop":
+            self.node.unified_estop("dashboard")
+        elif op == "estop_release":
+            self.node.unified_estop_release()
         elif op == "nav_goal":
             x = float(msg.get("x", 0.0))
             y = float(msg.get("y", 0.0))
@@ -470,7 +477,7 @@ class WebSocketServer:
             asyncio.run_coroutine_threadsafe(self._execute_turn(ws, angle), self.loop)
             return None
 
-        # -- Stopp-Phrasen (Sprache) --
+        # -- Stopp-Phrasen (Sprache/Text) → einheitlicher Notstopp --
         if text_lower in (
             "halt an",
             "anhalten",
@@ -480,12 +487,10 @@ class WebSocketServer:
             "not aus",
             "notaus",
         ):
-            self.node.publish_stop()
-            self.node.cancel_nav_goal()
-            self._motion_cancel = True
+            self.node.unified_estop("voice")
             return {
                 "op": "command_response",
-                "text": "Stopp + Nav abgebrochen",
+                "text": "Notstopp ausgeloest",
                 "success": True,
             }
 
@@ -596,12 +601,10 @@ class WebSocketServer:
                     "success": True,
                 }
             elif cmd in ("stop", "stopp", "halt", "anhalten"):
-                self.node.publish_stop()
-                self.node.cancel_nav_goal()
-                self._motion_cancel = True
+                self.node.unified_estop("voice")
                 return {
                     "op": "command_response",
-                    "text": "Stopp + Nav abgebrochen",
+                    "text": "Notstopp ausgeloest",
                     "success": True,
                 }
             elif cmd == "cancel":
@@ -622,6 +625,24 @@ class WebSocketServer:
                         "success": False,
                     }
                 asyncio.run_coroutine_threadsafe(self._execute_forward(ws, dist), self.loop)
+                return None
+            elif cmd in ("backward", "zurueck", "rueckwaerts") and len(parts) >= 2:
+                dist = float(parts[1])
+                if dist <= 0 or dist > 5.0:
+                    return {
+                        "op": "command_response",
+                        "text": "Distanz muss 0-5 m sein",
+                        "success": False,
+                    }
+                if self._motion_active:
+                    return {
+                        "op": "command_response",
+                        "text": "Bewegung bereits aktiv",
+                        "success": False,
+                    }
+                asyncio.run_coroutine_threadsafe(
+                    self._execute_forward(ws, dist, reverse=True), self.loop
+                )
                 return None
             elif cmd in ("turn", "dreh", "drehe", "drehung") and len(parts) >= 2:
                 angle = float(parts[1])
@@ -645,9 +666,9 @@ class WebSocketServer:
                 return {
                     "op": "command_response",
                     "text": (
-                        "Befehle: nav X Y [YAW], stop, cancel, "
-                        "forward DIST, turn GRAD, "
-                        "test list, test <name>, help"
+                        "Befehle: nav X Y [YAW], stop, "
+                        "forward DIST, backward DIST, turn GRAD, "
+                        "turn_to_speaker, test list, test <name>, help"
                     ),
                     "success": True,
                 }
@@ -1175,9 +1196,18 @@ class DashboardBridge(Node):
         self.pub_vision_enable = self.create_publisher(Bool, "/vision/enable", 10)
         self.pub_voice_mute = self.create_publisher(Bool, "/voice/mute", 10)
         self.pub_tts_speak = self.create_publisher(String, "/tts/speak", 10)
+        self.pub_emergency_stop = self.create_publisher(Bool, "/emergency_stop", 10)
         self.audio_volume_pct = 80  # Default-Lautstaerke
         self.vision_enabled = False  # Vision-Broadcast Default: aus
         self.mic_muted = False  # Mikrofon-Mute Default: aus
+
+        # --- E-Stop State (Totmannschalter) ---
+        self.estop_engaged = False
+        self.estop_source = ""
+        self.dashboard_was_connected = False
+
+        # --- /emergency_stop Subscriber (Hardware-E-Stop, Phase 2) ---
+        self.create_subscription(Bool, "/emergency_stop", self._emergency_stop_cb, 10)
 
         # --- Deadman-Timer (300 ms) ---
         self.deadman_timer = self.create_timer(DEADMAN_TIMEOUT_S, self._deadman_cb)
@@ -1519,9 +1549,11 @@ class DashboardBridge(Node):
         with self.lock:
             last_cmd = self.last_cmd_time
             last_hb = self.last_heartbeat_time
+            was_connected = self.dashboard_was_connected
         # Pruefen ob Steuerbefehle oder Heartbeat empfangen wurden
+        # Nur stoppen wenn Dashboard irgendwann verbunden war (Totmannschalter)
         last_activity = max(last_cmd, last_hb)
-        if last_activity > 0.0 and (now - last_activity) > DEADMAN_TIMEOUT_S:
+        if was_connected and last_activity > 0.0 and (now - last_activity) > DEADMAN_TIMEOUT_S:
             self.publish_stop()
 
     # --- Publizier-Methoden (thread-safe) ---
@@ -1570,6 +1602,51 @@ class DashboardBridge(Node):
         """Aktualisiert den Heartbeat-Zeitstempel."""
         with self.lock:
             self.last_heartbeat_time = time.time()
+            if not self.dashboard_was_connected:
+                self.dashboard_was_connected = True
+                self.get_logger().info("Dashboard-Heartbeat aktiv -> Totmannschalter scharf")
+
+    # --- Einheitlicher Notstopp (Totmannschalter) ---
+
+    def unified_estop(self, source="unknown"):
+        """Einheitlicher Notstopp: Motoren + Navigation + Broadcast."""
+        self.publish_stop()
+        self.cancel_nav_goal()
+        if self.ws_server:
+            self.ws_server._motion_cancel = True
+        # ROS2 /emergency_stop
+        estop_msg = Bool()
+        estop_msg.data = True
+        self.pub_emergency_stop.publish(estop_msg)
+        # Audio-Alarm
+        self.publish_audio_play("cliff_alarm")
+        # State
+        self.estop_engaged = True
+        self.estop_source = source
+        # Dashboard-Broadcast
+        status = json.dumps({"op": "estop_status", "engaged": True, "source": source})
+        if self.ws_server and self.ws_server.loop:
+            asyncio.run_coroutine_threadsafe(self.ws_server.broadcast(status), self.ws_server.loop)
+        self.get_logger().warn(f"NOTSTOPP ausgeloest (Quelle: {source})")
+
+    def unified_estop_release(self):
+        """Notstopp aufheben."""
+        self.estop_engaged = False
+        self.estop_source = ""
+        # ROS2 /emergency_stop release
+        estop_msg = Bool()
+        estop_msg.data = False
+        self.pub_emergency_stop.publish(estop_msg)
+        # Dashboard-Broadcast
+        status = json.dumps({"op": "estop_status", "engaged": False, "source": ""})
+        if self.ws_server and self.ws_server.loop:
+            asyncio.run_coroutine_threadsafe(self.ws_server.broadcast(status), self.ws_server.loop)
+        self.get_logger().info("Notstopp aufgehoben")
+
+    def _emergency_stop_cb(self, msg):
+        """Callback fuer /emergency_stop (Hardware-E-Stop, Phase 2)."""
+        if msg.data and not self.estop_engaged:
+            self.unified_estop("hardware")
 
     def publish_audio_play(self, sound_key):
         """Publiziert Audio-Wiedergabe-Kommando auf /audio/play."""

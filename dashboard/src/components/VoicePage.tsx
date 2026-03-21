@@ -14,7 +14,7 @@ const VOICE_COMMANDS = [
   { command: 'turn X', example: '"Dreh dich 90 Grad nach links"', description: 'X Grad drehen (+links, -rechts)' },
   { command: 'turn_to_speaker', example: '"Dreh dich zu mir"', description: 'Zum Sprecher drehen (DoA-basiert)' },
   { command: 'stop', example: '"Stopp!"', description: 'Sofortstopp aller Motoren' },
-  { command: 'cancel', example: '"Navigation abbrechen"', description: 'Laufende Navigation abbrechen' },
+  { command: 'backward X', example: '"Fahr 1 Meter zurueck"', description: 'X Meter rueckwaerts fahren (0-5 m)' },
   { command: 'schau nach links', example: '"Schau nach links"', description: 'Kamera nach links schwenken' },
   { command: 'schau nach rechts', example: '"Schau nach rechts"', description: 'Kamera nach rechts schwenken' },
   { command: 'schau nach vorne', example: '"Schau nach vorne"', description: 'Kamera geradeaus' },

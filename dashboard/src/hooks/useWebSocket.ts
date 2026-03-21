@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg, VisionControlMsg, VoiceMuteMsg } from '../types/ros';
+import type { ServerMessage, ClientMessage, ServoCmdMsg, HardwareCmdMsg, AudioPlayMsg, AudioVolumeMsg, VisionControlMsg, VoiceMuteMsg, EStopMsg, EStopReleaseMsg } from '../types/ros';
 
 const WS_PORT = 9090;
 const RECONNECT_DELAYS = [1000, 2000, 4000, 8000];
+const HEARTBEAT_INTERVAL_MS = 200; // 5 Hz globaler Heartbeat (Totmannschalter)
 
 export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -11,6 +12,7 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastPongRef = useRef(0);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const connectRef = useRef<(() => void) | undefined>(undefined);
   const onMessageRef = useRef(onMessage);
 
@@ -34,6 +36,13 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
       setConnected(true);
       reconnectAttempt.current = 0;
       lastPongRef.current = Date.now();
+      // Globaler Heartbeat (Totmannschalter): 5 Hz solange verbunden
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ op: 'heartbeat' }));
+        }
+      }, HEARTBEAT_INTERVAL_MS);
     };
 
     ws.onmessage = (event) => {
@@ -54,6 +63,8 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
       if (wsRef.current !== ws) return;
       setConnected(false);
       wsRef.current = null;
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = undefined;
       const delay = RECONNECT_DELAYS[
         Math.min(reconnectAttempt.current, RECONNECT_DELAYS.length - 1)
       ];
@@ -77,6 +88,8 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     const ws = wsRef.current;
     return () => {
       clearTimeout(reconnectTimer.current);
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = undefined;
       ws?.close();
     };
   }, [connect]);
@@ -139,5 +152,15 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
     send(msg);
   }, [send]);
 
-  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute };
+  const sendEstop = useCallback(() => {
+    const msg: EStopMsg = { op: 'estop' };
+    send(msg);
+  }, [send]);
+
+  const sendEstopRelease = useCallback(() => {
+    const msg: EStopReleaseMsg = { op: 'estop_release' };
+    send(msg);
+  }, [send]);
+
+  return { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute, sendEstop, sendEstopRelease };
 }

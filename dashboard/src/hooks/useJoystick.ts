@@ -4,15 +4,14 @@ import type { ClientMessage } from '../types/ros';
 const MAX_LINEAR = 0.4;   // m/s (Dashboard-Joystick-Limit)
 const MAX_ANGULAR = 1.0;  // rad/s
 const SEND_INTERVAL_MS = 100; // 10 Hz rate limit
-const HEARTBEAT_INTERVAL_MS = 200;
 
 export function useJoystick(send: (msg: ClientMessage) => void) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const currentCmd = useRef({ linear_x: 0, angular_z: 0 });
 
   const startSending = useCallback(() => {
     // Rate-limited cmd_vel sending at 10 Hz
+    // Heartbeat laeuft global in useWebSocket (5 Hz Totmannschalter)
     if (!intervalRef.current) {
       intervalRef.current = setInterval(() => {
         send({
@@ -22,23 +21,12 @@ export function useJoystick(send: (msg: ClientMessage) => void) {
         });
       }, SEND_INTERVAL_MS);
     }
-    // Heartbeat at 5 Hz for deadman switch
-    if (!heartbeatRef.current) {
-      heartbeatRef.current = setInterval(() => {
-        send({ op: 'heartbeat' });
-      }, HEARTBEAT_INTERVAL_MS);
-    }
   }, [send]);
 
   const stopSending = useCallback(() => {
-    // Clear intervals
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = undefined;
-    }
-    if (heartbeatRef.current) {
-      clearInterval(heartbeatRef.current);
-      heartbeatRef.current = undefined;
     }
     // Send zero velocity immediately
     currentCmd.current = { linear_x: 0, angular_z: 0 };

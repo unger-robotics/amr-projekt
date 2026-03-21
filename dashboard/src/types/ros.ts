@@ -273,5 +273,22 @@ export interface VoiceMuteStatusMsg {
   muted: boolean;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg | VoiceMuteStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestStopMsg | TestListRequestMsg | VoiceMuteMsg;
+/** Notstopp ans Backend (Totmannschalter) */
+export interface EStopMsg {
+  op: 'estop';
+}
+
+/** Notstopp-Freigabe ans Backend */
+export interface EStopReleaseMsg {
+  op: 'estop_release';
+}
+
+/** Notstopp-Status vom Backend */
+export interface EStopStatusMsg {
+  op: 'estop_status';
+  engaged: boolean;
+  source: string;
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg | VoiceMuteStatusMsg | EStopStatusMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestStopMsg | TestListRequestMsg | VoiceMuteMsg | EStopMsg | EStopReleaseMsg;

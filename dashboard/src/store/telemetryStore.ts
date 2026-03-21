@@ -107,6 +107,9 @@ interface TelemetryState {
   voiceTranscript: string;
   voiceTranscriptTs: number;
   voiceHistory: { text: string; command: string; ts: number }[];
+  // E-Stop (Totmannschalter)
+  estopEngaged: boolean;
+  estopSource: string;
   // Command
   commandHistory: { text: string; isCmd: boolean; success: boolean; pending?: boolean }[];
   // Tests
@@ -128,6 +131,7 @@ interface TelemetryState {
   updateVoiceTranscript: (text: string, command: string, ts: number) => void;
   appendCommand: (text: string) => void;
   appendCommandResponse: (text: string, success: boolean, pending?: boolean) => void;
+  setEstopStatus: (engaged: boolean, source: string) => void;
   setAvailableTests: (tests: TestInfo[]) => void;
   setRunningTest: (key: string | null) => void;
   addTestResult: (key: string, output: string, success: boolean) => void;
@@ -160,6 +164,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   ultrasonicRange: 0, cliffDetected: false,
   soundDirection: 0, doaFiltered: 0, doaQuadrant: '', isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
   micMuted: false, voiceTranscript: '', voiceTranscriptTs: 0, voiceHistory: [],
+  estopEngaged: false, estopSource: '',
   commandHistory: [],
   availableTests: [], runningTest: null, testResults: {},
 
@@ -300,6 +305,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
     commandHistory: [...state.commandHistory.slice(-14), { text, isCmd: false, success, pending }],
   })),
 
+  setEstopStatus: (engaged, source) => set({ estopEngaged: engaged, estopSource: source }),
   setAvailableTests: (tests) => set({ availableTests: tests }),
   setRunningTest: (key) => set({ runningTest: key }),
   addTestResult: (key, output, success) => set((state) => ({
