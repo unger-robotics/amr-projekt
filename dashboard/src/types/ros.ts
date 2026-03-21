@@ -222,5 +222,28 @@ export interface VisionStatusMsg {
   enabled: boolean;
 }
 
-export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg;
+/** Test-Info (Key + Entry-Point) */
+export interface TestInfo {
+  key: string;
+  entry_point: string;
+}
+
+/** Testliste vom Backend (einmalig bei Verbindung) */
+export interface TestListMsg {
+  op: 'test_list';
+  tests: TestInfo[];
+}
+
+/** Test-Ausfuehrung ans Backend */
+export interface TestRunMsg {
+  op: 'test_run';
+  test_key: string;
+}
+
+/** Testliste anfordern ans Backend */
+export interface TestListRequestMsg {
+  op: 'test_list';
+}
+
+export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestListRequestMsg;

@@ -324,6 +324,25 @@ class WebSocketServer:
             status = json.dumps({"op": "vision_status", "enabled": self.node.vision_enabled})
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.broadcast(status), self.loop)
+        elif op == "test_list":
+            tests = [{"key": k, "entry_point": v} for k, v in sorted(AVAILABLE_TESTS.items())]
+            resp = json.dumps({"op": "test_list", "tests": tests})
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(ws.send(resp), self.loop)
+        elif op == "test_run":
+            test_key = str(msg.get("test_key", "")).strip().lower()
+            if test_key in AVAILABLE_TESTS:
+                asyncio.run_coroutine_threadsafe(self._execute_test(ws, test_key), self.loop)
+            else:
+                resp = json.dumps(
+                    {
+                        "op": "command_response",
+                        "text": f"Unbekannter Test: {test_key}",
+                        "success": False,
+                    }
+                )
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(ws.send(resp), self.loop)
         elif op == "command":
             text = str(msg.get("text", "")).strip()
             resp = self._handle_command(text, ws)
@@ -339,6 +358,15 @@ class WebSocketServer:
 
         # -- Natuerlichsprachlicher Parser (vor cmd-Parser) --
         text_lower = text.lower()
+        # Normalisierung fuer STT-Output (Whisper/Gemini):
+        text_lower = (
+            text_lower.replace(",", ".")
+            .replace("\u00e4", "ae")
+            .replace("\u00f6", "oe")
+            .replace("\u00fc", "ue")
+            .replace("\u00df", "ss")
+            .rstrip(".!?")
+        )
 
         # "navigiere zu X Y" oder "fahre zu X Y"
         m = re.match(
@@ -399,6 +427,110 @@ class WebSocketServer:
             asyncio.run_coroutine_threadsafe(self._execute_turn(ws, angle), self.loop)
             return None
 
+        # -- Stopp-Phrasen (Sprache) --
+        if text_lower in (
+            "halt an",
+            "anhalten",
+            "bleib stehen",
+            "stopp",
+            "stopp sofort",
+            "not aus",
+            "notaus",
+        ):
+            self.node.publish_stop()
+            self.node.cancel_nav_goal()
+            self._motion_cancel = True
+            return {
+                "op": "command_response",
+                "text": "Stopp + Nav abgebrochen",
+                "success": True,
+            }
+
+        # "fahr(e) zurueck/rueckwaerts X m"
+        m = re.match(
+            r"(?:fahr(?:e)?|geh)\s+(?:zurueck|rueckwaerts)\s+(\d+\.?\d*)\s*(?:m|meter)?",
+            text_lower,
+        )
+        if m:
+            dist = float(m.group(1))
+            if dist <= 0 or dist > 5.0:
+                return {
+                    "op": "command_response",
+                    "text": "Distanz muss 0-5 m sein",
+                    "success": False,
+                }
+            if self._motion_active:
+                return {
+                    "op": "command_response",
+                    "text": "Bewegung bereits aktiv",
+                    "success": False,
+                }
+            asyncio.run_coroutine_threadsafe(
+                self._execute_forward(ws, dist, reverse=True), self.loop
+            )
+            return None
+
+        # "schau nach links/rechts/mitte"
+        m = re.match(
+            r"(?:schau|kamera|guck)\s+(?:nach\s+)?(links|rechts|mitte|zentrum|geradeaus)",
+            text_lower,
+        )
+        if m:
+            direction = m.group(1)
+            pan_map = {
+                "links": 135,
+                "rechts": 45,
+                "mitte": 90,
+                "zentrum": 90,
+                "geradeaus": 90,
+            }
+            self.node.publish_servo_cmd(float(pan_map[direction]), 90.0)
+            return {
+                "op": "command_response",
+                "text": f"Kamera: {direction} (Pan={pan_map[direction]})",
+                "success": True,
+            }
+
+        # "licht an/aus"
+        m = re.match(r"(?:licht|led)\s+(an|aus|ein)", text_lower)
+        if m:
+            pwm = 200.0 if m.group(1) in ("an", "ein") else 0.0
+            self.node.publish_hardware_cmd(self.node.hw_motor_limit, self.node.hw_servo_speed, pwm)
+            return {
+                "op": "command_response",
+                "text": f"LED {'an (PWM=200)' if pwm > 0 else 'aus'}",
+                "success": True,
+            }
+
+        # -- Status-Abfragen (keine Aktorik) --
+        if any(
+            w in text_lower for w in ("wie weit", "abstand", "hindernis", "ultraschall", "range")
+        ):
+            with self.node.lock:
+                dist = self.node.ultrasonic_range
+            return {
+                "op": "command_response",
+                "text": f"Ultraschall: {dist:.2f} m",
+                "success": True,
+            }
+
+        if any(w in text_lower for w in ("akku", "batterie", "spannung", "battery")):
+            with self.node.lock:
+                bat = self.node.battery_data
+            if bat:
+                return {
+                    "op": "command_response",
+                    "text": (
+                        f"Batterie: {bat.get('voltage', 0):.1f} V, {bat.get('percentage', 0):.0f} %"
+                    ),
+                    "success": True,
+                }
+            return {
+                "op": "command_response",
+                "text": "Keine Batteriedaten verfuegbar",
+                "success": False,
+            }
+
         # -- Keyword-basierter Parser --
         cmd = parts[0].lower()
         try:
@@ -412,7 +544,7 @@ class WebSocketServer:
                     "text": f"Nav-Ziel: x={x}, y={y}, yaw={yaw}",
                     "success": True,
                 }
-            elif cmd == "stop":
+            elif cmd in ("stop", "stopp", "halt", "anhalten"):
                 self.node.publish_stop()
                 self.node.cancel_nav_goal()
                 self._motion_cancel = True
@@ -424,7 +556,7 @@ class WebSocketServer:
             elif cmd == "cancel":
                 self.node.cancel_nav_goal()
                 return {"op": "command_response", "text": "Navigation abgebrochen", "success": True}
-            elif cmd in ("forward", "vor", "vorwaerts") and len(parts) >= 2:
+            elif cmd in ("forward", "vor", "vorwaerts", "geradeaus") and len(parts) >= 2:
                 dist = float(parts[1])
                 if dist <= 0 or dist > 5.0:
                     return {
@@ -440,7 +572,7 @@ class WebSocketServer:
                     }
                 asyncio.run_coroutine_threadsafe(self._execute_forward(ws, dist), self.loop)
                 return None
-            elif cmd in ("turn", "dreh", "drehe") and len(parts) >= 2:
+            elif cmd in ("turn", "dreh", "drehe", "drehung") and len(parts) >= 2:
                 angle = float(parts[1])
                 if abs(angle) > 360:
                     return {
@@ -507,11 +639,13 @@ class WebSocketServer:
         with contextlib.suppress(Exception):
             await ws.send(json.dumps(resp))
 
-    async def _execute_forward(self, ws, distance_m):
-        """Faehrt distance_m Meter geradeaus mittels cmd_vel + Odometrie-Feedback."""
+    async def _execute_forward(self, ws, distance_m, reverse=False):
+        """Faehrt distance_m Meter geradeaus/rueckwaerts mittels cmd_vel + Odometrie-Feedback."""
         self._motion_active = True
         self._motion_cancel = False
-        await self._send_response(ws, f"Fahre {distance_m} m vorwaerts...", True, pending=True)
+        direction_str = "rueckwaerts" if reverse else "vorwaerts"
+        abs_dist = abs(distance_m)
+        await self._send_response(ws, f"Fahre {abs_dist} m {direction_str}...", True, pending=True)
 
         odom = self.node.latest_odom
         if odom is None:
@@ -521,9 +655,9 @@ class WebSocketServer:
 
         start_x = odom.pose.pose.position.x
         start_y = odom.pose.pose.position.y
-        timeout = distance_m / 0.10 + 5.0
+        timeout = abs_dist / 0.10 + 5.0
         start_time = asyncio.get_event_loop().time()
-        vel = 0.15  # m/s
+        vel = -0.15 if reverse else 0.15  # m/s
         traveled = 0.0
 
         try:
@@ -538,7 +672,7 @@ class WebSocketServer:
                 dy = odom.pose.pose.position.y - start_y
                 traveled = math.sqrt(dx * dx + dy * dy)
 
-                if traveled >= distance_m:
+                if traveled >= abs_dist:
                     break
                 if (asyncio.get_event_loop().time() - start_time) > timeout:
                     self.node.publish_stop()
@@ -553,7 +687,9 @@ class WebSocketServer:
             await self._send_response(ws, "Bewegung abgebrochen", False)
         else:
             await self._send_response(
-                ws, f"Vorwaerts {distance_m} m abgeschlossen ({traveled:.2f} m)", True
+                ws,
+                f"{direction_str.capitalize()} {abs_dist} m abgeschlossen ({traveled:.2f} m)",
+                True,
             )
 
     async def _execute_turn(self, ws, angle_deg):

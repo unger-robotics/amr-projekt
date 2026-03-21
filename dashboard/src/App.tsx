@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useTelemetryStore } from './store/telemetryStore';
 import { Dashboard } from './components/Dashboard';
@@ -20,6 +20,8 @@ function App() {
   const updateSensorStatus = useTelemetryStore((s) => s.updateSensorStatus);
   const updateAudioStatus = useTelemetryStore((s) => s.updateAudioStatus);
   const appendCommandResponse = useTelemetryStore((s) => s.appendCommandResponse);
+  const setAvailableTests = useTelemetryStore((s) => s.setAvailableTests);
+  const addTestResult = useTelemetryStore((s) => s.addTestResult);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
@@ -33,12 +35,34 @@ function App() {
       else if (msg.op === 'nav_status') updateNavStatus(msg);
       else if (msg.op === 'sensor_status') updateSensorStatus(msg);
       else if (msg.op === 'audio_status') updateAudioStatus(msg);
-      else if (msg.op === 'command_response') appendCommandResponse(msg.text, msg.success, msg.pending);
+      else if (msg.op === 'command_response') {
+        appendCommandResponse(msg.text, msg.success, msg.pending);
+        // Testergebnis erkennen und im Store ablegen
+        if (!msg.pending && msg.text?.startsWith("Test ")) {
+          const match = msg.text.match(/^Test (\S+):\s*(PASS|FAIL)/);
+          if (match) {
+            const entryPoint = match[1];
+            const state = useTelemetryStore.getState();
+            const testInfo = state.availableTests.find((t) => t.entry_point === entryPoint);
+            if (testInfo) {
+              addTestResult(testInfo.key, msg.text, msg.success);
+            }
+          }
+        }
+      }
+      else if (msg.op === 'test_list') setAvailableTests(msg.tests);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, appendCommandResponse],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, appendCommandResponse, setAvailableTests, addTestResult],
   );
 
   const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl } = useWebSocket(onMessage);
+
+  // Testliste beim Verbindungsaufbau anfordern
+  useEffect(() => {
+    if (connected) {
+      send({ op: 'test_list' });
+    }
+  }, [connected, send]);
 
   const handleEmergencyStop = useCallback(() => {
     for (let i = 0; i < 5; i++) {
@@ -85,7 +109,7 @@ function App() {
           sendVisionControl={sendVisionControl}
         />
       ) : (
-        <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
+        <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} send={send} />
       )}
     </div>
   );

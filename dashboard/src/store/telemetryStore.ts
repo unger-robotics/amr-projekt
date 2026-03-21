@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, NavStatusMsg, Detection, SensorStatusMsg, AudioStatusMsg } from '../types/ros';
+import type { TelemetryMsg, ScanMsg, SystemMsg, MapMsg, VisionDetectionsMsg, VisionSemanticsMsg, NavStatusMsg, Detection, SensorStatusMsg, AudioStatusMsg, TestInfo } from '../types/ros';
 
 interface TelemetryState {
   // Odometry
@@ -102,6 +102,10 @@ interface TelemetryState {
   audioVolume: number;
   // Command
   commandHistory: { text: string; isCmd: boolean; success: boolean; pending?: boolean }[];
+  // Tests
+  availableTests: TestInfo[];
+  runningTest: string | null;
+  testResults: Record<string, { output: string; success: boolean; ts: number }>;
   // Actions
   updateTelemetry: (msg: TelemetryMsg) => void;
   updateScan: (msg: ScanMsg) => void;
@@ -115,6 +119,9 @@ interface TelemetryState {
   updateAudioStatus: (msg: AudioStatusMsg) => void;
   appendCommand: (text: string) => void;
   appendCommandResponse: (text: string, success: boolean, pending?: boolean) => void;
+  setAvailableTests: (tests: TestInfo[]) => void;
+  setRunningTest: (key: string | null) => void;
+  addTestResult: (key: string, output: string, success: boolean) => void;
 }
 
 export const useTelemetryStore = create<TelemetryState>((set) => ({
@@ -143,6 +150,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
   soundDirection: 0, isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80, commandHistory: [],
+  availableTests: [], runningTest: null, testResults: {},
 
   updateTelemetry: (msg) => set({
     x: msg.odom.x,
@@ -269,5 +277,12 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   })),
   appendCommandResponse: (text, success, pending) => set((state) => ({
     commandHistory: [...state.commandHistory.slice(-14), { text, isCmd: false, success, pending }],
+  })),
+
+  setAvailableTests: (tests) => set({ availableTests: tests }),
+  setRunningTest: (key) => set({ runningTest: key }),
+  addTestResult: (key, output, success) => set((state) => ({
+    testResults: { ...state.testResults, [key]: { output, success, ts: Date.now() } },
+    runningTest: state.runningTest === key ? null : state.runningTest,
   })),
 }));
