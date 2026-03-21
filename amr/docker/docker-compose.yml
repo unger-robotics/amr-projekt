@@ -66,6 +66,7 @@ services:
       - ROS_DOMAIN_ID=0
       - TERM=xterm-256color
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY:-}
 
     # Container bleibt interaktiv
     stdin_open: true

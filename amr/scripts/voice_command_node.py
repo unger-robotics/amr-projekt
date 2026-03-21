@@ -88,6 +88,8 @@ Verfuegbare Befehle (Feld "command"):
 - "licht aus"         LED ausschalten
 - "wie weit"          Ultraschall-Distanz abfragen
 - "akku"              Batteriestatus abfragen
+- "wo bin ich"        Aktuelle Position und Ausrichtung
+- "wetter"            Aktuelle Wetterdaten abfragen
 - "help"              Hilfe anzeigen
 - ""                  Kein Befehl erkannt (Geraeusch, unverstaendlich)
 
@@ -99,6 +101,8 @@ Beispiele:
 - "Wie weit ist das Hindernis?" -> {"command": "wie weit", "transcript": "wie weit ist das hindernis"}
 - "Dreh dich zu mir" -> {"command": "turn_to_speaker", "transcript": "dreh dich zu mir"}
 - "Schau mich an" -> {"command": "turn_to_speaker", "transcript": "schau mich an"}
+- "Wo bin ich?" -> {"command": "wo bin ich", "transcript": "wo bin ich"}
+- "Wie ist das Wetter?" -> {"command": "wetter", "transcript": "wie ist das wetter"}
 - [Hintergrundgeraeusch] -> {"command": "", "transcript": ""}
 - [kurzes Geraeusch, Piepen, Klicken] -> {"command": "", "transcript": ""}
 - [unverstaendliches Gemurmel] -> {"command": "", "transcript": ""}
@@ -477,6 +481,8 @@ class VoiceCommandNode(Node):
         ),
         (re.compile(r"wie\s+weit|abstand|distanz|hindernis"), "wie weit"),
         (re.compile(r"akku|batterie"), "akku"),
+        (re.compile(r"wo\s+bin\s+ich|position|standort|koordinaten"), "wo bin ich"),
+        (re.compile(r"wetter|weather|temperatur\s+draussen"), "wetter"),
         (re.compile(r"hilfe|help|was\s+kannst\s+du"), "help"),
     ]
 
