@@ -22,10 +22,8 @@ const VOICE_COMMANDS = [
   { command: 'licht aus', example: '"Licht aus"', description: 'LED ausschalten' },
   { command: 'wie weit', example: '"Wie weit ist das Hindernis?"', description: 'Ultraschall-Distanz abfragen' },
   { command: 'akku', example: '"Wie ist der Akku?"', description: 'Batteriestatus abfragen' },
-  { command: 'wo bin ich', example: '"Wo bin ich?"', description: 'Aktuelle Position und Ausrichtung' },
+  { command: 'wo bin ich', example: '"Wo bin ich?"', description: 'Geo-Standort (IP) und Odometrie-Position' },
   { command: 'wetter', example: '"Wie ist das Wetter?"', description: 'Aktuelle Wetterdaten' },
-  { command: 'test <name>', example: '"Starte Motor-Test"', description: 'Validierungstest ausfuehren' },
-  { command: 'help', example: '"Hilfe"', description: 'Hilfe anzeigen' },
 ] as const;
 
 const TEST_NAMES = [

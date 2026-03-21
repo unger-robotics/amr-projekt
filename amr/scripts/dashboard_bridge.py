@@ -29,6 +29,7 @@ import ssl
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -599,22 +600,7 @@ class WebSocketServer:
             w in text_lower
             for w in ("wo bin ich", "position", "standort", "koordinaten", "location")
         ):
-            with self.node.lock:
-                odom = self.node.latest_odom
-            if odom:
-                x = odom.pose.pose.position.x
-                y = odom.pose.pose.position.y
-                yaw = _quaternion_to_yaw_deg(odom.pose.pose.orientation)
-                return {
-                    "op": "command_response",
-                    "text": f"Position: x={x:.2f} m, y={y:.2f} m, Ausrichtung={yaw:.0f}°",
-                    "success": True,
-                }
-            return {
-                "op": "command_response",
-                "text": "Keine Odometrie-Daten verfuegbar",
-                "success": False,
-            }
+            return self._handle_location()
 
         # "wetter" / "wie ist das wetter" / "temperatur draussen"
         if any(w in text_lower for w in ("wetter", "weather", "temperatur draussen")):
@@ -799,6 +785,52 @@ class WebSocketServer:
                 True,
             )
 
+    def _handle_location(self):
+        """Ermittelt Standort via AMR_LOCATION oder IP-Geolocation, kombiniert mit Odometrie."""
+        # Bevorzugt: konfigurierter Standort (z.B. AMR_LOCATION="Wuppertal Vohwinkel")
+        configured = os.environ.get("AMR_LOCATION", "").strip()
+        geo_text = ""
+        if configured:
+            geo_text = f"Standort: {configured}"
+        else:
+            # Fallback: IP-Geolocation via ipinfo.io (kostenlos, kein API-Key)
+            try:
+                with urllib.request.urlopen("https://ipinfo.io/json", timeout=5) as resp:
+                    geo = json.loads(resp.read().decode())
+                city = geo.get("city", "")
+                region = geo.get("region", "")
+                country = geo.get("country", "")
+                parts = [p for p in (city, region, country) if p]
+                if parts:
+                    geo_text = f"Standort: {', '.join(parts)}"
+            except Exception:  # noqa: BLE001
+                geo_text = "Geo-Standort nicht ermittelbar"
+
+        # Odometrie-Position
+        odom_text = ""
+        with self.node.lock:
+            odom = self.node.latest_odom
+        if odom:
+            x = odom.pose.pose.position.x
+            y = odom.pose.pose.position.y
+            yaw = _quaternion_to_yaw_deg(odom.pose.pose.orientation)
+            odom_text = f"Odometrie: x={x:.2f} m, y={y:.2f} m, Ausrichtung={yaw:.0f}\u00b0"
+
+        if geo_text and odom_text:
+            text = f"{geo_text}. {odom_text}"
+        elif geo_text:
+            text = geo_text
+        elif odom_text:
+            text = odom_text
+        else:
+            text = "Weder Geo-Standort noch Odometrie verfuegbar"
+
+        return {
+            "op": "command_response",
+            "text": text,
+            "success": bool(geo_text or odom_text),
+        }
+
     def _handle_weather(self):
         """Ruft aktuelle Wetterdaten via OpenWeatherMap ab."""
         api_key = os.environ.get("OPENWEATHER_API_KEY", "")
@@ -808,12 +840,20 @@ class WebSocketServer:
                 "text": "Kein OPENWEATHER_API_KEY konfiguriert",
                 "success": False,
             }
-        # Standort: Nuernberg (Projektstandort)
-        lat, lon = 49.45, 11.08
-        url = (
-            f"https://api.openweathermap.org/data/2.5/weather"
-            f"?lat={lat}&lon={lon}&units=metric&lang=de&appid={api_key}"
-        )
+        # Standort aus AMR_LOCATION (Stadtname), Fallback Nuernberg-Koordinaten
+        location = os.environ.get("AMR_LOCATION", "").strip()
+        if location:
+            # Erster Teil vor Komma als Stadtname (z.B. "Wuppertal" aus "Wuppertal Vohwinkel")
+            city_query = location.split(",")[0].split()[0]
+            url = (
+                f"https://api.openweathermap.org/data/2.5/weather"
+                f"?q={urllib.parse.quote(city_query)},DE&units=metric&lang=de&appid={api_key}"
+            )
+        else:
+            url = (
+                f"https://api.openweathermap.org/data/2.5/weather"
+                f"?lat=49.45&lon=11.08&units=metric&lang=de&appid={api_key}"
+            )
         try:
             with urllib.request.urlopen(url, timeout=5) as resp:
                 data = json.loads(resp.read().decode())
