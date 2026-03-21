@@ -28,6 +28,8 @@ import socket
 import ssl
 import threading
 import time
+import urllib.error
+import urllib.request
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -135,6 +137,11 @@ def quaternion_to_yaw(q):
     siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
+
+
+def _quaternion_to_yaw_deg(q):
+    """Quaternion -> Yaw-Winkel in Grad."""
+    return math.degrees(quaternion_to_yaw(q))
 
 
 def clamp(val, limit):
@@ -587,6 +594,32 @@ class WebSocketServer:
                 "success": False,
             }
 
+        # "wo bin ich" / "position" / "standort"
+        if any(
+            w in text_lower
+            for w in ("wo bin ich", "position", "standort", "koordinaten", "location")
+        ):
+            with self.node.lock:
+                odom = self.node.latest_odom
+            if odom:
+                x = odom.pose.pose.position.x
+                y = odom.pose.pose.position.y
+                yaw = _quaternion_to_yaw_deg(odom.pose.pose.orientation)
+                return {
+                    "op": "command_response",
+                    "text": f"Position: x={x:.2f} m, y={y:.2f} m, Ausrichtung={yaw:.0f}°",
+                    "success": True,
+                }
+            return {
+                "op": "command_response",
+                "text": "Keine Odometrie-Daten verfuegbar",
+                "success": False,
+            }
+
+        # "wetter" / "wie ist das wetter" / "temperatur draussen"
+        if any(w in text_lower for w in ("wetter", "weather", "temperatur draussen")):
+            return self._handle_weather()
+
         # -- Keyword-basierter Parser --
         cmd = parts[0].lower()
         try:
@@ -765,6 +798,41 @@ class WebSocketServer:
                 f"{direction_str.capitalize()} {abs_dist} m abgeschlossen ({traveled:.2f} m)",
                 True,
             )
+
+    def _handle_weather(self):
+        """Ruft aktuelle Wetterdaten via OpenWeatherMap ab."""
+        api_key = os.environ.get("OPENWEATHER_API_KEY", "")
+        if not api_key:
+            return {
+                "op": "command_response",
+                "text": "Kein OPENWEATHER_API_KEY konfiguriert",
+                "success": False,
+            }
+        # Standort: Nuernberg (Projektstandort)
+        lat, lon = 49.45, 11.08
+        url = (
+            f"https://api.openweathermap.org/data/2.5/weather"
+            f"?lat={lat}&lon={lon}&units=metric&lang=de&appid={api_key}"
+        )
+        try:
+            with urllib.request.urlopen(url, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+            temp = data["main"]["temp"]
+            desc = data["weather"][0]["description"]
+            humidity = data["main"]["humidity"]
+            wind = data["wind"]["speed"]
+            city = data.get("name", "Unbekannt")
+            return {
+                "op": "command_response",
+                "text": f"Wetter {city}: {desc}, {temp:.1f}°C, Luftfeuchte {humidity}%, Wind {wind:.1f} m/s",
+                "success": True,
+            }
+        except (urllib.error.URLError, KeyError, Exception) as e:  # noqa: BLE001
+            return {
+                "op": "command_response",
+                "text": f"Wetterabfrage fehlgeschlagen: {e}",
+                "success": False,
+            }
 
     def _handle_turn_to_speaker(self, ws):
         """Dreht den Roboter in Richtung der letzten erkannten Stimme."""
