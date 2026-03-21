@@ -30,7 +30,7 @@ Dashboard-spezifische Details (Komponenten, Hooks, Store, Theme) gehoeren in die
 ```
 dashboard/
 ├── src/
-│   ├── components/              # 16 React-Komponenten
+│   ├── components/              # 17 React-Komponenten
 │   │   ├── Dashboard.tsx        # Hauptseite Steuerung (4-Spalten-Grid)
 │   │   ├── DetailPage.tsx       # Detailseite (4er-Grid)
 │   │   ├── StatusPanel.tsx      # Verbindung, Odometrie, IMU, Latenz
@@ -93,6 +93,7 @@ dashboard/
 - **SensorDetailPanel:** IMU-Hz, Ultraschall-Range, Cliff-Detection, Sensor-Node-Status
 - **AudioPanel:** ReSpeaker DoA (Azimut), Voice Activity, Sound-Wiedergabe, Lautstaerke-Slider
 - **RobotInfoPanel:** Position, Yaw, Servo-Position, Hardware-Grenzen
+- **TestPanel:** 15 Validierungstests gruppiert nach Kategorie (Sensorik, Antrieb, Navigation, System), per Klick ausfuehrbar, Live-Statusanzeige (PASS/FAIL/laeuft)
 
 ---
 
@@ -112,6 +113,7 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | Navigation | navStatus, navGoalX/Y/Yaw, navRemainingM | `nav_status` (1 Hz) |
 | Sensoren | imuHz, ultrasonicHz, cliffHz, ultrasonicRange, cliffDetected | `sensor_status` (2 Hz) |
 | Audio | soundDirection, isVoiceActive, audioVolume | `audio_status` (2 Hz) |
+| Tests | availableTests, runningTest, testResults | `test_list` (einmalig), `command_response` |
 | Geraete | esp32Active, lidarActive, cameraActive, hailoDetected, ina260Active | `system` (1 Hz) |
 
 **Pattern:** Inkrementelle Updates pro Message-Typ, Shallow Merging, Selectors pro Komponente.
@@ -140,6 +142,7 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `sensor_status` | 2 Hz | Ultraschall, Cliff, IMU-Hz |
 | `audio_status` | 2 Hz | ReSpeaker DoA, Voice Activity |
 | `command_response` | — | Antwort auf Freitext-Kommando |
+| `test_list` | einmalig | Verfuegbare Tests (Key + Entry-Point) |
 
 #### Vom Client gesendete Nachrichten
 
@@ -155,6 +158,8 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `audio_volume` | 5 Hz | Lautstaerke (0–100%, throttled) |
 | `vision_control` | — | Vision ein/aus |
 | `command` | — | Freitext-Kommando |
+| `test_list` | einmalig | Verfuegbare Tests anfordern |
+| `test_run` | — | Einzelnen Test starten (test_key) |
 
 ### MJPEG-Stream (Port 8082)
 
