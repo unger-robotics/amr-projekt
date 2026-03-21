@@ -26,6 +26,7 @@ function App() {
   const appendCommandResponse = useTelemetryStore((s) => s.appendCommandResponse);
   const setAvailableTests = useTelemetryStore((s) => s.setAvailableTests);
   const addTestResult = useTelemetryStore((s) => s.addTestResult);
+  const setEstopStatus = useTelemetryStore((s) => s.setEstopStatus);
 
   const onMessage = useCallback(
     (msg: ServerMessage) => {
@@ -57,11 +58,12 @@ function App() {
         }
       }
       else if (msg.op === 'test_list') setAvailableTests(msg.tests);
+      else if (msg.op === 'estop_status') setEstopStatus(msg.engaged, msg.source);
     },
-    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, updateVoiceTranscript, setMicMuted, appendCommandResponse, setAvailableTests, addTestResult],
+    [updateTelemetry, updateScan, updateSystem, updateMap, updateVisionDetections, updateVisionSemantics, setVisionEnabled, updateNavStatus, updateSensorStatus, updateAudioStatus, updateVoiceTranscript, setMicMuted, appendCommandResponse, setAvailableTests, addTestResult, setEstopStatus],
   );
 
-  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute } = useWebSocket(onMessage);
+  const { connected, latencyMs, send, sendServoCmd, sendHardwareCmd, sendNavGoal, sendNavCancel, sendAudioPlay, sendAudioVolume, sendVisionControl, sendVoiceMute, sendEstop, sendEstopRelease } = useWebSocket(onMessage);
 
   // Testliste beim Verbindungsaufbau anfordern
   useEffect(() => {
@@ -71,10 +73,12 @@ function App() {
   }, [connected, send]);
 
   const handleEmergencyStop = useCallback(() => {
-    for (let i = 0; i < 5; i++) {
-      send({ op: 'cmd_vel', linear_x: 0, angular_z: 0 });
-    }
-  }, [send]);
+    sendEstop();
+  }, [sendEstop]);
+
+  const handleEmergencyRelease = useCallback(() => {
+    sendEstopRelease();
+  }, [sendEstopRelease]);
 
   return (
     <div className="h-dvh bg-hud-bg text-hud-text flex flex-col overflow-hidden">
@@ -112,7 +116,7 @@ function App() {
         <div className="ml-auto px-3 flex items-center gap-3">
           <span className={`w-2 h-2 rounded-full ${connected ? 'bg-hud-green' : 'bg-hud-red'}`} />
           <span className="text-[10px] text-hud-text-dim">{connected ? 'Verbunden' : 'Getrennt'}</span>
-          <EmergencyStop onStop={handleEmergencyStop} inline />
+          <EmergencyStop onStop={handleEmergencyStop} onRelease={handleEmergencyRelease} inline />
         </div>
       </div>
 

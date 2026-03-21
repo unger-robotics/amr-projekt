@@ -74,8 +74,8 @@ Format: {"command": "<befehl>", "transcript": "<transkription>"}
 Verfuegbare Befehle (Feld "command"):
 - "nav X Y"           Navigation zu Koordinaten (Meter, Dezimalpunkt)
 - "stop"              Sofortstopp aller Motoren
-- "cancel"            Navigation abbrechen
 - "forward X"         X Meter geradeaus fahren (0-5 m)
+- "backward X"        X Meter rueckwaerts fahren (0-5 m)
 - "turn X"            X Grad drehen (positiv=links, negativ=rechts)
 - "turn_to_speaker"   Zum Sprecher drehen (Richtung per Mikrofon-Array)
 - "test <name>"       Test ausfuehren (rplidar, imu, motor, encoder, sensor,
@@ -93,6 +93,7 @@ Verfuegbare Befehle (Feld "command"):
 
 Beispiele:
 - "Fahr mal zwei Meter nach vorne" -> {"command": "forward 2", "transcript": "fahr mal zwei meter nach vorne"}
+- "Fahr einen Meter zurueck" -> {"command": "backward 1", "transcript": "fahr einen meter zurueck"}
 - "Dreh dich neunzig Grad nach links" -> {"command": "turn 90", "transcript": "dreh dich neunzig grad nach links"}
 - "Stopp!" -> {"command": "stop", "transcript": "stopp"}
 - "Wie weit ist das Hindernis?" -> {"command": "wie weit", "transcript": "wie weit ist das hindernis"}
@@ -394,6 +395,15 @@ class VoiceCommandNode(Node):
             command = result.get("command", "").strip()
             transcript = result.get("transcript", "").strip()
 
+            # Lokaler Regex-Fallback: wenn Gemini keinen command liefert,
+            # aber die Transkription ein bekanntes Muster enthaelt
+            if not command and transcript:
+                command = self._fallback_intent(transcript)
+                if command:
+                    self.get_logger().info(
+                        f"Fallback-Intent: '{command}' (Transkription: '{transcript}')"
+                    )
+
             # Deduplizierung: gleichen Befehl innerhalb dedup_s unterdruecken
             now = time.monotonic()
             is_duplicate = (
@@ -446,6 +456,38 @@ class VoiceCommandNode(Node):
                 self.get_logger().error(f"Gemini-API-Fehler: {e}")
         finally:
             self._pending = False
+
+    # -----------------------------------------------------------------
+    # Lokaler Regex-Fallback (wenn Gemini keinen command liefert)
+    # -----------------------------------------------------------------
+
+    _FALLBACK_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+        (
+            re.compile(r"dreh.*zu\s+mir|schau.*(?:zu\s+mir|mich\s+an)|komm.*zu\s+mir"),
+            "turn_to_speaker",
+        ),
+        (re.compile(r"(?:halt|stopp|anhalten|bleib\s+stehen|not\s*aus)"), "stop"),
+        (re.compile(r"licht\s+an|led\s+an|beleuchtung\s+an"), "licht an"),
+        (re.compile(r"licht\s+aus|led\s+aus|beleuchtung\s+aus"), "licht aus"),
+        (re.compile(r"schau\s+nach\s+links|kamera\s+links"), "schau nach links"),
+        (re.compile(r"schau\s+nach\s+rechts|kamera\s+rechts"), "schau nach rechts"),
+        (
+            re.compile(r"schau\s+nach\s+vorne|kamera\s+vorne|geradeaus\s+schauen"),
+            "schau nach vorne",
+        ),
+        (re.compile(r"wie\s+weit|abstand|distanz|hindernis"), "wie weit"),
+        (re.compile(r"akku|batterie"), "akku"),
+        (re.compile(r"hilfe|help|was\s+kannst\s+du"), "help"),
+    ]
+
+    @staticmethod
+    def _fallback_intent(transcript: str) -> str:
+        """Matcht Transkription gegen bekannte Muster, gibt command oder '' zurueck."""
+        t = transcript.lower().strip()
+        for pattern, cmd in VoiceCommandNode._FALLBACK_PATTERNS:
+            if pattern.search(t):
+                return cmd
+        return ""
 
     # -----------------------------------------------------------------
     # Cleanup
