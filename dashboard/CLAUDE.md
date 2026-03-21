@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Ueberblick
 
-Dashboard (Bedien- und Leitstandsebene) fuer einen Autonomen Mobilen Roboter (AMR). React-SPA mit zwei Seiten: **Steuerung** (Kamera, SLAM-Karte, LiDAR, Joystick, Servo/Hardware, Kommandofeld) und **Details** (Geraetepanel, Sensordetails, Audio, Roboter-Daten).
+Dashboard (Bedien- und Leitstandsebene) fuer einen Autonomen Mobilen Roboter (AMR). React-SPA mit vier Tabs: **Steuerung** (Kamera, SLAM-Karte, LiDAR, Joystick, Servo/Hardware, Kommandofeld), **Details** (Geraetepanel, Sensordetails, Audio, Roboter-Daten), **Validierung** (TestPanel mit 15 Tests, Live-Status, aufklappbarer Output) und **Sprache** (Voice-Transkription, Mikrofon-Mute, Kommandoverlauf).
 
 ## Build-Befehle
 
@@ -31,14 +31,14 @@ WebSocket-Backend laeuft auf Port 9090 (wss/ws), MJPEG-Kamerastream auf Port 808
 - React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4 (Vite-Plugin)
 - Zustand fuer State-Management (ein einzelner `telemetryStore`)
 - nipplejs fuer Joystick-Input
-- Kein Router — Tab-State (`steuerung` | `details`) in `App.tsx`
+- Kein Router — Tab-State (`steuerung` | `details` | `validierung` | `sprache`) in `App.tsx`
 
 ### Datenfluss
 1. `useWebSocket` Hook verbindet sich zu `wss://<host>:9090` (auto-reconnect mit exponentiellem Backoff)
-2. Eingehende JSON-Nachrichten werden nach `op`-Feld dispatcht (`telemetry`, `scan`, `system`, `map`, `vision_*`, `nav_status`, `sensor_status`, `audio_status`, `command_response`, `test_list`)
+2. Eingehende JSON-Nachrichten werden nach `op`-Feld dispatcht (`telemetry`, `scan`, `system`, `map`, `vision_*`, `nav_status`, `sensor_status`, `audio_status`, `command_response`, `test_list`, `voice_transcript`, `voice_mute_status`)
 3. `telemetryStore` (Zustand) haelt den gesamten Roboterzustand flach (kein Nesting)
 4. Komponenten selektieren per `useTelemetryStore((s) => s.field)` nur die benoetigten Felder
-5. Ausgehende Befehle (`cmd_vel`, `servo_cmd`, `hardware_cmd`, `nav_goal`, `command`, `test_list`, `test_run`, etc.) werden ueber typisierte Send-Funktionen gesendet
+5. Ausgehende Befehle (`cmd_vel`, `servo_cmd`, `hardware_cmd`, `nav_goal`, `command`, `test_list`, `test_run`, `voice_mute`, etc.) werden ueber typisierte Send-Funktionen gesendet
 
 ### Nachrichten-Protokoll
 Alle Typen sind in `src/types/ros.ts` definiert:
@@ -50,7 +50,7 @@ Alle Typen sind in `src/types/ros.ts` definiert:
 HUD-Style mit dunklem Theme. Farben als CSS Custom Properties in `src/index.css` (`--color-hud-*`). Tailwind-Klassen: `hud-bg`, `hud-panel`, `hud-border`, `hud-cyan`, `hud-amber`, `hud-red`, `hud-green`, `hud-text`, `hud-text-dim`. Monospace-Schrift (JetBrains Mono) fuer alle Elemente.
 
 ### Dateistruktur-Konventionen
-- `src/components/` — React-Komponenten (eine Datei pro Komponente, inkl. TestPanel fuer Validierungstests)
+- `src/components/` — React-Komponenten (eine Datei pro Komponente, inkl. ValidationPage, TestPanel, VoicePage)
 - `src/hooks/` — Custom Hooks (`useWebSocket`, `useJoystick`)
 - `src/store/` — Zustand Store (`telemetryStore`)
 - `src/types/` — TypeScript-Interfaces fuer das WebSocket-Protokoll (`ros.ts`)

@@ -157,6 +157,30 @@ WebSocket-Server (`wss://`, Port 9090) und MJPEG-Server (`https://`, Port 8082) 
 dieselben Zertifikate via Volume-Mount (`/dashboard:ro` im Container). Ohne Zertifikate:
 Backend (dashboard_bridge.py) faellt auf HTTP/WS zurueck; Vite-Frontend erfordert Zertifikate (crasht ohne).
 
+### Vollstart (alle Subsysteme, vier Terminals)
+
+```bash
+# T1: Reset beider ESP32-S3 via DTR/RTS, dann Geraete pruefen
+lsusb
+ls /dev/ttyACM* /dev/ttyUSB* /dev/amr_*
+cd ~/amr-projekt
+python3 -c "import serial,time;[exec('s=serial.Serial(p,921600);s.dtr=False;s.rts=True;time.sleep(0.1);s.dtr=True;s.rts=False;s.close()') for p in ['/dev/amr_drive','/dev/amr_sensor']]"
+
+# T2: Full-Stack Launch mit allen Subsystemen
+cd ~/amr-projekt/amr/docker
+./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_camera:=True use_vision:=True use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
+
+# T3: Hailo-8L Vision auf dem Host (Python 3.13, erfordert GEMINI_API_KEY)
+cd ~/amr-projekt
+python3 amr/scripts/host_hailo_runner.py
+
+# T4: Vite-Dev-Server Dashboard
+cd ~/amr-projekt/dashboard
+npm run dev -- --host 0.0.0.0
+```
+
+T1 ist einmalig (Reset + Pruefung), T2-T4 sind langlebige Prozesse in separaten Terminals.
+
 ### LaTeX-Dokumente
 
 ```bash
@@ -245,6 +269,10 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 - **Container (ROS2 Humble):** Python 3.10 — alle ROS2-Nodes und Skripte in `amr/scripts/`
 - **Host (Pi 5):** Python 3.13 — nur `host_hailo_runner.py` (Hailo SDK erfordert Host-Python)
+
+## Umgebungsvariablen
+
+- `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`), TTS (`use_tts`) und Sprachsteuerung (`use_voice`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten die betroffenen Knoten mit Fehler.
 
 ## Harte Randbedingungen
 
