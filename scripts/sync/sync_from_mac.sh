@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# Synchronisiert grosse Binaerdateien vom Mac zurueck zum Pi5.
-# Nur fuer Restore-Faelle oder wenn auf dem Mac neue Dateien hinzugefuegt wurden.
+# Synchronisiert grosse Binaerdateien von einem Ziel zurueck zum Pi5.
+# Nur fuer Restore-Faelle oder wenn auf dem Ziel neue Dateien hinzugefuegt wurden.
 #
-# Verwendung: ./scripts/sync/sync_from_mac.sh [MAC_HOST]
+# Verwendung: ./scripts/sync/sync_from_mac.sh [QUELLE]
+#   QUELLE: mac, book (Standard: mac)
+#
+# Hosts (aus ~/.ssh/config):
+#   mac  = 192.168.1.210 (iMac)
+#   book = 192.168.1.163 (MacBook)
 set -euo pipefail
 
-MAC_HOST="${1:-mac}"
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 REMOTE_BASE="/Users/jan/daten/projekts/amr-projekt"
-
-echo "=== AMR Medien-Sync: Mac ($MAC_HOST) -> Pi5 ==="
 
 SYNC_DIRS=(
     "sources/"
@@ -19,6 +21,24 @@ SYNC_DIRS=(
     "hardware/media/"
     "hardware/akku/"
 )
+
+SOURCE="${1:-mac}"
+
+case "${SOURCE}" in
+    mac|book) ;;
+    *)
+        echo "Unbekannte Quelle: ${SOURCE}"
+        echo "Verwendung: $0 [mac|book]"
+        exit 1
+        ;;
+esac
+
+echo "=== AMR Medien-Sync: ${SOURCE} -> Pi5 ==="
+
+if ! ssh -o ConnectTimeout=5 "${SOURCE}" "echo OK" &>/dev/null; then
+    echo "FEHLER: ${SOURCE} nicht erreichbar."
+    exit 1
+fi
 
 for dir in "${SYNC_DIRS[@]}"; do
     local_dir="${PROJECT_DIR}/${dir}"
@@ -37,8 +57,8 @@ for dir in "${SYNC_DIRS[@]}"; do
         --include='*.svg' \
         --include='*/' \
         --exclude='*' \
-        "${MAC_HOST}:${REMOTE_BASE}/${dir}" "${local_dir}" 2>/dev/null || \
-        echo "  (Verzeichnis nicht auf Mac vorhanden, uebersprungen)"
+        "${SOURCE}:${REMOTE_BASE}/${dir}" "${local_dir}" 2>/dev/null || \
+        echo "  (Verzeichnis nicht auf ${SOURCE} vorhanden, uebersprungen)"
 done
 
 echo ""
