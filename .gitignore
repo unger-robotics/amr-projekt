@@ -109,3 +109,5 @@ suche/*.pdf
 
 # Kostentabellen (intern, nicht öffentlich)
 hardware/kosten/
+
+hardware/latex/
