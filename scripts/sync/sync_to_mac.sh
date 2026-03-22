@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Synchronisiert grosse Binaerdateien vom Pi5 zu einem oder mehreren Zielen.
+# Erfasst automatisch alle Binaries im gesamten Projektbaum.
 #
 # Verwendung: ./scripts/sync/sync_to_mac.sh [ZIEL]
 #   ZIEL: mac, book, all (Standard: all)
@@ -12,15 +13,6 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 REMOTE_BASE="/Users/jan/daten/projekts/amr-projekt"
 
-SYNC_DIRS=(
-    "sources/"
-    "hardware/schaltplan/"
-    "hardware/datasheet/"
-    "hardware/can-bus/"
-    "hardware/media/"
-    "hardware/akku/"
-)
-
 sync_to_host() {
     local host="$1"
     echo ""
@@ -31,30 +23,34 @@ sync_to_host() {
         return 1
     fi
 
-    for dir in "${SYNC_DIRS[@]}"; do
-        src="${PROJECT_DIR}/${dir}"
-        if [ -d "${src}" ]; then
-            echo "--- Sync: ${dir}"
-            ssh "${host}" "mkdir -p '${REMOTE_BASE}/${dir}'"
-            rsync -avz --progress \
-                --include='*.pdf' \
-                --include='*.PDF' \
-                --include='*.png' \
-                --include='*.PNG' \
-                --include='*.HEIC' \
-                --include='*.heic' \
-                --include='*.mp4' \
-                --include='*.MOV' \
-                --include='*.mov' \
-                --include='*.svg' \
-                --include='*/' \
-                --exclude='*.md' \
-                --exclude='*.py' \
-                --exclude='*.sh' \
-                --exclude='.DS_Store' \
-                "${src}" "${host}:${REMOTE_BASE}/${dir}"
-        fi
-    done
+    # Regelreihenfolge: rsync wertet von oben nach unten aus,
+    # erster Treffer entscheidet.
+    rsync -avz --progress \
+        --exclude='.git/' \
+        --exclude='node_modules/' \
+        --exclude='__pycache__/' \
+        --exclude='.pio/' \
+        --exclude='dashboard/dist/' \
+        --exclude='.DS_Store' \
+        --include='*/' \
+        --include='*.pdf' \
+        --include='*.PDF' \
+        --include='*.png' \
+        --include='*.PNG' \
+        --include='*.jpg' \
+        --include='*.HEIC' \
+        --include='*.heic' \
+        --include='*.mp4' \
+        --include='*.mov' \
+        --include='*.MOV' \
+        --include='*.avi' \
+        --include='*.mp3' \
+        --include='*.wav' \
+        --include='*.svg' \
+        --include='*.hef' \
+        --include='*.pem' \
+        --exclude='*' \
+        "${PROJECT_DIR}/" "${host}:${REMOTE_BASE}/"
 
     echo "=== ${host}: Sync abgeschlossen ==="
 }
