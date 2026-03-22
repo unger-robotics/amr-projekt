@@ -139,11 +139,11 @@ Die Inbetriebnahme erfolgt in vier Schritten:
 
 ### 3.3 ROS-2-Stack starten
 
-Vollstaendigen Stack mit Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio starten:
+Vollstaendigen Stack mit allen Subsystemen starten:
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_sensors:=True use_dashboard:=True use_vision:=True use_audio:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_camera:=True use_vision:=True use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
 
 ```
 
@@ -151,7 +151,7 @@ Headless-Betrieb ohne RViz2 starten:
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False use_sensors:=True use_dashboard:=True use_vision:=True use_audio:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False use_dashboard:=True use_camera:=True use_vision:=True use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
 
 ```
 
@@ -305,19 +305,19 @@ TF-Kette pruefen:
 
 ### 6.1 Rollen der Knoten
 
-Der Drive-Knoten bildet den Fahrkern. Der Knoten verarbeitet Geschwindigkeitskommandos, regelt die Motoren und publiziert Odometrie.
+Der Fahrkern (Ebene A) umfasst drei Teilsysteme. Der Drive-Knoten (ESP32-S3) verarbeitet Geschwindigkeitskommandos, regelt die Motoren und publiziert Odometrie. Der Sensor-Knoten (ESP32-S3) verarbeitet IMU, Batterieueberwachung, Kanten-Sensor und weitere hardwarenahe Signale. Der Raspberry Pi 5 fuehrt als Teil des Fahrkerns SLAM Toolbox, Nav2, EKF-Sensorfusion und die Cliff-Sicherheitslogik aus.
 
-Der Sensor-Knoten bildet die Sensor- und Sicherheitsbasis. Der Knoten verarbeitet IMU, Batterieueberwachung, Kanten-Sensor und weitere hardwarenahe Signale.
+Die Bedien- und Leitstandsebene (Ebene B) umfasst Dashboard, Telemetrie, Joystick-Fernsteuerung und Audio-Rueckmeldungen auf dem Raspberry Pi 5.
 
-Der Raspberry Pi 5 uebernimmt Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio.
+Die intelligente Interaktion (Ebene C) umfasst Vision-Pipeline, ArUco-Docking, Sprachschnittstelle und semantische Interpretation auf dem Raspberry Pi 5.
 
 ### 6.2 Prioritaet der Sicherheitslogik
 
 Die Sicherheitslogik hat stets Vorrang vor Navigation und manueller Bedienung. Meldet der Kanten-Sensor eine kritische Situation, blockiert die Sicherheitslogik eingehende Bewegungsbefehle und erzeugt ein Stop-Kommando mit Nullgeschwindigkeit.
 
-### 6.3 Freigabelogik fuer spaetere Sprachschnittstelle
+### 6.3 Freigabelogik der Sprachschnittstelle
 
-Eine spaetere Sprachschnittstelle darf keine direkte Motoransteuerung ausloesen. Zulaessig ist nur die Kette aus Sprachbefehl, Intent, Freigabelogik und freigegebenem Missionskommando.
+Die Sprachschnittstelle darf keine direkte Motoransteuerung ausloesen. Zulaessig ist nur die Kette aus Sprachbefehl, Intent, Freigabelogik und freigegebenem Missionskommando. Die Aktivierung erfolgt ueber drei separate Launch-Argumente: `use_respeaker:=True`, `use_tts:=True` und `use_voice:=True`.
 
 ---
 
@@ -423,7 +423,7 @@ Pruefschritte:
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_sensors:=True use_dashboard:=True use_vision:=True use_audio:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_camera:=True use_vision:=True use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
 
 ```
 
@@ -431,7 +431,7 @@ cd amr/docker/
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False use_sensors:=True use_dashboard:=True use_vision:=True use_audio:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_rviz:=False use_dashboard:=True use_camera:=True use_vision:=True use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
 
 ```
 
@@ -475,15 +475,15 @@ Zur manuellen Abfrage der Batteriespannung waehrend des Betriebs:
 
 Das System verfuegt ueber eine Sprachschnittstelle fuer die freihaendige Bedienung der Leitstandsebene, ohne dabei die primaere Navigations- oder Sicherheitslogik auszuhebeln.
 
-Die Aktivierung erfolgt ueber ein dediziertes Launch-Argument:
+Die Aktivierung erfolgt ueber drei separate Launch-Argumente:
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_voice:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_respeaker:=True use_tts:=True use_voice:=True
 
 ```
 
-Das ReSpeaker Mic Array v2.0 erfasst die Audiobefehle. Die Sprachverarbeitung arbeitet intent-basiert: Sprachbefehle werden nicht direkt in Motorbewegungen umgesetzt, sondern durch einen Multiplexer (`voice_command_mux`) in definierte Missionskommandos uebersetzt.
+Das ReSpeaker Mic Array v2.0 erfasst die Audiobefehle. Die Sprachverarbeitung arbeitet intent-basiert: Sprachbefehle werden nicht direkt in Motorbewegungen umgesetzt, sondern durch den konsolidierten Knoten `voice_command_node` in definierte Missionskommandos uebersetzt.
 
 * Ein Befehl wie "Notstopp" erzwingt einen sofortigen Halt.
 * Ein Befehl wie "Fahre zur Ladestation" triggert eine ROS-2-Aktion fuer den Nav2-Stack, ohne direkte PWM-Werte zu senden.

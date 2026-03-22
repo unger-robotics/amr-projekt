@@ -8,9 +8,9 @@ Der Systementwurf loest diese Anforderung durch ein zweistufiges Echtzeitsystem.
 
 Die Steuerung gliedert sich in drei Ebenen:
 
-* **Ebene A (Fahrkern sowie Sensor- und Sicherheitsbasis):** Der Fahrkern regelt die Gleichstrommotoren mit PID-Reglern bei 50 Hz und publiziert die Odometrie auf dem Drive-Knoten (ESP32-S3). Die Sensor- und Sicherheitsbasis verarbeitet IMU, Kanten-Sensor, Ultraschall und Batterieueberwachung auf dem Sensor-Knoten (ESP32-S3). Der RPLIDAR A1 ist direkt am Raspberry Pi 5 angeschlossen (/dev/ttyUSB0) und wird vom RPLIDAR-Knoten im ROS2-Container betrieben.
-* **Ebene B (Bedien- und Leitstandsebene):** Lokalisierung, Kartierung und Navigation mit SLAM Toolbox und Nav2 laufen auf dem Raspberry Pi 5. Zusaetzlich umfasst diese Ebene Dashboard, Telemetrie, manuelle Kommandos und Audio-Rueckmeldungen.
-* **Ebene C (Intelligente Interaktion):** Die Ebene umfasst Sprachschnittstelle, Vision und semantische Interpretation auf dem Raspberry Pi 5.
+* **Ebene A (Fahrkern):** Der Fahrkern umfasst die gesamte Antriebsregelung, Sensorerfassung, Lokalisierung und Navigation. Der Drive-Knoten (ESP32-S3) regelt die Gleichstrommotoren mit PID-Reglern bei 50 Hz und publiziert die Odometrie. Der Sensor-Knoten (ESP32-S3) verarbeitet IMU, Kanten-Sensor, Ultraschall und Batterieueberwachung. Der RPLIDAR A1 ist direkt am Raspberry Pi 5 angeschlossen (/dev/ttyUSB0) und wird vom RPLIDAR-Knoten im ROS2-Container betrieben. Auf dem Raspberry Pi 5 laufen SLAM Toolbox, Nav2, EKF-Sensorfusion und die Cliff-Sicherheitslogik. Gemeinsam bilden diese Komponenten den vollstaendigen Fahrkern einschliesslich Sicherheitsmultiplexer.
+* **Ebene B (Bedien- und Leitstandsebene):** Dashboard, Echtzeit-Telemetrie ueber WebSocket und MJPEG-Stream, Joystick-Fernsteuerung und Audio-Rueckmeldungen laufen auf dem Raspberry Pi 5.
+* **Ebene C (Intelligente Interaktion):** Die Ebene umfasst Sprachschnittstelle, hybride Vision-Pipeline (Hailo-8L und Gemini-Cloud-Semantik), ArUco-Docking und semantische Interpretation auf dem Raspberry Pi 5.
 
 Die Kommunikation zwischen ESP32-S3 und Raspberry Pi 5 erfolgt ueber micro-ROS per UART/USB-CDC ueber stabile udev-Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`). Der Standard XRCE-DDS (eXtremely Resource Constrained Environments - Data Distribution Service) uebernimmt die Middleware-Funktion. Die Trennung der drei Ebenen sichert die deterministische Motorsteuerung und entkoppelt den Fahrkern von den rechenintensiven Navigationsalgorithmen.
 
@@ -24,7 +24,7 @@ Die kinematischen Parameter definieren das Bewegungsmodell. Der kalibrierte Radd
 
 ### 2.2 Sensorik
 
-Der RPLIDAR A1 ist rueckwaerts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,0 Hz ueber `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite betraegt 12 m.
+Der RPLIDAR A1 ist rueckwaerts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,7 Hz ueber `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite betraegt 12 m.
 
 Eine MPU6050-IMU (Inertial Measurement Unit) misst Beschleunigungen (+/- 2 g) und Drehraten (+/- 250 deg/s). Der I2C-Bus arbeitet im Fast-Mode (400 kHz). Ein Komplementaerfilter (Alpha = 0,98) fusioniert die Daten. Der Filter gewichtet das Gyroskop mit 98 Prozent und das aus den Encodern abgeleitete Heading mit 2 Prozent. Die Soll-Rate der Publikation auf `/imu` liegt bei 50 Hz. Die effektiv erreichte Rate sinkt auf 30 bis 35 Hz ab, da parallele I2C-Buszugriffe (Contention) am Sensor-Knoten Verzoegerungen verursachen.
 
@@ -34,7 +34,7 @@ Eine Sony-IMX296-Global-Shutter-Kamera ermoeglicht visuelles Docking. Die native
 
 Zwei ESP32-S3 arbeiten als echtzeitfaehige Steuerungseinheiten in einer Zwei-Knoten-Architektur. Das Dual-Core-Design (240 MHz) trennt Kommunikations- und Regelaufgaben. Die USB-CDC-Verbindung operiert mit 921600 Baud.
 
-Der Raspberry Pi 5 (Debian Trixie, aarch64) uebernimmt Navigation und Leitstandsebene. ROS 2 Humble laeuft containerisiert (`ros:humble-ros-base`), da Debian Trixie kein natives Paket bereitstellt. Der Container nutzt den Host-Network-Modus fuer DDS-Multicast.
+Der Raspberry Pi 5 (Debian Trixie, aarch64) uebernimmt als Teil des Fahrkerns (Ebene A) die Navigation, Lokalisierung und EKF-Sensorfusion sowie die Bedien- und Leitstandsebene (Ebene B). ROS 2 Humble laeuft containerisiert (`ros:humble-ros-base`), da Debian Trixie kein natives Paket bereitstellt. Der Container nutzt den Host-Network-Modus fuer DDS-Multicast.
 
 ## 3. Software-Architektur
 
@@ -42,13 +42,15 @@ Der Raspberry Pi 5 (Debian Trixie, aarch64) uebernimmt Navigation und Leitstands
 
 Die Firmware nutzt FreeRTOS zur Aufgabentrennung auf zwei Kerne.
 
-Core 0 betreibt den micro-ROS-Executor. Er empfaengt Geschwindigkeitsvorgaben (`/cmd_vel`) und publiziert Odometrie (`/odom`) mit 20 Hz. Ein Inter-Core-Watchdog auf Core 0 ueberwacht den Heartbeat von Core 1 und loest bei mehr als 50 verpassten Zyklen einen Notfall-Stopp aus.
+Core 0 betreibt den micro-ROS-Executor. Er empfaengt Geschwindigkeitsvorgaben (`/cmd_vel`) und publiziert Odometrie (`/odom`) mit 20 Hz Sollrate (gemessen: 18,3 Hz). Ein Inter-Core-Watchdog auf Core 0 ueberwacht den Heartbeat von Core 1 und loest bei mehr als 50 verpassten Zyklen einen Notfall-Stopp aus.
 
 Core 1 fuehrt die PID-Regelschleife (Proportional-Integral-Derivative) mit 50 Hz aus. Der PID-Regler verwendet exponentiell geglaettete Encoder-Werte (Alpha = 0,3), um Quantisierungsrauschen zu mindern. Die Odometrie verwendet die ungefilterten Encoder-Rohdaten. Die Regelstrecke umfasst: Inverskinematik berechnen, Anti-Windup beruecksichtigen, Beschleunigungsrampe (max. 5,0 rad/s^2) anwenden und PWM ausgeben. Ein Failsafe-Timeout stoppt die Motoren nach 500 ms ohne eingehende Kommandos.
 
-### 3.2 ROS-2-Stack fuer Lokalisierung und Navigation
+### 3.2 ROS-2-Stack auf dem Raspberry Pi 5 (Ebene A: Fahrkern)
 
 Ein zentrales Launch-File (`full_stack.launch.py`) orchestriert den Stack. Da micro-ROS keinen TF-Broadcast (Transformation Framework) bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische TF-Transformation `odom -> base_link`.
+
+Ein EKF-Knoten (Extended Kalman Filter) fusioniert die Rad-Odometrie mit den IMU-Daten des Sensor-Knotens. Die resultierende, geglaettete Pose erhoeht die Robustheit der Lokalisierung gegenueber Schlupf und Gyroskop-Drift.
 
 `slam_toolbox` arbeitet im asynchronen Online-Modus und nutzt den Ceres-Solver zur nichtlinearen Optimierung der Pose. Der Knoten erzeugt eine Belegungskarte mit 5 cm Aufloesung. Loop Closure ist aktiv (Suchradius 8 m, Mindestkettenlaenge 10 Scans).
 
@@ -90,15 +92,15 @@ Eine Vite-basierte Weboberflaeche uebertraegt den Videostream ueber TCP-Port 808
 
 Die Kanten-Erkennung auf dem ESP32-S3 arbeitet zeitlich schneller als die Verarbeitung derselben Information im Nav2-Stack auf dem Raspberry Pi 5. Aus den gemessenen Latenzen folgt die Regel: Direkte Sensorsignale ueberstimmen algorithmisch berechnete Bewegungsbefehle stets.
 
-Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer. Der Sensor-Knoten publiziert den Status des Infrarot-Sensors mit 20 Hz auf `/cliff` und die Ultraschall-Distanz auf `/range/front`. Der Multiplexer leitet Bewegungsbefehle aus der Navigation im Normalbetrieb durch. Meldet `/cliff` eine Kante oder unterschreitet die Ultraschall-Distanz 80 mm, blockiert der Multiplexer die Navigation und erzeugt eigenstaendig einen harten Stopp (v = 0 m/s, w = 0 rad/s). Die Freigabe erfolgt erst bei einer Distanz ueber 120 mm (Hysterese). Die Uebertragung an den Drive-Knoten erfolgt in weniger als 50 ms.
+Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer. Der Sensor-Knoten publiziert den Status des Infrarot-Sensors mit 20 Hz auf `/cliff` und die Ultraschall-Distanz auf `/range/front`. Der Multiplexer leitet Bewegungsbefehle aus der Navigation im Normalbetrieb durch. Meldet `/cliff` eine Kante oder unterschreitet die Ultraschall-Distanz 80 mm, blockiert der Multiplexer die Navigation und erzeugt eigenstaendig einen harten Stopp (v = 0 m/s, w = 0 rad/s). Die Freigabe erfolgt erst bei einer Distanz ueber 120 mm (Hysterese). Die Anforderung fuer den ROS-2-Pfad (GPIO-Flanke am Sensor-Knoten bis Motorstopp-Befehl am Drive-Knoten) liegt bei weniger als 50 ms (SIA-01). Die Messung ergibt eine End-to-End-Latenz von 2,0 ms (Messprotokoll P2, cliff_latency_test).
 
-Zusaetzlich uebermittelt der CAN-Bus ein redundantes Cliff-Signal direkt vom Sensor-Knoten an den Drive-Knoten. Die Reaktionszeit des CAN-Pfads betraegt weniger als 20 ms.
+Zusaetzlich uebermittelt der CAN-Bus ein redundantes Cliff-Signal direkt vom Sensor-Knoten an den Drive-Knoten, ohne den ROS-2-Stack zu durchlaufen. Die Anforderung fuer den CAN-Direktpfad liegt bei weniger als 20 ms (SIA-03).
 
 Die Konsequenz aus beiden Pfaden ist eine lueckenlose Sicherheitslogik, die gegenueber Navigation und manueller Bedienung strikt uebergeordnet bleibt.
 
 ## 9. Schlussbetrachtung
 
-Die Architektur sichert deterministische Regelkreise ab, erfordert aber die genaue Einhaltung serieller Bandbreitengrenzen (MTU 512 Bytes). Die physische Trennung in Fahrkern, Sensorbasis und Leitstandsebene schliesst unkontrollierte Systemzustaende durch Sensorlatenzen oder Berechnungsengpaesse systematisch aus.
+Die Architektur sichert deterministische Regelkreise ab, erfordert aber die genaue Einhaltung serieller Bandbreitengrenzen (MTU 512 Bytes). Die Dreischicht-Architektur mit Fahrkern (Ebene A, einschliesslich Navigation und EKF-Sensorfusion auf dem Pi 5), Bedien- und Leitstandsebene (Ebene B) und intelligenter Interaktion (Ebene C) schliesst unkontrollierte Systemzustaende durch Sensorlatenzen oder Berechnungsengpaesse systematisch aus.
 
 ## Fachbegriffe
 
@@ -117,6 +119,7 @@ Die Architektur sichert deterministische Regelkreise ab, erfordert aber die gena
 * **PID-Regler (Proportional-Integral-Derivative):** Ein Regelkreis, der die Abweichung zwischen Soll- und Ist-Wert korrigiert. Er reagiert auf den aktuellen Fehler (proportional), die Summe der vergangenen Fehler (integral) und die Fehleraenderung (derivativ).
 * **Anti-Windup:** Ein Schutzmechanismus im PID-Regler. Er verhindert, dass der Integralanteil bei einer physischen Blockade (z. B. Fahren gegen ein Hindernis) unendlich anwaechst und spaeter zu Fehlverhalten fuehrt.
 * **Komplementaerfilter:** Ein Algorithmus zur Sensordatenfusion. Er gleicht die Schwaechen verschiedener Sensoren aus, indem er beispielsweise das Gyroskop fuer schnelle Rotationsaenderungen und Odometriedaten fuer langfristige Stabilitaet gewichtet.
+* **EKF (Extended Kalman Filter):** Ein probabilistischer Schaetzalgorithmus, der mehrere verrauschte Sensorquellen (hier Rad-Odometrie und IMU) zu einer optimalen Positionsschaetzung fusioniert. Im Unterschied zum Komplementaerfilter auf dem ESP32-S3 laeuft der EKF auf dem Raspberry Pi 5 und nutzt ein vollstaendiges Zustandsmodell mit Kovarianzmatrix.
 * **PWM (Pulsweitenmodulation):** Ein Verfahren zur Steuerung der Motorleistung. Die Versorgungsspannung wird in sehr schnellem Wechsel (20 kHz) ein- und ausgeschaltet.
 * **Deadzone (Anlaufschwelle):** Der Mindestwert der PWM, der noetig ist, damit das elektromagnetische Feld die innere mechanische Reibung des Motors ueberwindet.
 
