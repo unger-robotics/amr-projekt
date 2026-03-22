@@ -25,9 +25,9 @@ Die funktionale Phasenstruktur bildet die domaenenspezifischen Entwuerfe der VDI
 
 Die Architektur zerlegt das Gesamtsystem in drei funktionale Ebenen:
 
-1. **Drive-Knoten (ESP32-S3):** Fuehrt die Motorregelung aus und publiziert die Odometrie.
-2. **Sensor-Knoten (ESP32-S3):** Erfasst IMU-Daten, Batterieinformationen und Kanten-Signale.
-3. **Bedien- und Leitstandsebene (Raspberry Pi 5):** Buendelt Lokalisierung, Navigation, Vision und Diagnose.
+1. **Fahrkern (Ebene A):** Der Drive-Knoten (ESP32-S3) fuehrt die Motorregelung aus und publiziert die Odometrie. Der Sensor-Knoten (ESP32-S3) erfasst IMU-Daten, Batterieinformationen und Kanten-Signale. Der Raspberry Pi 5 fuehrt als Teil des Fahrkerns die Lokalisierung (SLAM Toolbox), Navigation (Nav2), EKF-Sensorfusion und die Cliff-Sicherheitslogik aus.
+2. **Bedien- und Leitstandsebene (Ebene B):** Dashboard, Echtzeit-Telemetrie, Joystick-Fernsteuerung und Audio-Rueckmeldungen auf dem Raspberry Pi 5.
+3. **Intelligente Interaktion (Ebene C):** Hybride Vision-Pipeline, ArUco-Docking, Sprachschnittstelle und semantische Interpretation auf dem Raspberry Pi 5.
 
 Die Prinziploesung basiert auf drei Entscheidungen:
 
@@ -39,7 +39,7 @@ Die Prinziploesung basiert auf drei Entscheidungen:
 
 Der Differentialantrieb nutzt zwei JGA25-370-Getriebemotoren mit Hall-Encodern und ein frei drehbares Stuetzrad. Der kalibrierte Raddurchmesser betraegt 65,67 mm bei einer Spurbreite von 178 mm. Die Encoder liefern im 2x-Quadraturmodus etwa 748 Ticks pro Umdrehung und bilden die Datengrundlage der Odometrie. Ein Cytron MDD3A-Treiber steuert die Motoren im Dual-PWM-Modus an.
 
-Die Steuerungsebene besteht aus zwei XIAO ESP32-S3. Der Drive-Knoten fuehrt die PID-Regelschleife deterministisch mit 50 Hz aus und publiziert die Odometrie mit 20 Hz. Der Sensor-Knoten publiziert IMU-, Batterie- und Kanten-Signale ebenfalls mit 20 Hz. Die serielle UART-Anbindung an den Raspberry Pi 5 (921600 Baud) vermeidet die Latenzen drahtloser Verbindungen im Regelpfad.
+Die Steuerungsebene besteht aus zwei XIAO ESP32-S3. Der Drive-Knoten fuehrt die PID-Regelschleife deterministisch mit 50 Hz aus und publiziert die Odometrie mit 20 Hz. Der Sensor-Knoten publiziert Kanten-Signale mit 20 Hz, Ultraschall mit 10 Hz, Batterieinformationen mit 2 Hz und IMU-Daten mit einer Sollrate von 50 Hz (effektiv 30 bis 35 Hz aufgrund von I2C-Bus-Contention). Die serielle UART-Anbindung an den Raspberry Pi 5 (921600 Baud) vermeidet die Latenzen drahtloser Verbindungen im Regelpfad.
 
 Zur Sensorik gehoeren ein RPLIDAR A1 (12 m Reichweite) fuer die Lokalisierung und eine Sony-IMX296-Global-Shutter-Kamera fuer visuelle Aufgaben. Ein Hailo-8L-Chip beschleunigt die lokale Bildverarbeitung. Die Spannungsversorgung trennt die 5-V-Logikebene (ueber Buck-Converter) physisch von der direkten Akkuspeisung der Motoren.
 
