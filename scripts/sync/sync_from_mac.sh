@@ -13,15 +13,6 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 REMOTE_BASE="/Users/jan/daten/projekts/amr-projekt"
 
-SYNC_DIRS=(
-    "sources/"
-    "hardware/schaltplan/"
-    "hardware/datasheet/"
-    "hardware/can-bus/"
-    "hardware/media/"
-    "hardware/akku/"
-)
-
 SOURCE="${1:-mac}"
 
 case "${SOURCE}" in
@@ -40,26 +31,34 @@ if ! ssh -o ConnectTimeout=5 "${SOURCE}" "echo OK" &>/dev/null; then
     exit 1
 fi
 
-for dir in "${SYNC_DIRS[@]}"; do
-    local_dir="${PROJECT_DIR}/${dir}"
-    mkdir -p "${local_dir}"
-    echo "--- Sync: ${dir}"
-    rsync -avz --progress \
-        --include='*.pdf' \
-        --include='*.PDF' \
-        --include='*.png' \
-        --include='*.PNG' \
-        --include='*.HEIC' \
-        --include='*.heic' \
-        --include='*.mp4' \
-        --include='*.MOV' \
-        --include='*.mov' \
-        --include='*.svg' \
-        --include='*/' \
-        --exclude='*' \
-        "${SOURCE}:${REMOTE_BASE}/${dir}" "${local_dir}" 2>/dev/null || \
-        echo "  (Verzeichnis nicht auf ${SOURCE} vorhanden, uebersprungen)"
-done
+# Regelreihenfolge: rsync wertet von oben nach unten aus,
+# erster Treffer entscheidet.
+rsync -avz --progress \
+    --exclude='.git/' \
+    --exclude='node_modules/' \
+    --exclude='__pycache__/' \
+    --exclude='.pio/' \
+    --exclude='dashboard/dist/' \
+    --exclude='.DS_Store' \
+    --include='*/' \
+    --include='*.pdf' \
+    --include='*.PDF' \
+    --include='*.png' \
+    --include='*.PNG' \
+    --include='*.jpg' \
+    --include='*.HEIC' \
+    --include='*.heic' \
+    --include='*.mp4' \
+    --include='*.mov' \
+    --include='*.MOV' \
+    --include='*.avi' \
+    --include='*.mp3' \
+    --include='*.wav' \
+    --include='*.svg' \
+    --include='*.hef' \
+    --include='*.pem' \
+    --exclude='*' \
+    "${SOURCE}:${REMOTE_BASE}/" "${PROJECT_DIR}/"
 
 echo ""
 echo "=== Sync abgeschlossen ==="
