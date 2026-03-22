@@ -106,3 +106,6 @@ planung/vortrag/out/
 
 # --- Suche: lokale PDF-Kopien ---
 suche/*.pdf
+
+# Kostentabellen (intern, nicht öffentlich)
+hardware/kosten/
