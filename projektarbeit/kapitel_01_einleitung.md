@@ -20,11 +20,11 @@ Das Ziel dieser Arbeit besteht darin, ein kostenguenstiges AMR-System fuer den K
 
 Daraus ergeben sich drei Projektfragen.
 
-* **PF1 — Echtzeitarchitektur:** Wie laesst sich eine echtzeitfaehige Antriebsregelung und Sensorerfassung auf einer Dual-Knoten-Architektur mit Mikrocontrollern realisieren?
+* **PF1 — Fahrkern und verteilte Echtzeitarchitektur:** Wie laesst sich ein Fahrkern auf Basis einer verteilten ESP32-S3-Architektur so realisieren, dass Motorregelung, Odometrie und die Verarbeitung von Geschwindigkeitskommandos deterministisch arbeiten und nicht durch blockierende Peripheriezugriffe beeintraechtigt werden?
   * *Einordnung:* Der Fahrkern bildet die Voraussetzung fuer jede weitere Systemfunktion. Instabile Regeltakte, Kommunikationsjitter oder konkurrierende Sensorzugriffe verschlechtern unmittelbar die Bewegungsqualitaet und damit alle nachgelagerten Funktionen.
-* **PF2 — Navigationsgenauigkeit:** Welchen Einfluss haben systematische Odometrie-Kalibrierung, IMU-Fusion und hardwarenahe Sicherheitslogik auf die Navigationsgenauigkeit?
+* **PF2 — Sensor- und Sicherheitsbasis sowie Lokalisierung und Kartierung:** Welchen Beitrag leisten Odometrie-Kalibrierung, IMU-Integration, Kanten-Erkennung und die Kopplung mit LiDAR-basierter Kartierung dazu, eine belastbare Zustands- und Umgebungsbasis fuer den Innenraumbetrieb bereitzustellen?
   * *Einordnung:* Navigation erfordert eine raeumlich konsistente Pose-Schaetzung. Gleichzeitig muss die Sicherheitslogik sicherheitsnahe Signale priorisieren und Bewegungen stoppen koennen, bevor unsichere Zustaende entstehen.
-* **PF3 — Wahrnehmung und Docking:** Erreicht ein monokulares Kamerasystem in Kombination mit Edge-KI und Cloud-Semantik eine ausreichend praezise Umgebungswahrnehmung fuer komplexe Innenraeume und zentimetergenaues Docking?
+* **PF3 — Navigation und Bedien- und Leitstandsebene:** Wie laesst sich auf dieser Basis eine Systemarchitektur aufbauen, die Zielanfahrten, Recovery-Verhalten, Telemetrie, manuelle Eingriffe und Audio-Rueckmeldungen in einer gemeinsamen Bedien- und Leitstandsebene zusammenfuehrt, ohne die Freigabelogik zu unterlaufen?
   * *Einordnung:* Ein Missionskommando bezeichnet in dieser Arbeit ein freigegebenes Ziel- oder Moduskommando oberhalb roher Fahrbefehle. Die Freigabelogik entscheidet, welche Kommandos zulaessig sind, blockiert oder in sichere Systemreaktionen ueberfuehrt werden.
 
 Die Arbeit konzentriert sich damit auf die Kernarchitektur eines AMR fuer Innenraeume. Erweiterungen wie visuelle Semantik, Docking-Hilfen oder eine Sprachschnittstelle mit ReSpeaker Mic Array v2.0 werden als anschlussfaehige Ausbaustufen der Bedien- und Leitstandsebene betrachtet, sind aber nicht der primaere Bewertungsmassstab der Kernvalidierung.

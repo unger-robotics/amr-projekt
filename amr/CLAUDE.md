@@ -22,6 +22,8 @@ amr/
 
 ## Build-Befehle
 
+**Hinweis:** Alle Pfade relativ zu `amr/`.
+
 ### MCU Firmware (Zwei-Node-Architektur)
 
 ```bash

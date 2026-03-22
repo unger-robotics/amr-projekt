@@ -27,8 +27,8 @@ Das AMR gliedert sich gemaess Systementwurf in drei Ebenen.
 
 ### Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis
 
-Der Fahrkern muss lokalisieren, planen, fahren, stoppen und Fehler behandeln.
-Diese Ebene umfasst Odometrie, IMU, LiDAR, SLAM, Nav2, die Sicherheitslogik fuer Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5.
+Der Fahrkern muss fahren, stoppen und Fehler behandeln.
+Diese Ebene umfasst Odometrie, IMU, die Sicherheitslogik fuer Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5. LiDAR (RPLIDAR A1) ist direkt am Pi 5 angeschlossen. SLAM und Nav2 laufen auf dem Pi 5 im Docker-Container (Ebene B).
 
 ### Ebene B – Bedien- und Leitstandsebene
 
@@ -283,21 +283,23 @@ Zulaessig ist die Kette:
 * ReSpeaker Mic Array v2.0 als USB-Audio-Eingabe am Raspberry Pi 5
 * MAX98357A I2S-Verstaerker und Lautsprecher als Audio-Ausgabe
 
-#### Software-Module
+#### Software-Module (geplante Architektur)
 
-**1. `voice_input_node`**
+Die folgenden Module beschreiben die geplante Zielarchitektur. Die aktuelle Implementierung konsolidiert die Module 1 bis 4 in `voice_command_node` (ReSpeaker VAD + Gemini Flash STT + Intent-Parser) und Modul 5 in `tts_speak_node`.
+
+**1. `voice_input_node`** (geplant, derzeit in `voice_command_node` integriert)
 liest das ReSpeaker-Mikrofon ein und verarbeitet Pegel, Wake-Word oder Push-to-Talk.
 
-**2. `speech_to_text_node`**
+**2. `speech_to_text_node`** (geplant, derzeit in `voice_command_node` integriert)
 wandelt Audiodaten in Text um.
 
-**3. `voice_intent_node`**
+**3. `voice_intent_node`** (geplant, derzeit in `voice_command_node` integriert)
 ordnet den Text einer klaren Befehlsabsicht zu.
 
-**4. `voice_command_mux`**
+**4. `voice_command_mux`** (geplant, derzeit in `voice_command_node` integriert)
 gibt nur freigegebene Kommandos frei und uebersetzt sie in ROS-2-Aktionen oder Topics.
 
-**5. `text_to_speech_node`**
+**5. `text_to_speech_node`** (implementiert als `tts_speak_node`)
 gibt Rueckmeldungen aus, direkt per TTS oder ueber `/audio/play`.
 
 ### 3.2 Befehlsgruppen
@@ -381,8 +383,10 @@ Der Roboter soll natuerlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 
 **ROS-2-Container**
 
-* `voice_intent_node`
-* `voice_command_mux`
+* `voice_command_node` (implementiert: ReSpeaker VAD + Gemini Flash STT + Intent-Parser, publiziert `/voice/command` und `/voice/text`)
+* `tts_speak_node` (implementiert: Gemini-TTS-Sprachausgabe ueber MAX98357A)
+* `voice_intent_node` (geplant, derzeit in `voice_command_node` integriert)
+* `voice_command_mux` (geplant, derzeit in `voice_command_node` integriert)
 * Uebergabe an Navigation, Leitstand und Audio
 
 **ESP32-S3**

@@ -32,7 +32,7 @@ Am Sensor-Knoten bindet der I2C-Bus mit SDA auf D4 und SCL auf D5 die MPU6050, d
 
 ### 5.1.3 Host-nahe Peripherie
 
-Der Raspberry Pi 5 bindet die hostseitigen Komponenten fuer Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene sowie spaetere Interaktion an. Der RPLIDAR A1 ist per USB angeschlossen und liefert die Distanzdaten fuer Kartenaufbau und Navigation. Eine frontseitig montierte Sony-IMX296-Kamera ist ueber CSI angebunden. Fuer hardwarebeschleunigte Bildverarbeitung wurde ein Hailo-8L-Beschleuniger ueber ein M.2-HAT integriert. Der Audiopfad nutzt einen MAX98357A-Verstaerker als Ausgabestufe.
+Der Raspberry Pi 5 bindet die hostseitigen Komponenten fuer Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene sowie spaetere Interaktion an. Der RPLIDAR A1 ist per USB angeschlossen und liefert die Distanzdaten fuer Kartenaufbau und Navigation. Die Scan-Frequenz ist auf $7{,}0\,\mathrm{Hz}$ konfiguriert; gemessen wurden $7{,}7$ bis $7{,}8\,\mathrm{Hz}$ (Messprotokoll Phase 3, T3.1/T3.2). Eine frontseitig montierte Sony-IMX296-Kamera ist ueber CSI angebunden. Fuer hardwarebeschleunigte Bildverarbeitung wurde ein Hailo-8L-Beschleuniger ueber ein M.2-HAT integriert. Der Audiopfad nutzt einen MAX98357A-Verstaerker als Ausgabestufe.
 
 Diese Peripherie liegt bewusst ausserhalb des Low-Level-Regelpfads. Damit bleiben Kamera, Vision und Audio anschlussfaehig, ohne die Zykluszeit der Motorregelung direkt zu beeinflussen.
 
@@ -50,7 +50,7 @@ $$
 U = 3{,}3\,\mathrm{V}
 $$
 
-ueber interne Regler. Der Motortreiber schaltet die Akkuspannung direkt auf die Antriebe. Der Leistungsbereich liegt damit im Bereich von
+ueber interne Regler. Die Energiequelle ist ein Akkupack aus drei Samsung INR18650-35E (NCA) in 3S1P-Konfiguration mit einer Nennspannung von $10{,}8\,\mathrm{V}$ und einer Kapazitaet von $3.350\,\mathrm{mAh}$. Der Motortreiber schaltet die Akkuspannung direkt auf die Antriebe. Der Leistungsbereich liegt damit im Bereich von
 
 $$
 U = 10{,}8\,\mathrm{V}\ \text{bis}\ 12{,}6\,\mathrm{V}
@@ -72,7 +72,7 @@ $$
 f_{\mathrm{ctrl}} = 50\,\mathrm{Hz}
 $$
 
-Die Encoder-Impulse werden per Interrupt erfasst. Der Regler nutzt die Parametrierung
+Die Encoder-Impulse werden per Interrupt erfasst. Die kalibrierten Encoder-Werte betragen $\mathrm{ticks\_per\_rev\_left} = 748{,}6$ und $\mathrm{ticks\_per\_rev\_right} = 747{,}2$ Ticks pro Radumdrehung (`config_drive.h`). Die asymmetrische Kalibrierung kompensiert fertigungsbedingte Toleranzen der Hall-Encoder und reduziert systematische Bahnabweichungen. Der Regler nutzt die Parametrierung
 
 $$
 K_p = 0{,}4 \qquad K_i = 0{,}1 \qquad K_d = 0{,}0
@@ -84,13 +84,13 @@ $$
 \alpha = 0{,}3
 $$
 
-Core 0 betreibt den `rclc_executor`, publiziert Odometrie auf `/odom` mit
+Core 0 betreibt den `rclc_executor`, publiziert Odometrie auf `/odom` mit einer konfigurierten Sollrate von
 
 $$
-f_{\mathrm{odom}} = 20\,\mathrm{Hz}
+f_{\mathrm{odom,soll}} = 20\,\mathrm{Hz}
 $$
 
-und empfaengt Geschwindigkeitskommandos ueber `/cmd_vel`. Eine gemeinsam genutzte Datenstruktur wird durch einen Mutex geschuetzt, damit Regelkern und Kommunikationskern konsistente Zustaende verarbeiten.
+Die gemessene Ist-Rate lag bei $18{,}5$ bis $18{,}8\,\mathrm{Hz}$ (Messprotokoll Phase 3, T3.1/T3.2). Die Abweichung gegenueber dem Sollwert resultiert aus der Ausfuehrungslast des micro-ROS-Executors und der Mutex-Synchronisation mit dem Regelkern. Der Executor empfaengt zudem Geschwindigkeitskommandos ueber `/cmd_vel`. Eine gemeinsam genutzte Datenstruktur wird durch einen Mutex geschuetzt, damit Regelkern und Kommunikationskern konsistente Zustaende verarbeiten.
 
 ### 5.2.2 Sensor-Knoten fuer I2C-Peripherie und sicherheitsnahe Signale
 

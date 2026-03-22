@@ -97,7 +97,7 @@ cd amr/docker/
 |---|---|---|
 | `use_slam` | `True` | SLAM Toolbox (async Modus) |
 | `use_nav` | `True` | Nav2 Navigation Stack |
-| `use_rviz` | `True` | RViz2 Visualisierung |
+| `use_rviz` | `False` | RViz2 Visualisierung |
 | `use_sensors` | `True` | Sensor-Node ESP32-S3 |
 | `use_dashboard` | `False` | Dashboard-Bridge (WebSocket :9090, MJPEG :8082) |
 | `use_camera` | `False` | Kamera-Knoten (v4l2_camera_node) |
@@ -107,6 +107,7 @@ cd amr/docker/
 | `use_can` | `False` | CAN-to-ROS2 Bridge (SocketCAN) |
 | `use_tts` | `False` | TTS-Sprachausgabe (Gemini-Semantik via gTTS) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array DoA/VAD |
+| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Node |
 | `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Node |
 | `camera_device` | `/dev/video10` | Video-Device (v4l2loopback-Bridge) |

@@ -4,7 +4,7 @@ Datum: 15.03.2026
 Pruefer: ---
 Testareal: Innenraum, ebener Hartboden
 Akkuspannung: > 10 V
-Firmware: Drive-Node v___, Sensor-Node v___
+Firmware: Drive-Node v4.0.0, Sensor-Node v3.0.0
 Software: ROS2 Humble (Docker), Dashboard (React/Vite)
 Audio: MAX98357A I2S + 3W Lautsprecher
 ESP32: inaktiv (Dashboard-only Test)

@@ -134,7 +134,7 @@ Bauteile aus Bestand bzw. Einzelhandel ohne Einzelrechnung – geschaetzt **3,00
 
 | Position                                  | Geschaetzt |
 |-------------------------------------------|------------|
-| Hauptsicherung 15 A (KFZ-Flachsicherung)  | 0,50 EUR   |
+| Hauptsicherung 10 A (KFZ-Flachsicherung)  | 0,50 EUR   |
 | Hauptschalter (Kippschalter/Wippschalter) | 1,50 EUR   |
 | IRLZ24N MOSFET (Low-Side Switch fuer D10) | 1,00 EUR   |
 

@@ -61,7 +61,7 @@ Das Dashboard-Frontend laeuft ausserhalb des Docker-Containers:
 ```bash
 cd dashboard/
 npm run dev -- --host 0.0.0.0
-# Erreichbar unter http://<Pi-IP>:5173/
+# Erreichbar unter https://<Pi-IP>:5173/
 ```
 
 **Hinweis:** Der ROS2-Node `dashboard_bridge` wird automatisch durch
@@ -76,7 +76,7 @@ gestartet werden.
 
 **Platzbedarf:** Raum ca. 15 m^2 mit geschlossenem Rundweg
 **Stack:** `use_slam:=True use_nav:=False use_dashboard:=True`
-**Steuerung:** Dashboard (http://<Pi-IP>:5173/)
+**Steuerung:** Dashboard (https://<Pi-IP>:5173/)
 
 **Wichtig:** Das Skript muss direkt aus `/amr_scripts` im Container
 aufgerufen werden (nicht ueber `ros2 run`), da das `amr_utils`-Modul
@@ -173,5 +173,5 @@ Enthaltene Felder: `ate_m`, `max_error_m`, `mean_error_m`, `duration_s`,
 
 ```bash
 cd amr/docker/
-./run.sh python3 /amr_scripts/validation_report.py
+./run.sh ros2 run my_bot validation_report
 ```

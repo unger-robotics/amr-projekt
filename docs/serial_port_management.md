@@ -58,7 +58,7 @@ devices:
   - "/dev/amr_drive:/dev/amr_drive"     # ESP32-S3 #1 (Antrieb)
   - "/dev/amr_sensor:/dev/amr_sensor"   # ESP32-S3 #2 (Sensorik)
   - "/dev/ttyUSB0:/dev/ttyUSB0"         # RPLIDAR A1
-  - "/dev/video10:/dev/video10"         # IMX296 Kamera (v4l2loopback)
+  - "/dev/video10:/dev/video10"         # IMX296 Kamera (v4l2loopback-Bridge, dynamisch via cgroup)
   - "/dev/snd:/dev/snd"                 # I2S Audio-Ausgabe
 ```
 

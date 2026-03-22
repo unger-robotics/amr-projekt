@@ -30,7 +30,7 @@ Dashboard-spezifische Details (Komponenten, Hooks, Store, Theme) gehoeren in die
 ```
 dashboard/
 ├── src/
-│   ├── components/              # 17 React-Komponenten
+│   ├── components/              # 19 React-Komponenten
 │   │   ├── Dashboard.tsx        # Hauptseite Steuerung (4-Spalten-Grid)
 │   │   ├── DetailPage.tsx       # Detailseite (4er-Grid)
 │   │   ├── StatusPanel.tsx      # Verbindung, Odometrie, IMU, Latenz
@@ -55,7 +55,7 @@ dashboard/
 │   │   └── telemetryStore.ts    # Zustand Store (60+ Properties)
 │   ├── types/
 │   │   └── ros.ts               # Type-Definitionen fuer WebSocket-Messages
-│   ├── App.tsx                  # Root (Tab-Navigation: Steuerung/Details)
+│   ├── App.tsx                  # Root (Tab-Navigation: Steuerung/Details/Validierung/Sprache)
 │   ├── main.tsx                 # React-Einstiegspunkt
 │   └── index.css                # Tailwind + HUD-Theme
 ├── vite.config.ts               # HTTPS via mkcert

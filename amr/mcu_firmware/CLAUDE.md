@@ -6,16 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Monorepo fuer zwei ESP32-S3 Mikrocontroller (beide Seeed Studio XIAO ESP32-S3) eines autonomen mobilen Roboters (AMR). Kommunikation mit Raspberry Pi 5 ueber micro-ROS/UART (Serial Transport, Humble). Uebergeordnete Projektdokumentation in `../../CLAUDE.md`.
 
-## Zwei-Node-Architektur
+## Zwei-Knoten-Architektur
 
-Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS statische Libraries erzeugt, die an die Node-Konfiguration gebunden sind. Geteilte `.pio`-Caches wuerden sich gegenseitig ueberschreiben.
+Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS statische Libraries erzeugt, die an die Knoten-Konfiguration gebunden sind. Geteilte `.pio`-Caches wuerden sich gegenseitig ueberschreiben.
 
 | Node | Verzeichnis | udev-Symlink | Funktion | Regelfrequenz |
 |---|---|---|---|---|
 | **Drive-Node** (#1) | `drive_node/` | `/dev/amr_drive` | Antrieb, PID, Odometrie, LED | 50 Hz |
 | **Sensor-Node** (#2) | `sensor_node/` | `/dev/amr_sensor` | Ultraschall, Cliff, IMU (MPU6050), Batterie (INA260), Servo (PCA9685) | 50 Hz (IMU), 10/20 Hz (Sonar/Cliff), 2 Hz (Bat) |
 
-Beide Nodes nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Nodes (Core 0 prueft `core1_heartbeat`).
+Beide Knoten nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Knoten (Core 0 prueft `core1_heartbeat`).
 
 **I2C-Aufteilung Sensor-Node**: Lese-Operationen (MPU6050 IMU, INA260 Batterie) auf Core 1 (`sensorTask`), Schreib-Operationen (PCA9685 Servo) auf Core 0 (`loop()`, 5 Hz Polling). Beide ueber `i2c_mutex`. PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen I2C-Bus, `delay(2000)` vor `Wire.begin()`). GPIO-Sensoren (Ultraschall-ISR, Cliff) erst NACH I2C-Init.
 
@@ -58,11 +58,11 @@ cd sensor_node && pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 cd sensor_node && pio run -e servo_test -t upload -t monitor  # Servo-Kalibrierung (Pan/Tilt)
 ```
 
-Erster Build pro Node dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecached. Es gibt keine Unit-Tests.
+Erster Build pro Knoten dauert ~15 Min (micro-ROS aus Source). Folgebuilds gecached. Es gibt keine Unit-Tests.
 
 ## Konfiguration
 
-Jeder Node hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
+Jeder Knoten hat seine eigene Config im lokalen `include/`-Ordner (eingebunden via `-I include`):
 
 - `drive_node/include/config_drive.h` (v4.0.0): HAL-Pins (`amr::hal::`), Antrieb, PID, Kinematik, LED, CAN-Bus (`amr::can::`) — kein I2C
 - `sensor_node/include/config_sensors.h` (v3.0.0): HAL-Pins (`amr::hal::`), Ultraschall-Timing, Cliff, Sensorphysik, IMU (`amr::imu::`), Batterie (`amr::battery::`), Servo (`amr::servo::`), I2C-Bus (`amr::i2c::`, `amr::ina260::`), CAN-Bus (`amr::can::`)
