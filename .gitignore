@@ -99,3 +99,10 @@ planung/vortrag/*.pdf
 
 # Statische Bibliotheken (praeventiv)
 *.a
+
+# --- LaTeX-Build-Ausgabe ---
+projektarbeit/latex/out/
+planung/vortrag/out/
+
+# --- Suche: lokale PDF-Kopien ---
+suche/*.pdf
