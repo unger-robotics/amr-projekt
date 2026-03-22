@@ -58,6 +58,19 @@ cd amr/docker/
 - **Audio:** ReSpeaker-Richtungskompass, Lautstaerke, Sound-Buttons
 - **Roboter-Info:** Netzwerk-IP, Seitenansicht-SVG, Spezifikationen
 
+### Validierung
+
+- **TestPanel:** 15 Tests nach V-Modell-Phasen gruppiert (Phase 1-5)
+- **Live-Status:** PASS/FAIL/RUNNING mit Fortschrittsanzeige
+- **Aufklappbarer Output:** JSON-Ergebnisse pro Test inline anzeigbar
+- **Steuerung:** Tests einzeln starten/stoppen via `test_run`/`test_stop` WebSocket-Ops
+
+### Sprache
+
+- **Transkription:** Live-Anzeige der erkannten Sprachbefehle (via `voice_transcript`)
+- **Mikrofon-Mute:** Toggle fuer ReSpeaker VAD (via `voice_mute`/`voice_mute_status`)
+- **Kommandoverlauf:** Chronologische Liste aller erkannten Sprachbefehle
+
 ## Kommunikation
 
 | Kanal | Port | Protokoll | Richtung |
@@ -76,6 +89,14 @@ cd amr/docker/
 | `vision_detections` | 5 Hz | Hailo-Objekterkennung |
 | `nav_status` | 1 Hz | Navigationsstatus |
 | `sensor_status` | 2 Hz | Ultraschall, Cliff, IMU |
+| `audio_status` | 2 Hz | Audio-Geraetestatus, Lautstaerke |
+| `command_response` | Event | Antwort auf Freitext-Kommando |
+| `vision_semantics` | Event | Gemini Cloud Semantik-Beschreibung |
+| `vision_status` | Event | AI-Toggle-Status |
+| `test_list` | Event | Verfuegbare Tests (15 Stueck, nach Phasen) |
+| `voice_transcript` | Event | Erkannter Sprachbefehl (Text + Intent) |
+| `voice_mute_status` | Event | Mikrofon-Mute-Status |
+| `estop_status` | Event | Notaus-Status |
 
 ### WebSocket-Nachrichten (Client → Server)
 
@@ -86,7 +107,17 @@ cd amr/docker/
 | `servo_cmd` | 10 Hz | Pan/Tilt-Winkel |
 | `hardware_cmd` | 10 Hz | Motor-Limit, Servo-Speed, LED-PWM |
 | `nav_goal` | — | Kartenkoordinaten (x, y, yaw) |
+| `nav_cancel` | — | Laufende Navigation abbrechen |
 | `command` | — | Freitext-Kommando |
+| `audio_play` | — | WAV-Datei abspielen |
+| `audio_volume` | 5 Hz | Lautstaerke setzen |
+| `vision_control` | — | AI-Toggle (Vision ein/aus) |
+| `test_run` | — | Validierungstest starten |
+| `test_stop` | — | Laufenden Test abbrechen |
+| `test_list` | — | Testliste anfordern |
+| `voice_mute` | — | Mikrofon stumm/aktiv schalten |
+| `estop` | — | Notaus ausloesen (5x Zero-Velocity) |
+| `estop_release` | — | Notaus aufheben |
 
 Vollstaendige Typdefinitionen: `src/types/ros.ts`
 
@@ -98,7 +129,7 @@ src/
 ├── hooks/            # useWebSocket, useJoystick, useImageFit
 ├── store/            # telemetryStore (Zustand, flacher State)
 ├── types/            # ros.ts (WebSocket-Protokoll-Interfaces)
-├── App.tsx           # Root (Tab-Navigation: Steuerung/Details)
+├── App.tsx           # Root (Tab-Navigation: Steuerung/Details/Validierung/Sprache)
 └── index.css         # Tailwind + HUD-Theme (--color-hud-*)
 ```
 

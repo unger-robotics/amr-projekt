@@ -203,7 +203,7 @@ cd amr/docker/
 |--------------------|---------|------------------------------|
 | `use_slam`         | True    | HD-Karte (Kartierung)        |
 | `use_nav`          | True    | Routenplanung (Navigation)   |
-| `use_rviz`         | True    | Diagnose-Display             |
+| `use_rviz`         | False   | Diagnose-Display             |
 | `use_sensors`      | True    | Sensorsteuergeraet           |
 | `use_cliff_safety` | True    | Notbremssystem (AEB)         |
 | `use_camera`       | False   | Frontkamera                  |
@@ -213,6 +213,7 @@ cd amr/docker/
 | `use_can`          | False   | Redundanter CAN-Bus          |
 | `use_tts`          | False   | Sprachausgabe (TTS)          |
 | `use_respeaker`    | False   | Richtungsmikrofon (DoA)      |
+| `use_voice`        | False   | Sprachsteuerung (STT)        |
 
 ## Projektstruktur
 

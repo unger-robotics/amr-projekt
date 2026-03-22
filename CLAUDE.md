@@ -54,6 +54,7 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 ```
 
 - MCU Dual-Core: Core 0 = micro-ROS Executor, Core 1 = Echtzeit-Datenerfassung + CAN
+- Dual-Path-Redundanz: Prio 1 micro-ROS/UART → Prio 2 CAN-Fallback (UART > 500 ms Timeout) → Prio 3 Firmware-Stopp (tv=0, tw=0). Pi 5 ist fuer Notstopp nicht erforderlich
 - `full_stack.launch.py` orchestriert alle ROS2-Nodes (micro-ROS Agents, SLAM, Nav2, Dashboard, Vision)
 - Vision-Pipeline: Host-seitiger Hailo-8L Runner (HTTPS MJPEG) → UDP → Docker-Receiver → Gemini Cloud
 - Vision-Toggle: Dashboard AI-Schalter steuert Broadcast-Gate in Bridge + `/vision/enable` Topic fuer TTS
@@ -67,7 +68,7 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 |---|---|---|
 | `use_slam` | True | SLAM Toolbox (Kartierung) |
 | `use_nav` | True | Nav2 (Navigation) |
-| `use_rviz` | True | RViz2 (Visualisierung) |
+| `use_rviz` | False | RViz2 (Visualisierung, erfordert X11) |
 | `use_sensors` | True | Sensor-Node micro-ROS Agent |
 | `use_cliff_safety` | True | Cliff + Ultraschall Sicherheitslogik |
 | `use_camera` | False | v4l2 Kamera-Knoten |
@@ -101,6 +102,14 @@ Das Symlink-Pattern erfordert vier Schritte:
 3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
 4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
+## Voraussetzungen
+
+- Raspberry Pi 5 (Debian Trixie) mit Docker und docker-compose
+- PlatformIO CLI (MCU-Firmware)
+- Node.js 20+ (Dashboard)
+- mkcert (HTTPS-Zertifikate fuer Dashboard)
+- `GEMINI_API_KEY` in Host-Umgebung (fuer Vision, TTS, Voice)
+
 ## Build-Befehle
 
 ### MCU Firmware (PlatformIO, zwei getrennte Projekte)
@@ -125,6 +134,7 @@ Erster Build pro Knoten: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
 
 ```bash
 cd amr/docker/
+sudo bash host_setup.sh                     # Einmalig: udev, Gruppen, Kamera-Bridge
 docker compose build                        # Image bauen (~15-20 Min)
 ./run.sh colcon build --packages-select my_bot --symlink-install
 ./run.sh ros2 launch my_bot full_stack.launch.py                    # Full-Stack
@@ -150,6 +160,7 @@ cd dashboard/
 npm install && npm run dev -- --host 0.0.0.0   # Entwicklung (https://amr.local:5173)
 npm run build                  # Produktion (tsc + vite build)
 npm run lint                   # ESLint
+npx tsc --noEmit               # TypeScript Type-Check (ohne Build)
 ```
 
 HTTPS via mkcert-Zertifikate (`amr.local+5.pem` / `amr.local+5-key.pem` in `dashboard/`).
@@ -211,13 +222,19 @@ cd amr/docker/
 ./run.sh ros2 run my_bot motor_test          # Motortest
 ./run.sh ros2 run my_bot encoder_test        # Encoder-Validierung
 ./run.sh ros2 run my_bot pid_tuning          # PID-Abstimmung
+./run.sh ros2 run my_bot kinematic_test      # Kinematik-Validierung
 ./run.sh ros2 run my_bot imu_test            # IMU-Kalibrierung
 ./run.sh ros2 run my_bot sensor_test         # Sensor-Gesamttest
+./run.sh ros2 run my_bot rotation_test       # Rotationstest (360°)
+./run.sh ros2 run my_bot straight_drive_test # Geradeausfahrt-Test
+./run.sh ros2 run my_bot rplidar_test        # LiDAR-Validierung
 ./run.sh ros2 run my_bot slam_validation     # SLAM-Validierung
 ./run.sh ros2 run my_bot nav_test            # Navigationstest
 ./run.sh ros2 run my_bot nav_square_test     # Quadratfahrt-Test
 ./run.sh ros2 run my_bot docking_test        # ArUco-Docking-Test
 ./run.sh ros2 run my_bot can_validation_test # CAN-Bus-Validierung
+./run.sh ros2 run my_bot cliff_latency_test  # Cliff-Latenz-Messung
+./run.sh ros2 run my_bot dashboard_latency_test # Dashboard-Latenz-Messung
 ```
 
 Testprozeduren und erwartete Messwerte: `planung/testanleitung_phase*.md` und `planung/messprotokoll_phase*.md`
@@ -309,3 +326,13 @@ Technische Referenzen in `docs/`:
 Schreibstil und Literatur: `docs/projektarbeit_style.md`, `docs/literature_workflow.md`
 
 Planung und Betrieb: `planung/` enthaelt Testanleitungen, Messprotokolle, Systemdokumentation, Benutzerhandbuch und Netzwerkkonfiguration
+
+## Sync-Workflow (Dreiecks-Workflow Pi5-GitHub-Mac)
+
+```bash
+./scripts/sync/push-to-github.sh "feat: Beschreibung"   # Code → GitHub
+./scripts/sync/sync_to_mac.sh all                        # Medien → Mac(s)
+./scripts/sync/sync_from_mac.sh mac                      # Medien ← Mac
+```
+
+Code wird ueber GitHub synchronisiert, grosse Mediendateien direkt via rsync zwischen Pi 5 und Mac(s).
