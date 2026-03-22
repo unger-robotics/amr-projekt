@@ -214,5 +214,5 @@ Die JSON-Dateien werden im Container gespeichert:
 ## Gesamtbericht generieren
 
 ```bash
-./run.sh python3 /amr_scripts/validation_report.py
+./run.sh ros2 run my_bot validation_report
 ```

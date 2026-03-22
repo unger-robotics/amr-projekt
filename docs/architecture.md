@@ -323,9 +323,9 @@ Zeitkritische Low-Level-Funktionen bleiben auf den MCU-Knoten. Koordination, Kar
 
 ```
 odom → base_link              (dynamisch, odom_to_tf, 20 Hz)
-  ├── laser                   (statisch, x=0.10, z=0.05, yaw=pi)
+  ├── laser                   (statisch, x=0.10, z=0.235, yaw=pi)
   ├── camera_link             (statisch, x=0.10, z=0.08, use_camera)
-  └── ultrasonic_link         (statisch, x=0.15, z=0.10, use_sensors)
+  └── ultrasonic_link         (statisch, x=0.15, z=0.05, use_sensors)
 ```
 
 Der LiDAR ist 180° gedreht montiert — die TF-Transformation (`yaw=pi`) kompensiert dies.

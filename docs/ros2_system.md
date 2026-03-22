@@ -36,6 +36,8 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `tts_speak_node` | `my_bot` | `tts_speak_node` | `use_tts` | TTS via gTTS + mpg123 |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD (USB, pyusb) |
 | `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Flash STT |
+| `aruco_docking` | `my_bot` | `aruco_docking` | manuell | ArUco-Marker Visual Servoing (Standalone) |
+| `hailo_inference_node` | `my_bot` | `hailo_inference_node` | manuell | Hailo-8L Echtzeit-Objekterkennung (YOLOv8) |
 
 ---
 
@@ -80,9 +82,9 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 ```
 odom
   └── base_link              (dynamisch, odom_to_tf, aus /odom)
-        ├── laser             (statisch, x=0.10, z=0.05, Yaw=180 Grad/pi)
+        ├── laser             (statisch, x=0.10, z=0.235, Yaw=180 Grad/pi)
         ├── camera_link       (statisch, x=0.10, z=0.08, optional: use_camera)
-        └── ultrasonic_link   (statisch, x=0.15, z=0.10, optional: use_sensors)
+        └── ultrasonic_link   (statisch, x=0.15, z=0.05, optional: use_sensors)
 ```
 
 | Frame | Parent | Typ | Knoten | Bedingung |
@@ -104,7 +106,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 |---|---|---|
 | `use_slam` | `True` | SLAM Toolbox (async Modus) |
 | `use_nav` | `True` | Nav2 Navigation Stack |
-| `use_rviz` | `True` | RViz2 Visualisierung |
+| `use_rviz` | `False` | RViz2 Visualisierung |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Node (USB-CDC) |
 | `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Node (USB-CDC) |
 | `use_sensors` | `True` | Sensor-Node ESP32-S3 |
@@ -119,11 +121,12 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `use_tts` | `False` | TTS-Sprachausgabe (gTTS, Deutsch) |
 | `use_respeaker` | `False` | ReSpeaker DoA/VAD (USB, pyusb) |
+| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
 
 **Beispiele:**
 
 ```bash
-# Standard (SLAM + Nav2 + RViz2, Cliff-Safety an):
+# Standard (SLAM + Nav2, Cliff-Safety an, RViz2 aus):
 ros2 launch my_bot full_stack.launch.py
 
 # Nur SLAM, ohne Navigation:
@@ -141,7 +144,7 @@ ros2 launch my_bot full_stack.launch.py use_camera:=True use_vision:=True use_da
 
 `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). Manuell installiert: RViz2, SLAM Toolbox, Nav2, RPLidar, v4l2_camera, micro-ROS Agent, Python 3.10 + Pakete.
 
-### docker-compose.yml
+### docker-compose.yml (vereinfachte Darstellung)
 
 ```yaml
 services:
@@ -192,11 +195,11 @@ Skripte leben in `amr/scripts/`, werden als Symlinks in `my_bot/my_bot/` referen
 ### Neues Skript hinzufuegen (4 Schritte)
 
 1. Skript anlegen: `amr/scripts/<name>.py`
-2. Symlink erzeugen: `cd amr/pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../scripts/<name>.py`
+2. Symlink erzeugen: `cd amr/pi5/ros2_ws/src/my_bot/my_bot && ln -s ../../../../../scripts/<name>.py`
 3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
 4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
-### Entry-Points (28 Executables)
+### Entry-Points (29 Executables)
 
 Runtime-Knoten: `odom_to_tf`, `dashboard_bridge`, `cliff_safety_node`, `can_bridge_node`, `hailo_udp_receiver_node`, `hailo_inference_node`, `gemini_semantic_node`, `audio_feedback_node`, `tts_speak_node`, `respeaker_doa_node`, `voice_command_node`
 

@@ -10,7 +10,7 @@
 | Datum               | 2026-03-22                                                          |
 | Autor               | Jan                                                                 |
 | VDI-2206-Stufe      | L1 – Anforderungen definieren                                      |
-| Projektfragen       | PF1 (Echtzeitarchitektur), PF2 (Navigationsgenauigkeit), PF3 (Wahrnehmung und Docking) |
+| Projektfragen       | PF1 (Echtzeitarchitektur), PF2 (Navigationsgenauigkeit), PF3 (Navigation und Bedien- und Leitstandsebene) |
 | Firmware-Versionen  | config_drive.h v4.0.0, config_sensors.h v3.0.0                     |
 | Nav2-Konfiguration  | nav2_params.yaml, mapper_params_online_async.yaml                   |
 
@@ -215,7 +215,7 @@ Die folgende Tabelle ordnet jedem Testfall eine V-Modell-Pruefebene und eine Kfz
 |---|---|---|---|
 | PF1 (Echtzeitarchitektur) | FA-06, FA-07, NFA-01, NFA-03, NFA-04, NFA-09, NFA-10, NFA-12, SA-01, SA-02, SA-03, SA-06, SA-09, SIA-01–SIA-05, SIA-07 | 19 | Regelfrequenz, Kommunikation, Sicherheit |
 | PF2 (Navigationsgenauigkeit) | FA-01–FA-05, FA-09–FA-11, NFA-02, NFA-05, NFA-07, NFA-11, SIA-06 | 13 | SLAM, Navigation, Pfadverfolgung |
-| PF3 (Wahrnehmung und Docking) | FA-15, FA-16, FA-17, SA-08 | 4 | Vision, Docking, Sprachschnittstelle |
+| PF3 (Navigation und Bedien- und Leitstandsebene) | FA-15, FA-16, FA-17, SA-08 | 4 | Vision, Docking, Sprachschnittstelle |
 | Uebergreifend | FA-08, FA-12–FA-14, NFA-06, NFA-08, SA-04, SA-05, SA-07, SIA-08–SIA-10 | 11 | Bedienung, Batterie, Infrastruktur |
 
 ---

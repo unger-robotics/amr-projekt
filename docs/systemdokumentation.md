@@ -44,7 +44,7 @@ CAN-Sends laufen auf Core 1 der jeweiligen MCU-Knoten (`controlTask` bzw. `senso
 │                                                             ▼                   │
 │                                                      [tts_speak_node]           │
 │                                                       gTTS → mpg123            │
-│  [ReSpeaker DoA]──>/doa                               → MAX98357A I2S          │
+│  [ReSpeaker DoA]──>/sound_direction                    → MAX98357A I2S          │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  Ebene B — Bedien- und Leitstandsebene                                          │
 │                                                                                 │
@@ -296,7 +296,7 @@ Der Convenience-Wrapper `run.sh` verwaltet den Container-Lebenszyklus. Er starte
 ./run.sh colcon build --packages-select my_bot --symlink-install
 ```
 
-Die Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und ueber `setup.py` entry_points als `ros2 run my_bot <name>` ausfuehrbar gemacht. Insgesamt stehen 24 Executables bereit: 9 Runtime-Knoten und 15 Validierungstests. Umgebungsvariablen (`ROS_DOMAIN_ID`, `GEMINI_API_KEY`) werden ueber `docker-compose.yml` an den Container durchgereicht.
+Die Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und ueber `setup.py` entry_points als `ros2 run my_bot <name>` ausfuehrbar gemacht. Insgesamt stehen 29 Executables bereit: 11 Runtime-Knoten und 18 Validierungstests. Umgebungsvariablen (`ROS_DOMAIN_ID`, `GEMINI_API_KEY`) werden ueber `docker-compose.yml` an den Container durchgereicht.
 
 ### 5.2 Knoten-Uebersicht
 
@@ -326,6 +326,7 @@ Das zentrale Launch-File `full_stack.launch.py` orchestriert alle ROS2-Knoten. D
 | `tts_speak_node` | `use_tts` | TTS-Sprachausgabe (gTTS, Deutsch) |
 | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD |
+| `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Flash STT |
 
 Vollstaendige Knotenliste: [ros2_system.md](ros2_system.md)
 
@@ -346,16 +347,16 @@ Der Transformationsbaum verbindet die Koordinatensysteme des Roboters:
 ```
 odom
   └── base_link              (dynamisch, odom_to_tf, 20 Hz)
-        ├── laser             (statisch, x=0.10, z=0.05, Yaw=180 Grad)
+        ├── laser             (statisch, x=0.10, z=0.235, Yaw=180 Grad)
         ├── camera_link       (statisch, x=0.10, z=0.08, optional)
-        └── ultrasonic_link   (statisch, x=0.15, z=0.10, optional)
+        └── ultrasonic_link   (statisch, x=0.15, z=0.05, optional)
 ```
 
 Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische Transformation `odom` → `base_link`. Der LiDAR ist 180 Grad gedreht montiert; die statische TF-Transformation (`yaw=pi`) kompensiert diese Orientierung. Die optionalen Frames `camera_link` und `ultrasonic_link` werden nur bei aktivierter Kamera bzw. aktiviertem Sensor-Knoten publiziert.
 
 ### 5.5 Launch-System
 
-`full_stack.launch.py` steuert alle Knoten ueber boolesche Launch-Argumente. Die Standardkonfiguration aktiviert SLAM, Navigation, RViz2 und Cliff-Safety. Optionale Teilsysteme (Dashboard, Kamera, Vision, Audio, CAN, TTS, ReSpeaker) sind standardmaessig deaktiviert. Neben den booleschen Toggles koennen serielle Ports (`drive_serial_port`, `sensor_serial_port`), das Kamera-Device (`camera_device`) sowie Parameterdateien fuer Nav2 und SLAM Toolbox konfiguriert werden.
+`full_stack.launch.py` steuert alle Knoten ueber boolesche Launch-Argumente. Die Standardkonfiguration aktiviert SLAM, Navigation und Cliff-Safety (RViz2 ist standardmaessig deaktiviert). Optionale Teilsysteme (Dashboard, Kamera, Vision, Audio, CAN, TTS, ReSpeaker) sind standardmaessig deaktiviert. Neben den booleschen Toggles koennen serielle Ports (`drive_serial_port`, `sensor_serial_port`), das Kamera-Device (`camera_device`) sowie Parameterdateien fuer Nav2 und SLAM Toolbox konfiguriert werden.
 
 Die folgende Tabelle listet die wichtigsten Launch-Argumente:
 
@@ -363,7 +364,7 @@ Die folgende Tabelle listet die wichtigsten Launch-Argumente:
 |---|---|---|
 | `use_slam` | True | SLAM Toolbox (async Modus) |
 | `use_nav` | True | Nav2 Navigation Stack |
-| `use_rviz` | True | RViz2 Visualisierung |
+| `use_rviz` | False | RViz2 Visualisierung |
 | `use_sensors` | True | Sensor-Knoten micro-ROS Agent |
 | `use_cliff_safety` | True | Cliff-Safety cmd_vel-Multiplexer |
 | `use_dashboard` | False | WebSocket/MJPEG Bridge |
@@ -373,6 +374,7 @@ Die folgende Tabelle listet die wichtigsten Launch-Argumente:
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe |
 | `use_respeaker` | False | ReSpeaker DoA/VAD |
+| `use_voice` | False | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
 
 Haeufige Startkombinationen:
 

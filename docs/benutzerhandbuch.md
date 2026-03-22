@@ -283,7 +283,7 @@ Das ReSpeaker Mic Array v2.0 erfasst Audiobefehle. Der Knoten `respeaker_doa_nod
 
 ## 5. Benutzeroberflaeche (Dashboard)
 
-Die Benutzeroberflaeche ist unter `https://amr.local:5173/` erreichbar und bietet zwei Seiten, zwischen denen ueber die obere Tab-Leiste gewechselt wird. Technische Details zu Architektur, State Management und WebSocket-Protokoll stehen in [dashboard.md](dashboard.md).
+Die Benutzeroberflaeche ist unter `https://amr.local:5173/` erreichbar und bietet vier Tabs (Steuerung, Details, Validierung, Sprache), zwischen denen ueber die obere Tab-Leiste gewechselt wird. Technische Details zu Architektur, State Management und WebSocket-Protokoll stehen in [dashboard.md](dashboard.md).
 
 ### 5.1 Steuerungsseite
 

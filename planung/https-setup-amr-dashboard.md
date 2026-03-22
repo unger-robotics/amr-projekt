@@ -1,8 +1,8 @@
-# HTTPS-Setup für das AMR-Dashboard
+# HTTPS-Setup fuer das AMR-Dashboard
 
 ## Problemstellung
 
-Das AMR-Dashboard (Vite + React) auf dem Raspberry Pi 5 soll über HTTPS erreichbar sein. Die Lösung muss mit wechselnden Netzwerken funktionieren (Home-WLAN, iPhone-Hotspot, Ethernet).
+Das AMR-Dashboard (Vite + React) auf dem Raspberry Pi 5 soll ueber HTTPS erreichbar sein. Die Loesung muss mit wechselnden Netzwerken funktionieren (Home-WLAN, iPhone-Hotspot, Ethernet).
 
 ## Architektur
 
@@ -21,7 +21,7 @@ Mac (mac / MacBook)              Raspberry Pi 5
 
 ## Voraussetzung: mkcert auf jedem Mac
 
-Jeder Mac (mac, MacBook), der das Dashboard per HTTPS aufrufen soll, benötigt eine eigene mkcert-Installation. Es gibt zwei Wege:
+Jeder Mac (mac, MacBook), der das Dashboard per HTTPS aufrufen soll, benoetigt eine eigene mkcert-Installation. Es gibt zwei Wege:
 
 ### Weg A – Eigene CA pro Mac (empfohlen, einfacher)
 
@@ -49,13 +49,13 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 2. `rootCA.pem` und `rootCA-key.pem` auf Mac 2 kopieren nach `$(mkcert -CAROOT)/`
 3. Auf Mac 2: `mkcert -install`
 
-**Sicherheitshinweis:** Die Datei `rootCA-key.pem` ist ein privater Schlüssel. Nur über sichere Kanäle übertragen.
+**Sicherheitshinweis:** Die Datei `rootCA-key.pem` ist ein privater Schluessel. Nur ueber sichere Kanaele uebertragen.
 
 ## Zertifikat generieren
 
 ### Dualnetzwerk: Alle Hostnamen und IPs abdecken
 
-Das Zertifikat muss alle möglichen Zugriffswege enthalten. Bei wechselnden Netzwerken (Home-WLAN, Hotspot, Ethernet) ändern sich die IPs. Der stabile Zugriffspunkt ist **amr.local** via mDNS.
+Das Zertifikat muss alle moeglichen Zugriffswege enthalten. Bei wechselnden Netzwerken (Home-WLAN, Hotspot, Ethernet) aendern sich die IPs. Der stabile Zugriffspunkt ist **amr.local** via mDNS.
 
 ```bash
 # Auf dem Mac, der die CA besitzt:
@@ -67,7 +67,7 @@ mkcert amr.local \
        127.0.0.1
 ```
 
-Erklärung der SANs (Subject Alternative Names):
+Erklaerung der SANs (Subject Alternative Names):
 
 | SAN          | Netzwerk        | Bemerkung                      |
 |--------------|-----------------|--------------------------------|
@@ -78,7 +78,7 @@ Erklärung der SANs (Subject Alternative Names):
 | localhost    | Pi lokal        | lokale Entwicklung             |
 | 127.0.0.1    | Pi lokal        | lokale Entwicklung             |
 
-Falls sich Hotspot-IPs ändern, Zertifikat mit neuer IP neu generieren und erneut auf den Pi kopieren. Alternativ ausschließlich `amr.local` verwenden – dann sind feste IPs im Zertifikat nicht zwingend nötig.
+Falls sich Hotspot-IPs aendern, Zertifikat mit neuer IP neu generieren und erneut auf den Pi kopieren. Alternativ ausschliesslich `amr.local` verwenden – dann sind feste IPs im Zertifikat nicht zwingend noetig.
 
 ### Minimalvariante (nur mDNS)
 
@@ -150,7 +150,7 @@ export default defineConfig({
 
 ## Mixed Content vermeiden
 
-HTTPS-Seiten dürfen keine Ressourcen über HTTP nachladen. Alle Protokollverweise im Quellcode müssen dynamisch sein:
+HTTPS-Seiten duerfen keine Ressourcen ueber HTTP nachladen. Alle Protokollverweise im Quellcode muessen dynamisch sein:
 
 ### WebSocket (`src/hooks/useWebSocket.ts`)
 
@@ -166,7 +166,7 @@ const streamProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:
 const streamUrl = `${streamProtocol}//${window.location.hostname}:${STREAM_PORT}/stream`;
 ```
 
-**Wichtig:** Wenn `wss://` verwendet wird, muss der WebSocket-Server auf dem Pi ebenfalls TLS unterstützen. Gleiches gilt für den Kamera-Stream-Server. Falls die Server kein TLS können, gibt es zwei Optionen:
+**Wichtig:** Wenn `wss://` verwendet wird, muss der WebSocket-Server auf dem Pi ebenfalls TLS unterstuetzen. Gleiches gilt fuer den Kamera-Stream-Server. Falls die Server kein TLS koennen, gibt es zwei Optionen:
 
 1. **Reverse-Proxy** (Caddy oder nginx) terminiert TLS und leitet intern auf `ws://` / `http://` weiter
 2. **TLS direkt im Server** einbauen (Python-Beispiel unten)
@@ -197,7 +197,7 @@ asyncio.run(main())
 
 ## Alte Pi-CA entfernen
 
-Falls zuvor eine CA direkt auf dem Pi erzeugt wurde (`mkcert pi@amr`), diese aufräumen:
+Falls zuvor eine CA direkt auf dem Pi erzeugt wurde (`mkcert pi@amr`), diese aufraeumen:
 
 ### Auf dem Pi
 
@@ -206,13 +206,13 @@ mkcert -uninstall
 rm -rf ~/.local/share/mkcert
 ```
 
-### Auf dem Mac (Schlüsselbundverwaltung)
+### Auf dem Mac (Schluesselbundverwaltung)
 
-1. Schlüsselbundverwaltung öffnen: `open /Applications/Utilities/Keychain\ Access.app`
-2. Links: **System** auswählen
+1. Schluesselbundverwaltung oeffnen: `open /Applications/Utilities/Keychain\ Access.app`
+2. Links: **System** auswaehlen
 3. Oben: **Zertifikate** Tab
 4. Suche: `mkcert pi@amr`
-5. Rechtsklick → **Löschen**
+5. Rechtsklick → **Loeschen**
 
 Alternativ per Terminal:
 
@@ -227,16 +227,16 @@ sudo security delete-certificate -c "mkcert pi@amr" /Library/Keychains/System.ke
 | 1. mkcert installieren                                                                    | `brew install mkcert nss`                                                                         |
 | 2. CA registrieren                                                                        | `mkcert -install`                                                                                 |
 | 3. Root-CA des Zertifikat-Macs importieren (falls anderer Mac das Zertifikat erzeugt hat) | `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain rootCA.pem` |
-| 4. Browser neu starten                                                                    | `Cmd+Q` → Chrome/Safari öffnen                                                                    |
+| 4. Browser neu starten                                                                    | `Cmd+Q` → Chrome/Safari oeffnen                                                                    |
 | 5. Dashboard aufrufen                                                                     | `https://amr.local:5173/`                                                                         |
 
 ## Fehlerbehebung
 
-| Symptom                                          | Ursache                                         | Lösung                                                     |
+| Symptom                                          | Ursache                                         | Loesung                                                     |
 |--------------------------------------------------|-------------------------------------------------|------------------------------------------------------------|
-| Chrome: "Nicht sicher" trotz gültigem Zertifikat | Mixed Content (HTTP-Ressourcen auf HTTPS-Seite) | Alle `ws://` → `wss://`, alle `http://` → `https://`       |
-| Chrome: Zertifikat nicht vertrauenswürdig        | CA nicht im Chrome Root Store                   | `brew install nss`, dann `mkcert -install` erneut          |
+| Chrome: "Nicht sicher" trotz gueltigem Zertifikat | Mixed Content (HTTP-Ressourcen auf HTTPS-Seite) | Alle `ws://` → `wss://`, alle `http://` → `https://`       |
+| Chrome: Zertifikat nicht vertrauenswuerdig        | CA nicht im Chrome Root Store                   | `brew install nss`, dann `mkcert -install` erneut          |
 | Safari funktioniert, Chrome nicht                | Chrome nutzt eigenen Root Store                 | `nss` installieren, `mkcert -uninstall && mkcert -install` |
 | WebSocket verbindet nicht                        | WS-Server spricht kein TLS                      | TLS im Server aktivieren oder Reverse-Proxy nutzen         |
-| Zertifikat ungültig bei IP-Zugriff               | IP nicht im SAN                                 | Zertifikat mit allen IPs neu generieren                    |
-| Zertifikat ungültig nach Netzwerkwechsel         | Neue IP nicht im SAN                            | `amr.local` statt IP verwenden                             |
+| Zertifikat ungueltig bei IP-Zugriff               | IP nicht im SAN                                 | Zertifikat mit allen IPs neu generieren                    |
+| Zertifikat ungueltig nach Netzwerkwechsel         | Neue IP nicht im SAN                            | `amr.local` statt IP verwenden                             |

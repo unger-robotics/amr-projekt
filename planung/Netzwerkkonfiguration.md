@@ -1,8 +1,8 @@
 # Netzwerkkonfiguration: iMac, MacBook, Raspberry Pi
 
-## 1. Ausführung auf dem Raspberry Pi (amr.local)
+## 1. Ausfuehrung auf dem Raspberry Pi (amr.local)
 
-Der Befehl ändert den Systemnamen dauerhaft auf `amr`.
+Der Befehl aendert den Systemnamen dauerhaft auf `amr`.
 
 ```bash
 # Hostnamen setzen
@@ -10,11 +10,11 @@ sudo hostnamectl set-hostname amr
 
 ```
 
-## 2. Ausführung auf dem iMac (mac.local)
+## 2. Ausfuehrung auf dem iMac (mac.local)
 
-Der Block bereinigt alte Netzwerkeinträge, setzt den Systemnamen, schreibt die SSH-Konfiguration und verteilt die Authentifizierungsschlüssel an das MacBook und den Raspberry Pi.
+Der Block bereinigt alte Netzwerkeintraege, setzt den Systemnamen, schreibt die SSH-Konfiguration und verteilt die Authentifizierungsschluessel an das MacBook und den Raspberry Pi.
 
-*Hinweis: Der Befehl `ssh-copy-id` fordert während der Ausführung die jeweiligen Login-Passwörter der Zielgeräte an.*
+*Hinweis: Der Befehl `ssh-copy-id` fordert waehrend der Ausfuehrung die jeweiligen Login-Passwoerter der Zielgeraete an.*
 
 ```bash
 # ----- Systemvorbereitung -----
@@ -51,20 +51,20 @@ Host *
 EOF
 chmod 600 ~/.ssh/config
 
-# ----- Schlüssel generieren und übertragen -----
+# ----- Schluessel generieren und uebertragen -----
 # 1. Zum MacBook
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_macbook -N ""
 ssh-copy-id -i ~/.ssh/id_ed25519_macbook.pub book
 sed -i '' 's/# IdentityFile ~\/.ssh\/id_ed25519_macbook/IdentityFile ~\/.ssh\/id_ed25519_macbook/' ~/.ssh/config
 
-# 2. Zum Raspberry Pi (Standard-Schlüssel nutzen)
+# 2. Zum Raspberry Pi (Standard-Schluessel nutzen)
 ssh-copy-id -i ~/.ssh/id_ed25519.pub amr
 
 ```
 
-## 3. Ausführung auf dem MacBook (book.local)
+## 3. Ausfuehrung auf dem MacBook (book.local)
 
-Der Block etabliert die Namensgebung und erzeugt gerätespezifische SSH-Schlüssel für die passwortlose Verbindung in Richtung des iMacs und des Raspberry Pis.
+Der Block etabliert die Namensgebung und erzeugt geraetespezifische SSH-Schluessel fuer die passwortlose Verbindung in Richtung des iMacs und des Raspberry Pis.
 
 ```bash
 # ----- Systemvorbereitung -----
@@ -93,7 +93,7 @@ Host *
 EOF
 chmod 600 ~/.ssh/config
 
-# ----- Schlüssel generieren und übertragen -----
+# ----- Schluessel generieren und uebertragen -----
 # 1. Zum iMac
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_imac -N ""
 ssh-copy-id -i ~/.ssh/id_ed25519_imac.pub mac
@@ -108,9 +108,9 @@ sed -i '' 's/# IdentityFile ~\/.ssh\/id_ed25519_amr/IdentityFile ~\/.ssh\/id_ed2
 
 ## 4. Erweiterte Netzwerk-Hierarchie (Raspberry Pi)
 
-Dieser Abschnitt konfiguriert die Prioritäten der Funknetzwerke über den NetworkManager. Die kabelgebundene Ethernet-Schnittstelle (`eth0`) wird vom System standardmäßig über eine niedrigere Routing-Metrik priorisiert.
+Dieser Abschnitt konfiguriert die Prioritaeten der Funknetzwerke ueber den NetworkManager. Die kabelgebundene Ethernet-Schnittstelle (`eth0`) wird vom System standardmaessig ueber eine niedrigere Routing-Metrik priorisiert.
 
-**Status und Routing prüfen:**
+**Status und Routing pruefen:**
 ```bash
 # Netzwerkumgebung aktualisieren
 sudo nmcli device wifi rescan
@@ -124,18 +124,18 @@ ip route
 ```
 
 **WLAN-Profile anlegen und priorisieren:**
-Die Ausführung der folgenden Befehle erstellt die Profile und weist die hierarchischen Prioritätswerte (10, 5, 4) zu. *(Hinweis: Die Platzhalter `xxx` sind bei der initialen Ausführung durch die tatsächlichen WLAN-Passwörter zu ersetzen.)*
+Die Ausfuehrung der folgenden Befehle erstellt die Profile und weist die hierarchischen Prioritaetswerte (10, 5, 4) zu. *(Hinweis: Die Platzhalter `xxx` sind bei der initialen Ausfuehrung durch die tatsaechlichen WLAN-Passwoerter zu ersetzen.)*
 
 ```bash
-# Profil 1: iPhone-Hotspot (Hohe Priorität: 10)
+# Profil 1: iPhone-Hotspot (Hohe Prioritaet: 10)
 sudo nmcli device wifi connect "iPhonej" password 'xxx' name "hotspot_profile"
 sudo nmcli connection modify hotspot_profile connection.autoconnect-priority 10
 
-# Profil 2: Heimnetzwerk 5 GHz (Mittlere Priorität: 5)
+# Profil 2: Heimnetzwerk 5 GHz (Mittlere Prioritaet: 5)
 sudo nmcli device wifi connect "n5g" password 'xxx' name "n5g_profile"
 sudo nmcli connection modify n5g_profile connection.autoconnect-priority 5
 
-# Profil 3: Heimnetzwerk 2.4 GHz (Niedrige Priorität: 4)
+# Profil 3: Heimnetzwerk 2.4 GHz (Niedrige Prioritaet: 4)
 sudo nmcli device wifi connect "n2g" password 'xxx' name "n2g_profile"
 sudo nmcli connection modify n2g_profile connection.autoconnect-priority 4
 

@@ -4,7 +4,7 @@
 
 Die Leitfrage dieses Kapitels lautet: In welchem Maß erfüllt das implementierte System die Kernanforderungen an Fahrkern, Sensor- und Sicherheitsbasis, Lokalisierung und Kartierung, Navigation sowie Sicherheitslogik unter den Randbedingungen eines Innenraums?
 
-Die Validierung stützt sich auf projektinterne Messdaten aus einem $10\,\mathrm{m} \times 10\,\mathrm{m}$ großen Testareal mit statischen und dynamischen Hindernissen. Die Referenzpositionen wurden mit einem Laserdistanzmessgerät erfasst. Für die Offline-Analyse zeichnete \texttt{rosbag2} die Topics \texttt{/odom}, \texttt{/scan}, \texttt{/cmd\_vel} und \texttt{/tf} auf. Die Datengrundlage verbindet damit Bewegungsdaten des Fahrkerns mit Zustandsdaten aus Lokalisierung und Kartierung sowie der Navigation.
+Die Validierung stützt sich auf projektinterne Messdaten aus einem $10\,\mathrm{m} \times 10\,\mathrm{m}$ großen Testareal (mehrere Räume) mit statischen und dynamischen Hindernissen. Die Referenzpositionen wurden mit einem Laserdistanzmessgerät erfasst. Für die Offline-Analyse zeichnete \texttt{rosbag2} die Topics \texttt{/odom}, \texttt{/scan}, \texttt{/cmd\_vel} und \texttt{/tf} auf. Die Datengrundlage verbindet damit Bewegungsdaten des Fahrkerns mit Zustandsdaten aus Lokalisierung und Kartierung sowie der Navigation.
 
 Der Prüfumfang gliedert sich in drei Ebenen. Die erste Ebene verifiziert den Fahrkern sowie die Sensor- und Sicherheitsbasis. Die zweite Ebene validiert Lokalisierung und Kartierung, Navigation und Sicherheitslogik im Gesamtsystem. Die dritte Ebene betrachtet erweiterte Funktionen wie Vision und Docking. Diese dritte Ebene gehört nicht zum zwingenden Kern der Roadmap, ist für die technische Einordnung des Prototyps jedoch relevant.
 
@@ -37,7 +37,7 @@ Tabelle 6.1 ordnet die Messgrößen den Kernzielen der Arbeit zu.
 
 \subsection{Deterministische Verarbeitung des Fahrkerns}
 
-Der Fahrkern muss Bewegungsbefehle mit konstantem Zeitverhalten umsetzen. Gemessen wurde deshalb der Regelzyklus der PID-Schleife auf dem Drive-Knoten. Die Schleife hielt einen Takt von $50\,\mathrm{Hz}$ bei einem Jitter von unter $2\,\mathrm{ms}$ ein. Der Datenverlust der micro-ROS-Kommunikation lag unter $0{,}1\,\%$.
+Der Fahrkern muss Bewegungsbefehle mit konstantem Zeitverhalten umsetzen. Gemessen wurde deshalb der Regelzyklus der PID-Schleife auf dem Drive-Knoten (Messprotokoll Phase~1, T1.1/T1.2). Die Schleife hielt einen Takt von $50\,\mathrm{Hz}$ bei einem Jitter von unter $2\,\mathrm{ms}$ ein. Der Datenverlust der micro-ROS-Kommunikation lag unter $0{,}1\,\%$.
 
 Das Ergebnis belegt eine hinreichend deterministische Verarbeitung für den Fahrkern. Die Trennung zwischen Drive-Knoten und Sensor-Knoten erfüllt damit die zentrale Architekturabsicht, blockierende Sensorzugriffe von der Motorregelung fernzuhalten. Das Ergebnis stützt insbesondere die nichtfunktionale Anforderung N01.
 
@@ -79,15 +79,15 @@ Zusammen mit der Cliff-Safety-Kette belegen diese Einzelmessungen, dass die Sens
 
 \subsection{Lokalisierung und Kartierung im Innenraum}
 
-Lokalisierung und Kartierung wurden über den Absolute Trajectory Error, kurz ATE, und die Wiederholbarkeit der erzeugten Karte bewertet. Der mittlere ATE der \texttt{slam\_toolbox} betrug $0{,}16\,\mathrm{m}$. Das Akzeptanzkriterium lag bei $0{,}20\,\mathrm{m}$.
+Lokalisierung und Kartierung wurden über den Absolute Trajectory Error, kurz ATE, und die Wiederholbarkeit der erzeugten Karte bewertet. In Testfall T3.1 (Loop-Closure-Kartenqualität) betrug der ATE als RMSE $0{,}190\,\mathrm{m}$ und als MAE $0{,}161\,\mathrm{m}$. In Testfall T3.2 (dedizierte ATE-Messung mit bestehender Karte) sank der ATE (RMSE) auf $0{,}030\,\mathrm{m}$ (Messprotokoll Phase~3). Das Akzeptanzkriterium lag bei $0{,}20\,\mathrm{m}$.
 
-Der gemessene ATE unterschreitet das Akzeptanzkriterium um $0{,}04\,\mathrm{m}$. Für einen kostengünstigen Innenraum-Prototyp ist das Ergebnis ausreichend, um Ziele auf Kartenbasis anzufahren und nach einem Neustart wieder zu lokalisieren. Die Kernanforderung an Lokalisierung und Kartierung gilt damit auf Basis der vorliegenden Messdaten als erfüllt.
+Beide Testfälle unterschreiten das Akzeptanzkriterium. Die Differenz zwischen T3.1 und T3.2 erklärt sich aus der gleichzeitigen Kartenerstellung und Lokalisierung in T3.1 gegenüber der reinen Lokalisierung auf bestehender Karte in T3.2. Für einen kostengünstigen Innenraum-Prototyp ist das Ergebnis ausreichend, um Ziele auf Kartenbasis anzufahren und nach einem Neustart wieder zu lokalisieren. Die Kernanforderung an Lokalisierung und Kartierung gilt damit auf Basis der vorliegenden Messdaten als erfüllt.
 
 \subsection{Zielanfahrt und Bahnverfolgung}
 
-Die Qualität der Zielanfahrt wurde über Punkt-zu-Punkt-Fahrten bewertet. Die mittlere Positionsabweichung betrug $6{,}4\,\mathrm{cm}$, die mittlere Winkelabweichung $4{,}2^\circ$.
+Die Qualität der Zielanfahrt wurde über Punkt-zu-Punkt-Fahrten bewertet (Messprotokoll Phase 4, T4.1). Die mittlere Positionsabweichung betrug $1{,}01\,\mathrm{cm}$, die mittlere Winkelabweichung $1{,}94^\circ$.
 
-Diese Werte zeigen eine für die Innenraumanwendung brauchbare Zielgenauigkeit. Die Abweichungen liegen in einer Größenordnung, die eine zuverlässige Navigation zwischen definierten Zielpunkten erlaubt. Die Zielanfahrt bestätigt zugleich, dass die zuvor kalibrierte Odometrie, die IMU-Korrektur und die globale Kartenreferenz im Betrieb zusammenwirken.
+Diese Werte zeigen eine für die Innenraumanwendung hohe Zielgenauigkeit. Die Abweichungen liegen deutlich unter den Akzeptanzkriterien ($< 10\,\mathrm{cm}$ bzw.\ $< 8{,}6^\circ$) und belegen eine zuverlässige Navigation zwischen definierten Zielpunkten. Die Zielanfahrt bestätigt zugleich, dass die zuvor kalibrierte Odometrie, die IMU-Korrektur und die globale Kartenreferenz im Betrieb zusammenwirken.
 
 \subsection{Hindernisvermeidung und Recovery-Verhalten}
 
@@ -105,7 +105,7 @@ Die Messung belegt den Vorrang des sicheren Zustands vor einer weiterhin gültig
 
 Die Bedien- und Leitstandsebene bildet das Betriebswerkzeug des Systems. Für die Validierung relevant sind Beobachtbarkeit, Zustandsdarstellung und die Trennung zwischen fahrkritischem Kern und benutzerseitiger Interaktion. Die Datengrundlage dieses Kapitels enthält dafür keine eigenständige Usability-Messreihe, wohl aber Last- und Betriebsdaten.
 
-Der Raspberry Pi 5 blieb im regulären Betrieb unter $80\,\%$ CPU-Last. Der Docker-Container für ROS-2-Integration und MJPEG-Stream lag im Mittel bei etwa $35\,\%$ Auslastung. Der hardwarebeschleunigte Vision-Prozess \texttt{host\_hailo\_runner.py} lief nativ auf dem Host und band den PCIe-Beschleuniger ohne erhebliche Zusatzlast für die CPU ein. Auf Mikrocontroller-Ebene beanspruchte die Firmware des Drive-Knotens auf Core 1 weniger als $40\,\%$ der verfügbaren Rechenkapazität. Der Regulated Pure Pursuit Controller auf dem Raspberry Pi erreichte Rechenraten von mehr als $2{.}000\,\mathrm{Hz}$ bei einem geforderten Minimum von $100\,\mathrm{Hz}$.
+Der Raspberry Pi 5 blieb im regulären Betrieb unter $80\,\%$ CPU-Last. Der Docker-Container für ROS-2-Integration und MJPEG-Stream lag im Mittel bei etwa $35\,\%$ Auslastung. Der hardwarebeschleunigte Vision-Prozess \texttt{host\_hailo\_runner.py} lief nativ auf dem Host und band den PCIe-Beschleuniger ohne erhebliche Zusatzlast für die CPU ein. Auf Mikrocontroller-Ebene beanspruchte die Firmware des Drive-Knotens auf Core 1 weniger als $40\,\%$ der verfügbaren Rechenkapazität. Der Regulated Pure Pursuit Controller auf dem Raspberry Pi erreichte Rechenraten von mehr als $2{.}000\,\mathrm{Hz}$ bei einem geforderten Minimum von $20\,\mathrm{Hz}$ (\texttt{controller\_frequency} in \texttt{nav2\_params.yaml}).
 
 Diese Messdaten belegen keine Benutzerqualität im engeren Sinn, sie belegen jedoch die technische Tragfähigkeit der Ebenentrennung. Telemetrie, Video und erweiterte Vision belasten den Fahrkern nicht in kritischem Maß. Für die Bedien- und Leitstandsebene bedeutet das: Die Beobachtung des Systems bleibt möglich, ohne die fahrkritische Kette strukturell zu destabilisieren.
 
@@ -139,11 +139,11 @@ Tabelle 6.2 fasst die Anforderungen aus Kapitel 3 mit dem Stand der vorliegenden
     \addlinespace
     F02 & Sensor- und Sicherheitsbasis mit priorisierten Schutzfunktionen & erfüllt & End-to-End-Latenz der Cliff-Safety-Kette $2{,}0\,\mathrm{ms}$, Bremsweg $1{,}0\,\mathrm{cm}$. Ultraschall ($9{,}2\,\mathrm{Hz}$, $0{,}8\,\%$ Fehler), Cliff ($16{,}8\,\mathrm{Hz}$, $0$ Fehlalarme), IMU ($30$--$35\,\mathrm{Hz}$, $1{,}45^\circ$ Rotationsfehler) und Batterie einzeln bewertet. \\
     \addlinespace
-    F03 & Lokalisierung und Kartierung für den Innenraum & erfüllt & Der mittlere ATE von $0{,}16\,\mathrm{m}$ unterschreitet das Kriterium von $0{,}20\,\mathrm{m}$. \\
+    F03 & Lokalisierung und Kartierung für den Innenraum & erfüllt & ATE (RMSE): T3.1 $0{,}190\,\mathrm{m}$ / T3.2 $0{,}030\,\mathrm{m}$; ATE (MAE): T3.1 $0{,}161\,\mathrm{m}$. Beide unterschreiten das Kriterium von $0{,}20\,\mathrm{m}$. \\
     \addlinespace
     F04 & Navigation mit Missionslogik und Recovery-Verhalten & teilweise erfüllt & Zielanfahrt, Hindernisvermeidung und Recovery-Verhalten sind belegt. Die Recovery-Verfahren lösen $80\,\%$ der Blockaden, aber nicht alle. \\
     \addlinespace
-    F05 & Bedien- und Leitstandsebene als Betriebswerkzeug & teilweise erfüllt & Lastdaten und Betriebsfähigkeit stützen die technische Umsetzbarkeit. Eine eigenständige Messreihe zur Bedienqualität wurde nicht durchgeführt. \\
+    F05 & Bedien- und Leitstandsebene als Betriebswerkzeug & erfüllt & Testfälle T5.1--T5.5 (Messprotokoll Phase~5) belegen cmd\_vel-Latenz, Telemetrie-Vollständigkeit, Deadman-Timer, Audio-Feedback und Notaus. Alle 5/5 Testfälle bestanden. \\
     \addlinespace
     F06 & Freigabelogik mit sicheren Zustandsübergängen & teilweise erfüllt & Der Vorrang des sicheren Zustands ist über den Cliff-Versuch belegt. Eine vollständige Prüfung aller Kommandoklassen liegt nicht vor. \\
     \addlinespace
@@ -166,6 +166,6 @@ Tabelle 6.2 fasst die Anforderungen aus Kapitel 3 mit dem Stand der vorliegenden
 
 Die Validierung zeigt ein klares Gesamtbild. Der Prototyp erfüllt die Kernziele für den Fahrkern mit reproduzierbarer Grundbewegung, für die Sensor- und Sicherheitsbasis, für Lokalisierung und Kartierung, für die sichere Navigation auf Kartenbasis und für die deterministische Verarbeitung im Fahrkern. Die Sicherheitslogik greift im Konfliktfall zuverlässig vor der Navigation ein. Damit ist die zentrale Architekturentscheidung der Arbeit technisch bestätigt.
 
-Die Sensor- und Sicherheitsbasis ist durch die Einzelbewertung von Ultraschall, Cliff-Sensor, IMU und Batterieüberwachung vollständig belegt. Die End-to-End-Latenz der Cliff-Safety-Kette von $2{,}0\,\mathrm{ms}$ und der Bremsweg von $1{,}0\,\mathrm{cm}$ bei $0{,}2\,\mathrm{m/s}$ bestätigen die Schutzfunktion unter realistischen Betriebsbedingungen. Die Bedien- und Leitstandsebene ist technisch tragfähig, aber nicht mit einer eigenständigen Messreihe zur Bedienqualität bewertet. Die Sprachschnittstelle bleibt eine vorbereitete Erweiterung und gehört folgerichtig nicht zum belegten Kernumfang.
+Die Sensor- und Sicherheitsbasis ist durch die Einzelbewertung von Ultraschall, Cliff-Sensor, IMU und Batterieüberwachung vollständig belegt. Die End-to-End-Latenz der Cliff-Safety-Kette von $2{,}0\,\mathrm{ms}$ und der Bremsweg von $1{,}0\,\mathrm{cm}$ bei $0{,}2\,\mathrm{m/s}$ bestätigen die Schutzfunktion unter realistischen Betriebsbedingungen. Die Bedien- und Leitstandsebene ist mit allen fünf Testfällen (T5.1--T5.5) vollständig validiert. Die Sprachschnittstelle bleibt eine vorbereitete Erweiterung und gehört folgerichtig nicht zum belegten Kernumfang.
 
 Für die Projektarbeit folgt daraus ein belastbarer Schluss: Das System erreicht eine funktionsfähige und sicher priorisierte Innenraum-Mobilität auf Basis einer verteilten, kostengünstigen Architektur. Fahrkern und Sensor- und Sicherheitsbasis erfüllen nach Kalibrierung und IMU-Korrektur sämtliche Akzeptanzkriterien. Die größten Verbesserungshebel liegen nicht mehr im Fahrkern oder in der Sensorik, sondern in der Robustheit des Recovery-Verhaltens und in der systematischen Vermessung der erweiterten Interaktionsschicht.

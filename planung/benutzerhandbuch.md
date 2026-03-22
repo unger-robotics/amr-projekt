@@ -4,7 +4,7 @@
 
 ### 1.1 Hardware
 
-Für den Betrieb werden die folgenden Hardware-Komponenten benötigt:
+Fuer den Betrieb werden die folgenden Hardware-Komponenten benoetigt:
 
 * Raspberry Pi 5 mit 8 GB RAM und Debian Trixie.
 * Zwei XIAO ESP32-S3 als Drive-Knoten und Sensor-Knoten, jeweils per USB-C mit dem Raspberry Pi verbunden.
@@ -13,23 +13,23 @@ Für den Betrieb werden die folgenden Hardware-Komponenten benötigt:
 * 3S1P-Li-Ion-Akkupack mit 10,8 bis 12,6 V und 10 A Sicherung.
 * Raspberry Pi Global Shutter Camera IMX296 mit CSI-Adapter von 22-polig Mini auf 15-polig.
 * MPU6050-IMU, per I2C an D4 und D5 des Sensor-Knotens angebunden.
-* Hailo-8L PCIe-KI-Beschleuniger über M.2-Anbindung am Raspberry Pi 5.
-* MAX98357A-I2S-Verstärker mit Lautsprecher an den I2S-Pins des Raspberry Pi 5.
+* Hailo-8L PCIe-KI-Beschleuniger ueber M.2-Anbindung am Raspberry Pi 5.
+* MAX98357A-I2S-Verstaerker mit Lautsprecher an den I2S-Pins des Raspberry Pi 5.
 * Infrarot-Kanten-Sensor MH-B an den GPIOs des Sensor-Knotens.
 
 ### 1.2 Software
 
-Für den Betrieb werden die folgenden Software-Komponenten benötigt:
+Fuer den Betrieb werden die folgenden Software-Komponenten benoetigt:
 
 * Docker ab Version 20.x.
 * Docker Compose ab Version 2.x.
-* PlatformIO CLI, installiert über `pip install platformio`.
+* PlatformIO CLI, installiert ueber `pip install platformio`.
 * Zwei Firmware-Verzeichnisse unter `mcu_firmware/drive_node/` und `mcu_firmware/sensor_node/`.
-* Ein gültiger Gemini-API-Schlüssel als Umgebungsvariable `GEMINI_API_KEY`.
+* Ein gueltiger Gemini-API-Schluessel als Umgebungsvariable `GEMINI_API_KEY`.
 
 Das Benutzerkonto muss Mitglied der Gruppen `docker`, `dialout`, `video` und `audio` sein.
 
-Gruppenzugehörigkeit prüfen:
+Gruppenzugehoerigkeit pruefen:
 
 ```bash
 id -nG
@@ -42,11 +42,11 @@ Die Ausgabe muss `docker`, `dialout`, `video` und `audio` enthalten.
 
 ## 2. Ersteinrichtung
 
-Die Ersteinrichtung ist nur einmal erforderlich. Danach genügt der Schnellstart aus Abschnitt 3.
+Die Ersteinrichtung ist nur einmal erforderlich. Danach genuegt der Schnellstart aus Abschnitt 3.
 
-### 2.1 Host-Setup ausführen
+### 2.1 Host-Setup ausfuehren
 
-Das Host-Setup richtet udev-Regeln, Gruppenzugehörigkeiten, X11-Zugriff und die Kamera-Bridge ein.
+Das Host-Setup richtet udev-Regeln, Gruppenzugehoerigkeiten, X11-Zugriff und die Kamera-Bridge ein.
 
 ```bash
 cd amr/docker/
@@ -54,7 +54,7 @@ sudo bash host_setup.sh
 
 ```
 
-Nach Abschluss müssen Benutzerkonto und Sitzung neu angemeldet werden, damit Gruppenänderungen wirksam werden.
+Nach Abschluss muessen Benutzerkonto und Sitzung neu angemeldet werden, damit Gruppenaenderungen wirksam werden.
 
 ### 2.2 Docker-Image bauen
 
@@ -64,7 +64,7 @@ docker compose build
 
 ```
 
-Der erste Build benötigt deutlich mehr Zeit als spätere, gecachte Builds.
+Der erste Build benoetigt deutlich mehr Zeit als spaetere, gecachte Builds.
 
 ### 2.3 Setup verifizieren
 
@@ -74,17 +74,17 @@ cd amr/docker/
 
 ```
 
-Die Ausgabe `Verifikation BESTANDEN` mit `0 FAIL` bestätigt ein vollständiges Setup.
+Die Ausgabe `Verifikation BESTANDEN` mit `0 FAIL` bestaetigt ein vollstaendiges Setup.
 
 ### 2.4 Firmware der ESP32-S3 flashen
 
-Die Firmware muss auf beiden Knoten vorhanden sein. Updates werden getrennt für Drive-Knoten und Sensor-Knoten eingespielt.
+Die Firmware muss auf beiden Knoten vorhanden sein. Updates werden getrennt fuer Drive-Knoten und Sensor-Knoten eingespielt.
 
 Drive-Knoten flashen:
 
 ```bash
 cd amr/mcu_firmware/drive_node/
-pio run -t upload
+pio run -e drive_node -t upload
 
 ```
 
@@ -92,16 +92,16 @@ Sensor-Knoten flashen:
 
 ```bash
 cd amr/mcu_firmware/sensor_node/
-pio run -t upload
+pio run -e sensor_node -t upload
 
 ```
 
-Die Upload-Geschwindigkeit beträgt 921600 Baud.
+Die Upload-Geschwindigkeit betraegt 921600 Baud.
 
 Die Status-LED an D10 des Drive-Knotens signalisiert den Betriebszustand:
 
 * langsames Blinken: Suche nach dem micro-ROS-Agenten, normal vor dem Container-Start.
-* schnelles Blinken: Initialisierungsfehler, Agent-Konfiguration prüfen.
+* schnelles Blinken: Initialisierungsfehler, Agent-Konfiguration pruefen.
 * gedimmtes Heartbeat-Muster: Betriebsbereitschaft.
 
 ### 2.5 ROS-2-Workspace bauen
@@ -118,7 +118,7 @@ cd amr/docker/
 
 ### 3.1 Serielle Schnittstellen freigeben
 
-Vor dem Start müssen die seriellen Schnittstellen frei sein. Andere Dienste dürfen die Geräte `/dev/amr_drive` und `/dev/amr_sensor` nicht belegen.
+Vor dem Start muessen die seriellen Schnittstellen frei sein. Andere Dienste duerfen die Geraete `/dev/amr_drive` und `/dev/amr_sensor` nicht belegen.
 
 ```bash
 sudo systemctl stop embedded-bridge.service
@@ -126,20 +126,20 @@ sudo fuser -v /dev/amr_drive /dev/amr_sensor
 
 ```
 
-Die Ausgabe von `fuser` darf keine aktiven Prozesse für beide Geräte zeigen.
+Die Ausgabe von `fuser` darf keine aktiven Prozesse fuer beide Geraete zeigen.
 
 ### 3.2 Roboter einschalten
 
 Die Inbetriebnahme erfolgt in vier Schritten:
 
-1. Akkupack anschließen und Hauptsicherung prüfen.
-2. USB-C-Verbindungen zwischen beiden ESP32-S3-Knoten und dem Raspberry Pi prüfen.
-3. RPLIDAR A1 per USB anschließen.
+1. Akkupack anschliessen und Hauptsicherung pruefen.
+2. USB-C-Verbindungen zwischen beiden ESP32-S3-Knoten und dem Raspberry Pi pruefen.
+3. RPLIDAR A1 per USB anschliessen.
 4. Warten, bis die Status-LED des Drive-Knotens langsam blinkt.
 
 ### 3.3 ROS-2-Stack starten
 
-Vollständigen Stack mit Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio starten:
+Vollstaendigen Stack mit Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio starten:
 
 ```bash
 cd amr/docker/
@@ -155,11 +155,11 @@ cd amr/docker/
 
 ```
 
-Der Host-Prozess `host_hailo_runner` muss separat auf dem Host-System laufen, damit die hardwarebeschleunigte Bildverarbeitung verfügbar ist.
+Der Host-Prozess `host_hailo_runner` muss separat auf dem Host-System laufen, damit die hardwarebeschleunigte Bildverarbeitung verfuegbar ist.
 
-### 3.4 Verbindung prüfen
+### 3.4 Verbindung pruefen
 
-In einem zweiten Terminal die verfügbaren Topics und Frequenzen prüfen:
+In einem zweiten Terminal die verfuegbaren Topics und Frequenzen pruefen:
 
 ```bash
 cd amr/docker/
@@ -178,7 +178,7 @@ Erwartete Werte:
 
 ## 4. Betriebsmodi
 
-### 4.1 Modus für Lokalisierung und Kartierung
+### 4.1 Modus fuer Lokalisierung und Kartierung
 
 Dieser Modus erzeugt eine zweidimensionale Karte der Umgebung mit `slam_toolbox`.
 
@@ -187,7 +187,7 @@ Dieser Modus erzeugt eine zweidimensionale Karte der Umgebung mit `slam_toolbox`
 
 ```
 
-Für den Kartenaufbau den Roboter langsam manuell durch die Umgebung bewegen, zum Beispiel per Teleoperation oder Fernsteuerung.
+Fuer den Kartenaufbau den Roboter langsam manuell durch die Umgebung bewegen, zum Beispiel per Teleoperation oder Fernsteuerung.
 
 Karte speichern:
 
@@ -198,14 +198,14 @@ Karte speichern:
 
 ### 4.2 Navigationsmodus
 
-Dieser Modus nutzt eine vorhandene Karte für autonome Zielanfahrt.
+Dieser Modus nutzt eine vorhandene Karte fuer autonome Zielanfahrt.
 
 ```bash
 ./run.sh ros2 launch my_bot full_stack.launch.py use_slam:=False
 
 ```
 
-Zielpunkte können über RViz2 mit `2D Nav Goal` oder programmatisch gesetzt werden. Der Regulated-Pure-Pursuit-Controller begrenzt die Fahrgeschwindigkeit auf maximal 0,4 m/s.
+Zielpunkte koennen ueber RViz2 mit `2D Nav Goal` oder programmatisch gesetzt werden. Der Regulated-Pure-Pursuit-Controller begrenzt die Fahrgeschwindigkeit auf maximal 0,15 m/s.
 
 ### 4.3 Bedien- und Leitstandsebene mit Vision
 
@@ -218,9 +218,9 @@ Dieser Modus stellt Dashboard, Kamerabild und Vision-Pipeline bereit.
 
 Ablauf:
 
-1. Benutzeroberfläche im Browser unter `http://<IP-des-Raspberry-Pi>:5173` öffnen.
-2. Live-Bild über den MJPEG-Stream an Port 8082 prüfen.
-3. Lokale Objekterkennung über Hailo-8L und semantische Auswertung über externes Sprachmodell als Overlay über WebSocket an Port 9090 prüfen.
+1. Benutzeroberflaeche im Browser unter `https://<IP-des-Raspberry-Pi>:5173` oeffnen.
+2. Live-Bild ueber den MJPEG-Stream an Port 8082 pruefen.
+3. Lokale Objekterkennung ueber Hailo-8L und semantische Auswertung ueber externes Sprachmodell als Overlay ueber WebSocket an Port 9090 pruefen.
 
 ### 4.4 Manuelles Fahren
 
@@ -232,7 +232,7 @@ Geschwindigkeitskommando direkt an den Fahrkern senden:
 
 ```
 
-Das Beenden mit `Ctrl+C` stoppt die Kommandoübertragung. Zusätzlich stoppt der Failsafe die Motoren automatisch nach 500 ms ohne neue Geschwindigkeitskommandos.
+Das Beenden mit `Ctrl+C` stoppt die Kommandouebertragung. Zusaetzlich stoppt der Failsafe die Motoren automatisch nach 500 ms ohne neue Geschwindigkeitskommandos.
 
 ---
 
@@ -240,19 +240,19 @@ Das Beenden mit `Ctrl+C` stoppt die Kommandoübertragung. Zusätzlich stoppt der
 
 ### 5.1 Pre-Flight-Checkliste
 
-Die Pre-Flight-Prüfung arbeitet ohne laufenden ROS-2-Stack.
+Die Pre-Flight-Pruefung arbeitet ohne laufenden ROS-2-Stack.
 
 ```bash
 python3 amr/scripts/pre_flight_check.py
 
 ```
 
-Das Skript prüft USB-Enumeration, Spannungsversorgung, Pin-Belegung, Firmware-Status und Sensorik.
+Das Skript prueft USB-Enumeration, Spannungsversorgung, Pin-Belegung, Firmware-Status und Sensorik.
 
 ### 5.2 Hardware-Report
 
 ```bash
-python3 amr/scripts/hardware_info.py
+./run.sh ros2 run my_bot hardware_info
 
 ```
 
@@ -260,28 +260,28 @@ Das Skript erzeugt einen zeitgestempelten Markdown-Report mit System- und Hardwa
 
 ### 5.3 Validierungsskripte im ROS-2-Betrieb
 
-Für alle Befehle in diesem Abschnitt müssen die micro-ROS-Agenten laufen.
+Fuer alle Befehle in diesem Abschnitt muessen die micro-ROS-Agenten laufen.
 
 * `./run.sh exec ros2 run my_bot encoder_test`: Encoder-Kalibrierung mit 10-Umdrehungen-Test.
-* `./run.sh exec ros2 run my_bot motor_test`: Prüfung von Motor-Deadzone, Drehrichtung und Failsafe.
+* `./run.sh exec ros2 run my_bot motor_test`: Pruefung von Motor-Deadzone, Drehrichtung und Failsafe.
 * `./run.sh exec ros2 run my_bot pid_tuning`: Analyse der PID-Sprungantwort.
-* `./run.sh exec ros2 run my_bot kinematic_test`: Prüfung von Geradeausfahrt, Drehfahrt und Kreisfahrt.
-* `./run.sh exec ros2 run my_bot imu_test`: Prüfung von Gyro-Drift und Beschleunigungs-Bias bei 60 s Stillstand.
-* `./run.sh exec ros2 run my_bot slam_validation`: Berechnung des Absolute Trajectory Error und Prüfung der TF-Kette.
+* `./run.sh exec ros2 run my_bot kinematic_test`: Pruefung von Geradeausfahrt, Drehfahrt und Kreisfahrt.
+* `./run.sh exec ros2 run my_bot imu_test`: Pruefung von Gyro-Drift und Beschleunigungs-Bias bei 60 s Stillstand.
+* `./run.sh exec ros2 run my_bot slam_validation`: Berechnung des Absolute Trajectory Error und Pruefung der TF-Kette.
 * `./run.sh exec ros2 run my_bot nav_test`: Navigationstest mit vier Wegpunkten und Fehlermessung.
 * `./run.sh exec ros2 run my_bot docking_test`: ArUco-Docking-Test mit 10 Versuchen.
-* `./run.sh exec ros2 run my_bot cliff_latency_test`: Prüfung des Kanten-Notstopps über die Sicherheitslogik.
+* `./run.sh exec ros2 run my_bot cliff_latency_test`: Pruefung des Kanten-Notstopps ueber die Sicherheitslogik.
 
 Gesamt-Report aus allen JSON-Ergebnissen erzeugen:
 
 ```bash
-python3 amr/scripts/validation_report.py
+./run.sh ros2 run my_bot validation_report
 
 ```
 
 ### 5.4 Diagnosebefehle
 
-Topics und Frequenzen prüfen:
+Topics und Frequenzen pruefen:
 
 ```bash
 ./run.sh exec ros2 topic list
@@ -291,7 +291,7 @@ Topics und Frequenzen prüfen:
 
 ```
 
-TF-Kette prüfen:
+TF-Kette pruefen:
 
 ```bash
 ./run.sh exec ros2 run tf2_ros tf2_echo odom base_link
@@ -307,31 +307,31 @@ TF-Kette prüfen:
 
 Der Drive-Knoten bildet den Fahrkern. Der Knoten verarbeitet Geschwindigkeitskommandos, regelt die Motoren und publiziert Odometrie.
 
-Der Sensor-Knoten bildet die Sensor- und Sicherheitsbasis. Der Knoten verarbeitet IMU, Batterieüberwachung, Kanten-Sensor und weitere hardwarenahe Signale.
+Der Sensor-Knoten bildet die Sensor- und Sicherheitsbasis. Der Knoten verarbeitet IMU, Batterieueberwachung, Kanten-Sensor und weitere hardwarenahe Signale.
 
-Der Raspberry Pi 5 übernimmt Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio.
+Der Raspberry Pi 5 uebernimmt Lokalisierung und Kartierung, Navigation, Bedien- und Leitstandsebene, Vision und Audio.
 
-### 6.2 Priorität der Sicherheitslogik
+### 6.2 Prioritaet der Sicherheitslogik
 
 Die Sicherheitslogik hat stets Vorrang vor Navigation und manueller Bedienung. Meldet der Kanten-Sensor eine kritische Situation, blockiert die Sicherheitslogik eingehende Bewegungsbefehle und erzeugt ein Stop-Kommando mit Nullgeschwindigkeit.
 
-### 6.3 Freigabelogik für spätere Sprachschnittstelle
+### 6.3 Freigabelogik fuer spaetere Sprachschnittstelle
 
-Eine spätere Sprachschnittstelle darf keine direkte Motoransteuerung auslösen. Zulässig ist nur die Kette aus Sprachbefehl, Intent, Freigabelogik und freigegebenem Missionskommando.
+Eine spaetere Sprachschnittstelle darf keine direkte Motoransteuerung ausloesen. Zulaessig ist nur die Kette aus Sprachbefehl, Intent, Freigabelogik und freigegebenem Missionskommando.
 
 ---
 
-## 7. Häufige Fehlerbilder
+## 7. Haeufige Fehlerbilder
 
 ### 7.1 `/odom` erscheint nicht
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* micro-ROS-Agent läuft nicht.
+* micro-ROS-Agent laeuft nicht.
 * serielle Schnittstelle ist belegt.
 * Drive-Knoten wurde nicht korrekt geflasht.
 
-Prüfschritte:
+Pruefschritte:
 
 ```bash
 sudo fuser -v /dev/amr_drive
@@ -341,13 +341,13 @@ sudo fuser -v /dev/amr_drive
 
 ### 7.2 Kanten-Sensor stoppt nicht
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* Sensor-Knoten läuft nicht.
+* Sensor-Knoten laeuft nicht.
 * Topic `/cliff` publiziert nicht.
 * Sicherheitslogik ist nicht gestartet.
 
-Prüfschritte:
+Pruefschritte:
 
 ```bash
 ./run.sh exec ros2 topic echo /cliff
@@ -357,29 +357,29 @@ Prüfschritte:
 
 ### 7.3 Dashboard zeigt kein Kamerabild
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* Kamera-Bridge läuft nicht.
+* Kamera-Bridge laeuft nicht.
 * MJPEG-Stream an Port 8082 ist nicht erreichbar.
 * `host_hailo_runner` oder Kamerazugriff auf dem Host fehlen.
 
-Prüfschritte:
+Pruefschritte:
 
 ```bash
 ./run.sh exec ros2 topic list
-curl http://127.0.0.1:8082
+curl https://127.0.0.1:8082
 
 ```
 
 ### 7.4 Navigation startet nicht
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* keine gültige Karte vorhanden.
-* TF-Kette ist unvollständig.
+* keine gueltige Karte vorhanden.
+* TF-Kette ist unvollstaendig.
 * Laserscan oder Odometrie fehlen.
 
-Prüfschritte:
+Pruefschritte:
 
 ```bash
 ./run.sh exec ros2 topic hz /scan
@@ -390,36 +390,36 @@ Prüfschritte:
 
 ### 7.5 Odometrie publiziert nicht / micro-ROS bricht ab
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* Die serialisierte Odometrie-Nachricht (`nav_msgs/Odometry`) überschreitet die Maximum Transmission Unit (MTU) von 512 Bytes.
-* Der Transport ist auf "Best-Effort" statt "Reliable" konfiguriert, wodurch Pakete über 512 Bytes kommentarlos verworfen werden.
+* Die serialisierte Odometrie-Nachricht (`nav_msgs/Odometry`) ueberschreitet die Maximum Transmission Unit (MTU) von 512 Bytes.
+* Der Transport ist auf "Best-Effort" statt "Reliable" konfiguriert, wodurch Pakete ueber 512 Bytes kommentarlos verworfen werden.
 
-Prüfschritte:
+Pruefschritte:
 
-* QoS-Profil (Quality of Service) im Subscriber auf dem Host prüfen.
+* QoS-Profil (Quality of Service) im Subscriber auf dem Host pruefen.
 * Sicherstellen, dass die micro-ROS-Initialisierung `rclc_publisher_init_default()` (Reliable) verwendet.
 
-### 7.6 IMU-Rate fällt deutlich unter 50 Hz
+### 7.6 IMU-Rate faellt deutlich unter 50 Hz
 
-Mögliche Ursachen:
+Moegliche Ursachen:
 
-* I2C-Bus-Contention auf dem Sensor-Knoten. Blockierende Lesezugriffe anderer Peripheriebausteine stören das Timing der MPU6050-IMU, was zu einem messbaren Abfall der Publikationsrate auf 30 bis 35 Hz führt.
+* I2C-Bus-Contention auf dem Sensor-Knoten. Blockierende Lesezugriffe anderer Peripheriebausteine stoeren das Timing der MPU6050-IMU, was zu einem messbaren Abfall der Publikationsrate auf 30 bis 35 Hz fuehrt.
 
-Prüfschritte:
+Pruefschritte:
 
 ```bash
 ./run.sh exec ros2 topic hz /imu
 
 ```
 
-* Fällt die Rate dauerhaft unter 25 Hz, müssen die Publikationsraten der anderen I2C-Teilnehmer in `config_sensors.h` reduziert oder die I2C-Taktung (400 kHz) hardwareseitig überprüft werden.
+* Faellt die Rate dauerhaft unter 25 Hz, muessen die Publikationsraten der anderen I2C-Teilnehmer in `config_sensors.h` reduziert oder die I2C-Taktung (400 kHz) hardwareseitig ueberprueft werden.
 
 ---
 
 ## 8. Kurzreferenz
 
-### 8.1 Vollständigen Stack starten
+### 8.1 Vollstaendigen Stack starten
 
 ```bash
 cd amr/docker/
@@ -442,7 +442,7 @@ cd amr/docker/
 
 ```
 
-### 8.4 Frequenzen prüfen
+### 8.4 Frequenzen pruefen
 
 ```bash
 ./run.sh exec ros2 topic hz /odom
@@ -455,14 +455,14 @@ cd amr/docker/
 
 ## 9. Batteriemanagement und Stromversorgung
 
-Wie wird das System vor einer schädlichen Tiefenentladung geschützt? Die Stromversorgung basiert auf einem 3S1P-Li-Ion-Akkupack. Der Sensor-Knoten überwacht die Zellspannung kontinuierlich über den INA260-Sensor.
+Wie wird das System vor einer schaedlichen Tiefenentladung geschuetzt? Die Stromversorgung basiert auf einem 3S1P-Li-Ion-Akkupack. Der Sensor-Knoten ueberwacht die Zellspannung kontinuierlich ueber den INA260-Sensor.
 
-* **Betriebsgrenzen:** Die maximale Ladespannung beträgt 12,60 V.
-* **Sicherheitsabschaltung (Motor-Shutdown):** Fällt die Spannung unter den Schwellenwert von 9,5 V, stoppt der Drive-Knoten die Motorversorgung automatisch, um unkontrolliertes Fahrverhalten zu verhindern.
+* **Betriebsgrenzen:** Die maximale Ladespannung betraegt 12,60 V.
+* **Sicherheitsabschaltung (Motor-Shutdown):** Faellt die Spannung unter den Schwellenwert von 9,5 V, stoppt der Drive-Knoten die Motorversorgung automatisch, um unkontrolliertes Fahrverhalten zu verhindern.
 * **System-Cutoff:** Ein System-Shutdown erfolgt bei 9,0 V. Das BMS trennt den Akku bei 7,5 V (BMS-Disconnect). Das System muss vor Erreichen dieser Schwellen manuell heruntergefahren und der Akku geladen werden.
-* **Überwachung:** Die aktuelle Akkuspannung wird mit 2 Hz auf dem Topic `/battery` publiziert.
+* **Ueberwachung:** Die aktuelle Akkuspannung wird mit 2 Hz auf dem Topic `/battery` publiziert.
 
-Zur manuellen Abfrage der Batteriespannung während des Betriebs:
+Zur manuellen Abfrage der Batteriespannung waehrend des Betriebs:
 
 ```bash
 ./run.sh exec ros2 topic echo /battery
@@ -473,26 +473,26 @@ Zur manuellen Abfrage der Batteriespannung während des Betriebs:
 
 ## 10. Sprachschnittstelle (ReSpeaker Mic Array)
 
-Das System verfügt über eine Sprachschnittstelle für die freihändige Bedienung der Leitstandsebene, ohne dabei die primäre Navigations- oder Sicherheitslogik auszuhebeln.
+Das System verfuegt ueber eine Sprachschnittstelle fuer die freihaendige Bedienung der Leitstandsebene, ohne dabei die primaere Navigations- oder Sicherheitslogik auszuhebeln.
 
-Die Aktivierung erfolgt über ein dediziertes Launch-Argument:
+Die Aktivierung erfolgt ueber ein dediziertes Launch-Argument:
 
 ```bash
 cd amr/docker/
-./run.sh ros2 launch my_bot full_stack.launch.py use_respeaker:=True
+./run.sh ros2 launch my_bot full_stack.launch.py use_voice:=True
 
 ```
 
-Das ReSpeaker Mic Array v2.0 erfasst die Audiobefehle. Die Sprachverarbeitung arbeitet intent-basiert: Sprachbefehle werden nicht direkt in Motorbewegungen umgesetzt, sondern durch einen Multiplexer (`voice_command_mux`) in definierte Missionskommandos übersetzt.
+Das ReSpeaker Mic Array v2.0 erfasst die Audiobefehle. Die Sprachverarbeitung arbeitet intent-basiert: Sprachbefehle werden nicht direkt in Motorbewegungen umgesetzt, sondern durch einen Multiplexer (`voice_command_mux`) in definierte Missionskommandos uebersetzt.
 
 * Ein Befehl wie "Notstopp" erzwingt einen sofortigen Halt.
-* Ein Befehl wie "Fahre zur Ladestation" triggert eine ROS-2-Aktion für den Nav2-Stack, ohne direkte PWM-Werte zu senden.
+* Ein Befehl wie "Fahre zur Ladestation" triggert eine ROS-2-Aktion fuer den Nav2-Stack, ohne direkte PWM-Werte zu senden.
 
 ---
 
 ## 11. CAN-Bus-Redundanz aktivieren
 
-Der reguläre Datenfluss zwischen Sensorik und dem Host-Rechner erfolgt über micro-ROS via UART. Zur Entlastung der seriellen Verbindung und für eine hardwarenahe Signalführung lässt sich die CAN-to-ROS2-Bridge aktivieren.
+Der regulaere Datenfluss zwischen Sensorik und dem Host-Rechner erfolgt ueber micro-ROS via UART. Zur Entlastung der seriellen Verbindung und fuer eine hardwarenahe Signalfuehrung laesst sich die CAN-to-ROS2-Bridge aktivieren.
 
 ```bash
 cd amr/docker/
@@ -500,4 +500,4 @@ cd amr/docker/
 
 ```
 
-Bei aktiviertem Launch-Argument `use_can` publiziert der Sensor-Knoten die Topics `/imu`, `/cliff`, `/range/front` und `/battery` direkt über den CAN-Bus. Der Host-Knoten `can_bridge_node` empfängt diese via SocketCAN und speist sie in den ROS-2-Graphen ein, wodurch der Overhead des eXtremely Resource Constrained Environments - Data Distribution Service (XRCE-DDS) umgangen wird.
+Bei aktiviertem Launch-Argument `use_can` publiziert der Sensor-Knoten die Topics `/imu`, `/cliff`, `/range/front` und `/battery` direkt ueber den CAN-Bus. Der Host-Knoten `can_bridge_node` empfaengt diese via SocketCAN und speist sie in den ROS-2-Graphen ein, wodurch der Overhead des eXtremely Resource Constrained Environments - Data Distribution Service (XRCE-DDS) umgangen wird.

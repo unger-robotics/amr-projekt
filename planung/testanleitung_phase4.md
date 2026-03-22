@@ -66,7 +66,7 @@ Das Dashboard-Frontend laeuft ausserhalb des Docker-Containers:
 ```bash
 cd dashboard/
 npm run dev -- --host 0.0.0.0
-# Erreichbar unter http://<Pi-IP>:5173/
+# Erreichbar unter https://<Pi-IP>:5173/
 ```
 
 **Hinweis:** Der ROS2-Node `dashboard_bridge` wird automatisch durch
@@ -267,5 +267,5 @@ cd amr/docker/
 
 ```bash
 cd amr/docker/
-./run.sh python3 /amr_scripts/validation_report.py
+./run.sh ros2 run my_bot validation_report
 ```

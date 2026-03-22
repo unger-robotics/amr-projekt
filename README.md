@@ -80,13 +80,13 @@ Drive-Knoten (ECM)                    Sensor-Knoten (ESC)
 Core 0 — Kommunikation               Core 0 — Kommunikation
   micro-ROS spin_some (~500 Hz)         micro-ROS spin_some (~500 Hz)
   Sub: /cmd_vel, /hardware_cmd          Sub: /servo_cmd, /hardware_cmd
-  Pub: /odom (18,3 Hz)                  Pub: /cliff /range /imu /battery (82 Msg/s)
+  Pub: /odom (20 Hz Soll, ~18,3 Hz gemessen)                  Pub: /cliff /range /imu /battery (82 Msg/s)
   LED State Machine                     PCA9685 I2C Write (Deferred Pattern)
 
 Core 1 — Echtzeit                     Core 1 — Echtzeit
   PID-Regelung 50 Hz (20 ms)           MPU6050 I2C Read (50 Hz)
   Encoder-Quadratur (ISR)              Cliff GPIO-Poll (20 Hz)
-  CAN RX: 0x100, 0x120, 0x141          HC-SR04 Trigger/Read (10 Hz)
+  CAN RX: 0x120, 0x141          HC-SR04 Trigger/Read (10 Hz)
   Failsafe + Watchdog                   INA260 I2C Read (2 Hz)
                                         CAN TX: 0x110–0x1F0
 
