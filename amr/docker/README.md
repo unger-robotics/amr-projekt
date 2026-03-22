@@ -69,7 +69,14 @@ docker compose build
 
 ## Hilfs-Skripte
 
-**run.sh** -- Convenience-Wrapper fuer `docker compose run/exec`. Beliebige Befehle via `./run.sh <befehl>` ausfuehrbar (z.B. `./run.sh ros2 topic list`). Setzt automatisch X11-Zugriff (`xhost +local:docker`), prueft bei `use_camera:=True` ob die Kamera-Bridge aktiv ist, und bietet mit `./run.sh exec bash` Zugang zu einem bereits laufenden Container.
+**run.sh** -- Convenience-Wrapper fuer `docker compose run/exec`. Beliebige Befehle via `./run.sh <befehl>` ausfuehrbar (z.B. `./run.sh ros2 topic list`). Bei jedem Aufruf:
+- Startet Container via `docker compose up -d` falls nicht laufend
+- Gibt Ports 5173, 5174, 8082, 9090 frei falls belegt (via `fuser -k`)
+- Aktualisiert serielle Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) im Container
+- Synchronisiert `/dev/snd/*`-Geraete in den Container (USB-Audio/ReSpeaker kann nach Container-Start enumeriert werden)
+- Setzt X11-Zugriff (`xhost +local:docker`)
+- Prueft bei `use_camera:=True` ob `camera-v4l2-bridge.service` aktiv ist und `/dev/video10` existiert
+- `./run.sh exec bash` oeffnet ein zweites Terminal in einem bereits laufenden Container
 
 **verify.sh** -- Automatischer Verifikationstest: Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
 

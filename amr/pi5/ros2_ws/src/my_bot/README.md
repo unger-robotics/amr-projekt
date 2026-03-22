@@ -41,7 +41,7 @@ ros2 launch my_bot full_stack.launch.py
 |---|---|---|
 | `use_slam` | `True` | SLAM Toolbox (async Modus) starten |
 | `use_nav` | `True` | Nav2 Navigation Stack starten |
-| `use_rviz` | `True` | RViz2 Visualisierung starten |
+| `use_rviz` | `False` | RViz2 Visualisierung starten (erfordert X11-Display) |
 | `use_camera` | `False` | Kamera-Knoten und camera_link TF starten (ArUco-Docking) |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port fuer Drive-Node (micro-ROS Agent) |
 | `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port fuer Sensor-Node (micro-ROS Agent) |
@@ -53,6 +53,7 @@ ros2 launch my_bot full_stack.launch.py
 | `use_can` | `False` | CAN-Bus Bridge (Dual-Path) starten |
 | `use_tts` | `False` | TTS-Sprachausgabe (gTTS, Deutsch) starten |
 | `use_respeaker` | `False` | ReSpeaker DoA-Mikrofon starten |
+| `use_voice` | `False` | Sprachsteuerung (ReSpeaker VAD + Gemini Flash STT) |
 | `params_file` | `config/nav2_params.yaml` | Nav2-Parameterdatei |
 | `slam_params_file` | `config/mapper_params_online_async.yaml` | SLAM-Toolbox-Parameterdatei |
 | `camera_device` | `/dev/video10` | Video-Device (v4l2loopback-Bridge) |
@@ -117,6 +118,7 @@ my_bot/
     slam_validation.py                 # ATE und TF-Ketten-Check (*)
     straight_drive_test.py             # Geradeausfahrt-Test (*)
     tts_speak_node.py                  # TTS-Sprachausgabe via gTTS (*)
+    voice_command_node.py              # Sprachsteuerung ReSpeaker + Gemini STT (*)
   sounds/
     alert.wav                          # Cliff-Alarm-Ton (880 Hz, 0.5s)
     nav_reached.wav                    # Navigationsziel-erreicht-Ton
@@ -147,6 +149,7 @@ my_bot/
 | `gemini_semantic_node` | Semantische Bildanalyse via Google Gemini API (Cloud-Stufe) |
 | `respeaker_doa_node` | ReSpeaker Mic Array v2.0: Direction-of-Arrival und VAD via USB |
 | `tts_speak_node` | Text-to-Speech Sprachausgabe fuer Gemini-Semantik (gTTS, Deutsch, Rate-Limiting 10 s) |
+| `voice_command_node` | Sprachsteuerung: ReSpeaker VAD → Gemini Flash STT → Intent → `/voice/command` + `/voice/text` |
 | **Validierungs-Knoten** | |
 | `encoder_test` | Encoder-Kalibrierung: 10-Umdrehungen-Test |
 | `motor_test` | Motor-Deadzone und Richtungstest |
