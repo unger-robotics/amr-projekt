@@ -51,8 +51,20 @@ slam_validation_plot.png
 *.HEIC
 *.heic
 
-# Grosse Datasheets (lokal behalten, nicht in Git)
-hardware/datasheet/Raspi 5 Pinout.pdf
+# Grosse Binaerdateien (rsync statt Git, nach filter-repo bereinigt)
+sources/*.pdf
+hardware/schaltplan/*.pdf
+hardware/schaltplan/*.png
+hardware/schaltplan.pdf
+hardware/datasheet/*.pdf
+hardware/datasheet/*.png
+hardware/datasheet/images/
+hardware/can-bus/*.pdf
+hardware/can-bus/*.png
+hardware/docs/*.pdf
+hardware/akku/*.HEIC
+hardware/akku/akku_nicht_verwendet/*.png
+hardware/media/schaltplan.pdf
 
 # Hailo HEF-Modelle (Binaer, ~25-50 MB)
 *.hef
@@ -84,3 +96,6 @@ planung/vortrag/*.pdf
 # Linting-Caches
 .ruff_cache/
 .mypy_cache/
+
+# Statische Bibliotheken (praeventiv)
+*.a
