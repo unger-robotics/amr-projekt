@@ -79,15 +79,15 @@ graph TB
 graph LR
   subgraph CONTAINER["Docker-Container (arm64)"]
     direction TB
-    NODES["ROS2 Nodes:<br/>micro-ROS Agents, SLAM, Nav2,<br/>cliff_safety, dashboard_bridge,<br/>audio, can_bridge, vision, TTS"]
-    DEV["Devices:<br/>/dev/amr_drive, /dev/amr_sensor,<br/>/dev/ttyUSB0, /dev/snd"]
-    VOL["Volumes:<br/>my_bot (rw), scripts (ro),<br/>dashboard (ro), Named Volumes"]
+    NODES["ROS2 Nodes:<br>micro-ROS Agents, SLAM, Nav2,<br>cliff_safety, dashboard_bridge,<br>audio, can_bridge, vision, TTS"]
+    DEV["Devices:<br>/dev/amr_drive, /dev/amr_sensor,<br>/dev/ttyUSB0, /dev/snd"]
+    VOL["Volumes:<br>my_bot (rw), scripts (ro),<br>dashboard (ro), Named Volumes"]
     NET["Network: host, Privileged: true"]
   end
 
   subgraph HOST["Host (Pi 5, Debian Trixie)"]
-    HAILO_H["host_hailo_runner.py<br/>Python 3.13, Hailo-8L"]
-    VITE["Dashboard Dev-Server<br/>npm run dev :5173"]
+    HAILO_H["host_hailo_runner.py<br>Python 3.13, Hailo-8L"]
+    VITE["Dashboard Dev-Server<br>npm run dev :5173"]
     CERT["mkcert-Zertifikate"]
   end
 
@@ -102,10 +102,10 @@ graph LR
 
 ``` mermaid
 graph LR
-  ODOM["odom"] -->|"dynamisch, 20 Hz<br/>odom_to_tf"| BASE["base_link"]
-  BASE -->|"statisch<br/>x=0.10, z=0.235, yaw=pi"| LASER["laser"]
-  BASE -->|"statisch<br/>x=0.10, z=0.08"| CAM["camera_link"]
-  BASE -->|"statisch<br/>x=0.15, z=0.05"| US["ultrasonic_link"]
+  ODOM["odom"] -->|"dynamisch, 20 Hz<br>odom_to_tf"| BASE["base_link"]
+  BASE -->|"statisch<br>x=0.10, z=0.235, yaw=pi"| LASER["laser"]
+  BASE -->|"statisch<br>x=0.10, z=0.08"| CAM["camera_link"]
+  BASE -->|"statisch<br>x=0.15, z=0.05"| US["ultrasonic_link"]
 
   style ODOM fill:#111D2B,stroke:#00E5FF,color:#00E5FF
   style BASE fill:#111D2B,stroke:#00E5FF,color:#00E5FF

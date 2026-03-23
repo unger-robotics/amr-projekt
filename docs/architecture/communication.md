@@ -20,9 +20,9 @@ Der Drive-Knoten empfaengt Cliff- (0x120) und Battery-Shutdown-Signale (0x141) v
 
 ``` mermaid
 graph TD
-  SENSOR["Sensor-Knoten<br/>Core 1, sensorTask"] -->|"CAN 0x120<br/>Cliff, 20 Hz"| DRIVE["Drive-Knoten<br/>Core 1, controlTask"]
-  SENSOR -->|"CAN 0x141<br/>Battery Shutdown"| DRIVE
-  DRIVE --> STOP["tv=0, tw=0<br/>Motoren stoppen"]
+  SENSOR["Sensor-Knoten<br>Core 1, sensorTask"] -->|"CAN 0x120<br>Cliff, 20 Hz"| DRIVE["Drive-Knoten<br>Core 1, controlTask"]
+  SENSOR -->|"CAN 0x141<br>Battery Shutdown"| DRIVE
+  DRIVE --> STOP["tv=0, tw=0<br>Motoren stoppen"]
 
   style SENSOR fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
   style DRIVE fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
@@ -40,14 +40,14 @@ graph TD
 ``` mermaid
 graph LR
   subgraph S2C ["Server to Client"]
-    TOPICS["ROS2 Topics"] --> BRIDGE["dashboard_bridge<br/>WSS:9090"]
+    TOPICS["ROS2 Topics"] --> BRIDGE["dashboard_bridge<br>WSS:9090"]
     BRIDGE --> WS["useWebSocket"]
     WS --> STORE["Zustand Store"]
     STORE --> REACT["React UI"]
   end
 
   subgraph C2S ["Client to Server"]
-    JOY["Joystick"] --> RATE["Rate-Limiting<br/>10 Hz"]
+    JOY["Joystick"] --> RATE["Rate-Limiting<br>10 Hz"]
     RATE --> BRIDGE2["dashboard_bridge"]
     BRIDGE2 --> ROS["ROS2 Publish"]
   end
@@ -82,20 +82,20 @@ graph LR
 
 ``` mermaid
 graph TD
-  IR["IR-Sensor<br/>cliff_detected = true"] --> SHARED["SharedData<br/>Mutex"]
+  IR["IR-Sensor<br>cliff_detected = true"] --> SHARED["SharedData<br>Mutex"]
   IR --> CAN["CAN 0x120"]
 
   subgraph ROS2_Pfad ["ROS2-Pfad (~50 ms)"]
-    SHARED --> CORE0["Core 0<br/>micro-ROS /cliff"]
-    CORE0 --> AGENT["micro-ROS Agent<br/>UART 921600"]
+    SHARED --> CORE0["Core 0<br>micro-ROS /cliff"]
+    CORE0 --> AGENT["micro-ROS Agent<br>UART 921600"]
     AGENT --> SAFETY["cliff_safety_node"]
     SAFETY --> CMDVEL["/cmd_vel = Zero-Twist"]
     SAFETY --> ALARM["/audio/play = cliff_alarm"]
-    SAFETY --> DASH["dashboard_bridge<br/>→ WSS → Browser"]
+    SAFETY --> DASH["dashboard_bridge<br>→ WSS → Browser"]
   end
 
   subgraph CAN_Pfad ["CAN-Pfad (< 20 ms)"]
-    CAN --> DRIVE_CAN["Drive-Knoten<br/>can_cliff_stop = true"]
+    CAN --> DRIVE_CAN["Drive-Knoten<br>can_cliff_stop = true"]
     DRIVE_CAN --> MOTOR_STOP["tv=0, tw=0"]
   end
 

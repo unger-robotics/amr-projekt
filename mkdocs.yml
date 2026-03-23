@@ -40,6 +40,8 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
+  logo: assets/amr_hud_icon.svg
+  favicon: assets/amr_hud_icon.svg
   icon:
     repo: fontawesome/brands/github
   features:
