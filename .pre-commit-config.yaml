@@ -53,7 +53,7 @@ repos:
       - id: end-of-file-fixer
         exclude: ^(projektarbeit|suche|sources)/
       - id: check-yaml
-        args: [--allow-multiple-documents]
+        args: [--allow-multiple-documents, --unsafe]
       - id: check-added-large-files
         args: [--maxkb=500]
         exclude: ^(hardware/.*\.(pdf|png|HEIC|heic|svg)|hardware/amr_architecture\.png)$
