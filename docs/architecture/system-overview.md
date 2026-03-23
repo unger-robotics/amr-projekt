@@ -29,46 +29,43 @@ Ebene A arbeitet autonom — der CAN-Notstopp funktioniert ohne Pi 5. Ebene B se
 ``` mermaid
 graph TB
   subgraph C["Ebene C — Intelligente Interaktion (optional)"]
-    HAILO["Host: Hailo-8L Runner<br/>YOLOv8 @ 5 Hz"]
+    HAILO["Host: Hailo-8L Runner<br>YOLOv8 @ 5 Hz"]
     UDP["hailo_udp_receiver"]
-    GEMINI["gemini_semantic_node<br/>Gemini 3.1 flash-lite"]
-    TTS["tts_speak_node<br/>gTTS → MAX98357A"]
+    GEMINI["gemini_semantic_node<br>Gemini 3.1 flash-lite"]
+    TTS["tts_speak_node<br>gTTS → MAX98357A"]
     RESPEAKER["ReSpeaker DoA"]
     HAILO -->|UDP:5005| UDP
     UDP -->|"/vision/detections"| GEMINI
     GEMINI -->|"/vision/semantics"| TTS
-    RESPEAKER -->|"/sound_direction"| TTS
   end
 
   subgraph B["Ebene B — Bedien- und Leitstandsebene"]
     subgraph DOCKER["Docker-Container (ros:humble)"]
-      AGENT_D["micro-ROS Agent<br/>/dev/amr_drive"]
-      AGENT_S["micro-ROS Agent<br/>/dev/amr_sensor"]
+      AGENT_D["micro-ROS Agent<br>/dev/amr_drive"]
+      AGENT_S["micro-ROS Agent<br>/dev/amr_sensor"]
       SLAM["SLAM Toolbox"]
       NAV["Nav2"]
       ODOM_TF["odom_to_tf"]
       CLIFF["cliff_safety_node"]
       AUDIO["audio_feedback_node"]
       CAN_BR["can_bridge_node"]
-      DASH_BR["dashboard_bridge<br/>WSS:9090 / MJPEG:8082"]
+      DASH_BR["dashboard_bridge<br>WSS:9090 / MJPEG:8082"]
     end
-    BROWSER["Benutzeroberflaeche<br/>React/Vite HTTPS:5173"]
-    BROWSER -->|WSS:9090| DASH_BR
-    DASH_BR -->|WSS:9090| BROWSER
+    BROWSER["Benutzeroberflaeche<br>React/Vite HTTPS:5173"]
+    BROWSER <-->|WSS:9090| DASH_BR
   end
 
   subgraph A["Ebene A — Fahrkern"]
-    DRIVE["Drive-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: PID 50 Hz"]
-    SENSOR["Sensor-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: Sensorerfassung"]
-    CAN_BUS["CAN-Bus 1 Mbit/s<br/>Cliff 0x120 / Battery 0x141"]
-    DRIVE --- CAN_BUS
-    SENSOR --- CAN_BUS
+    DRIVE["Drive-Knoten ESP32-S3<br>Core 0: micro-ROS<br>Core 1: PID 50 Hz"]
+    SENSOR["Sensor-Knoten ESP32-S3<br>Core 0: micro-ROS<br>Core 1: Sensorerfassung"]
+    CAN_BUS["CAN-Bus 1 Mbit/s<br>Cliff 0x120 / Battery 0x141"]
+    DRIVE <--> CAN_BUS
+    SENSOR <--> CAN_BUS
   end
 
-  DRIVE -->|"UART 921600"| AGENT_D
-  AGENT_D -->|"UART 921600"| DRIVE
-  SENSOR -->|"UART 921600"| AGENT_S
-  AGENT_S -->|"UART 921600"| SENSOR
+  RESPEAKER -->|"/sound_direction"| AUDIO
+  DRIVE <-->|"UART 921600"| AGENT_D
+  SENSOR <-->|"UART 921600"| AGENT_S
 
   style C fill:#1a0a2e,stroke:#00E5FF,color:#cdd9e5
   style B fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
