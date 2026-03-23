@@ -147,9 +147,9 @@ Der MDD3A gibt die Eingangs-PWM-Frequenz unverändert an den Motorausgang weiter
 | Betriebszustand | V_in | I_Motor (pro Kanal) | P_Motor (gesamt) | Bemerkung |
 |---|---|---|---|---|
 | Leerlauf (beide Motoren) | 12,0 V | ~0,15 A | ~3,6 W | JGA25-370 Leerlaufstrom |
-| Normalfahrt (ebene Fläche) | 11,1 V | ~0,5 … 1,0 A | ~11 … 22 W | Abhängig von Last und Geschwindigkeit |
-| Volllast / Steigung | 11,1 V | ~1,5 … 2,0 A | ~33 … 44 W | Getriebe-Stallstrom beachten |
-| Blockiert (Stall) | 11,1 V | ~2,5 … 3,0 A | ~55 … 67 W | **Dauer < 5 s**, Thermoschutz des MDD3A |
+| Normalfahrt (ebene Fläche) | 10,8 V | ~0,5 … 1,0 A | ~11 … 22 W | Abhängig von Last und Geschwindigkeit |
+| Volllast / Steigung | 10,8 V | ~1,5 … 2,0 A | ~33 … 44 W | Getriebe-Stallstrom beachten |
+| Blockiert (Stall) | 10,8 V | ~2,5 … 3,0 A | ~55 … 67 W | **Dauer < 5 s**, Thermoschutz des MDD3A |
 
 > **Sicherheitshinweis:** Im Blockierzustand können die JGA25-370-Motoren bis zu ~3 A ziehen, was dem MDD3A-Dauerlimit entspricht. Ein softwareseitiger Strombegrenzungs-Timer (z. B. 2 s Stall-Erkennung → Motor aus) schützt Treiber und Motor vor thermischer Überlastung.
 

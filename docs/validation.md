@@ -148,6 +148,7 @@ Testanleitung: `planung/testanleitung_phase4.md`, Messprotokoll: `planung/messpr
 | 1+2 | Fahrkern + Sensor- und Sicherheitsbasis | `planung/testanleitung_phase1_phase2.md` | `planung/messprotokoll_phase1_phase2.md` |
 | 3 | Lokalisierung und Kartierung | `planung/testanleitung_phase3.md` | `planung/messprotokoll_phase3.md` |
 | 4 | Navigation | `planung/testanleitung_phase4.md` | `planung/messprotokoll_phase4.md` |
+| 5 | Bedien- und Leitstandsebene | `planung/testanleitung_phase5.md` | `planung/messprotokoll_phase5.md` |
 
 ## Regel
 

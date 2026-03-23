@@ -1003,7 +1003,7 @@ sudo systemctl status microros-agent
 │   micro-ROS Distro           │ Humble                                   │
 │   ESP-IDF (Basis)            │ v5.x (via PlatformIO espressif32)       │
 │   ROS-2-Build                │ colcon (im Docker-Container)            │
-│   Versionskontrolle          │ Git (ju1-eu/amr-platform)               │
+│   Versionskontrolle          │ Git (unger-robotics/amr-projekt)        │
 └──────────────────────────────┴───────────────────────────────────────────┘
 ```
 

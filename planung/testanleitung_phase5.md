@@ -53,7 +53,7 @@ for port in ['/dev/amr_drive', '/dev/amr_sensor']:
 Falls `/odom` oder `/scan` nicht erscheinen: Reset-Taster auf den
 XIAO ESP32-S3 Boards druecken und Launch neu starten.
 
-## Dashboard-Frontend starten (separates Terminal)
+## Dashboard-Benutzeroberflaeche starten (separates Terminal)
 
 ```bash
 cd dashboard/
@@ -61,8 +61,8 @@ npm run dev -- --host 0.0.0.0
 # Erreichbar unter https://<Pi-IP>:5173/
 ```
 
-**Hinweis:** Der ROS2-Node `dashboard_bridge` wird automatisch durch
-`use_dashboard:=True` im Stack gestartet. Das Frontend muss separat
+**Hinweis:** Der ROS2-Knoten `dashboard_bridge` wird automatisch durch
+`use_dashboard:=True` im Stack gestartet. Die Benutzeroberflaeche muss separat
 gestartet werden.
 
 ---
@@ -143,7 +143,7 @@ Die Sounds werden mit 2,5 s Abstand abgespielt.
 ### Testfall 5.5: Notaus (automatisiert)
 
 **Messprinzip:** WebSocket-Client sendet cmd_vel(0.05, 0) fuer 2 Sekunden,
-dann 5x cmd_vel(0, 0) (EmergencyStop-Pattern aus dem Dashboard-Frontend).
+dann 5x cmd_vel(0, 0) (EmergencyStop-Pattern aus der Dashboard-Benutzeroberflaeche).
 Subscriber prueft die Zeit bis zum Null-Twist auf `/cmd_vel`.
 
 **Akzeptanzkriterium:** Stopp innerhalb 100 ms.
@@ -152,7 +152,7 @@ Subscriber prueft die Zeit bis zum Null-Twist auf `/cmd_vel`.
 
 ## Reihenfolge (empfohlen)
 
-1. Dashboard-Frontend starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
+1. Dashboard-Benutzeroberflaeche starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
 2. Stack starten mit `use_dashboard:=True use_cliff_safety:=True use_audio:=True` (ESP32-Reset)
 3. Warten (15-20 s), Topic-Raten pruefen
 4. `dashboard_latency_test.py` ausfuehren (alle 5 Tests automatisch)

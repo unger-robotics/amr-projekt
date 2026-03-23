@@ -1,5 +1,7 @@
 # Benutzerhandbuch: Autonomer mobiler Roboter (AMR)
 
+> **Hinweis:** Die aktuelle Version dieses Dokuments befindet sich in [docs/benutzerhandbuch.md](../docs/benutzerhandbuch.md). Diese Datei dient als Archiv der urspruenglichen Planungsversion.
+
 ## 1. Voraussetzungen
 
 ### 1.1 Hardware
@@ -24,7 +26,7 @@ Fuer den Betrieb werden die folgenden Software-Komponenten benoetigt:
 * Docker ab Version 20.x.
 * Docker Compose ab Version 2.x.
 * PlatformIO CLI, installiert ueber `pip install platformio`.
-* Zwei Firmware-Verzeichnisse unter `mcu_firmware/drive_node/` und `mcu_firmware/sensor_node/`.
+* Zwei Firmware-Verzeichnisse unter `amr/mcu_firmware/drive_node/` und `amr/mcu_firmware/sensor_node/`.
 * Ein gueltiger Gemini-API-Schluessel als Umgebungsvariable `GEMINI_API_KEY`.
 
 Das Benutzerkonto muss Mitglied der Gruppen `docker`, `dialout`, `video` und `audio` sein.

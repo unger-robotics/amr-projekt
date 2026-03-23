@@ -12,7 +12,7 @@
 
 Der F23J5V5A1S-C ist ein vergossener (Silikon-versiegelter) DC/DC-Abwärtswandler (Buck Converter), der Eingangsspannungen von 8 … 32 V DC auf stabile 5 V DC bei maximal 5 A (25 W) konvertiert. Der Ausgang erfolgt über einen USB-Type-C-Stecker mit festem Kabel. Die Vergussmasse gewährleistet Schutzart IP68 (staub- und wasserdicht, dauerhaftes Untertauchen). Der Wandler eignet sich damit für den Einsatz auf mobilen Plattformen, in Fahrzeugen und in Außenanwendungen.
 
-**Primärer Einsatzzweck im AMR-Kontext:** Versorgung des Raspberry Pi 5 über USB-C aus dem 3S-Lithium-Ionen-Akkupack (nominell 11,1 V, Bereich 9,0 … 12,6 V). Zusätzlich können weitere 5-V-Verbraucher (Kamera, Sensoren) über den Raspberry Pi versorgt werden, sofern die Gesamtstromentnahme 5 A nicht übersteigt.
+**Primärer Einsatzzweck im AMR-Kontext:** Versorgung des Raspberry Pi 5 über USB-C aus dem 3S-Lithium-Ionen-Akkupack (nominell 10,8 V, Bereich 9,0 … 12,6 V). Zusätzlich können weitere 5-V-Verbraucher (Kamera, Sensoren) über den Raspberry Pi versorgt werden, sofern die Gesamtstromentnahme 5 A nicht übersteigt.
 
 ---
 
@@ -315,10 +315,10 @@ $$
 
 | Szenario                         | V~in~  | I~out~ | P~out~ | η (geschätzt) | P~Verlust~ |
 |----------------------------------|--------|--------|--------|---------------|------------|
-| Idle (Pi 5 Leerlauf)             | 11,1 V | 1,0 A  | 5 W    | 92 %          | 0,43 W     |
-| Typischer AMR-Betrieb            | 11,1 V | 2,5 A  | 12,5 W | 94 %          | 0,80 W     |
-| Hohe Last (Pi 5 + NVMe + Kamera) | 11,1 V | 3,8 A  | 19 W   | 93 %          | 1,43 W     |
-| Maximallast                      | 11,1 V | 5,0 A  | 25 W   | 92 %          | 2,17 W     |
+| Idle (Pi 5 Leerlauf)             | 10,8 V | 1,0 A  | 5 W    | 92 %          | 0,43 W     |
+| Typischer AMR-Betrieb            | 10,8 V | 2,5 A  | 12,5 W | 94 %          | 0,80 W     |
+| Hohe Last (Pi 5 + NVMe + Kamera) | 10,8 V | 3,8 A  | 19 W   | 93 %          | 1,43 W     |
+| Maximallast                      | 10,8 V | 5,0 A  | 25 W   | 92 %          | 2,17 W     |
 | Maximallast bei 24 V             | 24 V   | 5,0 A  | 25 W   | 96 %          | 1,04 W     |
 
 ### 7.2 Thermische Grenzen

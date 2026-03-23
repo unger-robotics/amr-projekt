@@ -89,7 +89,7 @@ Der AMR operiert in einer strukturierten Indoor-Umgebung (Buero, Labor, Lager) a
 | NFA-08 | ueberg. | SOLL | Betriebsdauer unter Last genuegt fuer Validierungszyklus | Laufzeit | >= 30 min unter Last | Reichweite WLTP | Berechnung (Samsung INR18650-35E, 3,35 Ah, 3S1P) | — | Offen |
 | NFA-09 | PF1 | SOLL | CPU-Last des Pi 5 laesst Headroom fuer Erweiterungen | CPU-Auslastung | < 80 % (Ist: < 80 %) | Rechenlast ADAS-ECU | Messung Kap. 6 (kein eigenes Protokoll) | SV-03 | Teilweise erfuellt |
 | NFA-10 | PF1 | MUSS | Datenverlust auf micro-ROS-Strecke vernachlaessigbar | Paketverlustrate | < 0,1 % (Ist: < 0,1 %) | CAN-Frameverlust | Messprotokoll P1/P2 | T-08 (serial_latency_logger) | Erfuellt |
-| NFA-11 | PF2 | MUSS | Absolute Trajectory Error (ATE) bei Pfadverfolgung | Mittlerer Positionsfehler | < 0,20 m (Ist: 0,16 m mittlerer Fehler, 0,03 m RMSE zweite Fahrt) | Pfadfolgefehler | Messprotokoll P3 (Achtung A-F04: ATE ≠ RMSE) | IT-04 (slam_validation) | Erfuellt |
+| NFA-11 | PF2 | MUSS | Absolute Trajectory Error (ATE) bei Pfadverfolgung | Mittlerer Positionsfehler | < 0,20 m (Ist: MAE 0,161 m / RMSE 0,190 m (T3.1), RMSE 0,030 m (T3.2)) | Pfadfolgefehler | Messprotokoll P3 (Achtung A-F04: ATE ≠ RMSE) | IT-04 (slam_validation) | Erfuellt |
 | NFA-12 | PF1 | SOLL | RPP-Controller-Rate bietet genuegend Headroom | Controller-Ausfuehrungsrate | > 1000 Hz (Ist: > 2000 Hz) | Regler-Headroom | Messung Kap. 6 (kein eigenes Protokoll) | IT-05 (nav_test) | Teilweise erfuellt |
 
 ---

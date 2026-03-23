@@ -56,7 +56,7 @@ XIAO ESP32-S3 Boards druecken und Launch neu starten.
 ## Dashboard starten (separates Terminal)
 
 Die manuelle Steuerung des Roboters erfolgt ueber das Dashboard.
-Das Dashboard-Frontend laeuft ausserhalb des Docker-Containers:
+Die Dashboard-Benutzeroberflaeche laeuft ausserhalb des Docker-Containers:
 
 ```bash
 cd dashboard/
@@ -64,8 +64,8 @@ npm run dev -- --host 0.0.0.0
 # Erreichbar unter https://<Pi-IP>:5173/
 ```
 
-**Hinweis:** Der ROS2-Node `dashboard_bridge` wird automatisch durch
-`use_dashboard:=True` im Stack gestartet. Das Frontend muss separat
+**Hinweis:** Der ROS2-Knoten `dashboard_bridge` wird automatisch durch
+`use_dashboard:=True` im Stack gestartet. Die Benutzeroberflaeche muss separat
 gestartet werden.
 
 ---
@@ -149,7 +149,7 @@ docker compose down
 
 Fuer saubere Ergebnisse:
 
-1. Dashboard-Frontend starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
+1. Dashboard-Benutzeroberflaeche starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
 2. Stack starten mit SLAM + Dashboard (ESP32-Reset)
 3. Test 3.1: Manuelle Rundfahrt mit Loop Closure (180 s)
 4. Stack stoppen, ESP32-Reset
