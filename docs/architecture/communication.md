@@ -39,14 +39,14 @@ graph TD
 
 ``` mermaid
 graph LR
-  subgraph Server-to-Client
+  subgraph S2C ["Server to Client"]
     TOPICS["ROS2 Topics"] --> BRIDGE["dashboard_bridge<br/>WSS:9090"]
     BRIDGE --> WS["useWebSocket"]
     WS --> STORE["Zustand Store"]
     STORE --> REACT["React UI"]
   end
 
-  subgraph Client-to-Server
+  subgraph C2S ["Client to Server"]
     JOY["Joystick"] --> RATE["Rate-Limiting<br/>10 Hz"]
     RATE --> BRIDGE2["dashboard_bridge"]
     BRIDGE2 --> ROS["ROS2 Publish"]
@@ -85,7 +85,7 @@ graph TD
   IR["IR-Sensor<br/>cliff_detected = true"] --> SHARED["SharedData<br/>Mutex"]
   IR --> CAN["CAN 0x120"]
 
-  subgraph ROS2-Pfad ["ROS2-Pfad (~50 ms)"]
+  subgraph ROS2_Pfad ["ROS2-Pfad (~50 ms)"]
     SHARED --> CORE0["Core 0<br/>micro-ROS /cliff"]
     CORE0 --> AGENT["micro-ROS Agent<br/>UART 921600"]
     AGENT --> SAFETY["cliff_safety_node"]
@@ -94,7 +94,7 @@ graph TD
     SAFETY --> DASH["dashboard_bridge<br/>→ WSS → Browser"]
   end
 
-  subgraph CAN-Pfad ["CAN-Pfad (< 20 ms)"]
+  subgraph CAN_Pfad ["CAN-Pfad (< 20 ms)"]
     CAN --> DRIVE_CAN["Drive-Knoten<br/>can_cliff_stop = true"]
     DRIVE_CAN --> MOTOR_STOP["tv=0, tw=0"]
   end
@@ -102,8 +102,8 @@ graph TD
   style IR fill:#111D2B,stroke:#FF2A40,color:#FF2A40
   style MOTOR_STOP fill:#111D2B,stroke:#FF2A40,color:#FF2A40
   style CMDVEL fill:#111D2B,stroke:#FF2A40,color:#FF2A40
-  style ROS2-Pfad fill:#0B131E,stroke:#517C96,color:#cdd9e5
-  style CAN-Pfad fill:#0B131E,stroke:#00FF66,color:#cdd9e5
+  style ROS2_Pfad fill:#0B131E,stroke:#517C96,color:#cdd9e5
+  style CAN_Pfad fill:#0B131E,stroke:#00FF66,color:#cdd9e5
 ```
 
 Zwei parallele Pfade: ROS2 (ueber Pi 5, ~50 ms) und CAN (direkt MCU-zu-MCU, < 20 ms).
