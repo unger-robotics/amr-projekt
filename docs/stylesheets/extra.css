@@ -30,6 +30,51 @@
 [data-md-color-scheme="slate"] .md-header,
 [data-md-color-scheme="slate"] .md-tabs {
   background-color: #111D2B;
+  color: #cdd9e5;
+}
+
+/* Header-Icons: Suche, Palette-Toggle, Repo-Link */
+[data-md-color-scheme="slate"] .md-header .md-icon,
+[data-md-color-scheme="slate"] .md-header .md-header__button {
+  color: #cdd9e5;
+}
+[data-md-color-scheme="slate"] .md-header .md-icon:hover,
+[data-md-color-scheme="slate"] .md-header .md-header__button:hover {
+  color: #00E5FF;
+}
+
+/* Header-Titel */
+[data-md-color-scheme="slate"] .md-header__topic {
+  color: #cdd9e5;
+}
+
+/* GitHub Source-Widget (Stars/Forks) */
+[data-md-color-scheme="slate"] .md-source {
+  color: #cdd9e5;
+}
+[data-md-color-scheme="slate"] .md-source:hover {
+  color: #00E5FF;
+}
+[data-md-color-scheme="slate"] .md-source__icon svg {
+  fill: #cdd9e5;
+}
+[data-md-color-scheme="slate"] .md-source:hover .md-source__icon svg {
+  fill: #00E5FF;
+}
+[data-md-color-scheme="slate"] .md-source__repository {
+  color: #cdd9e5;
+}
+[data-md-color-scheme="slate"] .md-source__facts {
+  color: #517C96;
+}
+
+/* Tab-Navigation */
+[data-md-color-scheme="slate"] .md-tabs__link {
+  color: #517C96;
+}
+[data-md-color-scheme="slate"] .md-tabs__link--active,
+[data-md-color-scheme="slate"] .md-tabs__link:hover {
+  color: #00E5FF;
 }
 
 /* Sidebar / Navigation */
