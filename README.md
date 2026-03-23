@@ -1,6 +1,6 @@
 # AMR — Autonomes Fahrzeug im Kleinformat
 
-Projektarbeit nach VDI 2206: Autonomer Mobiler Roboter mit Differentialantrieb als skaliertes Modell eines selbstfahrenden Fahrzeugs. Die Architektur bildet die Subsysteme eines modernen Kfz nach — vom Motorsteuergeraet ueber Sensorfusion bis zur ADAS-Objekterkennung.
+Projektarbeit nach VDI 2206: Ein Autonomer Mobiler Roboter (AMR / Autonomous Mobile Robot) mit Differentialantrieb als skaliertes Modell eines autonomen Fahrzeugs (Kfz). Zwei ESP32-S3 Mikrocontroller steuern unter FreeRTOS die Echtzeit-Regelung und kommunizieren via micro-ROS mit einem Raspberry Pi 5, der ROS 2 Humble fuer Navigation, SLAM und Sensorfusion ausfuehrt. Die Dreischicht-Architektur bildet die Subsysteme eines modernen Kfz nach — vom Motorsteuergeraet ueber Sensorfusion bis zur ADAS-Objekterkennung.
 
 ![AMR Draufsicht](hardware/media/amr-draufsicht_web.png)
 
@@ -295,6 +295,12 @@ sync_to_mac.sh all ────────────────────�
 ./scripts/sync/sync_to_mac.sh all                        # Medien → Mac(s)
 ./scripts/sync/sync_from_mac.sh mac                      # Medien ← Mac
 ```
+
+## Online-Dokumentation
+
+Die vollstaendige Projektdokumentation ist unter
+**[unger-robotics.github.io/amr-projekt](https://unger-robotics.github.io/amr-projekt/)**
+verfuegbar.
 
 ## Lizenz
 
