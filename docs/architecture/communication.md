@@ -18,15 +18,15 @@ CAN-Sends laufen in den Core-1-Tasks (`controlTask`/`sensorTask`), damit sie una
 
 Der Drive-Knoten empfaengt Cliff- (0x120) und Battery-Shutdown-Signale (0x141) vom Sensor-Knoten ueber CAN-Bus und stoppt die Motoren direkt — unabhaengig von Pi 5 und micro-ROS.
 
-```
-Sensor-Knoten (Core 1, sensorTask)
-  ├── CAN 0x120 (Cliff, 20 Hz, 1 Byte: 0x00=OK, 0x01=Cliff)
-  └── CAN 0x141 (Battery Shutdown, Event, 1 Byte: 0x00=OK, 0x01=Shutdown)
-        │
-        ▼
-Drive-Knoten (Core 1, controlTask, non-blocking receive)
-  → can_cliff_stop / can_battery_stop Flags
-  → tv=0, tw=0 (Motoren stoppen)
+``` mermaid
+graph TD
+  SENSOR["Sensor-Knoten<br/>Core 1, sensorTask"] -->|"CAN 0x120<br/>Cliff, 20 Hz"| DRIVE["Drive-Knoten<br/>Core 1, controlTask"]
+  SENSOR -->|"CAN 0x141<br/>Battery Shutdown"| DRIVE
+  DRIVE --> STOP["tv=0, tw=0<br/>Motoren stoppen"]
+
+  style SENSOR fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
+  style DRIVE fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
+  style STOP fill:#111D2B,stroke:#FF2A40,color:#FF2A40
 ```
 
 | Eigenschaft | Wert |
@@ -37,10 +37,26 @@ Drive-Knoten (Core 1, controlTask, non-blocking receive)
 
 ## Dashboard-Anbindung
 
-```
-ROS2 Topics → dashboard_bridge.py → WSS:9090 → useWebSocket → Zustand Store → React
-Browser-Events → useJoystick → Rate-Limiting → WSS:9090 → dashboard_bridge → ROS2
-MJPEG: /image_raw → MJPEG-Server :8082 → <img> Tag
+``` mermaid
+graph LR
+  subgraph Server-to-Client
+    TOPICS["ROS2 Topics"] --> BRIDGE["dashboard_bridge<br/>WSS:9090"]
+    BRIDGE --> WS["useWebSocket"]
+    WS --> STORE["Zustand Store"]
+    STORE --> REACT["React UI"]
+  end
+
+  subgraph Client-to-Server
+    JOY["Joystick"] --> RATE["Rate-Limiting<br/>10 Hz"]
+    RATE --> BRIDGE2["dashboard_bridge"]
+    BRIDGE2 --> ROS["ROS2 Publish"]
+  end
+
+  MJPEG["/image_raw"] --> STREAM["MJPEG :8082"]
+  STREAM --> IMG["Browser img-Tag"]
+
+  style BRIDGE fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
+  style BRIDGE2 fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
 ```
 
 ### Server → Client
@@ -64,18 +80,30 @@ MJPEG: /image_raw → MJPEG-Server :8082 → <img> Tag
 
 ## Datenfluss Ende-zu-Ende (Cliff-Erkennung)
 
-```
-Sensor-Knoten Core 1 (sensorTask, 20 Hz)
-  IR-Sensor → cliff_detected = true
-       │
-       ├──► SharedData (Mutex) → Core 0 → micro-ROS /cliff
-       │                                     │
-       │                               cliff_safety_node
-       │                                 /cmd_vel = Zero-Twist
-       │                                 /audio/play = "cliff_alarm"
-       │                                     └──► dashboard_bridge → WSS → Browser
-       │
-       └──► CAN 0x120 ──► Drive-Knoten → tv=0, tw=0 (< 20 ms)
+``` mermaid
+graph TD
+  IR["IR-Sensor<br/>cliff_detected = true"] --> SHARED["SharedData<br/>Mutex"]
+  IR --> CAN["CAN 0x120"]
+
+  subgraph ROS2-Pfad ["ROS2-Pfad (~50 ms)"]
+    SHARED --> CORE0["Core 0<br/>micro-ROS /cliff"]
+    CORE0 --> AGENT["micro-ROS Agent<br/>UART 921600"]
+    AGENT --> SAFETY["cliff_safety_node"]
+    SAFETY --> CMDVEL["/cmd_vel = Zero-Twist"]
+    SAFETY --> ALARM["/audio/play = cliff_alarm"]
+    SAFETY --> DASH["dashboard_bridge<br/>→ WSS → Browser"]
+  end
+
+  subgraph CAN-Pfad ["CAN-Pfad (< 20 ms)"]
+    CAN --> DRIVE_CAN["Drive-Knoten<br/>can_cliff_stop = true"]
+    DRIVE_CAN --> MOTOR_STOP["tv=0, tw=0"]
+  end
+
+  style IR fill:#111D2B,stroke:#FF2A40,color:#FF2A40
+  style MOTOR_STOP fill:#111D2B,stroke:#FF2A40,color:#FF2A40
+  style CMDVEL fill:#111D2B,stroke:#FF2A40,color:#FF2A40
+  style ROS2-Pfad fill:#0B131E,stroke:#517C96,color:#cdd9e5
+  style CAN-Pfad fill:#0B131E,stroke:#00FF66,color:#cdd9e5
 ```
 
 Zwei parallele Pfade: ROS2 (ueber Pi 5, ~50 ms) und CAN (direkt MCU-zu-MCU, < 20 ms).

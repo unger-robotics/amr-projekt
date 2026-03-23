@@ -24,99 +24,93 @@ Ebene A arbeitet autonom — der CAN-Notstopp funktioniert ohne Pi 5. Ebene B se
 - **Sensor-Knoten:** Ultraschall, Cliff, IMU, Batterie, Servo (PCA9685 PWM)
 - **Peripherie:** LiDAR, Kamera, optionale Hailo-/Gemini-Pipeline
 
-## Vollstaendiges Systemdiagramm
+## Systemdiagramm
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Ebene C — Intelligente Interaktion (optional)                                  │
-│                                                                                 │
-│  [Host: Hailo-8L Runner]──UDP:5005──>[Docker: hailo_udp_receiver]               │
-│       YOLOv8 5 Hz                       │                                       │
-│                                         ▼                                       │
-│                                  /vision/detections                             │
-│                                         │                                       │
-│                                         ▼                                       │
-│                              [gemini_semantic_node]──>/vision/semantics          │
-│                               Gemini 3.1 flash-lite         │                   │
-│                                                             ▼                   │
-│                                                      [tts_speak_node]           │
-│                                                       gTTS → mpg123            │
-│  [ReSpeaker DoA]──>/sound_direction                    → MAX98357A I2S          │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Ebene B — Bedien- und Leitstandsebene                                          │
-│                                                                                 │
-│  ┌── Docker-Container (ros:humble, network_mode:host, privileged) ───────────┐  │
-│  │                                                                           │  │
-│  │  [micro-ROS Agent x2]   [SLAM Toolbox]   [Nav2]   [odom_to_tf]           │  │
-│  │    /dev/amr_drive          /map            /cmd_vel   odom→base_link      │  │
-│  │    /dev/amr_sensor         /scan                                          │  │
-│  │                                                                           │  │
-│  │  [cliff_safety_node]   [audio_feedback_node]   [can_bridge_node]          │  │
-│  │    /nav_cmd_vel →          /audio/play →          SocketCAN →             │  │
-│  │    /cmd_vel                aplay → /dev/snd       Queue 512, 100 Hz       │  │
-│  │                                                                           │  │
-│  │  [dashboard_bridge]                                                       │  │
-│  │    WSS:9090 ◄──► ROS2 Topics                                             │  │
-│  │    MJPEG:8082 ← /image_raw                                               │  │
-│  └───────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                 │
-│  [Browser: Benutzeroberflaeche React/Vite]  HTTPS:5173                          │
-│    Zustand Store ◄──► useWebSocket ◄──WSS:9090──► dashboard_bridge              │
-│    Joystick → cmd_vel 10 Hz, Heartbeat 5 Hz                                    │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Ebene A — Fahrkern                                                             │
-│                                                                                 │
-│  [Drive-Knoten ESP32-S3]              [Sensor-Knoten ESP32-S3]                  │
-│    Core 0: micro-ROS Executor         Core 0: micro-ROS Executor                │
-│      Sub: /cmd_vel, /hardware           Sub: /servo_cmd, /hardware              │
-│      Pub: /odom 20 Hz                   Pub: /range, /cliff, /imu, /battery     │
-│    Core 1: PID 50 Hz, Encoder,        Core 1: Sensorerfassung                   │
-│      CAN TX/RX                          (Cliff 20 Hz, US 10 Hz,                │
-│                                          IMU 50 Hz, Batt 2 Hz), CAN TX         │
-│         │          ▲                       │          ▲                          │
-│         │ UART     │ UART                  │ UART     │ UART                    │
-│         │ 921600   │ 921600                │ 921600   │ 921600                  │
-│         ▼          │                       ▼          │                          │
-│      [Pi 5 /dev/amr_drive]          [Pi 5 /dev/amr_sensor]                      │
-│                                                                                 │
-│  ───── CAN-Bus 1 Mbit/s (MCP2515/TWAI) ─────                                   │
-│    Drive ◄──0x120 Cliff──► Sensor                                               │
-│    Drive ◄──0x141 Battery──► Sensor                                             │
-│    + Diagnostik-Frames (bidirektional)                                          │
-└─────────────────────────────────────────────────────────────────────────────────┘
+``` mermaid
+graph TB
+  subgraph C["Ebene C — Intelligente Interaktion (optional)"]
+    HAILO["Host: Hailo-8L Runner<br/>YOLOv8 @ 5 Hz"]
+    UDP["hailo_udp_receiver"]
+    GEMINI["gemini_semantic_node<br/>Gemini 3.1 flash-lite"]
+    TTS["tts_speak_node<br/>gTTS → MAX98357A"]
+    RESPEAKER["ReSpeaker DoA"]
+    HAILO -->|UDP:5005| UDP
+    UDP -->|"/vision/detections"| GEMINI
+    GEMINI -->|"/vision/semantics"| TTS
+    RESPEAKER -->|"/sound_direction"| C
+  end
+
+  subgraph B["Ebene B — Bedien- und Leitstandsebene"]
+    subgraph DOCKER["Docker-Container (ros:humble)"]
+      AGENT_D["micro-ROS Agent<br/>/dev/amr_drive"]
+      AGENT_S["micro-ROS Agent<br/>/dev/amr_sensor"]
+      SLAM["SLAM Toolbox"]
+      NAV["Nav2"]
+      ODOM_TF["odom_to_tf"]
+      CLIFF["cliff_safety_node"]
+      AUDIO["audio_feedback_node"]
+      CAN_BR["can_bridge_node"]
+      DASH_BR["dashboard_bridge<br/>WSS:9090 / MJPEG:8082"]
+    end
+    BROWSER["Benutzeroberflaeche<br/>React/Vite HTTPS:5173"]
+    BROWSER <-->|WSS:9090| DASH_BR
+  end
+
+  subgraph A["Ebene A — Fahrkern"]
+    DRIVE["Drive-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: PID 50 Hz"]
+    SENSOR["Sensor-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: Sensorerfassung"]
+    CAN_BUS["CAN-Bus 1 Mbit/s<br/>Cliff 0x120 / Battery 0x141"]
+    DRIVE <--> CAN_BUS
+    SENSOR <--> CAN_BUS
+  end
+
+  DRIVE <-->|"UART 921600"| AGENT_D
+  SENSOR <-->|"UART 921600"| AGENT_S
+
+  style C fill:#1a0a2e,stroke:#00E5FF,color:#cdd9e5
+  style B fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
+  style A fill:#0B131E,stroke:#00E5FF,color:#cdd9e5
+  style DOCKER fill:#162435,stroke:#517C96,color:#cdd9e5
 ```
 
 ## Docker-Container-Grenzen
 
-```
-┌── Docker-Container (ros:humble-ros-base, arm64) ─────────────────────┐
-│                                                                       │
-│  ROS2 Nodes: micro-ROS Agents, SLAM, Nav2, cliff_safety,             │
-│              dashboard_bridge, audio_feedback, can_bridge,            │
-│              hailo_udp_receiver, gemini_semantic, tts_speak,          │
-│              odom_to_tf, aruco_docking                                │
-│                                                                       │
-│  Devices:  /dev/amr_drive, /dev/amr_sensor, /dev/ttyUSB0, /dev/snd   │
-│  Volumes:  my_bot (rw), scripts (ro), dashboard (ro, TLS-Certs),     │
-│            hardware (ro), asound.conf, X11, Named (build/install/log) │
-│  Network:  host (kein Bridge-Netzwerk)                                │
-│  Privileged: true                                                     │
-└───────────────────────────────────────────────────────────────────────┘
+``` mermaid
+graph LR
+  subgraph CONTAINER["Docker-Container (arm64)"]
+    direction TB
+    NODES["ROS2 Nodes:<br/>micro-ROS Agents, SLAM, Nav2,<br/>cliff_safety, dashboard_bridge,<br/>audio, can_bridge, vision, TTS"]
+    DEV["Devices:<br/>/dev/amr_drive, /dev/amr_sensor,<br/>/dev/ttyUSB0, /dev/snd"]
+    VOL["Volumes:<br/>my_bot (rw), scripts (ro),<br/>dashboard (ro), Named Volumes"]
+    NET["Network: host, Privileged: true"]
+  end
 
-┌── Host (Raspberry Pi 5, Debian Trixie) ────────────────────────────┐
-│  host_hailo_runner.py (Python 3.13, Hailo-8L SDK)                     │
-│  Dashboard Dev-Server (npm run dev, :5173)                            │
-│  mkcert-Zertifikate                                                   │
-└───────────────────────────────────────────────────────────────────────┘
+  subgraph HOST["Host (Pi 5, Debian Trixie)"]
+    HAILO_H["host_hailo_runner.py<br/>Python 3.13, Hailo-8L"]
+    VITE["Dashboard Dev-Server<br/>npm run dev :5173"]
+    CERT["mkcert-Zertifikate"]
+  end
+
+  HOST <-->|localhost| CONTAINER
+
+  style CONTAINER fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
+  style HOST fill:#0B131E,stroke:#517C96,color:#cdd9e5
 ```
 
 ## TF-Baum
 
-```
-odom → base_link              (dynamisch, odom_to_tf, 20 Hz)
-  ├── laser                   (statisch, x=0.10, z=0.235, yaw=pi)
-  ├── camera_link             (statisch, x=0.10, z=0.08, use_camera)
-  └── ultrasonic_link         (statisch, x=0.15, z=0.05, use_sensors)
+``` mermaid
+graph LR
+  ODOM["odom"] -->|"dynamisch, 20 Hz<br/>odom_to_tf"| BASE["base_link"]
+  BASE -->|"statisch<br/>x=0.10, z=0.235, yaw=pi"| LASER["laser"]
+  BASE -->|"statisch<br/>x=0.10, z=0.08"| CAM["camera_link"]
+  BASE -->|"statisch<br/>x=0.15, z=0.05"| US["ultrasonic_link"]
+
+  style ODOM fill:#111D2B,stroke:#00E5FF,color:#00E5FF
+  style BASE fill:#111D2B,stroke:#00E5FF,color:#00E5FF
+  style LASER fill:#111D2B,stroke:#00FF66,color:#00FF66
+  style CAM fill:#111D2B,stroke:#517C96,color:#517C96
+  style US fill:#111D2B,stroke:#517C96,color:#517C96
 ```
 
 Der LiDAR ist 180 Grad gedreht montiert — die TF-Transformation (`yaw=pi`) kompensiert dies.

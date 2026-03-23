@@ -95,3 +95,55 @@
   --md-accent-fg-color:   #0078a8;
   --md-typeset-a-color:   #0078a8;
 }
+
+/* ==========================================================================
+   Responsive – Multidevice (iPhone, Tablet, Desktop, >27")
+   ========================================================================== */
+
+/* ---------- Grosse Bildschirme (>= 1920px, z.B. 27"+ Monitore) ---------- */
+@media screen and (min-width: 120rem) {
+  .md-grid {
+    max-width: 80rem;
+  }
+}
+
+@media screen and (min-width: 160rem) {
+  .md-grid {
+    max-width: 96rem;
+  }
+}
+
+/* ---------- Tabellen: horizontal scrollbar auf kleinen Geraeten ---------- */
+.md-typeset__scrollwrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.md-typeset table:not([class]) {
+  display: table;
+  min-width: 100%;
+  font-size: 0.8rem;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset table:not([class]) {
+    font-size: 0.72rem;
+  }
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 0.4em 0.5em;
+  }
+}
+
+/* ---------- Code-Bloecke: Schriftgroesse auf Mobile reduzieren ---------- */
+@media screen and (max-width: 44.9375em) {
+  .md-typeset pre > code {
+    font-size: 0.7rem;
+  }
+}
+
+/* ---------- Mermaid-Diagramme: responsive SVG ---------- */
+.md-typeset .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
