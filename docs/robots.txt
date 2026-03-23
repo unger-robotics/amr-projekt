@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://unger-robotics.github.io/amr-projekt/sitemap.xml

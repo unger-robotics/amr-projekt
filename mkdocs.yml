@@ -1,0 +1,147 @@
+# =============================================================================
+# MkDocs-Konfiguration – AMR-Plattform Dokumentation
+# Repo: unger-robotics/amr-projekt
+# Theme: Material for MkDocs (SEO-optimiert, responsive, Dark Mode)
+# =============================================================================
+
+site_name: "AMR-Plattform – Autonomer Mobiler Roboter"
+site_url: "https://unger-robotics.github.io/amr-projekt/"
+site_description: >-
+  Dokumentation der AMR-Plattform (Autonomer Mobiler Roboter) –
+  ESP32-S3 Dual-Core FreeRTOS + micro-ROS, Raspberry Pi 5 mit ROS 2 Humble.
+  Bachelorarbeit nach VDI 2206 an der Wilhelm Büchner Hochschule.
+site_author: "Jan Unger"
+repo_url: "https://github.com/unger-robotics/amr-projekt"
+repo_name: "unger-robotics/amr-projekt"
+copyright: "© 2026 Jan Unger – AMR-Plattform Dokumentation"
+
+# =============================================================================
+# Theme
+# =============================================================================
+theme:
+  name: material
+  language: de
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Dunkelmodus aktivieren
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Hellmodus aktivieren
+  font:
+    text: Roboto
+    code: Roboto Mono
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+
+# =============================================================================
+# Plugins
+# =============================================================================
+plugins:
+  - search:
+      lang: de
+  - minify:
+      minify_html: true
+
+# =============================================================================
+# Markdown-Erweiterungen
+# =============================================================================
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# =============================================================================
+# Extra (SEO, Social, Analytics)
+# =============================================================================
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/unger-robotics/amr-projekt
+      name: AMR-Plattform auf GitHub
+  generator: false   # "Made with MkDocs" Footer ausblenden
+  # Google Analytics einbinden (optional – ID ersetzen):
+  # analytics:
+  #   provider: google
+  #   property: G-XXXXXXXXXX
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+# =============================================================================
+# Navigation
+# =============================================================================
+nav:
+  - Startseite: index.md
+  - Erste Schritte:
+      - Überblick: getting-started/overview.md
+      - Hardware-Stückliste: getting-started/bom.md
+      - Aufbau: getting-started/assembly.md
+  - Architektur:
+      - Systemübersicht: architecture/system-overview.md
+      - Zwei-Ebenen-Architektur: architecture/two-tier.md
+      - Kommunikation: architecture/communication.md
+  - Firmware (ESP32-S3):
+      - FreeRTOS-Architektur: firmware/freertos.md
+      - micro-ROS-Integration: firmware/micro-ros.md
+      - Sensorik & Aktorik: firmware/sensors-actuators.md
+  - ROS 2 (Raspberry Pi 5):
+      - Node-Übersicht: ros2/nodes.md
+      - Navigation (Nav2): ros2/navigation.md
+      - SLAM: ros2/slam.md
+  - Referenz:
+      - Glossar: reference/glossary.md
+      - Quellenverzeichnis: reference/bibliography.md
