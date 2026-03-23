@@ -1,5 +1,7 @@
 # Systemdokumentation: Autonomer mobiler Roboter (AMR)
 
+> **Hinweis:** Die aktuelle Version dieses Dokuments befindet sich in [docs/systemdokumentation.md](../docs/systemdokumentation.md). Diese Datei dient als Archiv der urspruenglichen Planungsversion.
+
 ## 1. Systemuebersicht und Architektur
 
 Wie laesst sich eine deterministische Echtzeitregelung fuer den Antrieb eines autonomen mobilen Roboters (AMR) synchron mit rechenintensiver SLAM-Navigation betreiben?

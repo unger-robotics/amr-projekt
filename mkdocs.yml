@@ -140,14 +140,33 @@ nav:
       - Systemübersicht: architecture/system-overview.md
       - Zwei-Ebenen-Architektur: architecture/two-tier.md
       - Kommunikation: architecture/communication.md
+      - Systemdokumentation: systemdokumentation.md
+      - Komponentenübersicht: architecture.md
   - Firmware (ESP32-S3):
       - FreeRTOS-Architektur: firmware/freertos.md
       - micro-ROS-Integration: firmware/micro-ros.md
       - Sensorik & Aktorik: firmware/sensors-actuators.md
+      - Firmware-Details: firmware.md
+      - Serielle Schnittstellen: serial_port_management.md
   - ROS 2 (Raspberry Pi 5):
-      - Node-Übersicht: ros2/nodes.md
+      - Knotenübersicht: ros2/nodes.md
       - Navigation (Nav2): ros2/navigation.md
       - SLAM: ros2/slam.md
+      - Topics & TF-Baum: ros2_system.md
+  - Benutzeroberfläche:
+      - Dashboard: dashboard.md
+      - Vision-Pipeline: vision_pipeline.md
+  - Betrieb:
+      - Benutzerhandbuch: benutzerhandbuch.md
+      - Build & Deployment: build_and_deploy.md
+      - Roboter-Parameter: robot_parameters.md
+  - Validierung:
+      - Testvalidierung: validation.md
+      - Anforderungsliste: anforderungsliste-L1.md
+      - Qualitätsprüfungen: quality_checks.md
   - Referenz:
       - Glossar: reference/glossary.md
       - Quellenverzeichnis: reference/bibliography.md
+      - Schreibstil: projektarbeit_style.md
+      - Literatur-Workflow: literature_workflow.md
+      - Dokumentations-QA: docs-qa.md

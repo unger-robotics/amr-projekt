@@ -101,7 +101,7 @@ Details zu allen Parametern siehe [robot_parameters.md](robot_parameters.md).
 
 ### 2.2 Sensorik
 
-**LiDAR:** Der RPLIDAR A1 ist rueckwaerts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,0 Hz ueber `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite betraegt 12 m.
+**LiDAR:** Der RPLIDAR A1 ist rueckwaerts auf dem Roboter montiert. Die Montage entspricht einer Yaw-Rotation von 180 Grad relativ zum Basis-Koordinatensystem (`base_link`). Der Scanner liefert Laserdaten mit 7,0 Hz (konfiguriert, gemessen 7,7 Hz) ueber `/dev/ttyUSB0` bei 115200 Baud. Die maximale Reichweite betraegt 12 m.
 
 **IMU:** Eine MPU6050 (Inertial Measurement Unit) misst Beschleunigungen (+/- 2 g) und Drehraten (+/- 250 deg/s) am I2C-Bus (400 kHz, Adresse 0x68). Ein Komplementaerfilter (Alpha = 0,98) fusioniert Gyroskop-Integration (98 %) und Encoder-Heading (2 %). Die Soll-Rate der Publikation auf `/imu` liegt bei 50 Hz.
 

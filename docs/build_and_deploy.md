@@ -6,7 +6,7 @@ Fuer eine schrittweise Inbetriebnahme-Anleitung siehe [benutzerhandbuch.md](benu
 
 Die MCU-Firmware besteht aus zwei getrennten PlatformIO-Projekten mit identischem Dual-Core-Pattern (Core 0: micro-ROS Executor, Core 1: Echtzeit-Datenerfassung + CAN).
 
-### Drive-Node (Antrieb, PID, Odometrie, LED)
+### Drive-Knoten (Antrieb, PID, Odometrie, LED)
 
 ```bash
 cd amr/mcu_firmware/drive_node
@@ -15,7 +15,7 @@ pio run -e drive_node -t upload -t monitor # Upload + Monitor
 pio run -e led_test -t upload -t monitor   # LED/MOSFET-Diagnose (~5s)
 ```
 
-### Sensor-Node (Ultraschall, Cliff, IMU, Batterie, Servo)
+### Sensor-Knoten (Ultraschall, Cliff, IMU, Batterie, Servo)
 
 ```bash
 cd amr/mcu_firmware/sensor_node
@@ -23,9 +23,9 @@ pio run -e sensor_node                      # Kompilieren
 pio run -e sensor_node -t upload -t monitor # Upload + Monitor
 ```
 
-Erster Build pro Node: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
+Erster Build pro Knoten: ~15 Min (micro-ROS aus Source). Folgebuilds gecached.
 
-### Firmware-Pruefung des Drive-Node
+### Firmware-Pruefung des Drive-Knoten
 
 Falls unklar ist, ob die korrekte Firmware laeuft:
 
@@ -98,7 +98,7 @@ cd amr/docker/
 | `use_slam` | `True` | SLAM Toolbox (async Modus) |
 | `use_nav` | `True` | Nav2 Navigation Stack |
 | `use_rviz` | `False` | RViz2 Visualisierung |
-| `use_sensors` | `True` | Sensor-Node ESP32-S3 |
+| `use_sensors` | `True` | Sensor-Knoten ESP32-S3 |
 | `use_dashboard` | `False` | Dashboard-Bridge (WebSocket :9090, MJPEG :8082) |
 | `use_camera` | `False` | Kamera-Knoten (v4l2_camera_node) |
 | `use_vision` | `False` | Vision-Pipeline (Hailo UDP + Gemini) |
@@ -108,8 +108,8 @@ cd amr/docker/
 | `use_tts` | `False` | TTS-Sprachausgabe (Gemini-Semantik via gTTS) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array DoA/VAD |
 | `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
-| `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Node |
-| `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Node |
+| `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Knoten |
+| `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Knoten |
 | `camera_device` | `/dev/video10` | Video-Device (v4l2loopback-Bridge) |
 | `params_file` | `nav2_params.yaml` | Nav2 Parameter-Datei |
 | `slam_params_file` | `mapper_params_online_async.yaml` | SLAM Toolbox Parameter-Datei |
@@ -165,7 +165,7 @@ Dieser Ablauf startet das Gesamtsystem fuer den Live-Betrieb mit SLAM, Kamera, D
 - `GEMINI_API_KEY` ist in `amr/docker/.env` gesetzt.
 - Das Docker-Image ist aktuell (`docker compose build`).
 - Kein anderer Prozess blockiert die seriellen Ports.
-- Auf dem Drive-Node laeuft die korrekte Firmware, nicht `led_test`.
+- Auf dem Drive-Knoten laeuft die korrekte Firmware, nicht `led_test`.
 
 ### Startsequenz
 
@@ -293,10 +293,10 @@ fuser -k 8082/tcp 9090/tcp 5173/tcp
 # CAN-Status pruefen
 ip -details link show can0
 
-# CAN-Bridge Diagnostik-Node (im Docker)
+# CAN-Bridge Diagnostik-Knoten (im Docker)
 ros2 launch my_bot full_stack.launch.py use_can:=True
 
-# ReSpeaker DoA/VAD-Node (im Docker)
+# ReSpeaker DoA/VAD-Knoten (im Docker)
 ros2 launch my_bot full_stack.launch.py use_respeaker:=True
 
 # Standalone CAN-Validierung (ohne Docker)
@@ -332,7 +332,7 @@ sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
 
 Ursachen:
 
-* Falsche Drive-Node-Firmware (`led_test` statt `drive_node`)
+* Falsche Drive-Knoten-Firmware (`led_test` statt `drive_node`)
 * ESP32 nach Neustart nicht resettet
 
 Massnahmen:
@@ -344,7 +344,7 @@ Massnahmen:
 
 Ursache:
 
-* `odom -> base_link` TF fehlt, meist wegen fehlender Verbindung zum Drive-Node
+* `odom -> base_link` TF fehlt, meist wegen fehlender Verbindung zum Drive-Knoten
 
 Massnahme:
 
@@ -352,7 +352,7 @@ Massnahme:
 ros2 topic echo /odom --once --no-daemon
 ```
 
-Falls keine Daten: Drive-Node Reset und micro-ROS-Agent-Verbindung pruefen.
+Falls keine Daten: Drive-Knoten Reset und micro-ROS-Agent-Verbindung pruefen.
 
 ### Hailo meldet `HAILO_OUT_OF_PHYSICAL_DEVICES`
 

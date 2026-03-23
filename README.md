@@ -128,7 +128,7 @@ Raddurchmesser: 65,67 mm · Spurbreite: 178,0 mm · PID: Kp=0,4 Ki=0,1 Kd=0,0
 | Datenverlust micro-ROS  | < 0,1 %                      | CAN-Frameverlust         | PASS   |
 | Hailo-8L Inferenz       | 34 ms                        | ADAS-Latenz              | PASS   |
 | ArUco-Docking           | 100 %, 0,73 cm Versatz       | Einparkquote (APA)       | PASS   |
-| Pfadfolgefehler (ATE)   | 0,16 m                       | Fahrdynamik-Pruefstand   | PASS   |
+| Pfadfolgefehler (ATE)   | MAE 0,16 m / RMSE 0,19 m (T3.1) | Fahrdynamik-Pruefstand   | PASS   |
 
 ## Architekturvergleich AMR vs. Kfz
 

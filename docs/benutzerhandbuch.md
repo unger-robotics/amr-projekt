@@ -200,7 +200,7 @@ cd amr/docker/
 ./run.sh ros2 launch my_bot full_stack.launch.py use_slam:=False
 ```
 
-Zielpunkte koennen ueber RViz2 mit `2D Nav Goal`, per Kartenklick in der Benutzeroberflaeche oder programmatisch gesetzt werden. Der Regulated-Pure-Pursuit-Controller begrenzt die Fahrgeschwindigkeit auf maximal 0,4 m/s.
+Zielpunkte koennen ueber RViz2 mit `2D Nav Goal`, per Kartenklick in der Benutzeroberflaeche oder programmatisch gesetzt werden. Der Regulated-Pure-Pursuit-Controller begrenzt die Fahrgeschwindigkeit auf maximal 0,15 m/s (autonom) bzw. 0,4 m/s (Joystick).
 
 ### 4.3 Bedien- und Leitstandsebene mit Vision
 
