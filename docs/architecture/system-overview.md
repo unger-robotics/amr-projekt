@@ -37,7 +37,7 @@ graph TB
     HAILO -->|UDP:5005| UDP
     UDP -->|"/vision/detections"| GEMINI
     GEMINI -->|"/vision/semantics"| TTS
-    RESPEAKER -->|"/sound_direction"| C
+    RESPEAKER -->|"/sound_direction"| TTS
   end
 
   subgraph B["Ebene B — Bedien- und Leitstandsebene"]
@@ -53,19 +53,22 @@ graph TB
       DASH_BR["dashboard_bridge<br/>WSS:9090 / MJPEG:8082"]
     end
     BROWSER["Benutzeroberflaeche<br/>React/Vite HTTPS:5173"]
-    BROWSER <-->|WSS:9090| DASH_BR
+    BROWSER -->|WSS:9090| DASH_BR
+    DASH_BR -->|WSS:9090| BROWSER
   end
 
   subgraph A["Ebene A — Fahrkern"]
     DRIVE["Drive-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: PID 50 Hz"]
     SENSOR["Sensor-Knoten ESP32-S3<br/>Core 0: micro-ROS<br/>Core 1: Sensorerfassung"]
     CAN_BUS["CAN-Bus 1 Mbit/s<br/>Cliff 0x120 / Battery 0x141"]
-    DRIVE <--> CAN_BUS
-    SENSOR <--> CAN_BUS
+    DRIVE --- CAN_BUS
+    SENSOR --- CAN_BUS
   end
 
-  DRIVE <-->|"UART 921600"| AGENT_D
-  SENSOR <-->|"UART 921600"| AGENT_S
+  DRIVE -->|"UART 921600"| AGENT_D
+  AGENT_D -->|"UART 921600"| DRIVE
+  SENSOR -->|"UART 921600"| AGENT_S
+  AGENT_S -->|"UART 921600"| SENSOR
 
   style C fill:#1a0a2e,stroke:#00E5FF,color:#cdd9e5
   style B fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
@@ -91,7 +94,8 @@ graph LR
     CERT["mkcert-Zertifikate"]
   end
 
-  HOST <-->|localhost| CONTAINER
+  HOST -->|localhost| CONTAINER
+  CONTAINER -->|localhost| HOST
 
   style CONTAINER fill:#111D2B,stroke:#00E5FF,color:#cdd9e5
   style HOST fill:#0B131E,stroke:#517C96,color:#cdd9e5
