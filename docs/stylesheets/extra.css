@@ -65,12 +65,12 @@
   color: #cdd9e5;
 }
 [data-md-color-scheme="slate"] .md-source__facts {
-  color: #517C96;
+  color: #cdd9e5;
 }
 
 /* Tab-Navigation */
 [data-md-color-scheme="slate"] .md-tabs__link {
-  color: #517C96;
+  color: #cdd9e5;
 }
 [data-md-color-scheme="slate"] .md-tabs__link--active,
 [data-md-color-scheme="slate"] .md-tabs__link:hover {
