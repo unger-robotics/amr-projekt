@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektziel
 
-Projektarbeit: Autonomer Mobiler Roboter (AMR) fuer Intralogistik mit KLT-Transport.
+Projektarbeit nach VDI 2206: Autonomer Mobiler Roboter (AMR / Autonomous Mobile Robot) als skaliertes Modell eines autonomen Fahrzeugs (Kfz). Lernplattform fuer autonomes Fahren.
 
 Kurzarchitektur:
 - Raspberry Pi 5 als ROS2-, SLAM-, Navigation- und Integrationsrechner
@@ -265,7 +265,7 @@ sudo ./scripts/rover_wartung.sh --check    # Nur Diagnose, keine Aenderungen
 - `amr/docker/` — Dockerfile, docker-compose.yml, run.sh, verify.sh
 - `amr/scripts/` — Validierungsskripte, ROS2-Runtime-Knoten, Host-Only-Tools
 - `scripts/` — Wartungsskripte (update_dependencies.sh, rover_wartung.sh)
-- `docs/` — Architektur-, Build-, System- und Validierungsdokumentation
+- `docs/` — MkDocs-Quelldateien (Online-Doku) + Architektur-, Build-, System- und Validierungsdokumentation
 - `dashboard/` — React/Vite Benutzeroberflaeche
 - `projektarbeit/` — Projektarbeit (Markdown-Kapitel + LaTeX)
 - `planung/vortrag/` — Beamer-Praesentationen
@@ -326,6 +326,26 @@ Technische Referenzen in `docs/`:
 Schreibstil und Literatur: `docs/projektarbeit_style.md`, `docs/literature_workflow.md`
 
 Planung und Betrieb: `planung/` enthaelt Testanleitungen, Messprotokolle, Systemdokumentation, Benutzerhandbuch und Netzwerkkonfiguration
+
+## Online-Dokumentation (MkDocs Material + GitHub Pages)
+
+- Live-Site: `https://unger-robotics.github.io/amr-projekt/`
+- Konfiguration: `mkdocs.yml` (Material-Theme, deutsche Sprache, Mermaid, Minify)
+- Custom Theme: `docs/stylesheets/extra.css` (HUD-Farbdesign: BgBase #0B131E, AccPrim #00E5FF, StatSucc #00FF66, StatCrit #FF2A40)
+- Logo/Favicon: `docs/assets/amr_hud_icon.svg`
+- Deployment: `.github/workflows/deploy-docs.yml` (GitHub Actions, Trigger bei docs/** oder mkdocs.yml)
+- Sitemap: automatisch generiert, in Google Search Console eingereicht
+- Mermaid-Diagramme: `<br>` statt `<br/>`, keine Bindestriche in Subgraph-IDs, `<-->` nur im Systemdiagramm (getestet)
+- Nav-Struktur: Startseite, Erste Schritte (3), Architektur (3), Firmware (3), ROS 2 (3), Referenz (2)
+
+```bash
+# Lokal testen
+pip install mkdocs-material mkdocs-minify-plugin pymdown-extensions
+mkdocs serve --dev-addr 0.0.0.0:8000
+
+# Build pruefen
+mkdocs build --strict
+```
 
 ## Sync-Workflow (Dreiecks-Workflow Pi5-GitHub-Mac)
 
