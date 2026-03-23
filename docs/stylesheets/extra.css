@@ -1,0 +1,97 @@
+/* ==========================================================================
+   AMR-Plattform – Custom HUD Theme
+   Farben aus LaTeX-Vorlage (dashboard/projektarbeit):
+     BgBase:   #0B131E    BgPanel:  #111D2B
+     TextSec:  #517C96    AccPrim:  #00E5FF
+     StatSucc: #00FF66    StatCrit: #FF2A40
+   ========================================================================== */
+
+/* ---------- Dark-Mode (Slate) Overrides ---------- */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:        #0B131E;
+  --md-default-fg-color:        #cdd9e5;
+  --md-default-fg-color--light: #517C96;
+
+  --md-primary-fg-color:        #00E5FF;
+  --md-primary-bg-color:        #111D2B;
+  --md-accent-fg-color:         #00E5FF;
+
+  --md-code-bg-color:           #111D2B;
+  --md-code-fg-color:           #cdd9e5;
+  --md-code-hl-color:           rgba(0, 229, 255, 0.15);
+
+  --md-typeset-a-color:         #00E5FF;
+
+  --md-footer-bg-color:         #111D2B;
+  --md-footer-bg-color--dark:   #0B131E;
+}
+
+/* Header / Tabs */
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #111D2B;
+}
+
+/* Sidebar / Navigation */
+[data-md-color-scheme="slate"] .md-sidebar {
+  background-color: #0B131E;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link--active,
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  color: #00E5FF;
+}
+
+/* Admonitions – Erfolg / Warnung / Fehler */
+[data-md-color-scheme="slate"] .md-typeset .admonition.success,
+[data-md-color-scheme="slate"] .md-typeset details.success {
+  border-color: #00FF66;
+}
+[data-md-color-scheme="slate"] .md-typeset .success > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .success > summary {
+  background-color: rgba(0, 255, 102, 0.1);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .admonition.danger,
+[data-md-color-scheme="slate"] .md-typeset details.danger {
+  border-color: #FF2A40;
+}
+[data-md-color-scheme="slate"] .md-typeset .danger > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .danger > summary {
+  background-color: rgba(255, 42, 64, 0.1);
+}
+
+/* Inline-Code */
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: #111D2B;
+  color: #00E5FF;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+}
+
+/* Code-Bloecke */
+[data-md-color-scheme="slate"] .md-typeset pre > code {
+  border: none;
+  color: #cdd9e5;
+}
+
+/* Tabellen */
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background-color: #111D2B;
+  color: #00E5FF;
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) tr:hover td {
+  background-color: rgba(0, 229, 255, 0.05);
+}
+
+/* Search */
+[data-md-color-scheme="slate"] .md-search__form {
+  background-color: #111D2B;
+}
+
+/* ---------- Light-Mode Overrides ---------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color:  #0B131E;
+  --md-primary-bg-color:  #ffffff;
+  --md-accent-fg-color:   #0078a8;
+  --md-typeset-a-color:   #0078a8;
+}

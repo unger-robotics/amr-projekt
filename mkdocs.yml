@@ -9,7 +9,8 @@ site_url: "https://unger-robotics.github.io/amr-projekt/"
 site_description: >-
   Dokumentation der AMR-Plattform (Autonomer Mobiler Roboter) –
   ESP32-S3 Dual-Core FreeRTOS + micro-ROS, Raspberry Pi 5 mit ROS 2 Humble.
-  Bachelorarbeit nach VDI 2206 an der Wilhelm Büchner Hochschule.
+  Projektarbeit nach VDI 2206. Lernplattform fuer autonomes Fahren (Kfz).
+  Die AMR-Plattform dient als Lernplattform fuer autonomes Fahren (Kfz).
 site_author: "Jan Unger"
 repo_url: "https://github.com/unger-robotics/amr-projekt"
 repo_name: "unger-robotics/amr-projekt"
@@ -22,20 +23,20 @@ theme:
   name: material
   language: de
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: teal
-      toggle:
-        icon: material/brightness-7
-        name: Dunkelmodus aktivieren
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: teal
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Hellmodus aktivieren
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Dunkelmodus aktivieren
   font:
     text: Roboto
     code: Roboto Mono
@@ -117,6 +118,9 @@ extra:
   # analytics:
   #   provider: google
   #   property: G-XXXXXXXXXX
+
+extra_css:
+  - stylesheets/extra.css
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
