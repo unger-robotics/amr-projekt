@@ -13,7 +13,7 @@
 \title{Autonomer mobiler Roboter fuer die Intralogistik}
 \subtitle{Konzeption und Eigenschaftsabsicherung gemaess VDI 2206}
 \author{Jan Unger}
-\date{10. Maerz 2026}
+\date{24. Maerz 2026}
 
 % =============================================================================
 \begin{document}
@@ -71,9 +71,9 @@
   \end{figure}
   \vspace{-1em}
   \begin{itemize}
-    \item \textbf{Fahrkern und Sensorbasis (Ebene A):} Zwei ESP32-S3 steuern deterministisch Antrieb und Sensorik.
-    \item \textbf{Bedien- und Leitstandsebene (Ebene B):} RPi 5 betreibt Dashboard, Telemetrie und Audio.
-    \item \textbf{Intelligente Interaktion (Ebene C):} Hailo-8L Edge-NPU und Gemini API.
+    \item \textbf{Fahrkern und Sensorbasis (Ebene A):} Zwei ESP32-S3 steuern deterministisch Antrieb und Sensorik. CAN-Notstopp funktioniert ohne Pi~5.
+    \item \textbf{Bedien- und Leitstandsebene (Ebene B):} RPi~5 mit ROS2, Nav2, SLAM; Benutzeroberflaeche (React/Zustand, WSS:9090, MJPEG:8082).
+    \item \textbf{Intelligente Interaktion (Ebene C):} Hailo-8L Edge-NPU, Gemini Cloud-Semantik, Sprachsteuerung (ReSpeaker + Gemini STT), TTS.
   \end{itemize}
 \end{frame}
 
@@ -93,6 +93,16 @@
     \item \textbf{ROS-2-Pfad (Multiplexer):} Der \texttt{cliff\_safety\_node} blockiert Navigationsbefehle bei erkannter Kante. Callback-Latenz (\texttt{cliff\_safety\_node}): $2{,}0\,\mathrm{ms}$.
     \item \textbf{CAN-Notstopp-Redundanz:} Ein hardwarenaher CAN-Bus uebertraegt Cliff-Signale (CAN-ID 0x120) direkt zwischen den Mikrocontrollern.
     \item \textbf{Reaktionszeit:} $< 20\,\mathrm{ms}$ CAN-zu-Motor-Reaktion (Drive-Node), Gesamtkette Cliff-Erkennung $\rightarrow$ Motor-Stopp ca.\ $73\,\mathrm{ms}$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Bedien- und Leitstandsebene (Dashboard)}
+  \textbf{Webbasierte Benutzeroberflaeche (Ebene B)}
+  \begin{itemize}
+    \item \textbf{Tech-Stack:} React 19, TypeScript, Zustand Store ($60+$ Telemetrie-Properties), Tailwind CSS.
+    \item \textbf{Vier Seiten:} Steuerung (Joystick, Karte, Kamera), Details (Sensoren, System), Validierung (15 Tests), Sprache.
+    \item \textbf{Kommunikation:} WebSocket (WSS:9090, auto-reconnect) und MJPEG-Kamerastream (:8082). Rate-Limiting: Joystick $10\,\mathrm{Hz}$, Heartbeat $5\,\mathrm{Hz}$, Servo $10\,\mathrm{Hz}$.
+    \item \textbf{Totmannschalter:} $300\,\mathrm{ms}$ Deadman-Timer --- bei Verbindungsverlust automatischer Notstopp (\texttt{cmd\_vel} $= 0$).
   \end{itemize}
 \end{frame}
 
@@ -116,11 +126,22 @@
 \end{frame}
 
 \begin{frame}{Hybride Vision-Pipeline}
-  \textbf{Entlastung der Host-CPU}
+  \textbf{Edge-Inferenz und Cloud-Semantik (Ebene C)}
   \begin{itemize}
-    \item \textbf{Edge-KI:} Der `host\_hailo\_runner` fuehrt Objekterkennung auf dem PCIe-angebundenen Hailo-8L aus. Inferenzzeit: ca. $34\,\mathrm{ms}$ pro Frame.
-    \item \textbf{Cloud-Semantik:} Der `gemini\_semantic\_node` sendet Bounding Boxes und Telemetrie an die externe API fuer asynchrone, logische Auswertungen.
+    \item \textbf{Edge-KI:} Hailo-8L NPU ($1{,}5\,\mathrm{W}$ typ.) fuehrt YOLOv8-Objekterkennung mit $5\,\mathrm{Hz}$ Pipeline-Rate aus (ca.\ $34\,\mathrm{ms}$ Inferenzzeit). UDP-Bruecke Host $\rightarrow$ Docker.
+    \item \textbf{Cloud-Semantik:} \texttt{gemini\_semantic\_node} (Modell: \texttt{gemini-3.1-flash-lite}) sendet Detektionen und Telemetrie an Gemini API fuer kontextbasierte Situationsbewertung.
+    \item \textbf{Sprachausgabe (TTS):} gTTS Cloud-Synthese $\rightarrow$ mpg123 $\rightarrow$ MAX98357A I2S-Lautsprecher. Gemini-Semantik wird gesprochen (Rate-Limit: $10\,\mathrm{s}$).
     \item \textbf{Vorteil:} Die rechenintensive Wahrnehmung gefaehrdet die Echtzeitfaehigkeit des Nav2-Stacks nicht.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Sprachsteuerung (Ebene C)}
+  \textbf{Natuerlichsprachliche Interaktion via Gemini STT}
+  \begin{itemize}
+    \item \textbf{Pipeline:} ReSpeaker-Mikrofon (VAD) $\rightarrow$ Audioaufnahme $\rightarrow$ Gemini Flash STT + Intent-Erkennung in einem API-Call $\rightarrow$ Befehlsausfuehrung.
+    \item \textbf{State-Machine:} IDLE $\rightarrow$ LISTENING $\rightarrow$ PROCESSING $\rightarrow$ COOLDOWN. Barge-In-Schutz ($2\,\mathrm{s}$).
+    \item \textbf{Befehle:} Fahren, Drehen, Stopp, LED-Steuerung, Servo, ``Dreh dich zu mir'' (DoA-Quadranten), Standort, Wetter.
+    \item \textbf{Dashboard-Integration:} VoicePage mit Live-Transkription, Mikrofon-Mute und Kommandoverlauf.
   \end{itemize}
 \end{frame}
 
@@ -144,7 +165,7 @@
   \end{tabular}}
 
   \vspace{0.8em}
-  \textbf{Validierung der Systemnavigation}
+  \textbf{Validierung der Systemnavigation und des Dockings (PF2 und PF3)}
 
   \vspace{0.2em}
   {\small
@@ -153,7 +174,9 @@
     \textbf{Metrik} & \textbf{Messergebnis} & \textbf{Akzeptanzkriterium} \\
     \midrule
     ATE RMSE (Kartierung) & $0{,}19\,\mathrm{m}$ & $< 0{,}20\,\mathrm{m}$ \\
-    Positionsgenauigkeit & $1{,}01\,\mathrm{cm}$ (max.\ $2{,}17\,\mathrm{cm}$) & $< 10\,\mathrm{cm}$ \\
+    Positionsgenauigkeit (Nav2) & $1{,}01\,\mathrm{cm}$ (max.\ $2{,}17\,\mathrm{cm}$) & $< 10\,\mathrm{cm}$ \\
+    ArUco-Docking (10/10) & $0{,}73\,\mathrm{cm}$ mittl.\ Versatz & $< 5\,\mathrm{cm}$ \\
+    Docking-Orientierung & $14{,}1^\circ$ mittl.\ Abweichung & --- \\
     \bottomrule
   \end{tabular}}
 \end{frame}
@@ -166,13 +189,13 @@
   \textbf{Kernergebnisse}
   \begin{itemize}
     \item \textbf{PF1 (Bestaetigt):} Die Dual-Knoten-Architektur stabilisiert die Echtzeit. Die UART-Kopplung ($921\,600\,\mathrm{Baud}$) loest Latenzprobleme drahtloser Systeme.
-    \item \textbf{PF2 (Bestaetigt):} UMBmark-Kalibrierung mit theoretisch erwartetem Reduktionsfaktor $\geq 10$ (Borenstein, 1996); gemessene Geradeausfahrt-Drift reduziert von $3{,}6$ auf $2{,}1\,\mathrm{cm}$ (Faktor $1{,}7$) durch IMU-Fusion.
-    \item \textbf{PF3 (Bestaetigt):} Visuelles ArUco-Docking erreicht $100\,\%$ Erfolgsquote (10/10, Dreifach-Bedingung bei $0{,}30\,\mathrm{m}$); Grenzen bestehen bei unzureichender Beleuchtung.
+    \item \textbf{PF2 (Bestaetigt):} UMBmark-Kalibrierung; Geradeausfahrt-Drift von $3{,}6$ auf $2{,}1\,\mathrm{cm}$ durch IMU-Fusion. Nav2-Waypoint-Praezision: $1{,}01\,\mathrm{cm}$ mittlerer Fehler.
+    \item \textbf{PF3 (Bestaetigt):} ArUco-Docking $100\,\%$ (10/10, Dreifach-Bedingung bei $0{,}30\,\mathrm{m}$, $0{,}73\,\mathrm{cm}$ mittlerer Versatz). Grenzen bei unzureichender Beleuchtung.
   \end{itemize}
 
-  \vspace{1em}
+  \vspace{0.8em}
   \textbf{Fazit:}\\
-  Ein kostenguenstiges Gesamtsystem (${\sim}\,694\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206. Die Grenzen liegen in den MTU-Beschraenkungen ($512$ Bytes) und Rad-Schlupf.
+  Ein kostenguenstiges Gesamtsystem (${\sim}\,694\,\mathrm{EUR}$) erfuellt intralogistische Grundlagenanforderungen gemaess VDI 2206. Alle fuenf Validierungsphasen bestanden (Phasen 1--5 PASS). Die Grenzen liegen in den MTU-Beschraenkungen ($512$ Bytes) und Rad-Schlupf.
 \end{frame}
 
 \end{document}
