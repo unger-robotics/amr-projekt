@@ -127,7 +127,7 @@ Der Raspberry Pi 5 (Debian Trixie, aarch64) uebernimmt Lokalisierung und Kartier
 
 ### 2.4 Stromversorgung und Batteriemanagement
 
-Das Akkupack besteht aus Samsung INR18650-35E Zellen in 3S1P-Konfiguration (NCA, 10,80 V / 3,35 Ah). Die Spannungsbereiche erstrecken sich von 12,60 V (voll geladen) bis zur Entladeschlussspannung. Firmware-Schwellen: 9,0 V System-Shutdown, 7,5 V BMS-Disconnect (config_sensors.h:83-84). 7,95 V ist die Samsung-Zell-Entladeschlussspannung (3 x 2,65 V), kein Firmware-Wert.
+Das Akkupack besteht aus Samsung INR18650-35E Zellen in 3S1P-Konfiguration (NCA, 10,80 V / 3,35 Ah min / 3,5 Ah nom). Die Spannungsbereiche erstrecken sich von 12,60 V (voll geladen) bis zur Entladeschlussspannung. Firmware-Schwellen: 9,0 V System-Shutdown, 7,5 V BMS-Disconnect (config_sensors.h:83-84). 7,95 V ist die Samsung-Zell-Entladeschlussspannung (3 x 2,65 V), kein Firmware-Wert.
 
 Die Batterieueberwachung erfolgt ueber den INA260-Leistungsmonitor am Sensor-Knoten. Bei Unterschreitung von 9,5 V loest der Knoten ein `/battery_shutdown`-Event an den Drive-Knoten aus. Die Hysterese betraegt 0,3 V, sodass die Wiederfreigabe erst bei 9,8 V erfolgt. Zusaetzlich sendet der Sensor-Knoten ein CAN-Frame (0x141) als redundanten Abschaltpfad.
 
@@ -292,7 +292,7 @@ Dieser CAN-Pfad bildet die Rueckfallebene fuer den Fall, dass der Pi 5, der Dock
 
 ### 5.1 Docker-Container und Laufzeitumgebung
 
-ROS 2 Humble laeuft auf dem Raspberry Pi 5 in einem Docker-Container auf Basis des Images `ros:humble-ros-base` (Ubuntu 22.04, arm64). Debian Trixie auf dem Host stellt kein natives ROS2-Paket bereit, weshalb die Containerisierung zwingend erforderlich ist. Der Container arbeitet im Host-Network-Modus (`network_mode: host`), um DDS-Multicast ohne Netzwerkbruecke zu ermoeglichen. Der privilegierte Modus gewaehrleistet den Zugriff auf serielle Geraete, Audio-Hardware und SocketCAN.
+ROS 2 Humble laeuft auf dem Raspberry Pi 5 in einem Docker-Container auf Basis des Images `ros:humble-ros-base` (Ubuntu 22.04, arm64). Debian Trixie auf dem Host stellt kein natives ROS2-Paket bereit (Trixie ist in REP-2000 nicht als unterstuetzte Plattform fuer ROS 2 Humble gelistet), weshalb die Containerisierung zwingend erforderlich ist. Der Container arbeitet im Host-Network-Modus (`network_mode: host`), um DDS-Multicast ohne Netzwerkbruecke zu ermoeglichen. Der privilegierte Modus gewaehrleistet den Zugriff auf serielle Geraete, Audio-Hardware und SocketCAN.
 
 Die Container-Konfiguration in `docker-compose.yml` bindet die seriellen Geraete (`/dev/amr_drive`, `/dev/amr_sensor`, `/dev/ttyUSB0`) sowie das Audio-Device (`/dev/snd`) als Devices ein. Das ROS2-Paket `my_bot` wird als Volume im Lese-Schreib-Modus gemountet, die Skripte doppelt (`/amr_scripts` und `/scripts`), damit Symlinks in beiden Kontexten aufgeloest werden. Benannte Volumes (`ros2_build`, `ros2_install`) cachen die Build-Artefakte.
 
@@ -420,7 +420,7 @@ Ein Klick auf die SLAM-Karte in der Benutzeroberflaeche sendet ein `nav_goal` pe
 
 ### 8.1 Hybride Vision-Pipeline (Hailo-8L + Gemini)
 
-Die Vision-Pipeline ueberbrueckt eine Kompatibilitaetsluecke: Der Hailo-8L NPU-Treiber (`hailort`) erfordert Host-Python 3.13, waehrend der ROS2-Container Python 3.10 verwendet. Die Loesung ist eine UDP-Bruecke innerhalb von localhost.
+Die Vision-Pipeline ueberbrueckt eine Kompatibilitaetsluecke: Der host-seitig installierte NPU-Treiber (`hailort`) ist an die Python-3.13-Umgebung von Raspberry Pi OS Trixie gebunden und laesst sich nicht in den Docker-Container (Python 3.10) uebertragen. Die Loesung ist eine UDP-Bruecke innerhalb von localhost. Der Hailo-8L verbraucht typisch 1,5 W (maximal 6,6 W am PCIe-Bus).
 
 Die verwendeten Netzwerkports sind:
 

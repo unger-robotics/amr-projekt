@@ -120,7 +120,7 @@ Ansteuerung ueber PCA9685 (I2C-PWM-Treiber).
 |---|---|
 | Pan-Kanal | 0 |
 | Tilt-Kanal | 1 |
-| Winkelbereich (PWM-Hardware) | 0-180° |
+| Winkelbereich (PWM-Mapping) | 0-180° (mechanisch: 0-159° lt. TowerPro Datenblatt) |
 | Pan-Schwenkbereich (kalibriert) | 45-135° (Offset +8°) |
 | Tilt-Schwenkbereich (kalibriert) | 80-135° (Offset +1°) |
 | PWM-Ticks (min/max) | 123 / 492 |

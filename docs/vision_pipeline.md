@@ -12,7 +12,7 @@ Dokumentation fuer Kamera, optionale Hailo-Inferenz und semantische Auswertung.
 
 ## Architektur: Hybride UDP-Bruecke
 
-Die Vision-Pipeline nutzt eine UDP-Bruecke, weil der Hailo-8L NPU-Treiber (`hailort`) nur mit Host-Python 3.13 kompatibel ist, waehrend der ROS2-Container Python 3.10 (Humble) verwendet. Daher laeuft die Inferenz auf dem Host und die ROS2-Integration im Docker-Container.
+Die Vision-Pipeline nutzt eine UDP-Bruecke, weil der host-seitig installierte NPU-Treiber (`hailort`) an die Python-3.13-Umgebung von Raspberry Pi OS Trixie gebunden ist und sich nicht in den Docker-Container (Python 3.10, ROS2 Humble) uebertragen laesst. Daher laeuft die Inferenz auf dem Host und die ROS2-Integration im Docker-Container. Der Hailo-8L verbraucht typisch 1,5 W (maximal 6,6 W); die Stromversorgung erfolgt ueber das M.2 HAT+.
 
 ## Datenfluss
 

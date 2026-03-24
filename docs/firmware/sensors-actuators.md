@@ -34,7 +34,7 @@ SMD 5050 LED-Streifen via IRLZ24N MOSFET, LEDC Kanal 4. Konfigurierbar ueber `/h
 | `cliff_sensor.hpp` | `CliffSensor` | MH-B IR Cliff-Sensor, GPIO-Poll |
 | `mpu6050.hpp` | `MPU6050` | 6-Achsen IMU (I2C, 0x68), Komplementaerfilter (alpha=0.98) |
 | `ina260.hpp` | `INA260` | Leistungs-Monitor (I2C, 0x40), Spannung/Strom/Power |
-| `pca9685.hpp` | `PCA9685` | 16-Kanal PWM Servo-Controller (I2C, 0x41 via A0-Loetbruecke), Pan/Tilt |
+| `pca9685.hpp` | `PCA9685` | 16-Kanal PWM Servo-Controller (I2C, 0x41; Default 0x40, A0=HIGH wegen INA260-Konflikt), Pan/Tilt |
 | `twai_can.hpp` | `TwaiCan` | CAN 2.0B Sender (TWAI, 1 Mbit/s), IDs 0x110–0x1F0 |
 
 ### I2C-Bus (Wire, 400 kHz)

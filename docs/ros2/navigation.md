@@ -9,7 +9,7 @@ description: Nav2-Stack, Cliff-Safety-Multiplexer und Betriebsmodi.
 
 Der Nav2-Stack (`use_nav:=True`) stellt autonome Zielnavigation bereit:
 
-- **Controller:** Regulated Pure Pursuit (RPP), 20 Hz, desired_linear_vel: 0.15 m/s
+- **Controller:** Regulated Pure Pursuit (RPP), 20 Hz, desired_linear_vel: 0.15 m/s (Projektwert; Nav2-Default: 0.5 m/s)
 - **Planer:** NavFn (Dijkstra), 10 Hz
 - **Costmap:** 2D, 0.05 m Aufloesung
 - **Konfiguration:** `config/nav2_params.yaml`
