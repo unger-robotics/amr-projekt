@@ -156,7 +156,7 @@ Beide Projekte verwenden `static_assert`-Anweisungen zur Kompilierzeit-Absicheru
 
 Beide Knoten verwenden dasselbe Dual-Core-Pattern mit fester Core-Zuordnung:
 
-**Core 0 (App-Core, `loop()`):**
+**Core 0 (Arduino `loop()`):**
 - micro-ROS Executor: `spin_some()` fuer Publisher und Subscriber
 - Servo-I2C-Writes (nur Sensor-Knoten, PCA9685)
 - Zyklusrate circa 500 Hz
@@ -207,7 +207,7 @@ Drei Geraete teilen sich den I2C-Bus (Wire, 400 kHz Fast-Mode):
 |---|---|---|---|
 | MPU6050 | 0x68 | Read (50 Hz) | Core 1 |
 | INA260 | 0x40 | Read (2 Hz) | Core 1 |
-| PCA9685 | 0x41 | Write (bei Aenderung) | Core 0 |
+| PCA9685 | 0x41 (A0-Loetbruecke) | Write (bei Aenderung) | Core 0 |
 
 Die Init-Reihenfolge ist relevant: PCA9685 vor MPU6050 und INA260 initialisieren, um einen sauberen I2C-Bus sicherzustellen. Ein `delay(2000)` vor `Wire.begin()` ist erforderlich.
 
@@ -306,35 +306,9 @@ Die Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenzie
 
 ### 5.2 Knoten-Uebersicht
 
-Das zentrale Launch-File `full_stack.launch.py` orchestriert alle ROS2-Knoten. Die folgende Tabelle fasst die Kernknoten nach Funktion zusammen.
+Das zentrale Launch-File `full_stack.launch.py` orchestriert alle ROS2-Knoten. Vier Basisknoten (RPLidar, Laser-TF, micro-ROS-Agent Drive, odom_to_tf) sind immer aktiv. Zwoelf optionale Knoten (SLAM, Nav2, Cliff-Safety, Dashboard, Vision, Audio, CAN, TTS, ReSpeaker, Voice) werden ueber boolesche Launch-Parameter gesteuert. Insgesamt stehen 29 Executables bereit: 11 Runtime-Knoten und 18 Validierungstests.
 
-**Basisknoten (immer aktiv):**
-
-| Knoten | Funktion |
-|---|---|
-| `rplidar_node` | RPLidar A1, `/dev/ttyUSB0`, 115200 Baud |
-| `laser_tf_publisher` | Statischer TF `base_link` → `laser` (180 Grad Yaw) |
-| `micro_ros_agent_drive` | Serial-Bridge zum Fahrkern (`/dev/amr_drive`, 921600 Baud) |
-| `odom_to_tf` | Dynamischer TF `odom` → `base_link` aus `/odom` |
-
-**Optionale Knoten (per Launch-Parameter steuerbar):**
-
-| Knoten | Parameter | Funktion |
-|---|---|---|
-| `micro_ros_agent_sensor` | `use_sensors` | Serial-Bridge zur Sensor- und Sicherheitsbasis |
-| `slam_toolbox` | `use_slam` | SLAM Toolbox im asynchronen Online-Modus |
-| Nav2-Stack | `use_nav` | Navigation (AMCL, NavFn, Regulated Pure Pursuit) |
-| `cliff_safety_node` | `use_cliff_safety` | Cliff- und Hindernisstopp-Multiplexer |
-| `dashboard_bridge` | `use_dashboard` | WebSocket :9090, MJPEG :8082 |
-| `hailo_udp_receiver` | `use_vision` | Hailo-8L Inferenz via UDP :5005 |
-| `gemini_semantic_node` | `use_vision` | Gemini-Cloud-Semantik |
-| `audio_feedback_node` | `use_audio` | WAV-Wiedergabe ueber MAX98357A I2S |
-| `tts_speak_node` | `use_tts` | TTS-Sprachausgabe (gTTS, Deutsch) |
-| `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
-| `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD |
-| `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Flash STT |
-
-Vollstaendige Knotenliste: [ros2_system.md](ros2_system.md)
+Vollstaendige Knotenliste mit allen Parametern: [ros2_system.md](ros2_system.md)
 
 ### 5.3 Topic-Architektur und QoS
 
@@ -348,57 +322,17 @@ Vollstaendige Topic-Tabelle: [ros2_system.md](ros2_system.md)
 
 ### 5.4 TF-Baum
 
-Der Transformationsbaum verbindet die Koordinatensysteme des Roboters:
+Der Transformationsbaum folgt der Kette `odom → base_link → laser/camera_link/ultrasonic_link`. Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische Transformation `odom` → `base_link`. Der LiDAR ist 180 Grad gedreht montiert; die statische TF-Transformation (`yaw=pi`) kompensiert diese Orientierung.
 
-```
-odom
-  └── base_link              (dynamisch, odom_to_tf, 20 Hz)
-        ├── laser             (statisch, x=0.10, z=0.235, Yaw=180 Grad)
-        ├── camera_link       (statisch, x=0.10, z=0.08, optional)
-        └── ultrasonic_link   (statisch, x=0.15, z=0.05, optional)
-```
-
-Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische Transformation `odom` → `base_link`. Der LiDAR ist 180 Grad gedreht montiert; die statische TF-Transformation (`yaw=pi`) kompensiert diese Orientierung. Die optionalen Frames `camera_link` und `ultrasonic_link` werden nur bei aktivierter Kamera bzw. aktiviertem Sensor-Knoten publiziert.
+Vollstaendiger TF-Baum mit Frame-Offsets: [ros2_system.md](ros2_system.md)
 
 ### 5.5 Launch-System
 
-`full_stack.launch.py` steuert alle Knoten ueber boolesche Launch-Argumente. Die Standardkonfiguration aktiviert SLAM, Navigation und Cliff-Safety (RViz2 ist standardmaessig deaktiviert). Optionale Teilsysteme (Dashboard, Kamera, Vision, Audio, CAN, TTS, ReSpeaker) sind standardmaessig deaktiviert. Neben den booleschen Toggles koennen serielle Ports (`drive_serial_port`, `sensor_serial_port`), das Kamera-Device (`camera_device`) sowie Parameterdateien fuer Nav2 und SLAM Toolbox konfiguriert werden.
-
-Die folgende Tabelle listet die wichtigsten Launch-Argumente:
-
-| Argument | Default | Beschreibung |
-|---|---|---|
-| `use_slam` | True | SLAM Toolbox (async Modus) |
-| `use_nav` | True | Nav2 Navigation Stack |
-| `use_rviz` | False | RViz2 Visualisierung |
-| `use_sensors` | True | Sensor-Knoten micro-ROS Agent |
-| `use_cliff_safety` | True | Cliff-Safety cmd_vel-Multiplexer |
-| `use_dashboard` | False | WebSocket/MJPEG Bridge |
-| `use_camera` | False | v4l2 Kamera-Knoten |
-| `use_vision` | False | Hailo UDP Receiver + Gemini |
-| `use_audio` | False | Audio-Feedback-Knoten |
-| `use_can` | False | CAN-Bus Bridge |
-| `use_tts` | False | TTS-Sprachausgabe |
-| `use_respeaker` | False | ReSpeaker DoA/VAD |
-| `use_voice` | False | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
-
-Haeufige Startkombinationen:
-
-```
-# Nur SLAM, ohne Navigation:
-ros2 launch my_bot full_stack.launch.py use_nav:=False
-
-# SLAM + Navigation + Dashboard (ohne RViz):
-ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_rviz:=False
-
-# Vollsystem mit Kamera und Vision:
-ros2 launch my_bot full_stack.launch.py \
-    use_dashboard:=True use_camera:=True use_vision:=True use_rviz:=False
-```
+`full_stack.launch.py` steuert alle Knoten ueber 13 boolesche Launch-Argumente (`use_<name>:=True/False`). Die Standardkonfiguration aktiviert SLAM, Navigation und Cliff-Safety. Optionale Teilsysteme (Dashboard, Kamera, Vision, Audio, CAN, TTS, ReSpeaker) sind standardmaessig deaktiviert.
 
 Bei aktivierter Cliff-Safety (`use_cliff_safety:=True`, Standard) wird die `dashboard_bridge` per Launch-Remapping von `/cmd_vel` auf `/dashboard_cmd_vel` umgeleitet. Nav2 publiziert separat auf `/nav_cmd_vel`. Beide Kanaele laufen ueber den Cliff-Safety-Multiplexer, bevor sie den Fahrkern erreichen.
 
-Vollstaendige Parameterliste: [build_and_deploy.md](build_and_deploy.md)
+Vollstaendige Launch-Parameter und Startkombinationen: [build_and_deploy.md](build_and_deploy.md)
 
 ---
 

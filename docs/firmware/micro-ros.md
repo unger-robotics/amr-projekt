@@ -9,6 +9,9 @@ description: micro-ROS Serial Transport, QoS-Konfiguration und Zwei-Knoten-Archi
 
 Die Firmware besteht aus zwei getrennten PlatformIO-Projekten. Jeder ESP32-S3 erhaelt eine eigene micro-ROS-Library (statisch kompiliert).
 
+!!! info "ESP32-S3-Support"
+    ESP32-S3 ist nicht in der offiziellen [micro_ros_platformio Board-Tabelle](https://github.com/micro-ROS/micro_ros_platformio) gelistet. Der Support ist Community-basiert und im Projekt erfolgreich validiert.
+
 | Eigenschaft | Drive-Knoten | Sensor-Knoten |
 |---|---|---|
 | **Verzeichnis** | `amr/mcu_firmware/drive_node/` | `amr/mcu_firmware/sensor_node/` |
