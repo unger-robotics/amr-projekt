@@ -10,7 +10,7 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
 | Raspberry Pi 5 | 8 GB RAM, Debian Trixie | ROS2, SLAM, Navigation, Docker |
-| Seeed XIAO ESP32-S3 (x2) | Dual-Core 240 MHz, WiFi/BLE | Drive-Knoten + Sensor-Knoten |
+| Seeed XIAO ESP32-S3 (x2) | Dual-Core 240 MHz, 8 MB Flash, 8 MB PSRAM, WiFi/BLE | Drive-Knoten + Sensor-Knoten |
 | Hailo-8L | 13 TOPS, M.2 PCIe | KI-Beschleuniger (YOLOv8) |
 
 ## Antrieb
@@ -27,7 +27,7 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
-| RPLIDAR A1 | 360 Grad, 12 m, ~7 Hz, USB | LiDAR (Lokalisierung und Kartierung) |
+| RPLIDAR A1 | 360 Grad, 12 m, ~5,5 Hz typ. (konfiguriert: 7 Hz), USB | LiDAR (Lokalisierung und Kartierung) |
 | MPU-6050 | 6-Achsen, I2C (0x68) | IMU (Beschleunigung + Gyroskop) |
 | INA260 | I2C (0x40), 1.25 mA/mV LSB | Batterieueberwachung |
 | HC-SR04 | 0.02–4.00 m, ISR-basiert | Ultraschall (Hinderniserkennung) |
@@ -38,7 +38,7 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
 | RPi Global Shutter IMX296 | CSI (22→15 Pin Adapter) | Kamera |
-| PCA9685 | I2C (0x41), 16-Kanal PWM | Servo-Controller |
+| PCA9685 | I2C (0x41 via A0-Loetbruecke), 16-Kanal PWM | Servo-Controller |
 | TowerPro MG996R (x2) | 11 kg·cm @ 6 V | Pan/Tilt Servos |
 
 ## Audio und Sprache

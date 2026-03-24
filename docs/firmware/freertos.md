@@ -8,7 +8,7 @@ description: Dual-Core Task-Verteilung auf den ESP32-S3-Knoten mit FreeRTOS.
 Beide MCU-Knoten verwenden dasselbe Dual-Core-Pattern:
 
 ```
-Core 0 (App-Core, loop()):
+Core 0 (Arduino loop()):
   - micro-ROS Executor: spin_some() fuer Publisher und Subscriber
   - Servo-I2C-Writes (nur Sensor-Knoten, PCA9685)
   - ~500 Hz Zyklusrate
@@ -56,7 +56,7 @@ Drei Geraete teilen den I2C-Bus (400 kHz):
 |--------|---------|---------|------|
 | MPU6050 | 0x68 | Read (50 Hz) | Core 1 |
 | INA260 | 0x40 | Read (2 Hz) | Core 1 |
-| PCA9685 | 0x41 | Write (bei Aenderung) | Core 0 |
+| PCA9685 | 0x41 (A0-Loetbruecke) | Write (bei Aenderung) | Core 0 |
 
 `i2c_mutex` mit 5 ms Timeout verhindert gleichzeitige Bus-Zugriffe.
 
