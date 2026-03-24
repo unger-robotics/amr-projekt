@@ -9,7 +9,7 @@ description: SLAM Toolbox Konfiguration fuer Lokalisierung und Kartierung.
 
 Der AMR nutzt SLAM Toolbox im asynchronen Online-Modus (`use_slam:=True`):
 
-- **Solver:** Ceres (SPARSE_NORMAL_CHOLESKY, Preconditioner: SCHUR_JACOBI)
+- **Solver:** Ceres (SPARSE_NORMAL_CHOLESKY, Preconditioner: SCHUR_JACOBI; Projektwert, slam_toolbox-Default: JACOBI)
 - **Trust-Strategie:** Levenberg-Marquardt
 - **Aufloesung:** 0.05 m (Raster)
 - **LiDAR-Reichweite:** 0.2–12.0 m (RPLidar A1)

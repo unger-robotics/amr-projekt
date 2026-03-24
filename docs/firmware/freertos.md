@@ -20,6 +20,8 @@ Core 1 (FreeRTOS Task):
   - Inter-Core Heartbeat-Check (Watchdog)
 ```
 
+Die Core-Zuordnung wird explizit festgelegt: `-DARDUINO_RUNNING_CORE=0` in `platformio.ini` setzt Arduino `loop()` auf Core 0 (Board-Default waere Core 1). `xTaskCreatePinnedToCore(..., 1)` fixiert die Echtzeit-Tasks auf Core 1.
+
 ## Drive-Knoten (Fahrkern)
 
 | Core | Aufgabe | Rate |

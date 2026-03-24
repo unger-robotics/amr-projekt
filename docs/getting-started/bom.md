@@ -10,8 +10,8 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
 | Raspberry Pi 5 | 8 GB RAM, Debian Trixie | ROS2, SLAM, Navigation, Docker |
-| Seeed XIAO ESP32-S3 (x2) | Dual-Core 240 MHz, 8 MB Flash, 8 MB PSRAM, WiFi/BLE | Drive-Knoten + Sensor-Knoten |
-| Hailo-8L | 13 TOPS, M.2 PCIe | KI-Beschleuniger (YOLOv8) |
+| Seeed XIAO ESP32-S3 (x2) | Dual-Core 240 MHz, 8 MB Flash, 8 MB PSRAM, 802.11 b/g/n 2,4 GHz, BLE 5.0 | Drive-Knoten + Sensor-Knoten |
+| Hailo-8L | 13 TOPS, M.2 PCIe Gen 3 (am Pi 5 via PCIe 2.0 x1), 1,5 W typ. / 6,6 W max. | KI-Beschleuniger (YOLOv8) |
 
 ## Antrieb
 
@@ -38,8 +38,8 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
 | RPi Global Shutter IMX296 | CSI (22→15 Pin Adapter) | Kamera |
-| PCA9685 | I2C (0x41 via A0-Loetbruecke), 16-Kanal PWM | Servo-Controller |
-| TowerPro MG996R (x2) | 11 kg·cm @ 6 V | Pan/Tilt Servos |
+| PCA9685 | I2C (Default 0x40, hier 0x41 via A0=HIGH zur Konfliktvermeidung mit INA260), 16-Kanal PWM | Servo-Controller |
+| TowerPro MG996R (x2) | 11 kg·cm @ 6 V, 0-159° | Pan/Tilt Servos |
 
 ## Audio und Sprache
 
@@ -52,7 +52,7 @@ description: Alle Hardware-Komponenten der AMR-Plattform mit Spezifikationen.
 
 | Komponente | Spezifikation | Funktion |
 |------------|---------------|----------|
-| Samsung INR18650-35E (x3) | 3S1P, 10.8–12.6 V, 3.35 Ah | Akkupack |
+| Samsung INR18650-35E (x3) | 3S1P, 10.8–12.6 V, 3,35 Ah (min) / 3,5 Ah (nom) | Akkupack |
 | Hauptsicherung | 10 A | Ueberstromschutz |
 | Motor-Abschaltung | < 9.5 V (Hysterese +0.3 V) | Unterspannungsschutz |
 

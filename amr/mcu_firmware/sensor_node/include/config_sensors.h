@@ -112,7 +112,8 @@ namespace amr::servo {
 inline constexpr uint8_t ch_pan = 0;
 inline constexpr uint8_t ch_tilt = 1;
 
-// PWM-Bereich (PCA9685 Ticks fuer 0-180° Gesamtbereich)
+// PWM-Mapping 0-180° (PCA9685 Ticks); mechanischer Bereich MG996R: 0-159°
+// (TowerPro Datenblatt). Kalibrierte Limits (pan 45-135°, tilt 80-135°) liegen innerhalb.
 inline constexpr float angle_min_deg = 0.0f;
 inline constexpr float angle_max_deg = 180.0f;
 inline constexpr float angle_range_deg = angle_max_deg - angle_min_deg;
