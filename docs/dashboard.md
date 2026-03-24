@@ -36,9 +36,12 @@ Dashboard-spezifische Details (Komponenten, Hooks, Store, Theme) gehoeren in die
 ```
 dashboard/
 ├── src/
-│   ├── components/              # 19 React-Komponenten
+│   ├── components/              # 22 React-Komponenten
 │   │   ├── Dashboard.tsx        # Hauptseite Steuerung (4-Spalten-Grid)
 │   │   ├── DetailPage.tsx       # Detailseite (4er-Grid)
+│   │   ├── ValidationPage.tsx   # Validierung (TestPanel-Wrapper)
+│   │   ├── VoicePage.tsx        # Sprache (ReSpeaker, Transkription, Mute)
+│   │   ├── TestPanel.tsx        # 15 Validierungstests (Sensorik, Antrieb, Nav, System)
 │   │   ├── StatusPanel.tsx      # Verbindung, Odometrie, IMU, Latenz
 │   │   ├── SystemMetrics.tsx    # CPU, RAM, Disk, Batterie, Netzwerk
 │   │   ├── CameraView.tsx       # MJPEG-Stream + Vision-BBox-Overlay
@@ -99,7 +102,18 @@ dashboard/
 - **SensorDetailPanel:** IMU-Hz, Ultraschall-Range, Cliff-Detection, Sensor-Node-Status
 - **AudioPanel:** ReSpeaker DoA (Azimut), Voice Activity, Sound-Wiedergabe, Lautstaerke-Slider
 - **RobotInfoPanel:** Position, Yaw, Servo-Position, Hardware-Grenzen
+
+### Validierung (`ValidationPage.tsx`)
+
 - **TestPanel:** 15 Validierungstests gruppiert nach Kategorie (Sensorik, Antrieb, Navigation, System), per Klick ausfuehrbar, Live-Statusanzeige (PASS/FAIL/laeuft)
+- Kommunikation: `test_list` (einmalig) zum Laden der Tests, `test_run` zum Starten, `command_response` fuer Ergebnisse
+
+### Sprache (`VoicePage.tsx`)
+
+- **ReSpeaker DoA:** Azimut-Richtungsanzeige (4 Quadranten)
+- **Sprach-Transkription:** Live-Text aus `voice_transcript`
+- **Voice Mute:** Mikrofon stummschalten per `voice_mute`
+- **E-Stop:** Notstopp-Button (identisch mit EmergencyStop)
 
 ---
 
@@ -142,7 +156,7 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `scan` | 2 Hz | LiDAR-Ranges (komprimiert) |
 | `system` | 1 Hz | CPU, RAM, Disk, Geraete-Status, Netzwerk |
 | `map` | ~0.5 Hz | SLAM-Karte (PNG Base64), Roboter-Position |
-| `vision_detections` | 5 Hz | Hailo-8 Erkennungen (BBox, Label, Confidence) |
+| `vision_detections` | 5 Hz | Hailo-8L Erkennungen (BBox, Label, Confidence) |
 | `vision_semantics` | ~0.5 Hz | Gemini-Szenenbeschreibung |
 | `nav_status` | 1 Hz | Navigationsstatus + Ziel + Restdistanz |
 | `sensor_status` | 2 Hz | Ultraschall, Cliff, IMU-Hz |
@@ -150,6 +164,9 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `voice_transcript` | event | Sprach-Transkription (Text + Zeitstempel) |
 | `command_response` | — | Antwort auf Freitext-Kommando |
 | `test_list` | einmalig | Verfuegbare Tests (Key + Entry-Point) |
+| `vision_status` | event | Vision-Pipeline ein/aus Status |
+| `voice_mute_status` | event | Mikrofon-Stummschaltung Status |
+| `estop_status` | event | E-Stop aktiv/inaktiv Status |
 
 #### Vom Client gesendete Nachrichten
 
@@ -167,6 +184,9 @@ Zentraler Store in `src/store/telemetryStore.ts` mit 60+ Properties:
 | `command` | — | Freitext-Kommando |
 | `test_list` | einmalig | Verfuegbare Tests anfordern |
 | `test_run` | — | Einzelnen Test starten (test_key) |
+| `voice_mute` | — | Mikrofon stummschalten (true/false) |
+| `estop` | — | Notstopp aktivieren |
+| `estop_release` | — | Notstopp freigeben |
 
 ### MJPEG-Stream (Port 8082)
 
