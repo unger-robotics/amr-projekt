@@ -1,3 +1,9 @@
+---
+description: >-
+  AMR-Benutzeroberflaeche mit React, WebSocket-Protokoll,
+  State Management und Entwicklungsprozess.
+---
+
 # Dashboard
 
 ## Zweck

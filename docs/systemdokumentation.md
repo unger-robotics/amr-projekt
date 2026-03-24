@@ -1,3 +1,9 @@
+---
+description: >-
+  Systemdokumentation mit Anforderungen, Architektur, Datenfluessen
+  und Validierungsplan nach VDI 2206.
+---
+
 # Systemdokumentation: Autonomer mobiler Roboter (AMR)
 
 ## 1. Systemuebersicht und Architektur

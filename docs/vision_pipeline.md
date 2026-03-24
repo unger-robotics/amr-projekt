@@ -1,3 +1,9 @@
+---
+description: >-
+  Hybrid-UDP-Architektur fuer Kamera, Hailo-8L-Inferenz und
+  semantische Auswertung mit Gemini Cloud.
+---
+
 # Vision-Pipeline
 
 ## Zweck

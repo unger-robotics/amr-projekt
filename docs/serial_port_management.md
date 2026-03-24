@@ -1,3 +1,9 @@
+---
+description: >-
+  udev-Symlink-Verwaltung und stabile serielle Schnittstellenkonfiguration
+  fuer beide ESP32-S3-Knoten.
+---
+
 # Serial-Port-Management
 
 ## Zweck

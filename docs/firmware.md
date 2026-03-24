@@ -1,3 +1,9 @@
+---
+description: >-
+  Referenzdokumentation fuer die MCU-Firmware auf beiden ESP32-S3-Knoten
+  mit Modulen und Konfiguration.
+---
+
 # Firmware
 
 ## Zweck

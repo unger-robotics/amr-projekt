@@ -1,3 +1,9 @@
+---
+description: >-
+  Physikalische Parameter mit Kinematik, PID-Werten,
+  Sensorschwellwerten und Kalibrierungsdaten.
+---
+
 # Roboterparameter
 
 ## Zweck

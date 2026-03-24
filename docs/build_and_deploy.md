@@ -1,3 +1,9 @@
+---
+description: >-
+  Schritt-fuer-Schritt-Anleitung fuer Firmware-Kompilation,
+  Docker-Build und Dashboard-Deployment.
+---
+
 # Build und Deployment
 
 Fuer eine schrittweise Inbetriebnahme-Anleitung siehe [benutzerhandbuch.md](benutzerhandbuch.md).

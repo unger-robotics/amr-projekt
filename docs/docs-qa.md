@@ -1,3 +1,9 @@
+---
+description: >-
+  Dokumentationsstruktur, Schreibregeln, LaTeX-Build
+  und uebergreifende Qualitaetspruefungen.
+---
+
 # Dokumentation und Qualitaetssicherung
 
 ## Zweck
