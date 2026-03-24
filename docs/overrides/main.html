@@ -1,11 +1,53 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
-  <meta name="description" content="AMR-Plattform: Autonomer Mobiler Roboter mit ROS 2 Humble, ESP32-S3 micro-ROS und Raspberry Pi 5. Open-Source Projektarbeit nach VDI 2206." />
+  {#- Beschreibung: Seiten-Frontmatter > globale Site-Description -#}
+  {% set meta_desc = page.meta.description if (page.meta and page.meta.description) else config.site_description %}
+
+  {#- Titel: Seitenname fuer Unterseiten, Site-Name fuer Homepage -#}
+  {% set meta_title = config.site_name if page.is_homepage else (page.title | striptags) %}
+
+  {#- Keywords (statisch, alle Seiten) -#}
   <meta name="keywords" content="AMR, ROS 2, ESP32-S3, micro-ROS, Raspberry Pi 5, FreeRTOS, SLAM, Nav2, Differentialantrieb, VDI 2206, autonomer mobiler Roboter, Robotik" />
-  <meta name="author" content="Jan Unger" />
-  <meta property="og:title" content="AMR-Plattform – Autonomer Mobiler Roboter" />
-  <meta property="og:description" content="Offene Robotik-Plattform mit ROS 2 Humble und ESP32-S3 micro-ROS. Zwei-Ebenen-Architektur fuer autonomes Fahren im Kfz-Massstab." />
-  <meta property="og:url" content="https://unger-robotics.github.io/amr-projekt/" />
+
+  {#- Open Graph -#}
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="de_DE" />
+  <meta property="og:site_name" content="{{ config.site_name }}" />
+  <meta property="og:title" content="{{ meta_title }}" />
+  <meta property="og:description" content="{{ meta_desc }}" />
+  <meta property="og:url" content="{{ page.canonical_url }}" />
+  <meta property="og:image" content="{{ config.site_url }}assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="AMR-Plattform – Autonomer Mobiler Roboter Draufsicht" />
+
+  {#- Twitter Card -#}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ meta_title }}" />
+  <meta name="twitter:description" content="{{ meta_desc }}" />
+  <meta name="twitter:image" content="{{ config.site_url }}assets/og-image.png" />
+
+  {#- JSON-LD Structured Data -#}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "AMR-Plattform",
+    "description": "{{ config.site_description }}",
+    "url": "{{ config.site_url }}",
+    "codeRepository": "{{ config.repo_url }}",
+    "programmingLanguage": ["Python", "C++", "TypeScript"],
+    "runtimePlatform": ["ROS 2 Humble", "FreeRTOS", "Raspberry Pi 5"],
+    "author": {
+      "@type": "Person",
+      "name": "{{ config.site_author }}"
+    },
+    "about": {
+      "@type": "Thing",
+      "name": "Autonomer Mobiler Roboter",
+      "description": "Lernplattform fuer autonomes Fahren im Kfz-Massstab nach VDI 2206"
+    }
+  }
+  </script>
 {% endblock %}

@@ -1,5 +1,4 @@
 ---
-title: AMR-Plattform – Autonomer Mobiler Roboter mit ROS 2 und ESP32-S3
 description: >-
   Open-Source AMR-Plattform mit ESP32-S3 (FreeRTOS + micro-ROS) und
   Raspberry Pi 5 (ROS 2 Humble). Projektarbeit nach VDI 2206.
