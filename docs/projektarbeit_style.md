@@ -2,6 +2,7 @@
 description: >-
   Schreibregeln, Terminologie-Norm und Konventionen fuer
   Dokumentation und Projektarbeit.
+robots: noindex, nofollow
 ---
 
 # Stilregeln Projektarbeit

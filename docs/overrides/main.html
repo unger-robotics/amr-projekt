@@ -7,6 +7,11 @@
   {#- Titel: Seitenname fuer Unterseiten, Site-Name fuer Homepage -#}
   {% set meta_title = config.site_name if page.is_homepage else (page.title | striptags) %}
 
+  {#- Per-Page Robots (noindex fuer interne Seiten) -#}
+  {% if page and page.meta and page.meta.robots %}
+  <meta name="robots" content="{{ page.meta.robots }}" />
+  {% endif %}
+
   {#- Keywords (statisch, alle Seiten) -#}
   <meta name="keywords" content="AMR, ROS 2, ESP32-S3, micro-ROS, Raspberry Pi 5, FreeRTOS, SLAM, Nav2, Differentialantrieb, VDI 2206, autonomer mobiler Roboter, Robotik" />
 

@@ -2,6 +2,7 @@
 description: >-
   Dokumentationsstruktur, Schreibregeln, LaTeX-Build
   und uebergreifende Qualitaetspruefungen.
+robots: noindex, nofollow
 ---
 
 # Dokumentation und Qualitaetssicherung

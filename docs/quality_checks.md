@@ -2,6 +2,7 @@
 description: >-
   Statische Qualitaetspruefungen fuer Python, C++, TypeScript
   via pre-commit und CI.
+robots: noindex, nofollow
 ---
 
 # Qualitaetssicherung

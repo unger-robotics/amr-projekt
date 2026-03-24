@@ -2,6 +2,7 @@
 description: >-
   Ablageregeln fuer Quellen, PDFs, Kernaussagen
   und Literaturverzeichnis.
+robots: noindex, nofollow
 ---
 
 # Literatur-Workflow

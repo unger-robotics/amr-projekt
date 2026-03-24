@@ -86,7 +86,7 @@ Der AMR operiert in einer strukturierten Indoor-Umgebung (Buero, Labor, Lager) a
 | ID | PF | Prio | Beschreibung | Messgroesse | Schwellwert | Kfz-Pendant | Referenz | Testfall-ID | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | NFA-01 | PF1 | MUSS | PID-Regelfrequenz im Fahrkern deterministisch | Zyklusrate, Jitter | >= 50 Hz, Jitter < 2 ms (Ist: 50 Hz, < 2 ms) | ECU-Zykluszeit | config_drive.h (control_loop_hz: 50), Messprotokoll P1/P2 | T-01 (motor_test) | Erfuellt |
-| NFA-02 | PF2 | MUSS | LiDAR-Scan-Rate genuegt fuer SLAM und Navigation | Scan-Frequenz | >= 5 Hz (Ist: 7,7 Hz) | Lidar-Scanrate | Datenblatt RPLIDAR A1, Messprotokoll P3 | T-06 (rplidar_test) | Erfuellt |
+| NFA-02 | PF2 | MUSS | LiDAR-Scan-Rate genuegt fuer SLAM und Navigation | Scan-Frequenz | >= 5 Hz (Ist-Messwert: 7,7 Hz; Datenblatt: 5,5 Hz typ.) | Lidar-Scanrate | Datenblatt RPLIDAR A1, Messprotokoll P3 | T-06 (rplidar_test) | Erfuellt |
 | NFA-03 | PF1 | MUSS | Odometrie-Publikationsrate genuegt fuer Regelkreis | Odometrie-Rate | >= 10 Hz (Soll: 20 Hz, Ist: 18,3–18,8 Hz) | ABS-Raddrehzahl-Zyklus | config_drive.h (odom_publish_hz: 20), Messprotokoll P3 | T-02 (encoder_test) | Erfuellt |
 | NFA-04 | PF1 | MUSS | IMU-Abtastrate genuegt fuer Sensorfusion | IMU-Rate | >= 20 Hz (Soll: 50 Hz, Ist: 30–35 Hz) | ESP-Sensorrate | config_sensors.h (imu_sample_hz: 50), Messprotokoll P2 | T-04 (imu_test) | Erfuellt |
 | NFA-05 | PF2 | MUSS | Autonome Maximalgeschwindigkeit (RPP-Regler) begrenzt | Lineargeschwindigkeit | <= 0,15 m/s | v_max autonom L4 | nav2_params.yaml (desired_linear_vel: 0,15) | IT-05 (nav_test) | Erfuellt |

@@ -2,6 +2,7 @@
 description: >-
   Checkliste fuer Google Search Console, Sitemap-Einreichung
   und SEO-Verifizierung.
+robots: noindex, nofollow
 ---
 
 # SEO Setup Checklist (intern)
