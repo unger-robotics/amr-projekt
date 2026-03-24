@@ -1,3 +1,9 @@
+---
+description: >-
+  Statische Qualitaetspruefungen fuer Python, C++, TypeScript
+  via pre-commit und CI.
+---
+
 # Qualitaetssicherung
 
 ## Zweck

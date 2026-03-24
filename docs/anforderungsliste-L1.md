@@ -1,3 +1,9 @@
+---
+description: >-
+  VDI-2206-Anforderungsliste (L1) mit funktionalen und
+  nicht-funktionalen Anforderungen.
+---
+
 # Anforderungsliste L1 – Autonomer Mobiler Roboter (AMR)
 
 ## Kopfbereich

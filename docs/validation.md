@@ -1,3 +1,9 @@
+---
+description: >-
+  Validierungsskripte, ROS2-Testknoten und
+  Hardware-in-the-Loop-Pruefungen nach V-Modell.
+---
+
 # Validierung
 
 Bedienorientierte Validierungsanleitung: [benutzerhandbuch.md](benutzerhandbuch.md) Abschnitt 6.

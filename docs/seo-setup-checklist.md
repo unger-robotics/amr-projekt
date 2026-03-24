@@ -1,3 +1,9 @@
+---
+description: >-
+  Checkliste fuer Google Search Console, Sitemap-Einreichung
+  und SEO-Verifizierung.
+---
+
 # SEO Setup Checklist (intern)
 
 Diese Datei ist NICHT in der Navigation – sie dient als interne Referenz.

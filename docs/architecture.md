@@ -1,3 +1,9 @@
+---
+description: >-
+  Komponentenuebersicht der Drei-Ebenen-Architektur mit Hauptmodulen
+  und Systemlogik.
+---
+
 # Architektur
 
 ## Zielbild

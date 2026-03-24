@@ -1,3 +1,9 @@
+---
+description: >-
+  Ablageregeln fuer Quellen, PDFs, Kernaussagen
+  und Literaturverzeichnis.
+---
+
 # Literatur-Workflow
 
 ## Zweck

@@ -1,3 +1,9 @@
+---
+description: >-
+  Schreibregeln, Terminologie-Norm und Konventionen fuer
+  Dokumentation und Projektarbeit.
+---
+
 # Stilregeln Projektarbeit
 
 ## Sprache

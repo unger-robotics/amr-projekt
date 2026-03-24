@@ -1,3 +1,9 @@
+---
+description: >-
+  Bedienungsanleitung fuer Hardware-Inbetriebnahme, Systemstart,
+  Betrieb und Fehlerdiagnose.
+---
+
 # Benutzerhandbuch: Autonomer mobiler Roboter (AMR)
 
 ## 1. Voraussetzungen
