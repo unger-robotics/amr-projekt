@@ -7,10 +7,9 @@
 site_name: "AMR-Plattform – Autonomer Mobiler Roboter"
 site_url: "https://unger-robotics.github.io/amr-projekt/"
 site_description: >-
-  Dokumentation der AMR-Plattform (Autonomer Mobiler Roboter) –
-  ESP32-S3 Dual-Core FreeRTOS + micro-ROS, Raspberry Pi 5 mit ROS 2 Humble.
-  Projektarbeit nach VDI 2206. Lernplattform fuer autonomes Fahren (Kfz).
-  Die AMR-Plattform dient als Lernplattform fuer autonomes Fahren (Kfz).
+  Offene Robotik-Plattform mit ROS 2 Humble, ESP32-S3 micro-ROS und
+  Raspberry Pi 5. Projektarbeit nach VDI 2206. Lernplattform fuer
+  autonomes Fahren im Kfz-Massstab.
 site_author: "Jan Unger"
 repo_url: "https://github.com/unger-robotics/amr-projekt"
 repo_name: "unger-robotics/amr-projekt"
@@ -21,6 +20,7 @@ copyright: "© 2026 Jan Unger – AMR-Plattform Dokumentation"
 # =============================================================================
 theme:
   name: material
+  custom_dir: docs/overrides
   language: de
   palette:
     - media: "(prefers-color-scheme: dark)"
