@@ -5,11 +5,13 @@ import { Dashboard } from './components/Dashboard';
 import DetailPage from './components/DetailPage';
 import ValidationPage from './components/ValidationPage';
 import VoicePage from './components/VoicePage';
+import AufgabenPage from './components/AufgabenPage';
+import ControlReferencePage from './components/ControlReferencePage';
 import { EmergencyStop } from './components/EmergencyStop';
 import type { ServerMessage } from './types/ros';
 
 function App() {
-  const [tab, setTab] = useState<'steuerung' | 'details' | 'validierung' | 'sprache'>('steuerung');
+  const [tab, setTab] = useState<'steuerung' | 'aufgaben' | 'details' | 'validierung' | 'sprache' | 'referenz'>('steuerung');
 
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
@@ -92,6 +94,13 @@ function App() {
           Steuerung
         </button>
         <button
+          onClick={() => setTab('aufgaben')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
+            ${tab === 'aufgaben' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
+        >
+          Aufgaben
+        </button>
+        <button
           onClick={() => setTab('details')}
           className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
             ${tab === 'details' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
@@ -111,6 +120,13 @@ function App() {
             ${tab === 'sprache' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
         >
           Sprache
+        </button>
+        <button
+          onClick={() => setTab('referenz')}
+          className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
+            ${tab === 'referenz' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
+        >
+          Referenz
         </button>
         {/* Connection indicator + Emergency Stop on the right */}
         <div className="ml-auto px-3 flex items-center gap-3">
@@ -133,6 +149,15 @@ function App() {
           sendVisionControl={sendVisionControl}
         />
       )}
+      {tab === 'aufgaben' && (
+        <AufgabenPage
+          send={send}
+          sendNavGoal={sendNavGoal}
+          sendNavCancel={sendNavCancel}
+          sendVisionControl={sendVisionControl}
+          sendAudioPlay={sendAudioPlay}
+        />
+      )}
       {tab === 'details' && (
         <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
       )}
@@ -142,6 +167,7 @@ function App() {
       {tab === 'sprache' && (
         <VoicePage send={send} sendVoiceMute={sendVoiceMute} />
       )}
+      {tab === 'referenz' && <ControlReferencePage />}
     </div>
   );
 }
