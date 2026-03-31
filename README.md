@@ -1,5 +1,11 @@
 # AMR — Autonomes Fahrzeug im Kleinformat
 
+[![Release](https://img.shields.io/github/v/release/unger-robotics/amr-projekt)](https://github.com/unger-robotics/amr-projekt/releases/latest)
+[![Docs](https://img.shields.io/badge/docs-online-00E5FF)](https://unger-robotics.github.io/amr-projekt/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](amr/LICENSE)
+[![ROS 2](https://img.shields.io/badge/ROS_2-Humble-blue)](https://docs.ros.org/en/humble/)
+[![Platform](https://img.shields.io/badge/platform-Raspberry_Pi_5-c51a4a)](https://www.raspberrypi.com/products/raspberry-pi-5/)
+
 Projektarbeit nach VDI 2206: Ein Autonomer Mobiler Roboter (AMR / Autonomous Mobile Robot) mit Differentialantrieb als skaliertes Modell eines autonomen Fahrzeugs (Kfz). Zwei ESP32-S3 Mikrocontroller steuern unter FreeRTOS die Echtzeit-Regelung und kommunizieren via micro-ROS mit einem Raspberry Pi 5, der ROS 2 Humble fuer Navigation, SLAM und Sensorfusion ausfuehrt. Die Dreischicht-Architektur bildet die Subsysteme eines modernen Kfz nach — vom Motorsteuergeraet ueber Sensorfusion bis zur ADAS-Objekterkennung.
 
 ![AMR Draufsicht](hardware/media/amr-draufsicht_web.png)
@@ -306,4 +312,4 @@ verfuegbar.
 
 MIT — siehe [LICENSE](amr/LICENSE)
 
-Copyright (c) 2026 unger-robotics
+Copyright (c) 2025–2026 unger-robotics
