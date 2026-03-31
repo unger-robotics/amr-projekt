@@ -148,6 +148,8 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 - **micro-ROS QoS**: `rclc_publisher_init_default()` (Reliable) fuer Nachrichten > 512 Bytes (XRCE-DDS MTU), da Best-Effort keine Fragmentierung unterstuetzt
 - **Kein Reconnect**: Verlust der micro-ROS-Agent-Verbindung erfordert ESP32 Power-Cycle (kein automatisches Wiederverbinden)
 - **USB-CDC**: `-DARDUINO_USB_CDC_ON_BOOT=1` in beiden `platformio.ini` (Serial = USB, nicht UART0)
+- **TWAI CAN-Bus**: `TWAI_GENERAL_CONFIG_DEFAULT` setzt `intr_flags = ESP_INTR_FLAG_LEVEL1`, der auf ESP32-S3 mit USB-CDC kollidieren kann (`ESP_ERR_NOT_FOUND` → `abort()`). Fix: `g_config.intr_flags = 0` fuer automatische Interrupt-Auswahl. In beiden `twai_can.hpp` angewendet
+- **Boot-Reihenfolge**: `setup()` blockiert bei `rmw_uros_ping_agent()` bis der micro-ROS Agent den seriellen Port geoeffnet hat. Sensor-Node braucht nach Container-Start ggf. einen DTR/RTS-Reset
 
 ## Detaillierte Dokumentation
 

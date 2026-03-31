@@ -296,6 +296,9 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 - **Cliff-Safety/Dashboard-Remapping**: Bei `use_cliff_safety:=True` UND `use_dashboard:=True` wird `/cmd_vel` der Dashboard-Bridge auf `/dashboard_cmd_vel` remapped — die Cliff-Safety-Node multiplext dann zwischen Dashboard- und Nav2-Befehlen. Bei `use_cliff_safety:=False` entfaellt das Remapping
 - **micro-ROS kein Reconnect**: Verlust der Agent-Verbindung erfordert ESP32 Power-Cycle (kein automatisches Wiederverbinden). Serielle Symlinks nach Flash erst beim naechsten `./run.sh`-Aufruf aktualisiert
+- **ESP32 Boot-Reihenfolge**: Sensor-Node braucht ggf. DTR/RTS-Reset NACH Container-Start, da `setup()` blockiert bis der micro-ROS Agent den Port geoeffnet hat. Wenn der Agent vor dem ESP32 startet, verbindet sich der ESP32 nicht automatisch
+- **TWAI CAN-Bus Interrupt**: `TWAI_GENERAL_CONFIG_DEFAULT` setzt `intr_flags = ESP_INTR_FLAG_LEVEL1`, der auf ESP32-S3 mit USB-CDC belegt sein kann. Fix: `g_config.intr_flags = 0` (automatische Auswahl). Ohne Fix crasht die Firmware mit `abort()` in `twai_driver_install`
+- **Hailo-8L Device-Lock**: `host_hailo_runner.py` haelt `/dev/hailo0` exklusiv. Bei Absturz bleibt das Device gesperrt — vor Neustart `sudo fuser /dev/hailo0` pruefen und ggf. `sudo kill -9 <PID>`
 - **run.sh ALSA-Sync**: `run.sh` synchronisiert `/dev/snd/*`-Geraete in den Container, da USB-Audio (ReSpeaker) nach Container-Start enumeriert werden kann. Audio-Device-Name fuer Voice: `plughw:CARD=ArrayUAC10,DEV=0` (hardcoded in Launch)
 - **Dashboard-Zertifikate**: Ohne mkcert-Zertifikate (`amr.local+5.pem`) crasht `npm run dev` sofort — `vite.config.ts` liest sie synchron, kein Fallback
 - **Mypy Moderate Mode**: `disallow_untyped_defs = false` — bestehender Code hat wenig Type-Hints. ROS2-Pakete sind in `mypy.ini` als `ignore_missing_imports` konfiguriert
