@@ -86,7 +86,7 @@ Drive-Knoten (ECM)                    Sensor-Knoten (ESC)
 Core 0 — Kommunikation               Core 0 — Kommunikation
   micro-ROS spin_some (~500 Hz)         micro-ROS spin_some (~500 Hz)
   Sub: /cmd_vel, /hardware_cmd          Sub: /servo_cmd, /hardware_cmd
-  Pub: /odom (20 Hz Soll, ~18,3 Hz gemessen)                  Pub: /cliff /range /imu /battery (82 Msg/s)
+  Pub: /odom (20 Hz)                       Pub: /cliff /range /imu /battery (82 Msg/s)
   LED State Machine                     PCA9685 I2C Write (Deferred Pattern)
 
 Core 1 — Echtzeit                     Core 1 — Echtzeit
@@ -135,6 +135,7 @@ Raddurchmesser: 65,67 mm · Spurbreite: 178,0 mm · PID: Kp=0,4 Ki=0,1 Kd=0,0
 | Hailo-8L Inferenz       | 34 ms                        | ADAS-Latenz              | PASS   |
 | ArUco-Docking           | 100 %, 0,73 cm Versatz       | Einparkquote (APA)       | PASS   |
 | Pfadfolgefehler (ATE)   | MAE 0,16 m / RMSE 0,19 m (T3.1) | Fahrdynamik-Pruefstand   | PASS   |
+| CAN-Bus (Dual-Path)     | 5604 Frames/30 s, 11/12 IDs  | Redundanter CAN-Bus      | PASS   |
 
 ## Architekturvergleich AMR vs. Kfz
 

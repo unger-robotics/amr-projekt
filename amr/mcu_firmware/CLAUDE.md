@@ -130,11 +130,11 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 
 | CAN-ID | Inhalt | Rate |
 |---|---|---|
-| `0x110` | Range [float32 m] | 10 Hz (gemessen: ~5.6 Hz) |
-| `0x120` | Cliff [1 B] | 20 Hz (gemessen: ~11 Hz) |
-| `0x130` | IMU Accel+GyroZ [8 B] | 50 Hz (gemessen: ~26 Hz) |
-| `0x131` | IMU Heading [float32 rad] | 50 Hz (gemessen: ~26 Hz) |
-| `0x140` | Batterie V/I/P [6 B] | 2 Hz (gemessen: ~1.1 Hz) |
+| `0x110` | Range [float32 m] | 10 Hz (gemessen: 10,0 Hz) |
+| `0x120` | Cliff [1 B] | 20 Hz (gemessen: 20,0 Hz) |
+| `0x130` | IMU Accel+GyroZ [8 B] | 50 Hz (gemessen: 50,0 Hz) |
+| `0x131` | IMU Heading [float32 rad] | 50 Hz (gemessen: 50,0 Hz) |
+| `0x140` | Batterie V/I/P [6 B] | 2 Hz (gemessen: 2,0 Hz) |
 | `0x141` | Battery Shutdown [1 B] | Event |
 | `0x1F0` | Heartbeat [2 B] | 1 Hz |
 

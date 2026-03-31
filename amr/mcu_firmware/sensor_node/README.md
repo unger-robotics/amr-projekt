@@ -223,15 +223,15 @@ Alle Sensor-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230) gesende
 
 | CAN-ID | Laenge | Inhalt | Soll-Rate | Gemessen |
 |---|---|---|---|---|
-| `0x110` | 4 B | HC-SR04 Distanz [float32 LE, m] | 10 Hz | ~5.6 Hz |
-| `0x120` | 1 B | Cliff-Status (0x00=OK, 0x01=Cliff) | 20 Hz | ~11 Hz |
-| `0x130` | 8 B | IMU: ax,ay,az [int16 mg] + gz [int16 0.01 rad/s] | 50 Hz | ~26 Hz |
-| `0x131` | 4 B | IMU Heading [float32 LE, rad] | 50 Hz | ~26 Hz |
-| `0x140` | 6 B | Batterie: V [uint16 mV] + I [int16 mA] + P [uint16 mW] | 2 Hz | ~1.1 Hz |
+| `0x110` | 4 B | HC-SR04 Distanz [float32 LE, m] | 10 Hz | 10,0 Hz |
+| `0x120` | 1 B | Cliff-Status (0x00=OK, 0x01=Cliff) | 20 Hz | 20,0 Hz |
+| `0x130` | 8 B | IMU: ax,ay,az [int16 mg] + gz [int16 0.01 rad/s] | 50 Hz | 50,0 Hz |
+| `0x131` | 4 B | IMU Heading [float32 LE, rad] | 50 Hz | 50,0 Hz |
+| `0x140` | 6 B | Batterie: V [uint16 mV] + I [int16 mA] + P [uint16 mW] | 2 Hz | 2,0 Hz |
 | `0x141` | 1 B | Battery Shutdown (0x00=OK, 0x01=Shutdown) | Event | Event |
-| `0x1F0` | 2 B | Heartbeat: Flags [uint8] + Uptime [uint8 s%256] | 1 Hz | 1 Hz |
+| `0x1F0` | 2 B | Heartbeat: Flags [uint8] + Uptime [uint8 s%256] | 1 Hz | 1,0 Hz |
 
-Gemessene Raten liegen unter den Soll-Raten, da I2C-Zugriffe und Mutex-Contention die effektiven Zykluszeiten verlaengern.
+Gemessene Raten (CAN-Validierungstest, 31.03.2026, 30 s Aufnahme, 5604 Frames) treffen die Soll-Raten innerhalb 25 % Toleranz. Siehe `planung/messprotokoll_can.md`.
 
 ## Diagnose-Environment: `servo_test`
 

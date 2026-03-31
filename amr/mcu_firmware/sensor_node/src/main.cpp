@@ -414,6 +414,21 @@ void setup() {
 
     // CAN-Bus (TWAI) initialisieren — fehlschlag nicht fatal
     can_ok = can.init();
+    Serial.printf("[CAN] init %s (TX=%d, RX=%d)\n", can_ok ? "OK" : "FAILED", amr::hal::pin_can_tx,
+                  amr::hal::pin_can_rx);
+    // LED-Feedback: CAN FAILED = 5x schnelles Blinken, CAN OK = 1x kurz
+    if (!can_ok) {
+        for (int i = 0; i < 5; i++) {
+            digitalWrite(amr::hal::pin_led_internal, LOW);
+            delay(80);
+            digitalWrite(amr::hal::pin_led_internal, HIGH);
+            delay(80);
+        }
+    } else {
+        digitalWrite(amr::hal::pin_led_internal, LOW);
+        delay(200);
+        digitalWrite(amr::hal::pin_led_internal, HIGH);
+    }
 
     // Multithreading vorbereiten
     mutex = xSemaphoreCreateMutex();

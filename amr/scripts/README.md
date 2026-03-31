@@ -17,6 +17,7 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `respeaker_doa_node.py` | ReSpeaker DoA/VAD (USB, `/sound_direction`, `/is_voice`) |
 | `tts_speak_node.py` | Text-to-Speech Sprachausgabe fuer Gemini-Semantik (gTTS + mpg123, Rate-Limiting 10 s) |
 | `voice_command_node.py` | Sprachsteuerung: ReSpeaker VAD → Gemini Flash STT → Intent-Parsing → `/voice/command` + `/voice/text` |
+| `aruco_docking.py` | ArUco-Marker-Detektion + Docking-Navigation (erfordert `use_camera:=True`) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)
 

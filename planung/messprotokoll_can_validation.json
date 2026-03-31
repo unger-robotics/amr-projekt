@@ -1,0 +1,180 @@
+{
+  "timestamp": "2026-03-31T20:30:15.123521+00:00",
+  "test": "can_validation",
+  "duration_s": 30,
+  "total_frames": 5604,
+  "frame_rates": {
+    "0x200": {
+      "name": "Drive/OdomPos",
+      "expected_hz": 20,
+      "actual_hz": 16.1,
+      "count": 483,
+      "status": "PASS"
+    },
+    "0x201": {
+      "name": "Drive/OdomHeading",
+      "expected_hz": 20,
+      "actual_hz": 16.7,
+      "count": 500,
+      "status": "PASS"
+    },
+    "0x210": {
+      "name": "Drive/Encoder",
+      "expected_hz": 10,
+      "actual_hz": 10.0,
+      "count": 300,
+      "status": "PASS"
+    },
+    "0x220": {
+      "name": "Drive/MotorPWM",
+      "expected_hz": 10,
+      "actual_hz": 10.0,
+      "count": 300,
+      "status": "PASS"
+    },
+    "0x2F0": {
+      "name": "Drive/Heartbeat",
+      "expected_hz": 1,
+      "actual_hz": 1.0,
+      "count": 30,
+      "status": "PASS"
+    },
+    "0x110": {
+      "name": "Sensor/Range",
+      "expected_hz": 10,
+      "actual_hz": 10.0,
+      "count": 300,
+      "status": "PASS"
+    },
+    "0x120": {
+      "name": "Sensor/Cliff",
+      "expected_hz": 20,
+      "actual_hz": 20.0,
+      "count": 600,
+      "status": "PASS"
+    },
+    "0x130": {
+      "name": "Sensor/IMU_Accel",
+      "expected_hz": 50,
+      "actual_hz": 50.0,
+      "count": 1501,
+      "status": "PASS"
+    },
+    "0x131": {
+      "name": "Sensor/IMU_Heading",
+      "expected_hz": 50,
+      "actual_hz": 50.0,
+      "count": 1500,
+      "status": "PASS"
+    },
+    "0x140": {
+      "name": "Sensor/Battery",
+      "expected_hz": 2,
+      "actual_hz": 2.0,
+      "count": 60,
+      "status": "PASS"
+    },
+    "0x141": {
+      "name": "Sensor/BatShutdown",
+      "expected_hz": 0,
+      "actual_hz": 0.0,
+      "count": 0,
+      "status": "OK"
+    },
+    "0x1F0": {
+      "name": "Sensor/Heartbeat",
+      "expected_hz": 1,
+      "actual_hz": 1.0,
+      "count": 30,
+      "status": "PASS"
+    }
+  },
+  "heartbeats": {
+    "drive": {
+      "encoder_ok": true,
+      "motor_ok": true,
+      "pid_active": false,
+      "bat_shutdown": false,
+      "core1_ok": true,
+      "failsafe": true,
+      "uptime_mod256": 39
+    },
+    "sensor": {
+      "imu_ok": true,
+      "ina260_ok": true,
+      "pca9685_ok": true,
+      "bat_shutdown": false,
+      "core1_ok": true,
+      "uptime_mod256": 38
+    }
+  },
+  "sample_values": {
+    "0x200": {
+      "x_m": 0.0,
+      "y_m": 0.0
+    },
+    "0x201": {
+      "theta_rad": 0.0,
+      "v_ms": 0.0
+    },
+    "0x210": {
+      "left_rads": 0.0,
+      "right_rads": 0.0
+    },
+    "0x220": {
+      "left": 0,
+      "right": 0
+    },
+    "0x2F0": {
+      "encoder_ok": true,
+      "motor_ok": true,
+      "pid_active": false,
+      "bat_shutdown": false,
+      "core1_ok": true,
+      "failsafe": true,
+      "uptime_mod256": 39
+    },
+    "0x110": {
+      "range_m": 1.204
+    },
+    "0x120": {
+      "cliff": false
+    },
+    "0x130": {
+      "ax_mg": 153,
+      "ay_mg": -198,
+      "az_mg": 9131,
+      "gz_001rads": 0
+    },
+    "0x131": {
+      "heading_rad": 0.0004
+    },
+    "0x140": {
+      "voltage_mv": 12340,
+      "current_ma": 860,
+      "power_mw": 10620
+    },
+    "0x1F0": {
+      "imu_ok": true,
+      "ina260_ok": true,
+      "pca9685_ok": true,
+      "bat_shutdown": false,
+      "core1_ok": true,
+      "uptime_mod256": 38
+    }
+  },
+  "missing_ids": [],
+  "nodes": {
+    "drive": {
+      "ids_expected": 5,
+      "ids_received": 5,
+      "status": "OK"
+    },
+    "sensor": {
+      "ids_expected": 7,
+      "ids_received": 6,
+      "status": "OK"
+    }
+  },
+  "overall_status": "PASS"
+}

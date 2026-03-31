@@ -17,7 +17,7 @@ Einmalig auf dem Host ausfuehren (erfordert `sudo`):
 sudo bash host_setup.sh
 ```
 
-Das Skript erledigt: Gruppenzugehoerigkeit pruefen und korrigieren, udev-Regeln fuer ESP32 und RPLIDAR anlegen, X11-Zugriff konfigurieren, v4l2loopback fuer die Kamera-Bridge installieren und den systemd-Service registrieren. Nach Aenderungen an den Gruppen ist ein Re-Login noetig.
+Das Skript erledigt: Gruppenzugehoerigkeit pruefen und korrigieren, udev-Regeln fuer ESP32 und RPLIDAR anlegen, X11-Zugriff konfigurieren, v4l2loopback fuer die Kamera-Bridge installieren und den systemd-Service registrieren, ReSpeaker-udev-Regel (USB Vendor Control ohne sudo), CAN-Bus-Setup (SocketCAN can0, MCP2515-Overlay, can-utils, systemd-Service). Nach Aenderungen an den Gruppen ist ein Re-Login noetig.
 
 ## Build & Run
 
@@ -65,15 +65,25 @@ docker compose build
 | `/tmp/.X11-unix`     | `/tmp/.X11-unix`             | rw    | X11-Socket fuer RViz2                            |
 | Docker Volumes       | `/ros2_ws/build,install,log` | rw    | Persistenter Build-Cache                         |
 
-**Entrypoint:** `entrypoint.sh` sourced automatisch alle Workspaces (ROS2 Humble, micro-ROS Agent, Projekt-Workspace). Kein manuelles `source setup.bash` noetig.
+**Umgebungsvariablen:**
+
+| Variable | Quelle | Beschreibung |
+|---|---|---|
+| `DISPLAY` | Host | X11-Display fuer RViz2 |
+| `ROS_DOMAIN_ID` | `0` | ROS2 DDS Domain |
+| `GEMINI_API_KEY` | Host-Env | Vision, TTS und Sprachsteuerung (optional) |
+| `OPENWEATHER_API_KEY` | Host-Env | Standort/Wetter in Sprachsteuerung (optional) |
+| `AMR_LOCATION` | Host-Env | Standort fuer Wetter-Abfragen (Default: "Wuppertal Vohwinkel") |
+
+**Entrypoint:** `entrypoint.sh` sourced automatisch alle Workspaces (ROS2 Humble, micro-ROS Agent, Projekt-Workspace) und erstellt bei Bedarf eine ALSA-Konfiguration fuer den MAX98357A-Verstaerker. Kein manuelles `source setup.bash` noetig.
 
 ## Hilfs-Skripte
 
-**run.sh** -- Convenience-Wrapper fuer `docker compose run/exec`. Beliebige Befehle via `./run.sh <befehl>` ausfuehrbar (z.B. `./run.sh ros2 topic list`). Bei jedem Aufruf:
+**run.sh** -- Convenience-Wrapper fuer `docker compose up -d` + `docker compose exec`. Beliebige Befehle via `./run.sh <befehl>` ausfuehrbar (z.B. `./run.sh ros2 topic list`). Bei jedem Aufruf:
 - Startet Container via `docker compose up -d` falls nicht laufend
 - Gibt Ports 5173, 5174, 8082, 9090 frei falls belegt (via `fuser -k`)
-- Aktualisiert serielle Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) im Container
-- Synchronisiert `/dev/snd/*`-Geraete in den Container (USB-Audio/ReSpeaker kann nach Container-Start enumeriert werden)
+- Aktualisiert serielle Symlinks (`/dev/amr_drive`, `/dev/amr_sensor`) im Container (Host-udev greift im Container nicht)
+- Synchronisiert `/dev/snd/*`-Geraete in den Container via `mknod` (USB-Audio/ReSpeaker kann nach Container-Start enumeriert werden)
 - Setzt X11-Zugriff (`xhost +local:docker`)
 - Prueft bei `use_camera:=True` ob `camera-v4l2-bridge.service` aktiv ist und `/dev/video10` existiert
 - `./run.sh exec bash` oeffnet ein zweites Terminal in einem bereits laufenden Container

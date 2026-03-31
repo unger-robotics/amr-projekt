@@ -6,10 +6,10 @@ Benutzeroberflaeche (Bedien- und Leitstandsebene) fuer den Autonomen Mobilen Rob
 
 | Bereich | Technologie |
 |---|---|
-| Framework | React 19 + TypeScript 5.9 |
-| Build | Vite 7 |
-| Styling | Tailwind CSS 4 (HUD-Theme, JetBrains Mono) |
-| State | Zustand 5 (flacher Store, 60+ Properties) |
+| Framework | React 19.2 + TypeScript 5.9 |
+| Build | Vite 7.3 |
+| Styling | Tailwind CSS 4.2 (HUD-Theme, JetBrains Mono) |
+| State | Zustand 5.0 (flacher Store, 72 Properties) |
 | Joystick | nipplejs |
 
 ## Voraussetzungen
@@ -25,6 +25,7 @@ npm install
 npm run dev -- --host 0.0.0.0    # https://amr.local:5173
 npm run build                     # Produktion (tsc + vite build)
 npm run lint                      # ESLint
+npx tsc --noEmit                  # TypeScript Type-Check (ohne Build)
 ```
 
 Das Dashboard benoetigt parallel den ROS2-Stack:
@@ -34,7 +35,7 @@ cd amr/docker/
 ./run.sh ros2 launch my_bot full_stack.launch.py use_dashboard:=True use_rviz:=False
 ```
 
-## Seiten
+## Seiten (5 Tabs)
 
 ### Steuerung (Standardansicht)
 
@@ -46,10 +47,20 @@ cd amr/docker/
 ```
 
 - **Kamera:** MJPEG-Livestream (Port 8082) mit Hailo-8L-Bounding-Boxen und AI-Toggle
-- **SLAM-Karte:** Canvas-basiert, Roboter-Position, Fahrpfad-Trail, Navigationsziel per Klick
+- **SLAM-Karte:** Canvas-basiert, Heading-Up-Rotation, Roboter-Position, Fahrpfad-Trail, Navigationsziel per Klick
 - **LiDAR:** Farbkodierte Entfernungswerte im Polardiagramm
 - **Joystick:** 0,4 m/s linear, 1,0 rad/s angular, Deadman-Timer (300 ms)
 - **Kommandofeld:** Freitext-REPL ("fahre 1 m vorwaerts", "drehe 90 grad links", "nav 1.0 0.5")
+
+### Aufgaben
+
+- **Navigation:** Waypoint-Ziele, Kartenklick-Navigation, Abbruch
+- **SLAM:** Kartierung starten/stoppen, Karte speichern
+- **Cliff-Safety:** Status, Sicherheitsmechanismen
+- **Docking:** ArUco-Marker-Docking
+- **Vision/Semantik:** AI-Toggle, Gemini-Analyse
+- **TTS:** Sprachausgabe-Test
+- **Schnellstart-Missionen:** Vorkonfigurierte Ablaeufe
 
 ### Details
 
@@ -58,18 +69,17 @@ cd amr/docker/
 - **Audio:** ReSpeaker-Richtungskompass, Lautstaerke, Sound-Buttons
 - **Roboter-Info:** Netzwerk-IP, Seitenansicht-SVG, Spezifikationen
 
-### Validierung
-
-- **TestPanel:** 15 Tests nach V-Modell-Phasen gruppiert (Phase 1-5)
-- **Live-Status:** PASS/FAIL/RUNNING mit Fortschrittsanzeige
-- **Aufklappbarer Output:** JSON-Ergebnisse pro Test inline anzeigbar
-- **Steuerung:** Tests einzeln starten/stoppen via `test_run`/`test_stop` WebSocket-Ops
-
 ### Sprache
 
 - **Transkription:** Live-Anzeige der erkannten Sprachbefehle (via `voice_transcript`)
 - **Mikrofon-Mute:** Toggle fuer ReSpeaker VAD (via `voice_mute`/`voice_mute_status`)
 - **Kommandoverlauf:** Chronologische Liste aller erkannten Sprachbefehle
+
+### Referenz
+
+- **Steuerungskette:** Datenflusspfade cmd_vel → Motor
+- **Parameter:** Kinematik, PID, Timing
+- **Sicherheitsmechanismen:** Cliff-Safety, Failsafe, Notaus
 
 ## Kommunikation
 
@@ -92,8 +102,8 @@ cd amr/docker/
 | `audio_status` | 2 Hz | Audio-Geraetestatus, Lautstaerke |
 | `command_response` | Event | Antwort auf Freitext-Kommando |
 | `vision_semantics` | Event | Gemini Cloud Semantik-Beschreibung |
-| `vision_status` | Event | AI-Toggle-Status |
-| `test_list` | Event | Verfuegbare Tests (15 Stueck, nach Phasen) |
+| `vision_status` | Event | AI-Toggle-Bestaetigung |
+| `test_list` | Event | Verfuegbare Tests (nach Phasen) |
 | `voice_transcript` | Event | Erkannter Sprachbefehl (Text + Intent) |
 | `voice_mute_status` | Event | Mikrofon-Mute-Status |
 | `estop_status` | Event | Notaus-Status |
@@ -108,6 +118,7 @@ cd amr/docker/
 | `hardware_cmd` | 10 Hz | Motor-Limit, Servo-Speed, LED-PWM |
 | `nav_goal` | — | Kartenkoordinaten (x, y, yaw) |
 | `nav_cancel` | — | Laufende Navigation abbrechen |
+| `tts_test` | — | Text-to-Speech Testausgabe |
 | `command` | — | Freitext-Kommando |
 | `audio_play` | — | WAV-Datei abspielen |
 | `audio_volume` | 5 Hz | Lautstaerke setzen |
@@ -125,11 +136,11 @@ Vollstaendige Typdefinitionen: `src/types/ros.ts`
 
 ```
 src/
-├── components/       # 15 React-Komponenten (eine Datei pro Komponente)
+├── components/       # 19 React-Komponenten (eine Datei pro Komponente)
 ├── hooks/            # useWebSocket, useJoystick, useImageFit
-├── store/            # telemetryStore (Zustand, flacher State)
+├── store/            # telemetryStore (Zustand, flacher State, 72 Properties)
 ├── types/            # ros.ts (WebSocket-Protokoll-Interfaces)
-├── App.tsx           # Root (Tab-Navigation: Steuerung/Details/Validierung/Sprache)
+├── App.tsx           # Root (Tab-Navigation: Steuerung/Aufgaben/Details/Sprache/Referenz)
 └── index.css         # Tailwind + HUD-Theme (--color-hud-*)
 ```
 
