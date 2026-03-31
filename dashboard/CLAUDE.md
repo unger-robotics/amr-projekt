@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Ueberblick
 
-Dashboard (Bedien- und Leitstandsebene) fuer einen Autonomen Mobilen Roboter (AMR). React-SPA mit vier Tabs: **Steuerung** (Kamera, SLAM-Karte, LiDAR, Joystick, Servo/Hardware, Kommandofeld), **Details** (Geraetepanel, Sensordetails, Audio, Roboter-Daten), **Validierung** (TestPanel mit 15 Tests, Live-Status, aufklappbarer Output) und **Sprache** (Voice-Transkription, Mikrofon-Mute, Kommandoverlauf).
+Dashboard (Bedien- und Leitstandsebene) fuer einen Autonomen Mobilen Roboter (AMR). React-SPA mit fuenf Tabs: **Steuerung** (Kamera, SLAM-Karte mit Heading-Up-Rotation, LiDAR, Joystick, Servo/Hardware, Kommandofeld), **Aufgaben** (Navigation, SLAM, Cliff, Docking, Vision, Semantik, TTS, Schnellstart-Missionen), **Details** (Geraetepanel, Sensordetails, Audio, Roboter-Daten), **Sprache** (Voice-Transkription, Mikrofon-Mute, Kommandoverlauf) und **Referenz** (Steuerungskette, Parameter, Sicherheitsmechanismen).
 
 ## Build-Befehle
 
@@ -31,7 +31,7 @@ WebSocket-Backend laeuft auf Port 9090 (wss/ws), MJPEG-Kamerastream auf Port 808
 - React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4 (Vite-Plugin)
 - Zustand fuer State-Management (ein einzelner `telemetryStore`)
 - nipplejs fuer Joystick-Input
-- Kein Router — Tab-State (`steuerung` | `details` | `validierung` | `sprache`) in `App.tsx`
+- Kein Router — Tab-State (`steuerung` | `aufgaben` | `details` | `sprache` | `referenz`) in `App.tsx`
 
 ### Datenfluss
 1. `useWebSocket` Hook verbindet sich zu `wss://<host>:9090` (auto-reconnect mit exponentiellem Backoff)
@@ -50,7 +50,7 @@ Alle Typen sind in `src/types/ros.ts` definiert:
 HUD-Style mit dunklem Theme. Farben als CSS Custom Properties in `src/index.css` (`--color-hud-*`). Tailwind-Klassen: `hud-bg`, `hud-panel`, `hud-border`, `hud-cyan`, `hud-amber`, `hud-red`, `hud-green`, `hud-text`, `hud-text-dim`. Monospace-Schrift (JetBrains Mono) fuer alle Elemente.
 
 ### Dateistruktur-Konventionen
-- `src/components/` — React-Komponenten (eine Datei pro Komponente, inkl. ValidationPage, TestPanel, VoicePage)
+- `src/components/` — React-Komponenten (eine Datei pro Komponente, inkl. AufgabenPage, VoicePage, ControlReferencePage)
 - `src/hooks/` — Custom Hooks (`useWebSocket`, `useJoystick`)
 - `src/store/` — Zustand Store (`telemetryStore`)
 - `src/types/` — TypeScript-Interfaces fuer das WebSocket-Protokoll (`ros.ts`)

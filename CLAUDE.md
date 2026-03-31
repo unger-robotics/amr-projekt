@@ -89,7 +89,7 @@ Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_d
 - ROS2 Humble laeuft auf dem Pi 5 im Docker-Container
 - Die serielle Kommunikation erfolgt ueber getrennte Pfade pro Knoten
 - Dashboard, Kamera, Vision (AI-Toggle), Audio und ReSpeaker sind optionale Teilsysteme
-- Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 80 mm
+- Cliff-Safety-Node multiplext /cmd_vel: blockiert bei Cliff ODER Ultraschall < 100 mm (nur Vorwaertsfahrt; Rueckwaerts und Drehung bleiben erlaubt)
 - Dashboard-Entwicklung erfordert zwei Prozesse: `use_dashboard:=True` im Launch UND `cd dashboard && npm run dev -- --host 0.0.0.0` (HTTPS via mkcert)
 - Lange Tabellen, Parameterlisten und Betriebsprozeduren nicht in diese Datei duplizieren
 

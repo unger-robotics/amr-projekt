@@ -34,8 +34,8 @@ class CliffSafetyNode(Node):
         self._last_twist = Twist()
 
         # Ultraschall-Schwellen (Hysterese)
-        self._obstacle_stop_m = 0.08  # Stopp bei < 80 mm
-        self._obstacle_clear_m = 0.12  # Freigabe bei > 120 mm
+        self._obstacle_stop_m = 0.10  # Stopp bei < 100 mm
+        self._obstacle_clear_m = 0.14  # Freigabe bei > 140 mm
 
         # QoS: Best-Effort fuer Sensor-Daten (Cliff), Reliable fuer cmd_vel
         qos_sensor = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
@@ -96,10 +96,10 @@ class CliffSafetyNode(Node):
         if dist < self._obstacle_stop_m and not self._obstacle_too_close:
             self._obstacle_too_close = True
             self._cmd_vel_pub.publish(Twist())
-            self.get_logger().warn(f"HINDERNIS bei {dist * 100:.1f} cm! Fahrbefehle blockiert.")
+            self.get_logger().warn(f"HINDERNIS bei {dist * 100:.1f} cm! Vorwaertsfahrt blockiert.")
         elif dist > self._obstacle_clear_m and self._obstacle_too_close:
             self._obstacle_too_close = False
-            self.get_logger().info("Hindernis frei. Fahrbefehle wieder freigegeben.")
+            self.get_logger().info("Hindernis frei. Vorwaertsfahrt wieder freigegeben.")
 
     def _estop_callback(self, msg: Bool):
         """Verarbeitet /emergency_stop (Totmannschalter)."""
@@ -112,25 +112,32 @@ class CliffSafetyNode(Node):
             self.get_logger().info("E-Stop aufgehoben. Fahrbefehle wieder freigegeben.")
 
     @property
-    def _blocked(self) -> bool:
-        """True wenn Cliff, Hindernis oder E-Stop aktiv."""
-        return self._cliff_detected or self._obstacle_too_close or self._estop_active
+    def _hard_blocked(self) -> bool:
+        """True wenn Cliff oder E-Stop aktiv (alle Richtungen blockiert)."""
+        return self._cliff_detected or self._estop_active
+
+    def _is_forward_blocked(self, twist: Twist) -> bool:
+        """True wenn der Twist blockiert werden soll."""
+        if self._hard_blocked:
+            return True
+        # Ultraschall: nur Vorwaertsfahrt blockieren, Rueckwaerts + Drehung erlaubt
+        return self._obstacle_too_close and twist.linear.x > 0
 
     def _nav_cmd_vel_callback(self, msg: Twist):
         """Empfaengt Nav2-Geschwindigkeitsbefehle (remapped)."""
         self._last_twist = msg
-        if not self._blocked:
+        if not self._is_forward_blocked(msg):
             self._cmd_vel_pub.publish(msg)
 
     def _dashboard_cmd_vel_callback(self, msg: Twist):
         """Empfaengt Dashboard-Joystick-Befehle (remapped)."""
         self._last_twist = msg
-        if not self._blocked:
+        if not self._is_forward_blocked(msg):
             self._cmd_vel_pub.publish(msg)
 
     def _safety_timer_callback(self):
-        """20 Hz Timer: Sendet Null-Twist solange Cliff oder Hindernis aktiv."""
-        if self._blocked:
+        """20 Hz Timer: Sendet Null-Twist bei Cliff oder E-Stop."""
+        if self._hard_blocked:
             self._cmd_vel_pub.publish(Twist())
 
     def _on_shutdown(self):

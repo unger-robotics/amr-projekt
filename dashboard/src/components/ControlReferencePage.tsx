@@ -100,7 +100,7 @@ const SAFETY_ROWS = [
   { mechanismus: 'Deadman-Timer (Bridge)', beschreibung: 'Stopp bei fehlendem Heartbeat', wert: '300 ms' },
   { mechanismus: 'Failsafe-Timeout (Firmware)', beschreibung: 'MCU stoppt ohne cmd_vel', wert: '500 ms' },
   { mechanismus: 'Cliff-Safety', beschreibung: 'Blockiert bei Abgrund (IR-Sensor)', wert: '20 Hz Abtastung' },
-  { mechanismus: 'Ultraschall-Schutz', beschreibung: 'Stoppt bei Hindernis, Hysterese', wert: '< 80 mm Stopp, > 120 mm frei' },
+  { mechanismus: 'Ultraschall-Schutz', beschreibung: 'Stoppt Vorwaertsfahrt bei Hindernis, Rueckwaerts erlaubt', wert: '< 100 mm Stopp, > 140 mm frei' },
   { mechanismus: 'CAN-Bus Notstopp', beschreibung: 'MCU-zu-MCU ohne Pi 5', wert: '0x120 Cliff, 0x141 Batterie' },
   { mechanismus: 'Verbindungsverlust', beschreibung: 'Sofortiger Stopp', wert: 'Deadman + Firmware-Timeout' },
 ] as const;

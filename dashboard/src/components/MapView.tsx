@@ -119,18 +119,28 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
     const offsetX = (width - drawW) / 2;
     const offsetY = (height - drawH) / 2;
 
-    // Map zeichnen (geglaettet fuer Saugroboter-Look)
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(mapImg, offsetX, offsetY, drawW, drawH);
-
     // Hilfsfunktion: Map-Meter → Canvas-Pixel
     const toCanvas = (mx: number, my: number) => ({
       cx: offsetX + ((mx - mapOriginX) / mapResolution) * mapScale,
       cy: offsetY + (mapHeight - (my - mapOriginY) / mapResolution) * mapScale,
     });
 
-    // --- Roboter-Pfad-Trail ---
+    // Roboter-Position auf Canvas (vor Rotation berechnen)
+    const { cx: canvasRobotX, cy: canvasRobotY } = toCanvas(robotMapX, robotMapY);
+
+    // --- Heading-Up: Karte drehen, Fahrtrichtung = oben (wie LiDAR-Ansicht) ---
+    // Roboter-Heading (Canvas-Winkel -yaw) soll nach oben (-PI/2) zeigen
+    ctx.save();
+    ctx.translate(canvasRobotX, canvasRobotY);
+    ctx.rotate(robotMapYaw - Math.PI / 2);
+    ctx.translate(-canvasRobotX, -canvasRobotY);
+
+    // Map zeichnen (rotiert mit Karte)
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(mapImg, offsetX, offsetY, drawW, drawH);
+
+    // --- Roboter-Pfad-Trail (rotiert mit Karte) ---
     const trail = trailRef.current;
     if (trail.length > 1) {
       ctx.beginPath();
@@ -147,48 +157,14 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
       ctx.stroke();
     }
 
-    // Roboter-Position
-    const { cx: canvasRobotX, cy: canvasRobotY } = toCanvas(robotMapX, robotMapY);
-
-    // --- Roboter-Icon ---
-    // Aeusserer Glow-Kreis (weiss)
-    ctx.beginPath();
-    ctx.arc(canvasRobotX, canvasRobotY, ROBOT_GLOW_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.fill();
-
-    // Richtungspfeil (weiss)
-    ctx.save();
-    ctx.translate(canvasRobotX, canvasRobotY);
-    ctx.rotate(-robotMapYaw); // ROS CCW positiv → Canvas CW positiv
-    ctx.beginPath();
-    ctx.moveTo(0, -ROBOT_ARROW_SIZE); // Spitze (vorwaerts = -Y im Canvas)
-    ctx.lineTo(-ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
-    ctx.lineTo(ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
-    ctx.closePath();
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-
-    // Gruener Mittelpunkt (Saugroboter-Stil)
-    ctx.beginPath();
-    ctx.arc(canvasRobotX, canvasRobotY, ROBOT_DOT_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = '#00e676';
-    ctx.fill();
-
-    // --- Navigationsziel-Marker ---
+    // --- Navigationsziel-Marker (rotiert mit Karte) ---
     if (navStatus === 'navigating' && navGoalX !== undefined && navGoalY !== undefined) {
       const { cx: goalCx, cy: goalCy } = toCanvas(navGoalX, navGoalY);
-      // Pulsierender Kreis
       ctx.beginPath();
       ctx.arc(goalCx, goalCy, GOAL_MARKER_SIZE + 4, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(0, 230, 118, 0.4)';
       ctx.lineWidth = 2;
       ctx.stroke();
-      // Innerer Kreis
       ctx.beginPath();
       ctx.arc(goalCx, goalCy, GOAL_MARKER_SIZE, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 230, 118, 0.6)';
@@ -196,7 +172,6 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
       ctx.strokeStyle = '#00e676';
       ctx.lineWidth = 2;
       ctx.stroke();
-      // Kreuz im Zentrum
       ctx.beginPath();
       ctx.moveTo(goalCx - 4, goalCy);
       ctx.lineTo(goalCx + 4, goalCy);
@@ -207,27 +182,51 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
       ctx.stroke();
     }
 
-    // --- Massstabsleiste (1m, weiss) ---
+    ctx.restore();
+    // --- Ende Heading-Up ---
+
+    // --- Roboter-Icon (Heading-Up: Pfeil zeigt immer nach oben) ---
+    ctx.beginPath();
+    ctx.arc(canvasRobotX, canvasRobotY, ROBOT_GLOW_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(canvasRobotX, canvasRobotY);
+    ctx.beginPath();
+    ctx.moveTo(0, -ROBOT_ARROW_SIZE);
+    ctx.lineTo(-ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
+    ctx.lineTo(ROBOT_ARROW_SIZE * 0.6, ROBOT_ARROW_SIZE * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(canvasRobotX, canvasRobotY, ROBOT_DOT_RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e676';
+    ctx.fill();
+
+    // --- Massstabsleiste (1m, bildschirmfest) ---
     const oneMetrePixels = (1.0 / mapResolution) * mapScale;
-    const barY = offsetY + drawH - SCALE_BAR_MARGIN;
-    const barX = offsetX + SCALE_BAR_MARGIN;
+    const barY = height - SCALE_BAR_MARGIN;
+    const barX = SCALE_BAR_MARGIN;
     const endCapH = 6;
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    // Horizontale Linie
     ctx.moveTo(barX, barY);
     ctx.lineTo(barX + oneMetrePixels, barY);
-    // Linke Endmarke
     ctx.moveTo(barX, barY - endCapH / 2);
     ctx.lineTo(barX, barY + endCapH / 2);
-    // Rechte Endmarke
     ctx.moveTo(barX + oneMetrePixels, barY - endCapH / 2);
     ctx.lineTo(barX + oneMetrePixels, barY + endCapH / 2);
     ctx.stroke();
 
-    // Label
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
@@ -277,9 +276,22 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
     const offsetX = (width - drawW) / 2;
     const offsetY = (height - drawH) / 2;
 
+    // Roboter-Canvas-Position berechnen
+    const canvasRobotX = offsetX + ((robotMapX - mapOriginX) / mapResolution) * mapScale;
+    const canvasRobotY = offsetY + (mapHeight - (robotMapY - mapOriginY) / mapResolution) * mapScale;
+
+    // Heading-Up-Rotation rueckgaengig machen (Klick → Weltkarte)
+    const headingRot = robotMapYaw - Math.PI / 2;
+    const cosR = Math.cos(-headingRot);
+    const sinR = Math.sin(-headingRot);
+    const cdx = clickX - canvasRobotX;
+    const cdy = clickY - canvasRobotY;
+    const unrotX = canvasRobotX + cdx * cosR - cdy * sinR;
+    const unrotY = canvasRobotY + cdx * sinR + cdy * cosR;
+
     // Canvas-Pixel -> Map-Meter (Inverse von toCanvas)
-    const mapX = ((clickX - offsetX) / mapScale) * mapResolution + mapOriginX;
-    const mapY = ((mapHeight - (clickY - offsetY) / mapScale)) * mapResolution + mapOriginY;
+    const mapX = ((unrotX - offsetX) / mapScale) * mapResolution + mapOriginX;
+    const mapY = ((mapHeight - (unrotY - offsetY) / mapScale)) * mapResolution + mapOriginY;
 
     // Yaw zum Roboter hin berechnen
     const dx = mapX - robotMapX;
@@ -287,7 +299,7 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
     const yaw = Math.atan2(dy, dx);
 
     onNavGoal(mapX, mapY, yaw);
-  }, [onNavGoal, mapWidth, mapHeight, mapResolution, mapOriginX, mapOriginY, robotMapX, robotMapY]);
+  }, [onNavGoal, mapWidth, mapHeight, mapResolution, mapOriginX, mapOriginY, robotMapX, robotMapY, robotMapYaw]);
 
   // Resolution als cm/px und Map-Dimensionen fuer HUD-Label
   const resolutionCm = mapResolution > 0 ? Math.round(mapResolution * 100) : 0;

@@ -281,18 +281,21 @@ function CliffCard() {
   const ultrasonicRange = useTelemetryStore((s) => s.ultrasonicRange);
   const sensorNodeActive = useTelemetryStore((s) => s.sensorNodeActive);
 
+  const obstacleTooClose = ultrasonicRange > 0 && ultrasonicRange < 0.10;
   const dotColor = !sensorNodeActive
     ? 'bg-hud-text-dim'
     : cliffDetected
       ? 'bg-hud-red'
-      : 'bg-hud-green';
+      : obstacleTooClose
+        ? 'bg-hud-amber'
+        : 'bg-hud-green';
 
   const rangeMMDisplay = (ultrasonicRange * 1000).toFixed(0);
 
   return (
     <div className="bg-hud-bg border border-hud-border p-3 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <StatusDot color={dotColor} pulse={cliffDetected} />
+        <StatusDot color={dotColor} pulse={cliffDetected || obstacleTooClose} />
         <span className="text-xs font-semibold text-hud-text uppercase tracking-wider">
           Cliff Detection
         </span>
@@ -307,10 +310,12 @@ function CliffCard() {
           ? 'Sensor-Node inaktiv'
           : cliffDetected
             ? 'KANTE ERKANNT \u2014 Fahrbefehle blockiert'
-            : `Sicher \u2014 Ultraschall: ${rangeMMDisplay} mm`}
+            : obstacleTooClose
+              ? `HINDERNIS bei ${rangeMMDisplay} mm \u2014 Vorwaertsfahrt blockiert`
+              : `Sicher \u2014 Ultraschall: ${rangeMMDisplay} mm`}
       </p>
       <p className="text-[9px] text-hud-text-dim">
-        Stopp &lt; 80 mm | Freigabe &gt; 120 mm (Hysterese)
+        Stopp &lt; 100 mm | Freigabe &gt; 140 mm (Hysterese)
       </p>
     </div>
   );
