@@ -3,7 +3,6 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useTelemetryStore } from './store/telemetryStore';
 import { Dashboard } from './components/Dashboard';
 import DetailPage from './components/DetailPage';
-import ValidationPage from './components/ValidationPage';
 import VoicePage from './components/VoicePage';
 import AufgabenPage from './components/AufgabenPage';
 import ControlReferencePage from './components/ControlReferencePage';
@@ -11,7 +10,7 @@ import { EmergencyStop } from './components/EmergencyStop';
 import type { ServerMessage } from './types/ros';
 
 function App() {
-  const [tab, setTab] = useState<'steuerung' | 'aufgaben' | 'details' | 'validierung' | 'sprache' | 'referenz'>('steuerung');
+  const [tab, setTab] = useState<'steuerung' | 'aufgaben' | 'details' | 'sprache' | 'referenz'>('steuerung');
 
   const updateTelemetry = useTelemetryStore((s) => s.updateTelemetry);
   const updateScan = useTelemetryStore((s) => s.updateScan);
@@ -108,13 +107,6 @@ function App() {
           Details
         </button>
         <button
-          onClick={() => setTab('validierung')}
-          className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
-            ${tab === 'validierung' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
-        >
-          Validierung
-        </button>
-        <button
           onClick={() => setTab('sprache')}
           className={`px-4 py-2 text-xs uppercase tracking-wider font-semibold transition-colors
             ${tab === 'sprache' ? 'text-hud-cyan border-b-2 border-hud-cyan bg-hud-bg' : 'text-hud-text-dim hover:text-hud-text'}`}
@@ -159,9 +151,6 @@ function App() {
       )}
       {tab === 'details' && (
         <DetailPage sendAudioPlay={sendAudioPlay} sendAudioVolume={sendAudioVolume} />
-      )}
-      {tab === 'validierung' && (
-        <ValidationPage send={send} />
       )}
       {tab === 'sprache' && (
         <VoicePage send={send} sendVoiceMute={sendVoiceMute} />
