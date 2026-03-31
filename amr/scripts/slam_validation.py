@@ -65,7 +65,10 @@ except ImportError:
 
 import contextlib
 
-from amr_utils import quaternion_to_yaw
+try:
+    from amr_utils import quaternion_to_yaw
+except ImportError:
+    from my_bot.amr_utils import quaternion_to_yaw
 
 # Matplotlib fuer Plots
 try:

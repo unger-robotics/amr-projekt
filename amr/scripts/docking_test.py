@@ -39,6 +39,7 @@ Ergebnis: Markdown-Tabelle + JSON-Export (docking_results.json)
 # Nur fuer Laborbedingungen (Roboter auf Bloecken/geschlossenes Testfeld).
 
 import argparse
+import contextlib
 import json
 import math
 import os
@@ -54,7 +55,10 @@ from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Range
 
-from amr_utils import quaternion_to_yaw
+try:
+    from amr_utils import quaternion_to_yaw
+except ImportError:
+    from my_bot.amr_utils import quaternion_to_yaw
 
 # ArUco-Marker physische Groesse [m] — muss mit gedrucktem Marker uebereinstimmen
 MARKER_SIZE_M = 0.10  # 10 cm Seitenlaenge (DICT_4X4_50, ID 0)
@@ -125,6 +129,7 @@ class DockingTestNode(Node):
         self.image_width = None
         self.test_aktiv = False
         self.backup_until = 0.0  # Zeitpunkt bis Rueckwaertsfahrt endet
+        self.auto_mode = False
 
         # Ultraschall-Distanz
         self.range_m = float("inf")
@@ -399,11 +404,34 @@ class DockingTestNode(Node):
 
         # Naechster Versuch oder Auswertung
         if self.aktueller_versuch < self.num_versuche:
-            self.get_logger().info(
-                '  Roboter fuer naechsten Versuch positionieren. Dann "s" + Enter druecken.'
-            )
+            if self.auto_mode:
+                self.get_logger().info(
+                    "  Auto-Modus: 3 s Rueckwaertsfahrt, dann naechster Versuch."
+                )
+                self._auto_next_timer = self.create_timer(
+                    3.0, self._auto_naechster_versuch, timer_period_ns=None
+                )
+            else:
+                self.get_logger().info(
+                    '  Roboter fuer naechsten Versuch positionieren. Dann "s" + Enter druecken.'
+                )
         else:
             self.auswertung()
+            if self.auto_mode:
+                raise SystemExit(0 if self._pass_gesamt() else 1)
+
+    def _auto_naechster_versuch(self):
+        """Auto-Modus: Timer-Callback startet naechsten Versuch."""
+        self._auto_next_timer.cancel()
+        self.destroy_timer(self._auto_next_timer)
+        self.versuch_starten()
+
+    def _pass_gesamt(self):
+        """True wenn Erfolgsquote >= 80% und mittlerer Versatz <= Akzeptanzgrenze."""
+        if not self.ergebnisse:
+            return False
+        erfolge = sum(1 for e in self.ergebnisse if e["erfolg"])
+        return (erfolge / len(self.ergebnisse)) >= 0.8
 
     def stop_robot(self):
         """Sendet Null-Twist."""
@@ -529,45 +557,65 @@ def main(args=None):
         default=os.path.dirname(os.path.abspath(__file__)),
         help="Ausgabeverzeichnis fuer JSON-Ergebnisse (Default: Skriptverzeichnis)",
     )
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Automatischer Modus: Startet Versuche ohne Tastatureingabe (fuer Dashboard)",
+    )
+    parser.add_argument(
+        "--versuche",
+        type=int,
+        default=None,
+        help="Anzahl Versuche (Default: 10 interaktiv, 3 auto)",
+    )
     parsed = parser.parse_args()
 
     rclpy.init(args=args)
+    auto_mode = parsed.auto or not os.isatty(0)
+    num_versuche = parsed.versuche if parsed.versuche is not None else (3 if auto_mode else 10)
     node = DockingTestNode(output_dir=parsed.output)
+    node.num_versuche = num_versuche
+    node.auto_mode = auto_mode
 
-    # Interaktiver Modus: Benutzer startet jeden Versuch manuell
-    import threading
+    if auto_mode:
+        node.get_logger().info(f"Auto-Modus: {num_versuche} Versuche ohne Tastatureingabe.")
+        node.versuch_starten()
+    else:
+        import threading
 
-    def input_thread():
-        """Wartet auf Benutzereingabe um Versuche zu starten."""
-        while node.aktueller_versuch < node.num_versuche:
-            try:
-                eingabe = input(
-                    f"\n[Versuch {node.aktueller_versuch + 1}/"
-                    f"{node.num_versuche}] "
-                    f'Roboter positionieren, dann "s" + Enter: '
-                )
-                if eingabe.strip().lower() == "s":
-                    node.versuch_starten()
-                elif eingabe.strip().lower() == "q":
-                    node.get_logger().info("Test abgebrochen durch Benutzer.")
-                    node.auswertung()
+        def input_thread():
+            """Wartet auf Benutzereingabe um Versuche zu starten."""
+            while node.aktueller_versuch < node.num_versuche:
+                try:
+                    eingabe = input(
+                        f"\n[Versuch {node.aktueller_versuch + 1}/"
+                        f"{node.num_versuche}] "
+                        f'Roboter positionieren, dann "s" + Enter: '
+                    )
+                    if eingabe.strip().lower() == "s":
+                        node.versuch_starten()
+                    elif eingabe.strip().lower() == "q":
+                        node.get_logger().info("Test abgebrochen durch Benutzer.")
+                        node.auswertung()
+                        break
+                except EOFError:
+                    node.get_logger().info("Stdin geschlossen — beende Test.")
                     break
-            except EOFError:
-                break
 
-    thread = threading.Thread(target=input_thread, daemon=True)
-    thread.start()
+        thread = threading.Thread(target=input_thread, daemon=True)
+        thread.start()
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         node.get_logger().info("Shutdown durch Benutzer.")
         if node.ergebnisse:
             node.auswertung()
     finally:
-        node.stop_robot()
+        with contextlib.suppress(Exception):
+            node.stop_robot()
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":

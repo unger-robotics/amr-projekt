@@ -27,7 +27,10 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 
-from amr_utils import FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE, WHEEL_BASE
+try:
+    from amr_utils import FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE, WHEEL_BASE
+except ImportError:
+    from my_bot.amr_utils import FAILSAFE_TIMEOUT_MS, MAX_VELOCITY, PWM_DEADZONE, WHEEL_BASE
 
 # ===========================================================================
 # ROS2-Node

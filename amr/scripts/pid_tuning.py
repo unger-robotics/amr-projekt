@@ -23,7 +23,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from amr_utils import PID_KD, PID_KI, PID_KP
+try:
+    from amr_utils import PID_KD, PID_KI, PID_KP
+except ImportError:
+    from my_bot.amr_utils import PID_KD, PID_KI, PID_KP
 
 # ===========================================================================
 # Roboter-Parameter

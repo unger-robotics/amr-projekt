@@ -39,7 +39,10 @@ try:
 except ImportError:
     ROS2_AVAILABLE = False
 
-from amr_utils import normalize_angle, quaternion_to_yaw, yaw_to_quaternion
+try:
+    from amr_utils import normalize_angle, quaternion_to_yaw, yaw_to_quaternion
+except ImportError:
+    from my_bot.amr_utils import normalize_angle, quaternion_to_yaw, yaw_to_quaternion
 
 # ---------------------------------------------------------------------------
 # Waypoints im map-Frame (1m x 1m Rechteck)

@@ -155,7 +155,6 @@ function App() {
           sendNavGoal={sendNavGoal}
           sendNavCancel={sendNavCancel}
           sendVisionControl={sendVisionControl}
-          sendAudioPlay={sendAudioPlay}
         />
       )}
       {tab === 'details' && (

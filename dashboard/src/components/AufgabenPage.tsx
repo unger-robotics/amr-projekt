@@ -454,7 +454,7 @@ function SemanticsCard() {
   );
 }
 
-function TtsCard({ sendAudioPlay }: { sendAudioPlay: (soundKey: string) => void }) {
+function TtsCard({ send }: { send: (msg: ClientMessage) => void }) {
   const audioNodeActive = useTelemetryStore((s) => s.audioNodeActive);
 
   return (
@@ -476,7 +476,7 @@ function TtsCard({ sendAudioPlay }: { sendAudioPlay: (soundKey: string) => void 
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => sendAudioPlay('startup')}
+          onClick={() => send({ op: 'tts_test', text: 'Hallo, ich bin ein autonomer mobiler Roboter' })}
           disabled={!audioNodeActive}
           className="text-xs px-3 py-1.5 border border-hud-cyan text-hud-cyan hover:bg-hud-cyan/10 disabled:text-hud-text-dim disabled:border-hud-border disabled:cursor-not-allowed transition-colors uppercase tracking-wider"
         >
@@ -498,7 +498,6 @@ interface AufgabenPageProps {
   sendNavGoal: (x: number, y: number, yaw: number) => void;
   sendNavCancel: () => void;
   sendVisionControl: (enabled: boolean) => void;
-  sendAudioPlay: (soundKey: string) => void;
 }
 
 export default function AufgabenPage({
@@ -506,7 +505,6 @@ export default function AufgabenPage({
   sendNavGoal,
   sendNavCancel,
   sendVisionControl,
-  sendAudioPlay,
 }: AufgabenPageProps) {
   return (
     <div className="flex-1 overflow-y-auto p-4">
@@ -526,7 +524,7 @@ export default function AufgabenPage({
             <DockingCard send={send} />
             <VisionCard sendVisionControl={sendVisionControl} />
             <SemanticsCard />
-            <TtsCard sendAudioPlay={sendAudioPlay} />
+            <TtsCard send={send} />
           </div>
         </Section>
 

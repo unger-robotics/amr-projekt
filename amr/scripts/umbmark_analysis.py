@@ -22,7 +22,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
+try:
+    from amr_utils import TICKS_PER_REV, WHEEL_RADIUS
+except ImportError:
+    from my_bot.amr_utils import TICKS_PER_REV, WHEEL_RADIUS
 
 # ===========================================================================
 # Roboter-Parameter (aus mcu_firmware/drive_node/include/config_drive.h)

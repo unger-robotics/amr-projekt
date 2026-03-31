@@ -102,6 +102,15 @@ Das Symlink-Pattern erfordert vier Schritte:
 3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
 4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
+**Import-Pattern fuer `amr_utils`:** Bei `ros2 run` liegt das Modul unter dem Paket-Namespace. Daher immer den try/except-Fallback verwenden:
+
+```python
+try:
+    from amr_utils import quaternion_to_yaw
+except ImportError:
+    from my_bot.amr_utils import quaternion_to_yaw
+```
+
 ## Voraussetzungen
 
 - Raspberry Pi 5 (Debian Trixie) mit Docker und docker-compose

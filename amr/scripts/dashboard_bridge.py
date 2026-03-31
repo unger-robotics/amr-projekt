@@ -301,9 +301,11 @@ class WebSocketServer:
                 self.controller_ws = None
                 self.node.publish_stop()
                 self.node.get_logger().info("Controller-Client getrennt -> Stopp gesendet")
-            # Totmannschalter: alle Clients weg + Dashboard war verbunden → Notstopp
+            # Totmannschalter: alle Clients weg → Motoren stoppen (kein voller E-STOP,
+            # damit Reconnect ohne manuelle Freigabe funktioniert)
             if len(self.clients) == 0 and self.node.dashboard_was_connected:
-                self.node.unified_estop("disconnect")
+                self.node.publish_stop()
+                self.node.cancel_nav_goal()
             self.node.get_logger().info(f"WebSocket-Client getrennt ({len(self.clients)} aktiv)")
 
     def _handle_message(self, ws, msg):
@@ -340,6 +342,12 @@ class WebSocketServer:
             self.node.send_nav_goal(x, y, yaw)
         elif op == "nav_cancel":
             self.node.cancel_nav_goal()
+        elif op == "tts_test":
+            text = str(msg.get("text", ""))[:200]
+            if text:
+                tts_msg = String()
+                tts_msg.data = text
+                self.node.pub_tts_speak.publish(tts_msg)
         elif op == "audio_play":
             key = msg.get("sound_key", "")
             if key in ("cliff_alarm", "nav_start", "nav_reached", "startup"):
@@ -986,6 +994,7 @@ class WebSocketServer:
                 "run",
                 "my_bot",
                 entry_point,
+                stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )

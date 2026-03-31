@@ -32,7 +32,10 @@ from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import Imu
 from tf2_ros import Buffer, TransformListener
 
-from amr_utils import normalize_angle, quaternion_to_yaw
+try:
+    from amr_utils import normalize_angle, quaternion_to_yaw
+except ImportError:
+    from my_bot.amr_utils import normalize_angle, quaternion_to_yaw
 
 XY_TOLERANCE = 0.05
 YAW_TOLERANCE = 0.10

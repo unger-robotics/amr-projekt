@@ -23,15 +23,26 @@ import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 
-from amr_utils import (
-    METERS_PER_TICK,
-    TICKS_PER_REV,
-    TICKS_PER_REV_MAX,
-    TICKS_PER_REV_MIN,
-    WHEEL_BASE,
-    WHEEL_CIRCUMFERENCE,
-    WHEEL_DIAMETER,
-)
+try:
+    from amr_utils import (
+        METERS_PER_TICK,
+        TICKS_PER_REV,
+        TICKS_PER_REV_MAX,
+        TICKS_PER_REV_MIN,
+        WHEEL_BASE,
+        WHEEL_CIRCUMFERENCE,
+        WHEEL_DIAMETER,
+    )
+except ImportError:
+    from my_bot.amr_utils import (
+        METERS_PER_TICK,
+        TICKS_PER_REV,
+        TICKS_PER_REV_MAX,
+        TICKS_PER_REV_MIN,
+        WHEEL_BASE,
+        WHEEL_CIRCUMFERENCE,
+        WHEEL_DIAMETER,
+    )
 
 # ===========================================================================
 # Konstanten

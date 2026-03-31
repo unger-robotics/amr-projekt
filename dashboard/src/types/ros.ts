@@ -186,6 +186,12 @@ export interface AudioStatusMsg {
   volume_percent: number;
 }
 
+/** TTS-Testansage ans Backend */
+export interface TtsTestMsg {
+  op: 'tts_test';
+  text: string;
+}
+
 /** Audio-Abspielbefehl ans Backend */
 export interface AudioPlayMsg {
   op: 'audio_play';
@@ -291,4 +297,4 @@ export interface EStopStatusMsg {
 }
 
 export type ServerMessage = TelemetryMsg | ScanMsg | SystemMsg | MapMsg | VisionDetectionsMsg | VisionSemanticsMsg | NavStatusMsg | SensorStatusMsg | AudioStatusMsg | VisionStatusMsg | CommandResponseMsg | TestListMsg | VoiceTranscriptMsg | VoiceMuteStatusMsg | EStopStatusMsg;
-export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestStopMsg | TestListRequestMsg | VoiceMuteMsg | EStopMsg | EStopReleaseMsg;
+export type ClientMessage = CmdVelMsg | HeartbeatMsg | ServoCmdMsg | HardwareCmdMsg | NavGoalMsg | NavCancelMsg | TtsTestMsg | AudioPlayMsg | AudioVolumeMsg | VisionControlMsg | CommandMsg | TestRunMsg | TestStopMsg | TestListRequestMsg | VoiceMuteMsg | EStopMsg | EStopReleaseMsg;
