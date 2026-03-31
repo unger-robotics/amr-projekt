@@ -42,7 +42,11 @@ hardware_info_*.md
 # Generierte Test- und Audit-Berichte
 *_report.md
 *_report_gesamt.md
+04_audit_report_*.md
 slam_validation_plot.png
+
+# MkDocs Build-Ausgabe (generiert via mkdocs build)
+site/
 
 # Grosse Mediendateien
 *.MOV
