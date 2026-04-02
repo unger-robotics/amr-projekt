@@ -115,12 +115,14 @@ class TwaiCan {
         transmit(msg);
     }
 
-    /** Heartbeat: Status-Flags [uint8] + Uptime [uint8, s mod 256], 2 Bytes */
+    /** Heartbeat: Status-Flags + Uptime + I2C/Servo-Diagnostik, 8 Bytes
+     *  [0] flags  [1] uptime_s  [2-3] i2c_err  [4-5] servo_err  [6-7] servo_ok */
     void sendHeartbeat(bool imu_ok, bool ina260_ok, bool pca9685_ok, bool bat_shutdown,
-                       bool core1_ok) {
+                       bool core1_ok, uint32_t i2c_err = 0, uint32_t servo_err = 0,
+                       uint32_t servo_ok = 0) {
         twai_message_t msg = {};
         msg.identifier = amr::can::id_heartbeat;
-        msg.data_length_code = 2;
+        msg.data_length_code = 8;
         uint8_t flags = 0;
         if (imu_ok)
             flags |= (1 << 0);
@@ -134,7 +136,21 @@ class TwaiCan {
             flags |= (1 << 4);
         msg.data[0] = flags;
         msg.data[1] = (uint8_t)((millis() / 1000) & 0xFF);
+        // Diagnostik-Zaehler (saturiert bei 65535)
+        uint16_t i2c_e = (i2c_err > 0xFFFF) ? 0xFFFF : (uint16_t)i2c_err;
+        uint16_t srv_e = (servo_err > 0xFFFF) ? 0xFFFF : (uint16_t)servo_err;
+        uint16_t srv_o = (servo_ok > 0xFFFF) ? 0xFFFF : (uint16_t)servo_ok;
+        memcpy(&msg.data[2], &i2c_e, 2);
+        memcpy(&msg.data[4], &srv_e, 2);
+        memcpy(&msg.data[6], &srv_o, 2);
         transmit(msg);
+    }
+
+    /** Non-blocking CAN-Empfang. Gibt true zurueck wenn eine Nachricht vorliegt. */
+    bool receiveMessage(twai_message_t &rx_msg) {
+        if (!initialized_)
+            return false;
+        return twai_receive(&rx_msg, pdMS_TO_TICKS(0)) == ESP_OK;
     }
 
   private:

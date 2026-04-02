@@ -17,6 +17,9 @@ CAN-ID Layout (Sensor-Node 0x110-0x1F0):
   0x141: Battery Shutdown [uint8]               Event
   0x1F0: Heartbeat [uint8+uint8]                 1 Hz
 
+CAN-ID Layout (Pi 5 → Sensor-Node, Steuerung):
+  0x150: Servo Cmd [2x int16 0.1°]             Event (max 10 Hz)
+
 CAN-ID Layout (Drive-Node 0x200-0x2F0, wenn CAN angeschlossen):
   0x200: Odom Position x,y [2x float32]         20 Hz
   0x201: Odom Heading+Speed [2x float32]        20 Hz
@@ -36,6 +39,7 @@ import struct
 import threading
 
 import rclpy
+from geometry_msgs.msg import Point
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import BatteryState, Imu, Range
@@ -52,6 +56,7 @@ ID_IMU_ACCEL = 0x130
 ID_IMU_HEADING = 0x131
 ID_BATTERY = 0x140
 ID_BAT_SHUTDOWN = 0x141
+ID_SERVO_CMD = 0x150
 ID_SENSOR_HB = 0x1F0
 ID_DRIVE_HB = 0x2F0
 
@@ -79,6 +84,9 @@ class CanBridgeNode(Node):
         self.pub_cliff = self.create_publisher(Bool, "cliff", best_effort_qos)
         self.pub_battery = self.create_publisher(BatteryState, "battery", reliable_qos)
         self.pub_bat_shutdown = self.create_publisher(Bool, "battery_shutdown", reliable_qos)
+
+        # --- Subscriber: ROS2 → CAN (Servo-Kommandos, Redundanzpfad) ---
+        self.create_subscription(Point, "servo_cmd", self._servo_cmd_callback, 10)
 
         # --- IMU-State: Heading kommt in separatem Frame (0x131) ---
         self._imu_heading = 0.0
@@ -156,6 +164,7 @@ class CanBridgeNode(Node):
                 self._handle_bat_shutdown(data)
             elif can_id == ID_SENSOR_HB:
                 self.sensor_hb_count += 1
+                self._handle_sensor_heartbeat(data, dlc)
             elif can_id == ID_DRIVE_HB:
                 self.drive_hb_count += 1
 
@@ -245,6 +254,30 @@ class CanBridgeNode(Node):
         if voltage <= pack_cutoff:
             return 0.0
         return (voltage - pack_cutoff) / (pack_charge_max - pack_cutoff)
+
+    def _handle_sensor_heartbeat(self, data: bytes, dlc: int):
+        """0x1F0: Erweitert mit I2C/Servo-Diagnostik (8 Bytes)."""
+        if dlc >= 8:
+            flags = data[0]
+            _uptime = data[1]
+            i2c_err, servo_err, servo_ok = struct.unpack_from("<HHH", data, 2)
+            pca_ok = "OK" if (flags & 0x04) else "FAIL"
+            if servo_err > 0 or not (flags & 0x04):
+                self.get_logger().warn(
+                    f"Sensor-HB: PCA9685={pca_ok}, "
+                    f"i2c_err={i2c_err}, servo_err={servo_err}, servo_ok={servo_ok}"
+                )
+
+    def _servo_cmd_callback(self, msg: Point):
+        """Servo-Kommando via CAN an Sensor-Node senden (0x150)."""
+        pan_raw = int(max(-1800, min(1800, msg.x * 10)))
+        tilt_raw = int(max(-1800, min(1800, msg.y * 10)))
+        data = struct.pack("<hh", pan_raw, tilt_raw)
+        frame = struct.pack(CAN_FRAME_FMT, ID_SERVO_CMD, 4, data.ljust(8, b"\x00"))
+        try:
+            self.sock.send(frame)
+        except OSError as e:
+            self.get_logger().warn(f"CAN-TX servo_cmd fehlgeschlagen: {e}")
 
     def _log_stats(self):
         self.get_logger().info(

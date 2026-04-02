@@ -86,7 +86,9 @@ const SERVO_PARAMS: ParamRow[] = [
   { param: 'Pan-Offset (mechanisch)', wert: '+8°', quelle: 'config_sensors.h' },
   { param: 'Tilt-Offset (mechanisch)', wert: '+1°', quelle: 'config_sensors.h' },
   { param: 'Rampe', wert: '2°/Step @ 20 Hz', quelle: 'config_sensors.h' },
+  { param: 'I2C-Polling (Firmware)', wert: '10 Hz, 3× Retry', quelle: 'main.cpp' },
   { param: 'Throttling (Dashboard)', wert: '10 Hz', quelle: 'useWebSocket.ts' },
+  { param: 'Redundanzpfad', wert: 'CAN 0x150 (4 B)', quelle: 'can_bridge_node.py' },
 ];
 
 const HARDWARE_PARAMS: ParamRow[] = [
@@ -101,7 +103,7 @@ const SAFETY_ROWS = [
   { mechanismus: 'Failsafe-Timeout (Firmware)', beschreibung: 'MCU stoppt ohne cmd_vel', wert: '500 ms' },
   { mechanismus: 'Cliff-Safety', beschreibung: 'Blockiert bei Abgrund (IR-Sensor)', wert: '20 Hz Abtastung' },
   { mechanismus: 'Ultraschall-Schutz', beschreibung: 'Stoppt Vorwaertsfahrt bei Hindernis, Rueckwaerts erlaubt', wert: '< 100 mm Stopp, > 140 mm frei' },
-  { mechanismus: 'CAN-Bus Notstopp', beschreibung: 'MCU-zu-MCU ohne Pi 5', wert: '0x120 Cliff, 0x141 Batterie' },
+  { mechanismus: 'CAN-Bus', beschreibung: 'MCU-zu-MCU Notstopp + Servo-Redundanz', wert: '0x120 Cliff, 0x141 Bat, 0x150 Servo' },
   { mechanismus: 'Verbindungsverlust', beschreibung: 'Sofortiger Stopp', wert: 'Deadman + Firmware-Timeout' },
 ] as const;
 
@@ -146,9 +148,10 @@ dashboard_bridge.py
               └──► /nav_cmd_vel ──► cliff_safety_node
 
 
-CAN-Bus Bypass (1 Mbit/s, MCU-zu-MCU, ohne Pi 5):
+CAN-Bus (1 Mbit/s):
   Sensor-Node ──0x120──► Drive-Node  (Cliff → Motorstopp)
-  Sensor-Node ──0x141──► Drive-Node  (Batterie → Shutdown)`}
+  Sensor-Node ──0x141──► Drive-Node  (Batterie → Shutdown)
+  can_bridge   ──0x150──► Sensor-Node (Servo-Cmd, Redundanz)`}
           </pre>
         </Section>
 
@@ -219,8 +222,9 @@ CAN-Bus Bypass (1 Mbit/s, MCU-zu-MCU, ohne Pi 5):
         <Section title="Kamerasteuerung (Pan/Tilt)">
           <Desc>
             PCA9685-PWM-Servos über Slider im Steuerung-Tab oder per Sprachbefehl
-            (<Code>schau nach links/rechts/vorne</Code>). Rampensteuerung verhindert
-            ruckartige Bewegungen und I2C-Contention.
+            (<Code>schau nach links/rechts/vorne</Code>). Dual-Path: Kommandos laufen
+            parallel über micro-ROS/UART und CAN-Bus (0x150). Rampensteuerung verhindert
+            ruckartige Bewegungen.
           </Desc>
           <ParamTable rows={SERVO_PARAMS} />
         </Section>

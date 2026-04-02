@@ -23,7 +23,7 @@ Pin-Belegung und alle Sensorparameter sind in `include/config_sensors.h` definie
 | Adresse | Geraet | Zugriff |
 |---|---|---|
 | `0x40` | INA260 (Batterie) | Core 1: Read (2 Hz) |
-| `0x41` | PCA9685 (Servo-PWM) | Core 0: Write (5 Hz Polling) |
+| `0x41` | PCA9685 (Servo-PWM) | Core 0: Write (10 Hz Polling, 3x Retry) |
 | `0x68` | MPU6050 (IMU) | Core 1: Read (50 Hz) |
 
 Alle I2C-Zugriffe ueber `i2c_mutex` (5-10 ms Timeout). Keine I2C-Kollisionen durch strikte Core-Aufteilung: Reads auf Core 1 (`sensorTask`), Writes auf Core 0 (`loop()`).
@@ -61,7 +61,7 @@ Dual-Core-Partitionierung mit strikter I2C-Aufteilung (identisches Pattern wie D
 Core 0 (loop)                               Core 1 (sensorTask, 10 ms Basistakt)
   micro-ROS Executor                          Cliff-Read (20 Hz, digitalRead)
   5 Publisher, 3 Subscriber                   Ultraschall (10 Hz, ISR-basiert)
-  Servo I2C Write (5 Hz, i2c_mutex)     <--   IMU I2C Read (50 Hz, i2c_mutex)
+  Servo I2C Write (10 Hz, 3x Retry)     <--   IMU I2C Read (50 Hz, i2c_mutex)
   Batterie-Publish (2 Hz, aus SharedData)     Batterie I2C Read (2 Hz, i2c_mutex)
   Cliff-Publish (20 Hz)                      Deferred Servo-Power (allOff/clearAllOff)
   Range-Publish (10 Hz)                      CAN-TX (Range, Cliff, IMU, Battery, Heartbeat)
@@ -91,7 +91,7 @@ Die Init-Reihenfolge ist kritisch fuer I2C-Stabilitaet:
 
 Subscriber-Callbacks schreiben nur in volatile RAM-Structs:
 
-- **ServoCommand**: `/servo_cmd` --> `servo_cmd.pan/tilt` (RAM) --> `loop()` fuehrt I2C aus (5 Hz)
+- **ServoCommand**: `/servo_cmd` oder CAN 0x150 --> `servo_cmd.pan/tilt` (RAM) --> `loop()` fuehrt I2C aus (10 Hz, 3x Retry)
 - **HardwareCommand**: `/hardware_cmd` --> `hw_cmd.servo_speed` (RAM) --> `loop()` wendet an
 - **deferred_servo_power**: Batterie-Logik (Core 0) setzt Flag --> Core 1 fuehrt `allOff()`/`clearAllOff()` aus
 
@@ -119,7 +119,7 @@ ISR-Variablen sind volatile Globals in `main.cpp` (nicht im Namespace — IRAM_A
 | `mpu6050.hpp` | `amr::drivers` | MPU6050 I2C-Treiber: ±2g Accel, ±250 deg/s Gyro, Bias-Kalibrierung, Komplementaerfilter (98% Gyro / 2% Encoder) |
 | `ina260.hpp` | `amr::drivers` | TI INA260 I2C-Leistungsmonitor: Spannung (1.25 mV LSB), Strom (1.25 mA LSB), Leistung (10 mW LSB), Unterspannungs-Alert |
 | `pca9685.hpp` | `amr::drivers` | NXP PCA9685 I2C-Servo-PWM: `setAngle()` (direkt), `setTargetAngle()` + `updateRamp()` (nicht-blockierend), `allOff()` Notaus |
-| `twai_can.hpp` | `amr::drivers` | TWAI CAN-Bus: Range, Cliff, IMU, Battery, Heartbeat Sends |
+| `twai_can.hpp` | `amr::drivers` | TWAI CAN-Bus: TX (Range, Cliff, IMU, Battery, Heartbeat) + RX (Servo 0x150) |
 
 ## ROS2-Topics
 
@@ -195,7 +195,7 @@ Unterspannungs-Kaskade: Bei < 9.5 V werden `/battery_shutdown` (true) publiziert
 | Pan-Bereich | `amr::servo` | 45-135 deg | Logisch, vor Offset |
 | Tilt-Bereich | `amr::servo` | 80-135 deg | Logisch, vor Offset |
 
-Servo-I2C-Writes laufen auf Core 0 (`loop()`, 5 Hz Polling). `setAngle()` wird direkt aufgerufen (keine Ramp im aktuellen Code). Ramp-Speed konfigurierbar via `/hardware_cmd` (y-Feld, 1-10 deg/Step).
+Servo-I2C-Writes laufen auf Core 0 (`loop()`, 10 Hz Polling mit 3x Retry auf `i2c_mutex`, 10 ms Timeout pro Versuch). Dual-Path: Kommandos kommen ueber micro-ROS `/servo_cmd` (Primaer) oder CAN 0x150 (Redundanz). Ramp-Speed konfigurierbar via `/hardware_cmd` (y-Feld, 1-10 deg/Step).
 
 ## Safety-Mechanismen
 
@@ -204,7 +204,8 @@ Servo-I2C-Writes laufen auf Core 0 (`loop()`, 5 Hz Polling). `setAngle()` wird d
 | **Inter-Core Watchdog** | Core 0 ueberwacht `core1_heartbeat`, LED Dauer-An bei 50 Misses |
 | **Batterie-Kaskade** | 4-stufig: Warnung --> Motor-Shutdown --> System-Shutdown --> BMS-Disconnect |
 | **Servo-Notaus** | `allOff()` bei Unterspannung (via `deferred_servo_power` Cross-Core) |
-| **I2C-Contention-Zaehler** | Zaehlt fehlgeschlagene Mutex-Acquires fuer Diagnose |
+| **I2C-Contention-Zaehler** | Zaehlt fehlgeschlagene Mutex-Acquires fuer Diagnose (IMU + Servo getrennt) |
+| **Servo-Diagnostik via CAN** | Heartbeat 0x1F0 meldet I2C-Fehler und Servo-Write-Erfolge (8 Bytes) |
 | **ISR-Timeout** | Ultraschall-Echo > 20 ms --> max_range + 0.01 m (ungueltig) |
 
 ### LED-Status (Interne Onboard-LED, GPIO 21, Active Low)
@@ -229,7 +230,25 @@ Alle Sensor-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230) gesende
 | `0x131` | 4 B | IMU Heading [float32 LE, rad] | 50 Hz | 50,0 Hz |
 | `0x140` | 6 B | Batterie: V [uint16 mV] + I [int16 mA] + P [uint16 mW] | 2 Hz | 2,0 Hz |
 | `0x141` | 1 B | Battery Shutdown (0x00=OK, 0x01=Shutdown) | Event | Event |
-| `0x1F0` | 2 B | Heartbeat: Flags [uint8] + Uptime [uint8 s%256] | 1 Hz | 1,0 Hz |
+| `0x1F0` | 8 B | Heartbeat: Flags + Uptime + I2C/Servo-Diagnostik (s.u.) | 1 Hz | 1,0 Hz |
+
+### Empfangen (Pi 5 --> Sensor-Node, Servo-Steuerung via CAN)
+
+| CAN-ID | Laenge | Inhalt | Beschreibung |
+|---|---|---|---|
+| `0x150` | 4 B | Pan [int16 LE, 0.1 deg] + Tilt [int16 LE, 0.1 deg] | Redundanzpfad fuer `/servo_cmd` |
+
+CAN-RX laeuft in Core 1 (`sensorTask`), schreibt in `servo_cmd` Struct (identisch zu micro-ROS Callback). `can_bridge_node.py` subscribed `/servo_cmd` und sendet CAN-Frame 0x150.
+
+### Heartbeat-Diagnostik (0x1F0, 8 Bytes)
+
+| Byte | Inhalt | Beschreibung |
+|---|---|---|
+| 0 | Flags [uint8] | Bit 0: IMU OK, Bit 1: INA260 OK, Bit 2: PCA9685 OK, Bit 3: Bat-Shutdown, Bit 4: Core1 OK |
+| 1 | Uptime [uint8] | Sekunden mod 256 |
+| 2-3 | i2c_errors [uint16 LE] | I2C-Mutex-Timeout-Zaehler (IMU-Reads, saturiert bei 65535) |
+| 4-5 | servo_contention [uint16 LE] | Servo-Write-Fehler (3x Retry fehlgeschlagen) |
+| 6-7 | servo_ok [uint16 LE] | Erfolgreiche Servo-Writes |
 
 Gemessene Raten (CAN-Validierungstest, 31.03.2026, 30 s Aufnahme, 5604 Frames) treffen die Soll-Raten innerhalb 25 % Toleranz. Siehe `planung/messprotokoll_can.md`.
 

@@ -17,7 +17,7 @@ Die Firmware ist in zwei isolierte PlatformIO-Projekte aufgeteilt, da micro-ROS 
 
 Beide Knoten nutzen dasselbe Dual-Core-Pattern: Core 0 = micro-ROS Executor (Publisher/Subscriber), Core 1 = Echtzeit-Datenerfassung + CAN-Bus-Sends (FreeRTOS Task, Mutex-geschuetzt). CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden). Inter-Core-Watchdog in beiden Knoten (Core 0 prueft `core1_heartbeat`).
 
-**I2C-Aufteilung Sensor-Node**: Lese-Operationen (MPU6050 IMU, INA260 Batterie) auf Core 1 (`sensorTask`), Schreib-Operationen (PCA9685 Servo) auf Core 0 (`loop()`, 5 Hz Polling). Beide ueber `i2c_mutex`. PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen I2C-Bus, `delay(2000)` vor `Wire.begin()`). GPIO-Sensoren (Ultraschall-ISR, Cliff) erst NACH I2C-Init.
+**I2C-Aufteilung Sensor-Node**: Lese-Operationen (MPU6050 IMU, INA260 Batterie) auf Core 1 (`sensorTask`), Schreib-Operationen (PCA9685 Servo) auf Core 0 (`loop()`, 10 Hz Polling mit 3x Retry). Beide ueber `i2c_mutex`. PCA9685 muss VOR IMU/INA260 initialisiert werden (benoetigt sauberen I2C-Bus, `delay(2000)` vor `Wire.begin()`). GPIO-Sensoren (Ultraschall-ISR, Cliff) erst NACH I2C-Init.
 
 ### Sensor-Node: ISR-basierter Ultraschall + I2C-Contention-Fixes
 
@@ -136,7 +136,15 @@ Sensor- und Antriebs-Daten werden zusaetzlich via CAN 2.0B (1 Mbit/s, SN65HVD230
 | `0x131` | IMU Heading [float32 rad] | 50 Hz (gemessen: 50,0 Hz) |
 | `0x140` | Batterie V/I/P [6 B] | 2 Hz (gemessen: 2,0 Hz) |
 | `0x141` | Battery Shutdown [1 B] | Event |
-| `0x1F0` | Heartbeat [2 B] | 1 Hz |
+| `0x1F0` | Heartbeat [8 B: Flags, Uptime, I2C/Servo-Diagnostik] | 1 Hz |
+
+**Pi 5 --> Sensor-Node (Empfang, 0x150):**
+
+| CAN-ID | Inhalt | Rate |
+|---|---|---|
+| `0x150` | Servo Cmd [2x int16 LE, 0.1 deg] | Event (max 10 Hz) |
+
+Sensor-Node hat CAN-RX via `receiveMessage()` in `sensorTask()` (Core 1). `can_bridge_node.py` leitet `/servo_cmd` als CAN 0x150 weiter (Redundanzpfad).
 
 ## Firmware-Constraints
 

@@ -98,6 +98,8 @@ bool can_ok = false;
 // --- I2C Thread-Safety (Cross-Core Mutex) ---
 SemaphoreHandle_t i2c_mutex;
 uint32_t i2c_contention_errors = 0;
+uint32_t servo_i2c_contention = 0;
+uint32_t servo_write_ok = 0;
 
 // --- Batterie-Unterspannungs-Flag ---
 volatile bool battery_motor_shutdown = false;
@@ -350,7 +352,26 @@ void sensorTask(void *p) {
                 last_can_hb_task = now;
                 bool core1_ok_flag = true; // Core 1 laeuft offensichtlich
                 can.sendHeartbeat(imu_ok, ina260_ok, pca9685_ok, battery_motor_shutdown,
-                                  core1_ok_flag);
+                                  core1_ok_flag, i2c_contention_errors, servo_i2c_contention,
+                                  servo_write_ok);
+            }
+        }
+
+        // CAN-Empfang: Servo-Kommandos vom Pi 5 (Redundanzpfad, 0x150)
+        if (can_ok) {
+            twai_message_t rx_msg;
+            while (can.receiveMessage(rx_msg)) {
+                if (rx_msg.identifier == amr::can::id_servo_cmd_rx &&
+                    rx_msg.data_length_code >= 4) {
+                    int16_t pan_raw, tilt_raw;
+                    memcpy(&pan_raw, &rx_msg.data[0], 2);
+                    memcpy(&tilt_raw, &rx_msg.data[2], 2);
+                    servo_cmd.pan = std::clamp(pan_raw / 10.0f, amr::servo::pan_limit_min_deg,
+                                               amr::servo::pan_limit_max_deg);
+                    servo_cmd.tilt = std::clamp(tilt_raw / 10.0f, amr::servo::tilt_limit_min_deg,
+                                                amr::servo::tilt_limit_max_deg);
+                    servo_cmd.update_pending = true;
+                }
             }
         }
 
@@ -595,18 +616,25 @@ void loop() {
         digitalWrite(amr::hal::pin_led_internal, hb_on ? LOW : HIGH);
     }
 
-    // Servo I2C: Polling statt update_pending (5 Hz, Core 0)
+    // Servo I2C: Polling mit Retry (10 Hz, Core 0)
     if (pca9685_ok) {
         static uint32_t last_servo_apply = 0;
-        if (millis() - last_servo_apply >= 200) {
+        if (millis() - last_servo_apply >= 100) { // 10 Hz (war 5 Hz / 200 ms)
             last_servo_apply = millis();
             float cur_pan = servo_cmd.pan;
             float cur_tilt = servo_cmd.tilt;
-            if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(10))) {
-                pca9685.setAngle(amr::servo::ch_pan, cur_pan);
-                pca9685.setAngle(amr::servo::ch_tilt, cur_tilt);
-                xSemaphoreGive(i2c_mutex);
+            bool acquired = false;
+            for (int retry = 0; retry < 3 && !acquired; retry++) {
+                if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(10))) {
+                    pca9685.setAngle(amr::servo::ch_pan, cur_pan);
+                    pca9685.setAngle(amr::servo::ch_tilt, cur_tilt);
+                    xSemaphoreGive(i2c_mutex);
+                    acquired = true;
+                    servo_write_ok++;
+                }
             }
+            if (!acquired)
+                servo_i2c_contention++;
         }
     }
 

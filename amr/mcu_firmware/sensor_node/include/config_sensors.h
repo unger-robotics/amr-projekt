@@ -152,6 +152,10 @@ inline constexpr uint32_t id_battery = 0x140;
 inline constexpr uint32_t id_battery_shutdown = 0x141;
 inline constexpr uint32_t id_heartbeat = 0x1F0;
 
+// Empfangs-ID (Pi 5 → Sensor-Node, Servo-Steuerung via CAN)
+// Frame: [int16 pan 0.1°] [int16 tilt 0.1°], DLC=4
+inline constexpr uint32_t id_servo_cmd_rx = 0x150;
+
 inline constexpr uint32_t heartbeat_period_ms = 1000;
 
 } // namespace amr::can
@@ -257,4 +261,11 @@ static_assert(amr::servo::tilt_limit_max_deg + amr::servo::tilt_offset_deg <=
 // --- CAN-Bus ---
 static_assert(amr::can::id_range >= 0x100 && amr::can::id_range <= 0x7FF, "CAN-ID 11-Bit");
 static_assert(amr::can::id_heartbeat >= 0x100 && amr::can::id_heartbeat <= 0x7FF, "CAN-ID 11-Bit");
+static_assert(amr::can::id_servo_cmd_rx >= 0x100 && amr::can::id_servo_cmd_rx <= 0x7FF,
+              "CAN-ID 11-Bit");
+static_assert(amr::can::id_servo_cmd_rx != amr::can::id_range, "CAN-ID-Kollision");
+static_assert(amr::can::id_servo_cmd_rx != amr::can::id_cliff, "CAN-ID-Kollision");
+static_assert(amr::can::id_servo_cmd_rx != amr::can::id_imu_accel, "CAN-ID-Kollision");
+static_assert(amr::can::id_servo_cmd_rx != amr::can::id_battery, "CAN-ID-Kollision");
+static_assert(amr::can::id_servo_cmd_rx != amr::can::id_heartbeat, "CAN-ID-Kollision");
 static_assert(amr::can::bitrate == 1000000, "CAN-Bitrate 1 Mbit/s");

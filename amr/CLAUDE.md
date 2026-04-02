@@ -113,7 +113,7 @@ Das Symlink-Pattern erfordert vier Schritte:
 
 Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
-- **Core 0** (`loop()`): micro-ROS Executor (Publisher/Subscriber), Servo-I2C Polling 5 Hz (nur Sensor-Node)
+- **Core 0** (`loop()`): micro-ROS Executor (Publisher/Subscriber), Servo-I2C Polling 10 Hz mit 3x Retry (nur Sensor-Node)
 - **Core 1** (FreeRTOS Task): Echtzeit-Datenerfassung + CAN-Bus-Sends (Drive: 50 Hz PID + Encoder + CAN, Sensor: 50 Hz IMU + 10/20 Hz Ultraschall/Cliff + 2 Hz Batterie + CAN)
 - CAN-Sends laufen in Core 1, damit sie unabhaengig vom micro-ROS Agent funktionieren (`setup()` blockiert bis Agent verbunden)
 - I2C-Aufteilung Sensor-Node: Reads (IMU, INA260) auf Core 1, Writes (PCA9685 Servo) auf Core 0
@@ -122,7 +122,7 @@ Beide Nodes (Drive + Sensor) nutzen dasselbe Dual-Core-Pattern:
 
 ### ROS2 Stack (pi5/ros2_ws/src/my_bot/)
 
-Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node, respeaker_doa_node, voice_command_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) blockiert Vorwaertsfahrt bei Cliff oder Ultraschall < 100 mm (Rueckwaerts und Drehung bleiben bei Ultraschall-Hindernis erlaubt; bei Cliff/E-Stop wird alles blockiert). CAN-Bridge (`can_bridge_node`, `use_can:=True`) publiziert Sensor-Topics via SocketCAN als Alternative zu micro-ROS (select-basiert, ~8% CPU). Audio-Feedback-Knoten (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker. TTS-Speak-Knoten (`tts_speak_node`, `use_tts:=True`) spricht Gemini-Semantik via gTTS Cloud-Synthese ueber den Lautsprecher (Deutsch, Rate-Limiting 10 s). ReSpeaker-DoA-Knoten (`respeaker_doa_node`, `use_respeaker:=True`) publiziert Sprachrichtung und VAD auf `/doa` und `/is_voice`. Voice-Command-Knoten (`voice_command_node`, `use_voice:=True`) implementiert Stufe 2 Sprachsteuerung: ReSpeaker VAD-Trigger → Gemini Flash STT + Intent → `/voice/command` + `/voice/text`.
+Launch-File `full_stack.launch.py` orchestriert: micro_ros_agent → odom_to_tf → rplidar_node → slam_toolbox → Nav2 → RViz2. Optional: v4l2_camera_node, dashboard_bridge, hailo_udp_receiver_node, gemini_semantic_node, can_bridge_node, respeaker_doa_node, voice_command_node. Cliff-Safety-Multiplexer (`cliff_safety_node`, default an) blockiert Vorwaertsfahrt bei Cliff oder Ultraschall < 100 mm (Rueckwaerts und Drehung bleiben bei Ultraschall-Hindernis erlaubt; bei Cliff/E-Stop wird alles blockiert). CAN-Bridge (`can_bridge_node`, `use_can:=True`) ist bidirektional: RX publiziert Sensor-Topics via SocketCAN (select-basiert), TX leitet `/servo_cmd` als CAN 0x150 an den Sensor-Node weiter (Servo-Redundanzpfad). Audio-Feedback-Knoten (`audio_feedback_node`, optional) spielt WAV-Dateien via aplay/MAX98357A I2S-Verstaerker. TTS-Speak-Knoten (`tts_speak_node`, `use_tts:=True`) spricht Gemini-Semantik via gTTS Cloud-Synthese ueber den Lautsprecher (Deutsch, Rate-Limiting 10 s). ReSpeaker-DoA-Knoten (`respeaker_doa_node`, `use_respeaker:=True`) publiziert Sprachrichtung und VAD auf `/doa` und `/is_voice`. Voice-Command-Knoten (`voice_command_node`, `use_voice:=True`) implementiert Stufe 2 Sprachsteuerung: ReSpeaker VAD-Trigger → Gemini Flash STT + Intent → `/voice/command` + `/voice/text`.
 
 TF-Baum: `odom → base_link → laser (180° Yaw) / camera_link (optional) / ultrasonic_link (optional)`
 
