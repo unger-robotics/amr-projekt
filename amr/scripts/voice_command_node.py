@@ -17,7 +17,7 @@ Umgebungsvariable:
 
 Parameter:
   audio_device   (string, "auto")           — ALSA-Device (auto = ReSpeaker erkennen)
-  gemini_model   (string, "gemini-3.1-flash-lite-preview") — Gemini-Modell
+  gemini_model   (string, "gemini-2.5-flash") — Gemini-Modell
   max_record_s   (float, 10.0)              — Max. Aufnahmedauer [s]
   min_record_s   (float, 0.5)               — Min. Aufnahmedauer [s]
   cooldown_s     (float, 0.5)               — VAD-Cooldown nach Sprachende [s]
@@ -121,7 +121,7 @@ class VoiceCommandNode(Node):
 
         # -- Parameter --
         self.declare_parameter("audio_device", "auto")
-        self.declare_parameter("gemini_model", "gemini-3.1-flash-lite-preview")
+        self.declare_parameter("gemini_model", "gemini-2.5-flash")
         self.declare_parameter("max_record_s", 10.0)
         self.declare_parameter("min_record_s", 0.5)
         self.declare_parameter("cooldown_s", 0.5)

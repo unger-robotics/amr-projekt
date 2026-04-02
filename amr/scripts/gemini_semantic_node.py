@@ -16,7 +16,7 @@ Umgebungsvariable:
 
 Verwendung:
   ros2 run my_bot gemini_semantic_node
-  ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash
+  ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.5-flash
 """
 
 import json
@@ -65,7 +65,7 @@ class GeminiSemanticNode(Node):
         super().__init__("gemini_semantic_node")
 
         # Parameter
-        self.declare_parameter("model", "gemini-3.1-flash-lite-preview")
+        self.declare_parameter("model", "gemini-2.5-flash")
         self.declare_parameter("max_tokens", 256)
 
         model_name = self.get_parameter("model").get_parameter_value().string_value
