@@ -315,6 +315,8 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 - **Host-Hailo-Runner**: `host_hailo_runner.py` MUSS auf dem Host laufen (nicht im Container) — sendet UDP an `127.0.0.1:5005`. Ohne laufenden Runner haengt `hailo_udp_receiver_node` wartend
 - **Docker Micro-ROS Fallback**: Falls `ros-humble-micro-ros-agent` apt-Paket auf arm64 fehlt, baut das Dockerfile es aus Source (~30+ Min zusaetzlich)
 - **Docker numpy<2 Pin**: cv_bridge (apt) ist gegen NumPy 1.x ABI kompiliert. Ohne `numpy<2` Pin crasht cv_bridge mit `_ARRAY_API`-Fehler. `openwakeword==0.6.0` ist fixiert (neuere Versionen aendern Modell-API)
+- **Gemini-Quota (Free-Tier)**: `gemini-2.0-flash-lite` Free-Tier hat 1500 RPD (Requests/Tag) und 30 RPM. Bei 8s-Intervall (~450 Req/h) ist das Tageslimit nach ~3h erreicht. Symptom: `429 RESOURCE_EXHAUSTED` in Logs, Dashboard zeigt dauerhaft "Warte auf Vision-Pipeline...". Quota-Status pruefen unter https://aistudio.google.com/
+- **Vision-Pipeline stille Fehler**: `gemini_semantic_node` scheitert still wenn `/camera/image_raw` fehlt (v4l2_camera_node abgestuerzt) oder Gemini-Quota erschoepft. Warn-Log fuer fehlendes Kamerabild seit 03.04.2026 eingebaut (gedrosselt 10s)
 
 ## Harte Randbedingungen
 

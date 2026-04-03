@@ -242,6 +242,11 @@ class GeminiSemanticNode(Node):
 
         with self.latest_image_lock:
             if self.latest_image is None:
+                self.get_logger().warn(
+                    "Kein Kamerabild verfuegbar — /camera/image_raw fehlt oder v4l2_camera_node "
+                    "nicht aktiv. Semantische Analyse uebersprungen.",
+                    throttle_duration_sec=10.0,
+                )
                 return
             image_msg = self.latest_image
 
