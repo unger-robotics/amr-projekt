@@ -161,61 +161,56 @@ print('Warte 2s auf Boot...')
 "
 ```
 
-## Live-Betrieb: Dashboard + Vision + SLAM
+## Gemini API-Schluessel
 
-Dieser Ablauf startet das Gesamtsystem fuer den Live-Betrieb mit SLAM, Kamera, Dashboard, Hailo-basierter Objekterkennung und semantischer Auswertung.
+Fuer Vision (Hailo + Gemini), TTS-Sprachausgabe und Sprachsteuerung wird ein Gemini API-Schluessel benoetigt.
+
+```bash
+# Neuen Gemini API-Schluessel erstellen unter https://aistudio.google.com/apikey
+# Genutztes Modell: gemini-2.5-flash (Voice STT und Semantic Vision)
+
+# Schluessel anzeigen
+cat ~/amr-projekt/scripts/.gemini_api.key
+
+# Schluessel wird via docker-compose.yml als GEMINI_API_KEY in den Container durchgereicht
+```
+
+## Vollstart (alle Subsysteme, vier Terminals)
+
+Dieser Ablauf startet das Gesamtsystem fuer den Live-Betrieb mit SLAM, Kamera, Dashboard, Hailo-basierter Objekterkennung, CAN-Bus, Sprachsteuerung und semantischer Auswertung.
 
 ### Voraussetzungen
 
 - Das HEF-Modell liegt unter `hardware/models/yolov8s.hef`.
-- `GEMINI_API_KEY` ist in `amr/docker/.env` gesetzt.
+- `GEMINI_API_KEY` ist in der Host-Umgebung gesetzt (siehe oben).
 - Das Docker-Image ist aktuell (`docker compose build`).
 - Kein anderer Prozess blockiert die seriellen Ports.
 - Auf dem Drive-Knoten laeuft die korrekte Firmware, nicht `led_test`.
 
 ### Startsequenz
 
-Der Live-Betrieb benoetigt drei Terminals.
+Der Live-Betrieb benoetigt vier Terminals. T1 ist einmalig (Reset + Pruefung), T2-T4 sind langlebige Prozesse.
 
-### Terminal 1: ESP32-Reset und Docker-Full-Stack
+### T1: Reset beider ESP32-S3 via DTR/RTS (einmalig)
 
 ```bash
-# Alte Container und Ports freigeben
-docker stop $(docker ps -q) 2>/dev/null
-docker rm $(docker ps -aq) 2>/dev/null
-fuser -k 8082/tcp 9090/tcp 5173/tcp 5174/tcp 2>/dev/null
-
-# Kamera-Bridge pruefen oder starten
-sudo systemctl is-active camera-v4l2-bridge.service || {
-    sudo modprobe -r v4l2loopback 2>/dev/null
-    sudo modprobe v4l2loopback video_nr=10 card_label=AMR_Camera exclusive_caps=1
-    sudo systemctl restart camera-v4l2-bridge.service
-    sleep 4
-}
-
-# Beide ESP32 per DTR/RTS resetten
-python3 -c "
-import serial, time
-for name, port in [('Drive', '/dev/amr_drive'), ('Sensor', '/dev/amr_sensor')]:
-    try:
-        s = serial.Serial(port, 921600)
-        s.dtr = False; s.rts = True; time.sleep(0.1)
-        s.dtr = False; s.rts = False; time.sleep(0.1)
-        s.close()
-        print(f'{name} ({port}) reset OK')
-    except Exception as e:
-        print(f'{name} ({port}) reset FEHLER: {e}')
-time.sleep(2)
-"
-
-# Docker-Full-Stack starten
-cd ~/amr-projekt/amr/docker
-./run.sh ros2 launch my_bot full_stack.launch.py \
-    use_slam:=True use_dashboard:=True use_camera:=True use_vision:=True \
-    use_rviz:=False use_nav:=False
+lsusb
+ls /dev/ttyACM* /dev/ttyUSB* /dev/amr_*
+cd ~/amr-projekt
+python3 -c "import serial,time;[exec('s=serial.Serial(p,921600);s.dtr=False;s.rts=True;time.sleep(0.1);s.dtr=True;s.rts=False;s.close()') for p in ['/dev/amr_drive','/dev/amr_sensor']]"
 ```
 
-Erfolgsindikatoren in Terminal 1:
+### T2: Full-Stack Launch mit allen Subsystemen
+
+```bash
+cd ~/amr-projekt/amr/docker
+./run.sh ros2 launch my_bot full_stack.launch.py \
+    use_dashboard:=True use_camera:=True use_vision:=True \
+    use_audio:=True use_respeaker:=True use_tts:=True \
+    use_voice:=True use_can:=True
+```
+
+Erfolgsindikatoren:
 
 * `micro_ros_agent_drive`: `session established`
 * `micro_ros_agent_sensor`: `session established`
@@ -223,13 +218,13 @@ Erfolgsindikatoren in Terminal 1:
 * `dashboard_bridge`: WebSocket- und MJPEG-Server gestartet
 * `gemini_semantic_node`: Modell konfiguriert
 * `hailo_udp_receiver`: wartet auf den Host-Runner
+* `can_bridge_node`: CAN-Bus verbunden
 
-### Terminal 2: Hailo-Runner auf dem Host starten
+### T3: Hailo-8L Vision auf dem Host (Python 3.13)
 
 ```bash
 cd ~/amr-projekt
-PYTHONUNBUFFERED=1 python3 amr/scripts/host_hailo_runner.py \
-    --model hardware/models/yolov8s.hef --threshold 0.35
+python3 amr/scripts/host_hailo_runner.py
 ```
 
 Falls keine Hailo-Hardware angeschlossen ist:
@@ -244,7 +239,7 @@ Kriterium:
 * Der Runner verbindet sich mit dem MJPEG-Stream der `dashboard_bridge`.
 * Erste Detektionen erscheinen nach erfolgreichem Stream-Zugriff.
 
-### Terminal 3: Dashboard-Benutzeroberflaeche starten
+### T4: Vite-Dev-Server Dashboard
 
 ```bash
 cd ~/amr-projekt/dashboard
