@@ -139,6 +139,12 @@ export interface VisionSemanticsMsg {
   ts: number;
   analysis: string;
   model: string;
+  sensor_fusion?: {
+    sources: string[];
+    source_count: number;
+    ultrasonic_m: number | null;
+    lidar_sectors: Record<string, { min_m: number | null; frei: boolean }> | null;
+  };
 }
 
 /** Navigationsziel ans Backend */

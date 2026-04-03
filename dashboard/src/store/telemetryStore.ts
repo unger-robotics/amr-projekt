@@ -55,6 +55,9 @@ interface TelemetryState {
   lastDetectionTs: number;
   semanticAnalysis: string;
   semanticModel: string;
+  semanticFusionSources: string[];
+  semanticUltrasonicM: number | null;
+  semanticLidarSectors: Record<string, { min_m: number | null; frei: boolean }> | null;
   lastSemanticsTs: number;
   // Battery (INA260)
   batteryVoltage: number;
@@ -152,7 +155,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   mapPngB64: null, mapWidth: 0, mapHeight: 0, mapResolution: 0.05,
   mapOriginX: 0, mapOriginY: 0, robotMapX: 0, robotMapY: 0, robotMapYaw: 0,
   visionEnabled: false, visionDetections: [], inferenceMs: 0, detectionHz: 0, lastDetectionTs: 0,
-  semanticAnalysis: '', semanticModel: '', lastSemanticsTs: 0,
+  semanticAnalysis: '', semanticModel: '', semanticFusionSources: [], semanticUltrasonicM: null, semanticLidarSectors: null, lastSemanticsTs: 0,
   batteryVoltage: 0, batteryCurrent: 0, batteryPower: 0, batteryPercentage: 0, batteryRuntimeMin: -1,
   cpuLoad5m: 0, cpuLoad15m: 0, cpuFreqMhz: [], cpuPerCorePct: [], uptimeS: 0,
   processesRunning: 0, processesTotal: 0, ina260Active: false,
@@ -257,12 +260,15 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   updateVisionSemantics: (msg) => set({
     semanticAnalysis: msg.analysis,
     semanticModel: msg.model,
+    semanticFusionSources: msg.sensor_fusion?.sources ?? [],
+    semanticUltrasonicM: msg.sensor_fusion?.ultrasonic_m ?? null,
+    semanticLidarSectors: msg.sensor_fusion?.lidar_sectors ?? null,
     lastSemanticsTs: msg.ts,
   }),
 
   setVisionEnabled: (enabled) => set({
     visionEnabled: enabled,
-    ...(enabled ? {} : { visionDetections: [], inferenceMs: 0, semanticAnalysis: '' }),
+    ...(enabled ? {} : { visionDetections: [], inferenceMs: 0, semanticAnalysis: '', semanticFusionSources: [], semanticUltrasonicM: null, semanticLidarSectors: null }),
   }),
 
   updateNavStatus: (msg) => set({

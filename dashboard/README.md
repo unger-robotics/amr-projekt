@@ -46,8 +46,8 @@ cd amr/docker/
   Kommandofeld   [Joystick]    [Servo + Hardware-Steuerung]
 ```
 
-- **Kamera:** MJPEG-Livestream (Port 8082) mit Hailo-8L-Bounding-Boxen und AI-Toggle
-- **SLAM-Karte:** Canvas-basiert, Heading-Up-Rotation, Roboter-Position, Fahrpfad-Trail, Navigationsziel per Klick
+- **Kamera:** MJPEG-Livestream (Port 8082) mit Hailo-8L-Bounding-Boxen, AI-Toggle und FUSION-Badge bei aktiver Sensorfusion
+- **SLAM-Karte:** Canvas-basiert, Heading-Up-Rotation, Roboter-Position, Fahrpfad-Trail, Ultraschall-Kegel (farbkodiert), Navigationsziel per Klick
 - **LiDAR:** Farbkodierte Entfernungswerte im Polardiagramm
 - **Joystick:** 0,4 m/s linear, 1,0 rad/s angular, Deadman-Timer (300 ms)
 - **Kommandofeld:** Freitext-REPL ("fahre 1 m vorwaerts", "drehe 90 grad links", "nav 1.0 0.5")
@@ -58,7 +58,7 @@ cd amr/docker/
 - **SLAM:** Kartierung starten/stoppen, Karte speichern
 - **Cliff-Safety:** Status, Sicherheitsmechanismen
 - **Docking:** ArUco-Marker-Docking
-- **Vision/Semantik:** AI-Toggle, Gemini-Analyse
+- **Vision/Semantik:** AI-Toggle, Gemini-Analyse mit Sensorfusion (Ultraschall + LiDAR), Sensorwerte-Anzeige
 - **TTS:** Sprachausgabe-Test
 - **Schnellstart-Missionen:** Vorkonfigurierte Ablaeufe
 
@@ -101,7 +101,7 @@ cd amr/docker/
 | `sensor_status` | 2 Hz | Ultraschall, Cliff, IMU |
 | `audio_status` | 2 Hz | Audio-Geraetestatus, Lautstaerke |
 | `command_response` | Event | Antwort auf Freitext-Kommando |
-| `vision_semantics` | Event | Gemini Cloud Semantik-Beschreibung |
+| `vision_semantics` | Event | Gemini Cloud Semantik-Beschreibung (inkl. sensor_fusion: sources, ultrasonic_m, lidar_sectors) |
 | `vision_status` | Event | AI-Toggle-Bestaetigung |
 | `test_list` | Event | Verfuegbare Tests (nach Phasen) |
 | `voice_transcript` | Event | Erkannter Sprachbefehl (Text + Intent) |

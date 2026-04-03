@@ -286,33 +286,49 @@ class CanBridgeNode(Node):
         except OSError as e:
             self.get_logger().warn(f"CAN-TX servo_cmd fehlgeschlagen: {e}")
 
-    def _check_hb_drift(self) -> None:
-        """Prueft Heartbeat-Drift zwischen Sensor und Drive Node."""
-        drift = abs(self.sensor_hb_count - self.drive_hb_count)
-        now = time.monotonic()
+    def _calc_hb_rate(self, times: "deque[float]") -> float:
+        """Berechnet HB-Rate in Hz aus Timestamp-Deque."""
+        if len(times) < 2:
+            return 0.0
+        span = times[-1] - times[0]
+        return (len(times) - 1) / span if span > 0 else 0.0
 
-        if drift > 5 and now - self._last_drift_warn > 60.0:
-            self._last_drift_warn = now
-            drift_rate = ""
-            if len(self._sensor_hb_times) >= 10 and len(self._drive_hb_times) >= 10:
-                s_span = self._sensor_hb_times[-1] - self._sensor_hb_times[0]
-                d_span = self._drive_hb_times[-1] - self._drive_hb_times[0]
-                sensor_hz = (len(self._sensor_hb_times) - 1) / s_span if s_span > 0 else 0
-                drive_hz = (len(self._drive_hb_times) - 1) / d_span if d_span > 0 else 0
-                drift_rate = f" (Sensor: {sensor_hz:.2f} Hz, Drive: {drive_hz:.2f} Hz)"
-            self.get_logger().warn(
-                f"CAN-HB-Drift: {drift} HB Differenz "
-                f"(Sensor={self.sensor_hb_count}, "
-                f"Drive={self.drive_hb_count}){drift_rate}"
-            )
+    def _calc_hb_drift(self) -> tuple:
+        """Berechnet Heartbeat-Drift zwischen Sensor und Drive Node.
+
+        Fensterbasiert: Vergleicht Heartbeat-Anzahl der letzten 30 s
+        statt kumulativer Zaehler, damit einzelne Frame-Verluste
+        sich nicht permanent aufaddieren.
+
+        Returns: (drift, sensor_win, drive_win)
+        """
+        now = time.monotonic()
+        cutoff = now - 30.0
+
+        sensor_win = sum(1 for t in self._sensor_hb_times if t >= cutoff)
+        drive_win = sum(1 for t in self._drive_hb_times if t >= cutoff)
+        drift = abs(sensor_win - drive_win)
+        return drift, sensor_win, drive_win
 
     def _log_stats(self):
+        sensor_hz = self._calc_hb_rate(self._sensor_hb_times)
+        drive_hz = self._calc_hb_rate(self._drive_hb_times)
+        drift, sensor_win, drive_win = self._calc_hb_drift()
         self.get_logger().info(
             f"CAN-Bridge: {self.frame_count} Frames, "
-            f"Sensor-HB: {self.sensor_hb_count}, "
-            f"Drive-HB: {self.drive_hb_count}"
+            f"Sensor-HB: {self.sensor_hb_count} ({sensor_hz:.2f} Hz), "
+            f"Drive-HB: {self.drive_hb_count} ({drive_hz:.2f} Hz), "
+            f"Drift: {drift} (S={sensor_win}, D={drive_win} in 30s)"
         )
-        self._check_hb_drift()
+        if drift > 5:
+            now = time.monotonic()
+            if now - self._last_drift_warn > 60.0:
+                self._last_drift_warn = now
+                self.get_logger().warn(
+                    f"CAN-HB-Drift: {drift} HB Differenz im "
+                    f"Fenster (30 s) "
+                    f"(Sensor={sensor_win}, Drive={drive_win})"
+                )
 
     def destroy_node(self):
         self._running = False

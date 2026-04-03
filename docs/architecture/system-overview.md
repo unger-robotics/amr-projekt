@@ -31,7 +31,7 @@ graph TB
   subgraph C["Ebene C — Intelligente Interaktion (optional)"]
     HAILO["Host: Hailo-8L Runner<br>YOLOv8 @ 5 Hz"]
     UDP["hailo_udp_receiver"]
-    GEMINI["gemini_semantic_node<br>Gemini 3.1 flash-lite"]
+    GEMINI["gemini_semantic_node<br>Gemini 2.0 flash-lite"]
     TTS["tts_speak_node<br>gTTS → MAX98357A"]
     RESPEAKER["ReSpeaker DoA"]
     HAILO -->|UDP:5005| UDP

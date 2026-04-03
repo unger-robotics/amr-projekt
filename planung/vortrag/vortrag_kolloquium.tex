@@ -129,7 +129,7 @@
   \textbf{Edge-Inferenz und Cloud-Semantik (Ebene C)}
   \begin{itemize}
     \item \textbf{Edge-KI:} Hailo-8L NPU ($1{,}5\,\mathrm{W}$ typ.) fuehrt YOLOv8-Objekterkennung mit $5\,\mathrm{Hz}$ Pipeline-Rate aus (ca.\ $34\,\mathrm{ms}$ Inferenzzeit). UDP-Bruecke Host $\rightarrow$ Docker.
-    \item \textbf{Cloud-Semantik:} \texttt{gemini\_semantic\_node} (Modell: \texttt{gemini-3.1-flash-lite}) sendet Detektionen und Telemetrie an Gemini API fuer kontextbasierte Situationsbewertung.
+    \item \textbf{Cloud-Semantik:} \texttt{gemini\_semantic\_node} (Modell: \texttt{gemini-2.0-flash-lite}) sendet Detektionen und Telemetrie an Gemini API fuer kontextbasierte Situationsbewertung.
     \item \textbf{Sprachausgabe (TTS):} gTTS Cloud-Synthese $\rightarrow$ mpg123 $\rightarrow$ MAX98357A I2S-Lautsprecher. Gemini-Semantik wird gesprochen (Rate-Limit: $10\,\mathrm{s}$).
     \item \textbf{Vorteil:} Die rechenintensive Wahrnehmung gefaehrdet die Echtzeitfaehigkeit des Nav2-Stacks nicht.
   \end{itemize}

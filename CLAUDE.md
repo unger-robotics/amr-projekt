@@ -56,7 +56,7 @@ Normierte Begriffe in allen Dokumenten konsistent verwenden:
 - MCU Dual-Core: Core 0 = micro-ROS Executor, Core 1 = Echtzeit-Datenerfassung + CAN
 - Dual-Path-Redundanz: Prio 1 micro-ROS/UART → Prio 2 CAN-Fallback (UART > 500 ms Timeout) → Prio 3 Firmware-Stopp (tv=0, tw=0). Pi 5 ist fuer Notstopp nicht erforderlich
 - `full_stack.launch.py` orchestriert alle ROS2-Nodes (micro-ROS Agents, SLAM, Nav2, Dashboard, Vision)
-- Vision-Pipeline: Host-seitiger Hailo-8L Runner (HTTPS MJPEG) → UDP → Docker-Receiver → Gemini Cloud
+- Vision-Pipeline: Host-seitiger Hailo-8L Runner (HTTPS MJPEG) → UDP → Docker-Receiver → Gemini Cloud mit Sensorfusion (Ultraschall + LiDAR, optional, Frische-Pruefung 5 s)
 - Vision-Toggle: Dashboard AI-Schalter steuert Broadcast-Gate in Bridge + `/vision/enable` Topic fuer TTS
 - Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und via `setup.py` entry_points installiert
 
@@ -73,7 +73,7 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 | `use_cliff_safety` | True | Cliff + Ultraschall Sicherheitslogik |
 | `use_camera` | False | v4l2 Kamera-Knoten |
 | `use_dashboard` | False | WebSocket/MJPEG Bridge |
-| `use_vision` | False | Hailo UDP Receiver + Gemini |
+| `use_vision` | False | Hailo UDP Receiver + Gemini (Sensorfusion) |
 | `use_audio` | False | Audio-Feedback-Knoten |
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe (Gemini-Semantik) |
@@ -314,6 +314,7 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 - **ruff-Ausschluesse**: `amr/pi5/ros2_ws/src/my_bot/my_bot/` (Symlink-Verzeichnis), `dashboard/`, `build/`, `install/` sind in `ruff.toml` ausgeschlossen. Mehrere Skripte haben Per-File-Ignores
 - **Host-Hailo-Runner**: `host_hailo_runner.py` MUSS auf dem Host laufen (nicht im Container) — sendet UDP an `127.0.0.1:5005`. Ohne laufenden Runner haengt `hailo_udp_receiver_node` wartend
 - **Docker Micro-ROS Fallback**: Falls `ros-humble-micro-ros-agent` apt-Paket auf arm64 fehlt, baut das Dockerfile es aus Source (~30+ Min zusaetzlich)
+- **Docker numpy<2 Pin**: cv_bridge (apt) ist gegen NumPy 1.x ABI kompiliert. Ohne `numpy<2` Pin crasht cv_bridge mit `_ARRAY_API`-Fehler. `openwakeword==0.6.0` ist fixiert (neuere Versionen aendern Modell-API)
 
 ## Harte Randbedingungen
 
@@ -330,7 +331,7 @@ Technische Referenzen in `docs/`:
 - `ros2_system.md` — ROS2-Topics, TF-Baum, QoS
 - `firmware.md` — MCU-Firmware-Details
 - `dashboard.md` — Dashboard-Architektur und WebSocket-Protokoll
-- `vision_pipeline.md` — Hailo/Gemini Vision-Pipeline
+- `vision_pipeline.md` — Hailo/Gemini Vision-Pipeline mit Sensorfusion
 - `serial_port_management.md` — udev-Regeln und Seriennummern
 - `robot_parameters.md` — Physikalische Parameter (Raddurchmesser, PID, Batterie)
 - `build_and_deploy.md`, `validation.md`, `quality_checks.md` — Build, Validierung, Qualitaet

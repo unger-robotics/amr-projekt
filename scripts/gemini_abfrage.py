@@ -107,7 +107,7 @@ def main() -> None:
         print(f"Initialisierungsfehler: {fehler}", file=sys.stderr)
         sys.exit(1)
 
-    MODEL_ID = "gemini-2.5-flash"
+    MODEL_ID = "gemini-2.0-flash-lite"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={api_key}"
 
     # Datenstruktur für die REST-API initialisieren

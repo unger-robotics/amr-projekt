@@ -534,9 +534,9 @@ class WebSocketServer:
             )
             return None
 
-        # "schau nach links/rechts/mitte"
+        # "schau nach links/rechts/mitte/vorne"
         m = re.match(
-            r"(?:schau|kamera|guck)\s+(?:nach\s+)?(links|rechts|mitte|zentrum|geradeaus)",
+            r"(?:schau|kamera|guck)\s+(?:nach\s+)?(links|rechts|mitte|zentrum|geradeaus|vorne)",
             text_lower,
         )
         if m:
@@ -547,6 +547,7 @@ class WebSocketServer:
                 "mitte": 90,
                 "zentrum": 90,
                 "geradeaus": 90,
+                "vorne": 90,
             }
             self.node.publish_servo_cmd(float(pan_map[direction]), 90.0)
             return {
@@ -1449,13 +1450,14 @@ class DashboardBridge(Node):
             self.get_logger().warn(f"Detection-Parse fehlgeschlagen: {e}")
 
     def _semantics_cb(self, msg):
-        """Parst /vision/semantics JSON."""
+        """Parst /vision/semantics JSON (inkl. optionaler Sensorfusion-Metadaten)."""
         try:
             data = json.loads(msg.data)
             with self.lock:
                 self.latest_semantics = {
                     "analysis": data.get("semantic_analysis", ""),
                     "model": data.get("model", ""),
+                    "sensor_fusion": data.get("sensor_fusion"),
                 }
         except (json.JSONDecodeError, Exception) as e:
             self.get_logger().warn(f"Semantics-Parse fehlgeschlagen: {e}")
@@ -1608,24 +1610,24 @@ class DashboardBridge(Node):
                 return
             grid = np.array(msg.data, dtype=np.int8).reshape((height, width))
 
-            # RGBA-Bild erzeugen (Saugroboter-Stil)
+            # RGBA-Bild erzeugen (HUD-Stil, harte Wandgrenzen)
             rgba = np.zeros((height, width, 4), dtype=np.uint8)
-            # Unbekannt (-1): fast schwarz, opak
+            # Unbekannt (-1): sehr dunkel (unerforschtes Gebiet)
             unknown = grid == -1
-            rgba[unknown] = [20, 24, 36, 255]
-            # Frei (0): hellblau (befahrbare Flaeche)
+            rgba[unknown] = [14, 18, 26, 255]
+            # Frei (0): dunkles Blau (befahrbare Flaeche)
             free = grid == 0
-            rgba[free] = [106, 148, 191, 255]
-            # Belegt (>50): dunkelgrau (Waende/Hindernisse)
+            rgba[free] = [22, 40, 62, 255]
+            # Belegt (>50): leuchtend Cyan (Waende, harte Grenzen)
             occupied = grid > 50
-            rgba[occupied] = [45, 55, 72, 255]
-            # Partial (1-50): Gradient blau → grau
+            rgba[occupied] = [0, 229, 255, 255]
+            # Partial (1-50): Gradient dunkelblau → cyan
             partial = (grid > 0) & (grid <= 50)
             if np.any(partial):
                 vals = grid[partial].astype(np.float32) / 50.0
-                rgba[partial, 0] = (106 + vals * (45 - 106)).astype(np.uint8)
-                rgba[partial, 1] = (148 + vals * (55 - 148)).astype(np.uint8)
-                rgba[partial, 2] = (191 + vals * (72 - 191)).astype(np.uint8)
+                rgba[partial, 0] = (22 + vals * (0 - 22)).astype(np.uint8)
+                rgba[partial, 1] = (40 + vals * (229 - 40)).astype(np.uint8)
+                rgba[partial, 2] = (62 + vals * (255 - 62)).astype(np.uint8)
                 rgba[partial, 3] = 255
 
             # ROS Y-oben -> Bild Y-unten
@@ -2300,12 +2302,21 @@ class DashboardBridge(Node):
             data = self.latest_semantics
         if data is None:
             return None
-        return {
+        msg = {
             "op": "vision_semantics",
             "ts": round(time.time(), 3),
             "analysis": data.get("analysis", ""),
             "model": data.get("model", ""),
         }
+        sf = data.get("sensor_fusion")
+        if sf is not None:
+            msg["sensor_fusion"] = {
+                "sources": sf.get("sources", []),
+                "source_count": len(sf.get("sources", [])),
+                "ultrasonic_m": sf.get("ultrasonic_m"),
+                "lidar_sectors": sf.get("lidar_sectors"),
+            }
+        return msg
 
 
 # =========================================================================

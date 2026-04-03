@@ -435,7 +435,7 @@ Der Datenfluss gliedert sich in drei Stufen:
 
 1. **Lokale Inferenz:** `host_hailo_runner.py` liest den MJPEG-Stream (Port 8082) und fuehrt YOLOv8-Objekterkennung auf dem PCIe-angebundenen Hailo-8L aus (Inferenzzeit ca. 34 ms, 5 Hz). Die Detektionen werden als JSON-Pakete ueber UDP-Port 5005 an den Container gesendet.
 
-2. **ROS2-Integration:** `hailo_udp_receiver_node` empfaengt die UDP-Pakete und publiziert sie auf `/vision/detections`. `gemini_semantic_node` bewertet die Szene semantisch ueber die Gemini-Cloud-API (Modell `gemini-3.1-flash-lite-preview`, Rate-Limit 4 s, max. 256 Tokens) und publiziert auf `/vision/semantics`.
+2. **ROS2-Integration:** `hailo_udp_receiver_node` empfaengt die UDP-Pakete und publiziert sie auf `/vision/detections`. `gemini_semantic_node` bewertet die Szene semantisch ueber die Gemini-Cloud-API (Modell `gemini-2.0-flash-lite`, Rate-Limit 8 s, max. 256 Tokens) und publiziert auf `/vision/semantics`.
 
 3. **Sprachausgabe (optional):** `tts_speak_node` spricht die semantische Analyse ueber gTTS (Cloud, Deutsch) und mpg123 auf dem MAX98357A-Lautsprecher aus (Rate-Limit 10 s). Der Dashboard-AI-Schalter steuert sowohl das Broadcast-Gate in der Bridge als auch das Topic `/vision/enable` fuer die TTS-Ausgabe.
 

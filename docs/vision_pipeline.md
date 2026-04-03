@@ -34,9 +34,11 @@ Docker (Python 3.10, ROS2 Humble):
       v  /vision/detections (ROS2 Topic)
       |
       v
-  gemini_semantic_node (Gemini Cloud API, gemini-3.1-flash-lite-preview)
+  gemini_semantic_node (Gemini Cloud API, gemini-2.0-flash-lite)
+      + /range/front (Ultraschall, optional)
+      + /scan (LiDAR 360°, optional)
       |
-      v  /vision/semantics (ROS2 Topic)
+      v  /vision/semantics (ROS2 Topic, inkl. sensor_fusion Metadaten)
       |
       v
   tts_speak_node (gTTS Cloud → mpg123 → MAX98357A Lautsprecher, optional)
@@ -50,7 +52,7 @@ Docker (Python 3.10, ROS2 Humble):
 | `dashboard_bridge` | Docker (ROS2) | MJPEG-Stream auf Port 8082 |
 | `host_hailo_runner.py` | Host (Python 3.13) | YOLOv8-Inferenz via Hailo-8L NPU, sendet Detektionen per UDP |
 | `hailo_udp_receiver_node` | Docker (ROS2) | Empfaengt UDP-JSON, publiziert `/vision/detections` |
-| `gemini_semantic_node` | Docker (ROS2) | Semantische Auswertung via Gemini Cloud, publiziert `/vision/semantics` |
+| `gemini_semantic_node` | Docker (ROS2) | Semantische Auswertung via Gemini Cloud mit Sensorfusion (Ultraschall + LiDAR), publiziert `/vision/semantics` |
 | `tts_speak_node` | Docker (ROS2) | Spricht Gemini-Semantik via gTTS (Cloud, Deutsch) + mpg123 ueber MAX98357A Lautsprecher |
 
 ## Ports
@@ -110,10 +112,28 @@ Abhaengigkeiten im Docker-Image: `gTTS` (pip), `mpg123` (apt). Internetzugang er
 
 ## Gemini-Modell
 
-Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-3.1-flash-lite-preview`. Das Modell kann per ROS2-Parameter geaendert werden:
+Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-2.0-flash-lite` (Free-Tier: 30 RPM). Das Modell kann per ROS2-Parameter geaendert werden:
 
 ```bash
-ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash
+ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash-lite
 ```
 
 Die Umgebungsvariable `GEMINI_API_KEY` muss gesetzt sein (wird ueber `docker-compose.yml` an den Container durchgereicht).
+
+## Sensorfusion
+
+Der `gemini_semantic_node` bezieht optional Ultraschall- und LiDAR-Daten in die Gemini-Anfrage ein:
+
+| Topic | Typ | Quelle | Verwendung |
+|---|---|---|---|
+| `/range/front` | `sensor_msgs/Range` | Sensor-Node (micro-ROS) | Frontale Distanz im Prompt |
+| `/scan` | `sensor_msgs/LaserScan` | RPLiDAR A1 | 4-Sektor-Zusammenfassung (vorne/links/rechts/hinten) im Prompt |
+
+Die Subscriptions nutzen Best-Effort QoS (depth=1). Sensordaten aelter als 5 Sekunden werden als veraltet verworfen. Falls die Topics nicht publiziert werden, arbeitet der Knoten ohne Fusion weiter.
+
+Die Antwort auf `/vision/semantics` enthaelt ein `sensor_fusion`-Objekt mit:
+- `sources`: Liste aktiver Quellen (z.B. `["kamera", "hailo", "ultraschall", "lidar"]`)
+- `ultrasonic_m`: Frontale Ultraschall-Distanz in Metern (oder `null`)
+- `lidar_sectors`: Naechstes Hindernis pro Sektor (`min_m`, `frei`-Flag)
+
+Das Dashboard zeigt die aktiven Fusionsquellen als Tags und die Sensorwerte im Semantik-Panel an.

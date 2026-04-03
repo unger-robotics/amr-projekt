@@ -106,16 +106,23 @@ RUN echo "# ROS2 Humble" >> /root/.bashrc && \
 #     Raspberry Pi OS apt-Paket (python3-hailort) installiert. Die native
 #     .so (cpython-313) ist inkompatibel mit dem Container (cpython-310).
 #     hailo_inference_node prueft zur Laufzeit via HAS_HAILO-Flag.
+#     numpy<2 Pin: cv_bridge (apt) ist gegen NumPy 1.x ABI kompiliert.
+#     Ohne Pin zieht pip NumPy 2.x, was cv_bridge mit _ARRAY_API-Fehler crasht.
 # ---------------------------------------------------------------------------
 RUN pip3 install --no-cache-dir \
+    "numpy<2" \
     websockets \
     google-genai \
     python-can \
     pyusb \
     gTTS \
-    openwakeword \
+    openwakeword==0.6.0 \
     onnxruntime \
     faster-whisper
+
+# openwakeword-Modelle herunterladen (hey_jarvis Wake-Word)
+# pip installiert nur die Library, nicht die vortrainierten ONNX-Modelle.
+RUN python3 -c "from openwakeword.utils import download_models; download_models(model_names=['hey_jarvis_v0.1'])"
 
 WORKDIR /ros2_ws
 

@@ -429,8 +429,12 @@ function VisionCard({
 function SemanticsCard() {
   const semanticAnalysis = useTelemetryStore((s) => s.semanticAnalysis);
   const visionEnabled = useTelemetryStore((s) => s.visionEnabled);
+  const fusionSources = useTelemetryStore((s) => s.semanticFusionSources);
+  const ultrasonicM = useTelemetryStore((s) => s.semanticUltrasonicM);
+  const lidarSectors = useTelemetryStore((s) => s.semanticLidarSectors);
 
   const active = visionEnabled && semanticAnalysis.length > 0;
+  const hasFusion = fusionSources.length > 2;
   const truncated =
     semanticAnalysis.length > 100
       ? semanticAnalysis.slice(0, 100) + '...'
@@ -443,15 +447,46 @@ function SemanticsCard() {
         <span className="text-xs font-semibold text-hud-text uppercase tracking-wider">
           Semantische Szenenanalyse
         </span>
+        {hasFusion && (
+          <span className="text-[8px] font-mono px-1 py-0.5 border border-hud-green/40 text-hud-green bg-hud-green/10 uppercase">
+            Fusion
+          </span>
+        )}
       </div>
       <p className="text-[10px] text-hud-text-dim leading-relaxed">
-        Der gemini_semantic_node wertet YOLOv8-Detektionen ueber die Gemini
-        Cloud API aus (nur bei aktiviertem AI-Toggle) und publiziert
-        semantische Beschreibungen auf Deutsch.
+        Gemini Cloud API wertet Hailo-YOLOv8-Detektionen semantisch aus
+        und fusioniert optional Ultraschall- und LiDAR-Umgebungsdaten.
+        Aktivierung ueber AI-Toggle.
+        {hasFusion && ' Sensorfusion aktiv.'}
       </p>
       <p className="text-[10px] font-mono text-hud-text">
         {active ? truncated : 'Warte auf Vision-Pipeline...'}
       </p>
+      {active && fusionSources.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {fusionSources.map((src) => (
+            <span
+              key={src}
+              className="text-[8px] font-mono px-1 py-0.5 border border-hud-border/40 text-hud-text-dim bg-hud-bg"
+            >
+              {src}
+            </span>
+          ))}
+        </div>
+      )}
+      {active && hasFusion && (ultrasonicM !== null || lidarSectors) && (
+        <div className="grid grid-cols-2 gap-1 text-[9px] font-mono text-hud-text-dim">
+          {ultrasonicM !== null && (
+            <span>US vorne: {ultrasonicM.toFixed(2)} m</span>
+          )}
+          {lidarSectors &&
+            Object.entries(lidarSectors).map(([sektor, data]) => (
+              <span key={sektor}>
+                {sektor}: {data.min_m !== null ? (data.frei ? 'frei' : `${data.min_m} m`) : '–'}
+              </span>
+            ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1">
         <LaunchBadge text="use_vision:=True" />
         <LaunchBadge text="GEMINI_API_KEY" />

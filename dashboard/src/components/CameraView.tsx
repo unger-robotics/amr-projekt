@@ -51,6 +51,7 @@ export function CameraView({ sendVisionControl }: CameraViewProps) {
   const visionDetections = useTelemetryStore((s) => s.visionDetections);
   const inferenceMs = useTelemetryStore((s) => s.inferenceMs);
   const semanticAnalysis = useTelemetryStore((s) => s.semanticAnalysis);
+  const semanticFusionSources = useTelemetryStore((s) => s.semanticFusionSources);
 
   const streamProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
   const streamUrl = `${streamProtocol}//${window.location.hostname}:${STREAM_PORT}/stream`;
@@ -120,9 +121,16 @@ export function CameraView({ sendVisionControl }: CameraViewProps) {
       {/* Gemini Semantic Streifen — nur wenn Vision aktiviert */}
       {visionEnabled && semanticAnalysis && (
         <div className="absolute bottom-0 left-0 right-0 bg-hud-bg/70 backdrop-blur-sm px-2 py-1 pointer-events-none">
-          <p className="text-[10px] font-mono text-hud-cyan/80 line-clamp-2 leading-tight">
-            {semanticAnalysis}
-          </p>
+          <div className="flex items-center gap-1.5">
+            {semanticFusionSources.length > 2 && (
+              <span className="text-[8px] font-mono text-hud-green/70 uppercase shrink-0">
+                FUSION
+              </span>
+            )}
+            <p className="text-[10px] font-mono text-hud-cyan/80 line-clamp-2 leading-tight">
+              {semanticAnalysis}
+            </p>
+          </div>
         </div>
       )}
 

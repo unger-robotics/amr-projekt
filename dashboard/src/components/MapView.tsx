@@ -8,6 +8,8 @@ const ROBOT_GLOW_RADIUS = 14; // px (aeusserer Glow)
 const SCALE_BAR_MARGIN = 16; // px Abstand vom Rand
 const MAX_TRAIL_POINTS = 500; // Max Pfad-Punkte
 const GOAL_MARKER_SIZE = 8; // px (Ziel-Marker)
+const US_FOV_HALF = 0.13; // rad (halber Oeffnungswinkel HC-SR04, ~15° gesamt)
+const US_MAX_RANGE = 4.0; // m
 
 interface MapViewProps {
   onNavGoal?: (x: number, y: number, yaw: number) => void;
@@ -33,6 +35,7 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
   const robotMapX = useTelemetryStore((s) => s.robotMapX);
   const robotMapY = useTelemetryStore((s) => s.robotMapY);
   const robotMapYaw = useTelemetryStore((s) => s.robotMapYaw);
+  const ultrasonicRange = useTelemetryStore((s) => s.ultrasonicRange);
 
   // Base64 PNG → HTMLImageElement
   useEffect(() => {
@@ -210,6 +213,44 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
     ctx.fillStyle = '#00e676';
     ctx.fill();
 
+    // --- Ultraschall-Kegel (Heading-Up: vorwaerts = oben, -PI/2) ---
+    if (ultrasonicRange > 0 && ultrasonicRange < US_MAX_RANGE && mapResolution > 0) {
+      const pixPerMeter = mapScale / mapResolution;
+      const coneLen = Math.min(ultrasonicRange, US_MAX_RANGE) * pixPerMeter;
+      // Farbe nach Entfernung: gruen >0.5m, amber 0.1-0.5m, rot <0.1m
+      let coneFill: string;
+      let coneStroke: string;
+      if (ultrasonicRange < 0.1) {
+        coneFill = 'rgba(255, 42, 64, 0.18)';
+        coneStroke = 'rgba(255, 42, 64, 0.6)';
+      } else if (ultrasonicRange < 0.5) {
+        coneFill = 'rgba(255, 176, 0, 0.14)';
+        coneStroke = 'rgba(255, 176, 0, 0.5)';
+      } else {
+        coneFill = 'rgba(0, 255, 102, 0.10)';
+        coneStroke = 'rgba(0, 255, 102, 0.35)';
+      }
+      ctx.save();
+      ctx.translate(canvasRobotX, canvasRobotY);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      // Heading-Up: vorwaerts = -PI/2 (oben auf dem Bildschirm)
+      ctx.arc(0, 0, coneLen, -Math.PI / 2 - US_FOV_HALF, -Math.PI / 2 + US_FOV_HALF);
+      ctx.closePath();
+      ctx.fillStyle = coneFill;
+      ctx.fill();
+      ctx.strokeStyle = coneStroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Reichweite-Label am Kegelende
+      ctx.fillStyle = coneStroke;
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${(ultrasonicRange * 100).toFixed(0)}cm`, 0, -coneLen - 3);
+      ctx.restore();
+    }
+
     // --- Massstabsleiste (1m, bildschirmfest) ---
     const oneMetrePixels = (1.0 / mapResolution) * mapScale;
     const barY = height - SCALE_BAR_MARGIN;
@@ -235,7 +276,7 @@ export function MapView({ onNavGoal, navStatus, navGoalX, navGoalY }: MapViewPro
   }, [
     mapVersion, mapWidth, mapHeight, mapResolution,
     mapOriginX, mapOriginY, robotMapX, robotMapY, robotMapYaw,
-    navStatus, navGoalX, navGoalY,
+    navStatus, navGoalX, navGoalY, ultrasonicRange,
   ]);
 
   useEffect(() => {

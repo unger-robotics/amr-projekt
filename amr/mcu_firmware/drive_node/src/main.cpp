@@ -228,7 +228,9 @@ void controlTask(void *p) {
             // Encoder + Motor-PWM (10 Hz)
             static uint32_t last_can_ctrl = 0;
             if (now_ms - last_can_ctrl >= amr::can::encoder_can_period_ms) {
-                last_can_ctrl = now_ms;
+                last_can_ctrl += amr::can::encoder_can_period_ms;
+                if (now_ms - last_can_ctrl >= amr::can::encoder_can_period_ms)
+                    last_can_ctrl = now_ms;
                 can.sendEncoder(ml_filt, mr_filt);
                 int16_t duty_l = static_cast<int16_t>(pid_out_l * amr::pwm::motor_max);
                 int16_t duty_r = static_cast<int16_t>(pid_out_r * amr::pwm::motor_max);
@@ -238,7 +240,9 @@ void controlTask(void *p) {
             // Odom Position + Heading (20 Hz)
             static uint32_t last_can_odom = 0;
             if (now_ms - last_can_odom >= amr::timing::odom_publish_period_ms) {
-                last_can_odom = now_ms;
+                last_can_odom += amr::timing::odom_publish_period_ms;
+                if (now_ms - last_can_odom >= amr::timing::odom_publish_period_ms)
+                    last_can_odom = now_ms;
                 can.sendOdomPos(s.x, s.y);
                 float v_lin = (ml + mr) * amr::kinematics::wheel_radius / 2;
                 can.sendOdomHeading(s.theta, v_lin);
@@ -247,7 +251,9 @@ void controlTask(void *p) {
             // Heartbeat (1 Hz)
             static uint32_t last_can_hb_ctrl = 0;
             if (now_ms - last_can_hb_ctrl >= amr::can::heartbeat_period_ms) {
-                last_can_hb_ctrl = now_ms;
+                last_can_hb_ctrl += amr::can::heartbeat_period_ms;
+                if (now_ms - last_can_hb_ctrl >= amr::can::heartbeat_period_ms)
+                    last_can_hb_ctrl = now_ms;
                 bool c1_ok = true; // Core 1 laeuft offensichtlich
                 bool fs = (now_ms - last_cmd_time > amr::timing::failsafe_timeout_ms);
                 bool pid_act = (tv != 0 || tw != 0);
@@ -477,7 +483,9 @@ void loop() {
     // Odom publish
     static unsigned long last = 0;
     if (millis() - last >= amr::timing::odom_publish_period_ms) {
-        last = millis();
+        last += amr::timing::odom_publish_period_ms;
+        if (millis() - last >= amr::timing::odom_publish_period_ms)
+            last = millis();
         float x = 0, y = 0, th = 0, v = 0, w = 0;
         if (xSemaphoreTake(mutex, 10)) {
             x = shared.ox;

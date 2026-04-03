@@ -240,7 +240,9 @@ void sensorTask(void *p) {
 
         // 1. Infrarot Cliff-Sensor auslesen
         if (now - last_cliff_time >= amr::timing::cliff_publish_period_ms) {
-            last_cliff_time = now;
+            last_cliff_time += amr::timing::cliff_publish_period_ms;
+            if (now - last_cliff_time >= amr::timing::cliff_publish_period_ms)
+                last_cliff_time = now;
             bool cliff = cliff_sensor.isCliffDetected();
 
             if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {
@@ -253,7 +255,9 @@ void sensorTask(void *p) {
 
         // 2. Ultraschall HC-SR04: non-blocking Trigger + ISR-Echo
         if (now - last_us_trigger >= amr::timing::us_publish_period_ms) {
-            last_us_trigger = now;
+            last_us_trigger += amr::timing::us_publish_period_ms;
+            if (now - last_us_trigger >= amr::timing::us_publish_period_ms)
+                last_us_trigger = now;
             sonar.trigger(); // ~12 us, kehrt sofort zurueck
         }
         // Echo-Ergebnis abholen (non-blocking)
@@ -272,7 +276,9 @@ void sensorTask(void *p) {
 
         // 3. IMU lesen (50 Hz, I2C mit Mutex)
         if (imu_ok && (now - last_imu_time >= amr::timing::imu_sample_period_ms)) {
-            last_imu_time = now;
+            last_imu_time += amr::timing::imu_sample_period_ms;
+            if (now - last_imu_time >= amr::timing::imu_sample_period_ms)
+                last_imu_time = now;
             float ax, ay, az, gx, gy, gz;
             bool imu_read_ok = false;
             if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
@@ -311,7 +317,9 @@ void sensorTask(void *p) {
         if (ina260_ok) {
             static uint32_t last_bat_can = 0;
             if (now - last_bat_can >= amr::timing::battery_publish_period_ms) {
-                last_bat_can = now;
+                last_bat_can += amr::timing::battery_publish_period_ms;
+                if (now - last_bat_can >= amr::timing::battery_publish_period_ms)
+                    last_bat_can = now;
                 float voltage = 0, current = 0, power = 0;
                 if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(5))) {
                     if (ina260.read(voltage, current, power)) {
@@ -349,7 +357,9 @@ void sensorTask(void *p) {
         if (can_ok) {
             static uint32_t last_can_hb_task = 0;
             if (now - last_can_hb_task >= amr::can::heartbeat_period_ms) {
-                last_can_hb_task = now;
+                last_can_hb_task += amr::can::heartbeat_period_ms;
+                if (now - last_can_hb_task >= amr::can::heartbeat_period_ms)
+                    last_can_hb_task = now;
                 bool core1_ok_flag = true; // Core 1 laeuft offensichtlich
                 can.sendHeartbeat(imu_ok, ina260_ok, pca9685_ok, battery_motor_shutdown,
                                   core1_ok_flag, i2c_contention_errors, servo_i2c_contention,
@@ -620,7 +630,9 @@ void loop() {
     if (pca9685_ok) {
         static uint32_t last_servo_apply = 0;
         if (millis() - last_servo_apply >= 100) { // 10 Hz (war 5 Hz / 200 ms)
-            last_servo_apply = millis();
+            last_servo_apply += 100;
+            if (millis() - last_servo_apply >= 100)
+                last_servo_apply = millis();
             float cur_pan = servo_cmd.pan;
             float cur_tilt = servo_cmd.tilt;
             bool acquired = false;
@@ -648,7 +660,9 @@ void loop() {
     // --- 1. Cliff publizieren (20 Hz) ---
     static unsigned long last_pub_cliff = 0;
     if (millis() - last_pub_cliff >= amr::timing::cliff_publish_period_ms) {
-        last_pub_cliff = millis();
+        last_pub_cliff += amr::timing::cliff_publish_period_ms;
+        if (millis() - last_pub_cliff >= amr::timing::cliff_publish_period_ms)
+            last_pub_cliff = millis();
         bool cliff_state = false;
 
         if (xSemaphoreTake(mutex, 10)) {
@@ -667,7 +681,9 @@ void loop() {
     // --- 2. Ultraschall publizieren (10 Hz) ---
     static unsigned long last_pub_us = 0;
     if (millis() - last_pub_us >= amr::timing::us_publish_period_ms) {
-        last_pub_us = millis();
+        last_pub_us += amr::timing::us_publish_period_ms;
+        if (millis() - last_pub_us >= amr::timing::us_publish_period_ms)
+            last_pub_us = millis();
         float dist = 0.0f;
 
         if (xSemaphoreTake(mutex, 10)) {
@@ -691,7 +707,9 @@ void loop() {
     if (imu_ok) {
         static unsigned long last_imu_pub = 0;
         if (millis() - last_imu_pub >= amr::timing::imu_publish_period_ms) {
-            last_imu_pub = millis();
+            last_imu_pub += amr::timing::imu_publish_period_ms;
+            if (millis() - last_imu_pub >= amr::timing::imu_publish_period_ms)
+                last_imu_pub = millis();
             float iax = 0, iay = 0, iaz = 0, igx = 0, igy = 0, igz = 0, ih = 0;
             if (xSemaphoreTake(mutex, 10)) {
                 iax = shared.imu_ax;
@@ -738,7 +756,9 @@ void loop() {
     if (ina260_ok) {
         static unsigned long last_bat = 0;
         if (millis() - last_bat >= amr::timing::battery_publish_period_ms) {
-            last_bat = millis();
+            last_bat += amr::timing::battery_publish_period_ms;
+            if (millis() - last_bat >= amr::timing::battery_publish_period_ms)
+                last_bat = millis();
             float voltage = 0, current = 0, power = 0;
             bool bat_read_ok = false;
             if (xSemaphoreTake(mutex, pdMS_TO_TICKS(5))) {

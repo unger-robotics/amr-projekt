@@ -167,7 +167,7 @@ Fuer Vision (Hailo + Gemini), TTS-Sprachausgabe und Sprachsteuerung wird ein Gem
 
 ```bash
 # Neuen Gemini API-Schluessel erstellen unter https://aistudio.google.com/apikey
-# Genutztes Modell: gemini-2.5-flash (Semantic Vision und TTS; Voice nutzt lokales faster-whisper)
+# Genutztes Modell: gemini-2.0-flash-lite (Semantic Vision und TTS; Voice nutzt lokales faster-whisper)
 
 # Schluessel anzeigen
 cat ~/amr-projekt/scripts/.gemini_api.key

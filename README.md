@@ -19,7 +19,7 @@ Das AMR operiert in einer strukturierten Indoor-Umgebung, vergleichbar mit einem
 ```
 Ebene C – Intelligente Interaktion              Kfz: ADAS Level 3+ / HMI
   Hailo-8L Vision (34 ms Inferenz)               → ADAS-Frontkamera + Edge-KI
-  Gemini Cloud-Semantik                           → Cloud-basierte Routenoptimierung
+  Gemini Cloud-Semantik + Sensorfusion             → Cloud-basierte Szenenanalyse + Umfelddaten
   Sprachschnittstelle (VAD → faster-whisper STT)   → Sprachsteuerung (offline, HMI)
   ArUco-Docking (0,73 cm Versatz)                 → Automatisches Einparken (APA)
 
@@ -146,7 +146,7 @@ Raddurchmesser: 65,67 mm · Spurbreite: 178,0 mm · PID: Kp=0,4 Ki=0,1 Kd=0,0
 | Compute-Schichttrennung      | MCU (Echtzeit) + Pi 5 (KI/Nav)       | Zone-ECU + Central Compute + GPU/NPU  |
 | Deterministische Regelung    | FreeRTOS Dual-Core, 50 Hz PID        | AUTOSAR Classic (OSEK/VDX), 1–10 ms   |
 
-**Systematische Luecken zum Kfz:** Kein ASIL-Nachweis (ISO 26262), kein Fail-operational (nur Fail-safe), keine Multisensor-Fusion (Radar+Kamera), kein AUTOSAR-konformes BSW, keine HW-Diversitaet (2x gleiche MCU), keine V2X-Kommunikation.
+**Systematische Luecken zum Kfz:** Kein ASIL-Nachweis (ISO 26262), kein Fail-operational (nur Fail-safe), keine Radar-Fusion (nur Ultraschall+LiDAR+Kamera), kein AUTOSAR-konformes BSW, keine HW-Diversitaet (2x gleiche MCU), keine V2X-Kommunikation.
 
 ## Schnellstart
 
