@@ -5,15 +5,17 @@ import type { Detection } from '../types/ros';
 
 const STREAM_PORT = 8082;
 
-function confidenceColor(conf: number): string {
-  if (conf >= 0.8) return 'rgb(0, 230, 118)';   // gruen
+function confidenceColor(conf: number, reclassified?: boolean): string {
+  if (reclassified) return 'rgb(250, 204, 21)';  // gelb (Nicht-COCO-Objekt)
+  if (conf >= 0.8) return 'rgb(0, 230, 118)';    // gruen
   if (conf >= 0.5) return 'rgb(249, 115, 22)';   // orange
   return 'rgb(239, 68, 68)';                      // rot
 }
 
 function DetectionBox({ det, fitW, fitH }: { det: Detection; fitW: number; fitH: number }) {
   const [x1, y1, x2, y2] = det.bbox_norm;
-  const color = confidenceColor(det.confidence);
+  const color = confidenceColor(det.confidence, det.reclassified);
+  const displayLabel = det.reclassified ? `? ${det.label}` : det.label;
 
   return (
     <div
@@ -31,7 +33,7 @@ function DetectionBox({ det, fitW, fitH }: { det: Detection; fitW: number; fitH:
         className="absolute -top-4 left-0 text-[9px] font-mono leading-none px-0.5 whitespace-nowrap"
         style={{ backgroundColor: `${color}cc`, color: '#0a0e17' }}
       >
-        {det.label} {(det.confidence * 100).toFixed(0)}%
+        {displayLabel} {(det.confidence * 100).toFixed(0)}%
       </span>
     </div>
   );

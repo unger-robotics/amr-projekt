@@ -52,7 +52,11 @@ SYSTEM_PROMPT = (
     "Beispiel: Gerolsteiner Medium, gruene Glasflasche, Brille daneben. "
     "Lies Etiketten ab. Nenne weitere sichtbare Objekte. "
     "Wenn Sensordaten vorhanden: Beruecksichtige Ultraschall-Distanz und "
-    "LiDAR-Umgebung. Hinweise auf Hindernisse oder freien Raum sind relevant."
+    "LiDAR-Umgebung. Hinweise auf Hindernisse oder freien Raum sind relevant. "
+    "WICHTIG: Die Objekterkennung nutzt nur 80 COCO-Klassen. "
+    "Messgeraete, Werkzeuge und Spezialgeraete werden oft falsch erkannt. "
+    "Wenn ein 'Unbekanntes Objekt' gemeldet wird, analysiere das Bild "
+    "und identifiziere das tatsaechliche Objekt (z.B. Multimeter, Oszilloskop)."
 )
 
 # RPLiDAR ist 180° gedreht montiert (TF yaw=pi) — Scan-Winkel muessen verschoben werden
@@ -274,8 +278,15 @@ class GeminiSemanticNode(Node):
             _, jpeg_buf = cv2.imencode(".jpg", cv_image, [cv2.IMWRITE_JPEG_QUALITY, 80])
             jpeg_bytes = jpeg_buf.tobytes()
 
-            # Detektions-Kontext als Textprompt
-            det_summary = ", ".join(f"{d['label']} ({d['confidence']:.0%})" for d in detections[:5])
+            # Detektions-Kontext als Textprompt (reklassifizierte Objekte explizit markieren)
+            det_parts = []
+            for d in detections[:5]:
+                if d.get("reclassified"):
+                    orig = d.get("original_labels", [])
+                    det_parts.append(f"UNBEKANNT [{', '.join(orig)}] ({d['confidence']:.0%})")
+                else:
+                    det_parts.append(f"{d['label']} ({d['confidence']:.0%})")
+            det_summary = ", ".join(det_parts)
             prompt_parts = [SYSTEM_PROMPT, f"\nErkannte Objekte (Hailo-8): {det_summary}"]
 
             # Ultraschall-Distanz einbeziehen (nur wenn frisch)

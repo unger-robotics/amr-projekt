@@ -122,6 +122,10 @@ export interface Detection {
   confidence: number;
   /** Normalisierte BBox [x1, y1, x2, y2] im Bereich 0.0-1.0 */
   bbox_norm: [number, number, number, number];
+  /** Reklassifiziert durch IoU-Merge (Nicht-COCO-Objekt) */
+  reclassified?: boolean;
+  /** Originale COCO-Labels vor Reklassifizierung */
+  original_labels?: string[];
 }
 
 /** Vision-Detektionen vom Backend (5 Hz) */

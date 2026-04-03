@@ -195,6 +195,12 @@ COCO_LABELS_DE = [
     "Zahnbuerste",
 ]
 
+# Reklassifizierung: Gleichzeitige COCO-Detektionen mit hohem IoU → Unbekanntes Objekt
+# Format: (frozenset class_ids, Ziel-Label, min IoU)
+RECLASSIFY_RULES: list[tuple[frozenset[int], str, float]] = [
+    (frozenset({67, 73}), "Unbekanntes Objekt", 0.5),  # Handy + Buch → z.B. Multimeter
+]
+
 INPUT_WIDTH = 640
 INPUT_HEIGHT = 640
 UDP_HOST = "127.0.0.1"
@@ -202,6 +208,102 @@ UDP_PORT = 5005
 # MJPEG-Quelle: HTTPS (mkcert TLS) mit deaktivierter Zertifikatsverifikation (localhost)
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "tls_verify;0")
 MJPEG_URL = "https://127.0.0.1:8082/stream"
+
+
+def compute_iou(bbox_a: list[float], bbox_b: list[float]) -> float:
+    """Intersection-over-Union fuer zwei [x1, y1, x2, y2] Bounding-Boxen."""
+    x1 = max(bbox_a[0], bbox_b[0])
+    y1 = max(bbox_a[1], bbox_b[1])
+    x2 = min(bbox_a[2], bbox_b[2])
+    y2 = min(bbox_a[3], bbox_b[3])
+    inter = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    area_a = (bbox_a[2] - bbox_a[0]) * (bbox_a[3] - bbox_a[1])
+    area_b = (bbox_b[2] - bbox_b[0]) * (bbox_b[3] - bbox_b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def apply_reclassification(detections: list[dict]) -> list[dict]:
+    """Wendet Reklassifizierungsregeln auf ueberlappende Detektionen an.
+
+    Wenn mehrere COCO-Klassen gleichzeitig mit stark ueberlappenden
+    Bounding-Boxen erkannt werden, werden sie zu einem 'Unbekanntes Objekt'
+    zusammengefasst (z.B. Handy + Buch → Multimeter).
+    """
+    if not RECLASSIFY_RULES or len(detections) < 2:
+        return detections
+
+    # Index: class_id → Liste von (index, detection)
+    by_class: dict[int, list[tuple[int, dict]]] = {}
+    for i, det in enumerate(detections):
+        cid = det["class_id"]
+        by_class.setdefault(cid, []).append((i, det))
+
+    consumed: set[int] = set()
+    merged: list[dict] = []
+
+    for required_ids, target_label, min_iou in RECLASSIFY_RULES:
+        # Alle geforderten class_ids muessen vorhanden sein
+        if not all(cid in by_class for cid in required_ids):
+            continue
+
+        # Kandidaten je Klasse sammeln (nur erste nicht-konsumierte)
+        candidates: list[tuple[int, dict]] = []
+        for cid in required_ids:
+            found = False
+            for idx, det in by_class[cid]:
+                if idx not in consumed:
+                    candidates.append((idx, det))
+                    found = True
+                    break
+            if not found:
+                break
+
+        if len(candidates) != len(required_ids):
+            continue
+
+        # Paarweise IoU pruefen
+        bboxes = [c[1]["bbox"] for c in candidates]
+        all_overlap = True
+        for a in range(len(bboxes)):
+            for b in range(a + 1, len(bboxes)):
+                if compute_iou(bboxes[a], bboxes[b]) < min_iou:
+                    all_overlap = False
+                    break
+            if not all_overlap:
+                break
+
+        if not all_overlap:
+            continue
+
+        # Merge: Union-BBox, max Confidence
+        all_x1 = min(b[0] for b in bboxes)
+        all_y1 = min(b[1] for b in bboxes)
+        all_x2 = max(b[2] for b in bboxes)
+        all_y2 = max(b[3] for b in bboxes)
+        max_conf = max(c[1]["confidence"] for c in candidates)
+        orig_labels = [c[1]["label"] for c in candidates]
+
+        merged.append(
+            {
+                "class_id": -1,
+                "label": target_label,
+                "confidence": max_conf,
+                "bbox": [round(all_x1, 1), round(all_y1, 1), round(all_x2, 1), round(all_y2, 1)],
+                "reclassified": True,
+                "original_labels": orig_labels,
+            }
+        )
+
+        for idx, _ in candidates:
+            consumed.add(idx)
+
+    if not consumed:
+        return detections
+
+    result = [det for i, det in enumerate(detections) if i not in consumed]
+    result.extend(merged)
+    return result
 
 
 def preprocess(frame: np.ndarray) -> np.ndarray:
@@ -393,6 +495,7 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
                     )
 
             detections = postprocess(raw_output, orig_h, orig_w, threshold)
+            detections = apply_reclassification(detections)
 
             payload = json.dumps(
                 {
@@ -405,6 +508,11 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
             udp_sock.sendto(payload, (UDP_HOST, UDP_PORT))
 
             count += 1
+            if count % 25 == 0:
+                reclass = [d for d in detections if d.get("reclassified")]
+                if reclass:
+                    info = [f"{d['label']} (aus {d.get('original_labels', [])})" for d in reclass]
+                    print(f"[HAILO] Reklassifiziert: {', '.join(info)}")
             if detections and count % 5 == 0:
                 labels = [d["label"] for d in detections]
                 print(f"[HAILO] {len(detections)} Objekt(e) in {dt_ms:.1f} ms: {', '.join(labels)}")
