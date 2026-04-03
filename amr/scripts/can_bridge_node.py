@@ -37,6 +37,8 @@ import select
 import socket
 import struct
 import threading
+import time
+from collections import deque
 
 import rclpy
 from geometry_msgs.msg import Point
@@ -107,6 +109,9 @@ class CanBridgeNode(Node):
         self.frame_count = 0
         self.sensor_hb_count = 0
         self.drive_hb_count = 0
+        self._sensor_hb_times: deque[float] = deque(maxlen=60)
+        self._drive_hb_times: deque[float] = deque(maxlen=60)
+        self._last_drift_warn = 0.0
 
         # Reader-Thread: blockiert auf select(), CPU-effizient
         self._reader_thread = threading.Thread(target=self._can_reader, daemon=True)
@@ -164,9 +169,11 @@ class CanBridgeNode(Node):
                 self._handle_bat_shutdown(data)
             elif can_id == ID_SENSOR_HB:
                 self.sensor_hb_count += 1
+                self._sensor_hb_times.append(time.monotonic())
                 self._handle_sensor_heartbeat(data, dlc)
             elif can_id == ID_DRIVE_HB:
                 self.drive_hb_count += 1
+                self._drive_hb_times.append(time.monotonic())
 
     def _handle_imu_accel(self, data: bytes):
         """0x130: ax,ay,az [int16 milli-m/s^2] + gz [int16 0.01 rad/s]."""
@@ -279,12 +286,33 @@ class CanBridgeNode(Node):
         except OSError as e:
             self.get_logger().warn(f"CAN-TX servo_cmd fehlgeschlagen: {e}")
 
+    def _check_hb_drift(self) -> None:
+        """Prueft Heartbeat-Drift zwischen Sensor und Drive Node."""
+        drift = abs(self.sensor_hb_count - self.drive_hb_count)
+        now = time.monotonic()
+
+        if drift > 5 and now - self._last_drift_warn > 60.0:
+            self._last_drift_warn = now
+            drift_rate = ""
+            if len(self._sensor_hb_times) >= 10 and len(self._drive_hb_times) >= 10:
+                s_span = self._sensor_hb_times[-1] - self._sensor_hb_times[0]
+                d_span = self._drive_hb_times[-1] - self._drive_hb_times[0]
+                sensor_hz = (len(self._sensor_hb_times) - 1) / s_span if s_span > 0 else 0
+                drive_hz = (len(self._drive_hb_times) - 1) / d_span if d_span > 0 else 0
+                drift_rate = f" (Sensor: {sensor_hz:.2f} Hz, Drive: {drive_hz:.2f} Hz)"
+            self.get_logger().warn(
+                f"CAN-HB-Drift: {drift} HB Differenz "
+                f"(Sensor={self.sensor_hb_count}, "
+                f"Drive={self.drive_hb_count}){drift_rate}"
+            )
+
     def _log_stats(self):
         self.get_logger().info(
             f"CAN-Bridge: {self.frame_count} Frames, "
             f"Sensor-HB: {self.sensor_hb_count}, "
             f"Drive-HB: {self.drive_hb_count}"
         )
+        self._check_hb_drift()
 
     def destroy_node(self):
         self._running = False

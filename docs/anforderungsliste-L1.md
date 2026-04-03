@@ -41,7 +41,7 @@ Der AMR operiert in einer strukturierten Indoor-Umgebung (Buero, Labor, Lager) a
 | Geschwindigkeit      | 0,15 m/s autonom / 0,40 m/s manuell                 | v_max autonom (L4) / manuell (L0)    |
 | Sicherheitskonzept   | Cliff-Safety-Knoten + CAN-Direktpfad + Failsafe     | AEB + redundanter Bremskreis + Watchdog |
 | Benutzeroberflaeche  | React-Dashboard (WebSocket + MJPEG)                  | Kombiinstrument + Infotainment       |
-| Sprachschnittstelle  | ReSpeaker + Gemini STT → Intent → Missionskommando  | Sprachsteuerung im Fahrzeuginnenraum |
+| Sprachschnittstelle  | ReSpeaker + faster-whisper STT → Intent → Missionskommando | Sprachsteuerung im Fahrzeuginnenraum (offline) |
 
 ---
 

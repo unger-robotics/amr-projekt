@@ -1198,6 +1198,9 @@ class DashboardBridge(Node):
         self.odom_latencies = deque(maxlen=100)
         self.imu_latencies = deque(maxlen=100)
         self._last_latency_log = 0.0
+        self._clock_offset_ms = 0.0
+        self._offset_samples = deque(maxlen=200)
+        self._offset_calibrated = False
         self.last_cmd_time = 0.0
         self.last_heartbeat_time = 0.0
         self.battery_data = None  # dict: voltage, current, power, percentage, runtime_min
@@ -1356,6 +1359,21 @@ class DashboardBridge(Node):
 
     # --- ROS2 Callbacks ---
 
+    def _update_clock_offset(self, stamp_s, now):
+        """Aktualisiert Clock-Offset zwischen ESP32 und Pi (Lock muss gehalten werden)."""
+        raw_diff_ms = (stamp_s - now) * 1000.0
+        self._offset_samples.append(raw_diff_ms)
+        if len(self._offset_samples) >= 20:
+            sorted_diffs = sorted(self._offset_samples)
+            idx = max(0, len(sorted_diffs) // 20)  # 5. Perzentil
+            self._clock_offset_ms = sorted_diffs[idx]
+            self._offset_calibrated = True
+
+    def _corrected_latency(self, stamp_s, now):
+        """Berechnet offset-korrigierte Latenz in ms."""
+        latency_ms = (now - stamp_s) * 1000.0 + self._clock_offset_ms
+        return latency_ms if 0.0 <= latency_ms < 500.0 else None
+
     def _odom_cb(self, msg):
         now = time.time()
         with self.lock:
@@ -1363,8 +1381,9 @@ class DashboardBridge(Node):
             self.odom_times.append(now)
             stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             if stamp_s > 1e9:
-                latency_ms = (now - stamp_s) * 1000.0
-                if -500.0 < latency_ms < 2000.0:
+                self._update_clock_offset(stamp_s, now)
+                latency_ms = self._corrected_latency(stamp_s, now)
+                if latency_ms is not None:
                     self.odom_latencies.append(latency_ms)
 
     def _imu_cb(self, msg):
@@ -1374,8 +1393,9 @@ class DashboardBridge(Node):
             self.imu_times.append(now)
             stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             if stamp_s > 1e9:
-                latency_ms = (now - stamp_s) * 1000.0
-                if -500.0 < latency_ms < 2000.0:
+                self._update_clock_offset(stamp_s, now)
+                latency_ms = self._corrected_latency(stamp_s, now)
+                if latency_ms is not None:
                     self.imu_latencies.append(latency_ms)
 
     def _scan_cb(self, msg):
@@ -1857,10 +1877,16 @@ class DashboardBridge(Node):
         if now_log - self._last_latency_log > 30.0:
             self._last_latency_log = now_log
             if latency_stats:
+                offset_info = (
+                    f", clock_offset={self._clock_offset_ms:.1f} ms"
+                    if self._offset_calibrated
+                    else ""
+                )
                 self.get_logger().info(
                     f"Serial-Latenz: avg={latency_stats['avg_ms']:.1f} ms, "
                     f"p95={latency_stats['p95_ms']:.1f} ms, "
-                    f"max={latency_stats['max_ms']:.1f} ms "
+                    f"max={latency_stats['max_ms']:.1f} ms"
+                    f"{offset_info} "
                     f"(n={latency_stats['samples']})"
                 )
 

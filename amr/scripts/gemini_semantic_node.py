@@ -7,6 +7,7 @@ Interpretation der lokal erkannten Objekte.
 Subscriptions:
   /camera/image_raw (sensor_msgs/Image) - Kamerabild
   /vision/detections (std_msgs/String) - JSON-Detektionen aus Hailo-Stufe
+  /vision/enable    (std_msgs/Bool)    - Dashboard-Toggle (API-Calls nur wenn True)
 
 Publications:
   /vision/semantics (std_msgs/String) - Gemini-Analyse als JSON
@@ -30,7 +31,7 @@ import rclpy
 from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 
 try:
     from google import genai
@@ -76,6 +77,7 @@ class GeminiSemanticNode(Node):
         self.latest_image_lock = threading.Lock()
         self.last_request_time = 0.0
         self.pending_request = False
+        self._vision_enabled = False
 
         # Gemini konfigurieren
         if not HAS_GENAI:
@@ -100,8 +102,16 @@ class GeminiSemanticNode(Node):
         self.det_sub = self.create_subscription(
             String, "/vision/detections", self._detection_cb, 10
         )
+        self.create_subscription(Bool, "/vision/enable", self._vision_enable_cb, 10)
 
-        self.get_logger().info("Gemini Semantic Node gestartet")
+        self.get_logger().info("Gemini Semantic Node gestartet (wartet auf /vision/enable)")
+
+    def _vision_enable_cb(self, msg: Bool) -> None:
+        """Callback fuer /vision/enable — aktiviert/deaktiviert Gemini-Analyse."""
+        was = self._vision_enabled
+        self._vision_enabled = msg.data
+        if was != msg.data:
+            self.get_logger().info(f"Gemini-Analyse {'aktiviert' if msg.data else 'deaktiviert'}")
 
     def _image_cb(self, msg: Image):
         """Aktuellstes Kamerabild zwischenspeichern."""
@@ -109,7 +119,10 @@ class GeminiSemanticNode(Node):
             self.latest_image = msg
 
     def _detection_cb(self, msg: String):
-        """Bei neuer Detection: Bild an Gemini senden."""
+        """Bei neuer Detection: Bild an Gemini senden (nur wenn aktiviert)."""
+        if not self._vision_enabled:
+            return
+
         if self.pending_request:
             return
 

@@ -41,7 +41,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `tts_speak_node` | `my_bot` | `tts_speak_node` | `use_tts` | TTS via gTTS + mpg123 |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD (USB, pyusb) |
-| `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Flash STT |
+| `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + faster-whisper STT (offline) |
 | `aruco_docking` | `my_bot` | `aruco_docking` | manuell | ArUco-Marker Visual Servoing (Standalone) |
 | `hailo_inference_node` | `my_bot` | `hailo_inference_node` | manuell | Hailo-8L Echtzeit-Objekterkennung (YOLOv8) |
 
@@ -127,7 +127,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `use_tts` | `False` | TTS-Sprachausgabe (gTTS, Deutsch) |
 | `use_respeaker` | `False` | ReSpeaker DoA/VAD (USB, pyusb) |
-| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True` und `GEMINI_API_KEY`) |
+| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True`, offline via faster-whisper) |
 
 **Beispiele:**
 

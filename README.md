@@ -20,7 +20,7 @@ Das AMR operiert in einer strukturierten Indoor-Umgebung, vergleichbar mit einem
 Ebene C – Intelligente Interaktion              Kfz: ADAS Level 3+ / HMI
   Hailo-8L Vision (34 ms Inferenz)               → ADAS-Frontkamera + Edge-KI
   Gemini Cloud-Semantik                           → Cloud-basierte Routenoptimierung
-  Sprachschnittstelle (VAD → Gemini Flash)         → Sprachsteuerung (HMI)
+  Sprachschnittstelle (VAD → faster-whisper STT)   → Sprachsteuerung (offline, HMI)
   ArUco-Docking (0,73 cm Versatz)                 → Automatisches Einparken (APA)
 
 Ebene B – Bedien- und Leitstandsebene           Kfz: Kombiinstrument + Infotainment

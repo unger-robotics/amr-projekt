@@ -285,7 +285,7 @@ Zulaessig ist die Kette:
 
 #### Software-Module (geplante Architektur)
 
-Die folgenden Module beschreiben die geplante Zielarchitektur. Die aktuelle Implementierung konsolidiert die Module 1 bis 4 in `voice_command_node` (ReSpeaker VAD + Gemini Flash STT + Intent-Parser) und Modul 5 in `tts_speak_node`.
+Die folgenden Module beschreiben die geplante Zielarchitektur. Die aktuelle Implementierung konsolidiert die Module 1 bis 4 in `voice_command_node` (ReSpeaker VAD + faster-whisper STT lokal + Regex-Intent-Parser, optional Wake-Word via openwakeword) und Modul 5 in `tts_speak_node`.
 
 **1. `voice_input_node`** (geplant, derzeit in `voice_command_node` integriert)
 liest das ReSpeaker-Mikrofon ein und verarbeitet Pegel, Wake-Word oder Push-to-Talk.
@@ -383,7 +383,7 @@ Der Roboter soll natuerlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 
 **ROS-2-Container**
 
-* `voice_command_node` (implementiert: ReSpeaker VAD + Gemini Flash STT + Intent-Parser, publiziert `/voice/command` und `/voice/text`)
+* `voice_command_node` (implementiert: ReSpeaker VAD + faster-whisper STT lokal + Regex-Intent-Parser, publiziert `/voice/command` und `/voice/text`, offline, kein API-Key)
 * `tts_speak_node` (implementiert: Gemini-TTS-Sprachausgabe ueber MAX98357A)
 * `voice_intent_node` (geplant, derzeit in `voice_command_node` integriert)
 * `voice_command_mux` (geplant, derzeit in `voice_command_node` integriert)

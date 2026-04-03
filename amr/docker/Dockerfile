@@ -112,7 +112,10 @@ RUN pip3 install --no-cache-dir \
     google-genai \
     python-can \
     pyusb \
-    gTTS
+    gTTS \
+    openwakeword \
+    onnxruntime \
+    faster-whisper
 
 WORKDIR /ros2_ws
 

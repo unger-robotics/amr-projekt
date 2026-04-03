@@ -35,7 +35,9 @@ description: Standards, Frameworks und Werkzeuge der AMR-Plattform.
 | Projekt | Version | Verwendung |
 |---------|---------|-----------|
 | [Hailo AI SDK](https://hailo.ai/) | — | YOLOv8 Objekterkennung (Hailo-8L, 13 TOPS) |
-| [Google Gemini](https://ai.google.dev/) | 3.1 flash-lite | Semantische Szenenbeschreibung, STT |
+| [Google Gemini](https://ai.google.dev/) | 2.5 flash | Semantische Szenenbeschreibung (Vision) |
+| [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | base | Lokale Spracherkennung (STT, offline) |
+| [openwakeword](https://github.com/dscripka/openWakeWord) | hey_jarvis | Lokale Wake-Word-Erkennung (offline) |
 | [gTTS](https://gtts.readthedocs.io/) | — | Text-to-Speech (Deutsch) |
 | [YOLOv8](https://docs.ultralytics.com/) | s-Variante | Objekterkennung |
 

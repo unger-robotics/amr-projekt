@@ -7,7 +7,7 @@ interface VoicePageProps {
   sendVoiceMute: (muted: boolean) => void;
 }
 
-/** Alle verfuegbaren Sprachbefehle (aus voice_command_node.py SYSTEM_PROMPT) */
+/** Alle verfuegbaren Sprachbefehle (aus voice_command_node.py Intent-Parser) */
 const VOICE_COMMANDS = [
   { command: 'nav X Y', example: '"Fahr zu Position eins drei"', description: 'Navigation zu Koordinaten (Meter)' },
   { command: 'forward X', example: '"Fahr zwei Meter nach vorne"', description: 'X Meter geradeaus fahren (0-5 m)' },

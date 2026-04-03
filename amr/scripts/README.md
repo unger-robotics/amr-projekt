@@ -9,14 +9,14 @@ Alle Skripte werden via Symlinks aus `my_bot/my_bot/` referenziert und sind als 
 | `odom_to_tf.py` | Bruecke /odom → TF (odom → base_link) |
 | `dashboard_bridge.py` | WebSocket (9090) + MJPEG (8082) Bridge fuer Dashboard |
 | `hailo_udp_receiver_node.py` | UDP-Empfaenger fuer Hailo-8 YOLOv8-Detektionen (Port 5005) |
-| `gemini_semantic_node.py` | Gemini Cloud semantische Analyse (`/vision/semantics`) |
+| `gemini_semantic_node.py` | Gemini Cloud semantische Analyse (`/vision/semantics`, nur bei `/vision/enable`=True) |
 | `hailo_inference_node.py` | (Legacy) Direkter Hailo-8 Zugriff, ersetzt durch UDP-Pattern |
 | `cliff_safety_node.py` | cmd_vel-Multiplexer mit Cliff-Notbremse (subscribt /cliff, muxed Nav2+Dashboard) |
 | `audio_feedback_node.py` | WAV-Wiedergabe via aplay/MAX98357A (subscribt /audio/play) |
 | `can_bridge_node.py` | CAN-Bus Bridge: Empfaengt CAN-Frames und publiziert auf Standard-Sensor-Topics (/imu, /range/front, /cliff, /battery) |
 | `respeaker_doa_node.py` | ReSpeaker DoA/VAD (USB, `/sound_direction`, `/is_voice`) |
 | `tts_speak_node.py` | Text-to-Speech Sprachausgabe fuer Gemini-Semantik (gTTS + mpg123, Rate-Limiting 10 s) |
-| `voice_command_node.py` | Sprachsteuerung: ReSpeaker VAD → Gemini Flash STT → Intent-Parsing → `/voice/command` + `/voice/text` |
+| `voice_command_node.py` | Sprachsteuerung: ReSpeaker VAD → lokales faster-whisper STT → Regex-Intent-Parsing → `/voice/command` + `/voice/text` (offline, Wake-Word, Energy-Gate) |
 | `aruco_docking.py` | ArUco-Marker-Detektion + Docking-Navigation (erfordert `use_camera:=True`) |
 
 ## Validierungstests (ros2 run my_bot \<name\>)

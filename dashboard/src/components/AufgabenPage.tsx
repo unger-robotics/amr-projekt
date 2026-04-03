@@ -446,7 +446,8 @@ function SemanticsCard() {
       </div>
       <p className="text-[10px] text-hud-text-dim leading-relaxed">
         Der gemini_semantic_node wertet YOLOv8-Detektionen ueber die Gemini
-        Cloud API aus und publiziert semantische Beschreibungen auf Deutsch.
+        Cloud API aus (nur bei aktiviertem AI-Toggle) und publiziert
+        semantische Beschreibungen auf Deutsch.
       </p>
       <p className="text-[10px] font-mono text-hud-text">
         {active ? truncated : 'Warte auf Vision-Pipeline...'}
@@ -472,7 +473,7 @@ function TtsCard({ send }: { send: (msg: ClientMessage) => void }) {
       </div>
       <p className="text-[10px] text-hud-text-dim leading-relaxed">
         Der tts_speak_node subscribt /vision/semantics und spricht die
-        Gemini-Analyse ueber den MAX98357A-I2S-Lautsprecher via gTTS
+        Szenenanalyse ueber den MAX98357A-I2S-Lautsprecher via gTTS
         auf Deutsch aus, mit Rate-Limiting von maximal alle 10 Sekunden.
       </p>
       <p className="text-[10px] font-mono text-hud-text">

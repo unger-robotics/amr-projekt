@@ -136,8 +136,8 @@ def generate_launch_description():
     declare_use_voice = DeclareLaunchArgument(
         "use_voice",
         default_value="False",
-        description="Sprachsteuerung via ReSpeaker + Gemini Flash STT "
-        "(erfordert use_respeaker:=True und GEMINI_API_KEY)",
+        description="Sprachsteuerung via ReSpeaker + lokales Whisper STT "
+        "(erfordert use_respeaker:=True)",
     )
 
     # --- 0a. RPLIDAR A1 (immer aktiv) ---
@@ -465,7 +465,7 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration("use_respeaker")),
     )
 
-    # --- 14. Sprachsteuerung (ReSpeaker + Gemini STT, optional) ---
+    # --- 14. Sprachsteuerung (ReSpeaker + lokales Whisper STT, optional) ---
     # audio_device explizit setzen, da /proc/asound im Container den
     # ReSpeaker nicht enumeriert (Device-Node via Bind-Mount vorhanden)
     voice_command_node = Node(
@@ -473,7 +473,15 @@ def generate_launch_description():
         executable="voice_command_node",
         name="voice_command_node",
         output="screen",
-        parameters=[{"audio_device": "plughw:CARD=ArrayUAC10,DEV=0"}],
+        parameters=[
+            {
+                "audio_device": "plughw:CARD=ArrayUAC10,DEV=0",
+                "whisper_model": "base",
+                "use_wakeword": True,
+                "wakeword_model": "hey_jarvis_v0.1",
+                "wakeword_threshold": 0.5,
+            }
+        ],
         condition=IfCondition(LaunchConfiguration("use_voice")),
     )
 

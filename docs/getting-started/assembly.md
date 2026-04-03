@@ -14,7 +14,7 @@ description: Schritt-fuer-Schritt Ersteinrichtung der AMR-Plattform.
 - PlatformIO CLI (`pip install platformio`)
 - Node.js 20+ (fuer das Dashboard)
 - mkcert (HTTPS-Zertifikate)
-- `GEMINI_API_KEY` in der Host-Umgebung (fuer Vision, TTS, Voice)
+- `GEMINI_API_KEY` in der Host-Umgebung (fuer Vision und TTS; nicht fuer Sprachsteuerung)
 
 ### Gruppenzugehoerigkeit
 

@@ -78,7 +78,7 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe (Gemini-Semantik) |
 | `use_respeaker` | False | ReSpeaker DoA |
-| `use_voice` | False | Sprachsteuerung (ReSpeaker + Gemini STT) |
+| `use_voice` | False | Sprachsteuerung (ReSpeaker + faster-whisper STT, offline) |
 
 Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_dashboard:=True use_rviz:=False`
 
@@ -117,7 +117,7 @@ except ImportError:
 - PlatformIO CLI (MCU-Firmware)
 - Node.js 20+ (Dashboard)
 - mkcert (HTTPS-Zertifikate fuer Dashboard)
-- `GEMINI_API_KEY` in Host-Umgebung (fuer Vision, TTS, Voice)
+- `GEMINI_API_KEY` in Host-Umgebung (fuer Vision und TTS; nicht fuer Sprachsteuerung)
 
 ## Build-Befehle
 
@@ -299,7 +299,7 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 ## Umgebungsvariablen
 
-- `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`), TTS (`use_tts`) und Sprachsteuerung (`use_voice`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten die betroffenen Knoten mit Fehler.
+- `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`) und TTS (`use_tts`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten die betroffenen Knoten mit Fehler. Sprachsteuerung (`use_voice`) arbeitet lokal via faster-whisper und benoetigt keinen API-Key.
 
 ## Bekannte Fallstricke
 
