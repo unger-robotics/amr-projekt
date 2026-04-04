@@ -75,4 +75,4 @@ Hardware: SN65HVD230 CAN-Transceiver auf beiden Knoten + MCP2515/SocketCAN auf P
 | 0x131 | IMU Heading (float32) | 50 Hz | 4 |
 | 0x140 | Batterie V/I/P (uint16 mV + int16 mA + uint16 mW) | 2 Hz | 6 |
 | 0x141 | Battery Shutdown (uint8: 0=OK, 1=Shutdown) | Event | 1 |
-| 0x1F0 | Heartbeat (flags + uptime_mod256) | 1 Hz | 2 |
+| 0x1F0 | Heartbeat (Flags, Uptime, I2C/Servo-Diagnostik) | 1 Hz | 8 |

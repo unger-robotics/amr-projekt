@@ -24,13 +24,13 @@ Der `cliff_safety_node` (`use_cliff_safety:=True`) multiplext alle Fahrbefehle:
 Nav2 controller_server ──→ /nav_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel
 Dashboard Joystick ──→ /dashboard_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel
 Sensor-Knoten ──→ /cliff ──→ cliff_safety_node (blockiert bei true)
-Sensor-Knoten ──→ /range/front ──→ cliff_safety_node (Stopp < 80 mm)
+Sensor-Knoten ──→ /range/front ──→ cliff_safety_node (Stopp < 100 mm)
 ```
 
 ### Blockierungslogik
 
 - **Cliff** (`/cliff` = true): Blockiert alle Fahrbefehle, sendet Null-Twist (20 Hz)
-- **Ultraschall** (< 80 mm): Blockiert, Freigabe erst > 120 mm (Hysterese)
+- **Ultraschall** (< 100 mm): Blockiert, Freigabe erst > 140 mm (Hysterese)
 - **Audio-Alarm:** `cliff_alarm` einmalig bei Blockierung
 
 ### Remapping

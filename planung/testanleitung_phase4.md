@@ -143,7 +143,7 @@ cd amr/docker/
 
 # Navigationstest starten (4 Waypoints, 60 s Timeout pro Waypoint):
 ./run.sh bash -c "cd /amr_scripts && python3 nav_test.py \
-  --timeout 60 \
+  --timeout 90 \
   --output /ros2_ws/build/my_bot/my_bot/"
 ```
 

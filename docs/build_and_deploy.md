@@ -113,7 +113,7 @@ cd amr/docker/
 | `use_can` | `False` | CAN-to-ROS2 Bridge (SocketCAN) |
 | `use_tts` | `False` | TTS-Sprachausgabe (Gemini-Semantik via gTTS) |
 | `use_respeaker` | `False` | ReSpeaker Mic Array DoA/VAD |
-| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True`, offline via faster-whisper) |
+| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True`, Gemini Audio-STT primaer / faster-whisper Fallback) |
 | `drive_serial_port` | `/dev/amr_drive` | Serieller Port Drive-Knoten |
 | `sensor_serial_port` | `/dev/amr_sensor` | Serieller Port Sensor-Knoten |
 | `camera_device` | `/dev/video10` | Video-Device (v4l2loopback-Bridge) |
@@ -167,7 +167,7 @@ Fuer Vision (Hailo + Gemini), TTS-Sprachausgabe und Sprachsteuerung wird ein Gem
 
 ```bash
 # Neuen Gemini API-Schluessel erstellen unter https://aistudio.google.com/apikey
-# Genutztes Modell: gemini-2.0-flash-lite (Semantic Vision und TTS; Voice nutzt lokales faster-whisper)
+# Genutztes Modell: gemini-2.0-flash-lite (Semantic Vision und TTS; Voice nutzt Gemini Audio-STT primaer / faster-whisper Fallback)
 
 # Schluessel anzeigen
 cat ~/amr-projekt/scripts/.gemini_api.key

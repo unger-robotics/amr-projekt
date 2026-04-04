@@ -41,7 +41,7 @@ Der AMR operiert in einer strukturierten Indoor-Umgebung (Buero, Labor, Lager) a
 | Geschwindigkeit      | 0,15 m/s autonom / 0,40 m/s manuell                 | v_max autonom (L4) / manuell (L0)    |
 | Sicherheitskonzept   | Cliff-Safety-Knoten + CAN-Direktpfad + Failsafe     | AEB + redundanter Bremskreis + Watchdog |
 | Benutzeroberflaeche  | React-Dashboard (WebSocket + MJPEG)                  | Kombiinstrument + Infotainment       |
-| Sprachschnittstelle  | ReSpeaker + faster-whisper STT → Intent → Missionskommando | Sprachsteuerung im Fahrzeuginnenraum (offline) |
+| Sprachschnittstelle  | ReSpeaker + Gemini Audio-STT / faster-whisper Fallback → Intent → Missionskommando | Sprachsteuerung im Fahrzeuginnenraum (Cloud + Offline-Fallback) |
 
 ---
 
@@ -121,7 +121,7 @@ Der AMR operiert in einer strukturierten Indoor-Umgebung (Buero, Labor, Lager) a
 | ID | PF | Prio | Beschreibung | Messgroesse | Schwellwert | Kfz-Pendant | Referenz | Testfall-ID | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | SIA-01 | PF1 | MUSS | Cliff-Erkennung stoppt Motoren innerhalb definierter Latenz | End-to-End-Latenz, Bremsweg | < 50 ms (Ist: 2,0 ms), Bremsweg 1,0 cm bei 0,2 m/s | AEB-Ansprechzeit | Messprotokoll P2 (Test 2.1), cliff_safety_node.py | T-07 (cliff_latency_test) | Erfuellt |
-| SIA-02 | PF1 | MUSS | Ultraschall-Naeherungsstopp mit Hysterese gegen Flattern | Stopp-Schwelle, Freigabe-Schwelle | Stopp < 80 mm, Freigabe > 120 mm | AEB-Schwellen | cliff_safety_node.py (_obstacle_stop_m: 0,08) | T-05 (sensor_test) | Erfuellt |
+| SIA-02 | PF1 | MUSS | Ultraschall-Naeherungsstopp mit Hysterese gegen Flattern | Stopp-Schwelle, Freigabe-Schwelle | Stopp < 100 mm, Freigabe > 140 mm | AEB-Schwellen | cliff_safety_node.py (_obstacle_stop_m: 0,10) | T-05 (sensor_test) | Erfuellt |
 | SIA-03 | PF1 | MUSS | CAN-Direktpfad leitet Cliff-Signal ohne ROS 2 an Fahrkern | CAN-Latenz | < 20 ms (ohne ROS 2) | Redundanter Bremskreis | config_sensors.h (id_cliff: 0x120), config_drive.h (id_cliff_rx: 0x120) | IT-08 (can_validation_test) | Erfuellt |
 | SIA-04 | PF1 | MUSS | Failsafe-Timeout stoppt Motoren bei Verbindungsverlust | Timeout-Dauer | 500 ms → Motorenstopp (v=0, omega=0) | Watchdog-Timeout ECU | config_drive.h (failsafe_timeout_ms: 500) | T-01 (motor_test) | Erfuellt |
 | SIA-05 | PF1 | MUSS | Watchdog-Alive-Counter erkennt Kommunikationsausfall | Fehlende Zyklen | 50 Zyklen → Verbindungsverlust | Alive-Counter CAN | config_drive.h (watchdog_miss_limit: 50) | T-01 (motor_test) | Erfuellt |

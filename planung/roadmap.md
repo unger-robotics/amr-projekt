@@ -28,7 +28,7 @@ Das AMR gliedert sich gemaess Systementwurf in drei Ebenen.
 ### Ebene A – Fahrkern sowie Sensor- und Sicherheitsbasis
 
 Der Fahrkern muss fahren, stoppen und Fehler behandeln.
-Diese Ebene umfasst Odometrie, IMU, die Sicherheitslogik fuer Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5. LiDAR (RPLIDAR A1) ist direkt am Pi 5 angeschlossen. SLAM und Nav2 laufen auf dem Pi 5 im Docker-Container (Ebene B).
+Diese Ebene umfasst Odometrie, IMU, die Sicherheitslogik fuer Kanten sowie die verteilte Architektur aus ESP32-S3 und Raspberry Pi 5. LiDAR (RPLIDAR A1) ist direkt am Pi 5 angeschlossen. SLAM und Nav2 laufen auf dem Pi 5 im Docker-Container (Ebene A).
 
 ### Ebene B – Bedien- und Leitstandsebene
 
@@ -285,7 +285,7 @@ Zulaessig ist die Kette:
 
 #### Software-Module (geplante Architektur)
 
-Die folgenden Module beschreiben die geplante Zielarchitektur. Die aktuelle Implementierung konsolidiert die Module 1 bis 4 in `voice_command_node` (ReSpeaker VAD + faster-whisper STT lokal + Regex-Intent-Parser, optional Wake-Word via openwakeword) und Modul 5 in `tts_speak_node`.
+Die folgenden Module beschreiben die geplante Zielarchitektur. Die aktuelle Implementierung konsolidiert die Module 1 bis 4 in `voice_command_node` (ReSpeaker VAD + Gemini Audio-STT Cloud primaer / faster-whisper STT lokal als Offline-Fallback + Regex-Intent-Parser, optional Wake-Word via openwakeword) und Modul 5 in `tts_speak_node`.
 
 **1. `voice_input_node`** (geplant, derzeit in `voice_command_node` integriert)
 liest das ReSpeaker-Mikrofon ein und verarbeitet Pegel, Wake-Word oder Push-to-Talk.
@@ -383,7 +383,7 @@ Der Roboter soll natuerlich bedienbar werden, ohne die Kernarchitektur aufzuweic
 
 **ROS-2-Container**
 
-* `voice_command_node` (implementiert: ReSpeaker VAD + faster-whisper STT lokal + Regex-Intent-Parser, publiziert `/voice/command` und `/voice/text`, offline, kein API-Key)
+* `voice_command_node` (implementiert: ReSpeaker VAD + Gemini Audio-STT Cloud primaer / faster-whisper STT lokal Fallback + Regex-Intent-Parser, publiziert `/voice/command` und `/voice/text`, GEMINI_API_KEY fuer Cloud-STT)
 * `tts_speak_node` (implementiert: Gemini-TTS-Sprachausgabe ueber MAX98357A)
 * `voice_intent_node` (geplant, derzeit in `voice_command_node` integriert)
 * `voice_command_mux` (geplant, derzeit in `voice_command_node` integriert)

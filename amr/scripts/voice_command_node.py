@@ -33,7 +33,7 @@ Parameter:
   energy_threshold_rms (float, 80.0)      — RMS-Schwelle: Aufnahmen unter Schwelle verwerfen
   use_wakeword   (bool, True)             — Lokale Wake-Word-Erkennung (openwakeword)
   wakeword_model (string, "hey_jarvis_v0.1") — openwakeword-Modellname
-  wakeword_threshold (float, 0.5)         — Wake-Word-Erkennungsschwelle (0.0-1.0)
+  wakeword_threshold (float, 0.3)         — Wake-Word-Erkennungsschwelle (0.0-1.0)
 
 Verwendung:
   ros2 run my_bot voice_command_node

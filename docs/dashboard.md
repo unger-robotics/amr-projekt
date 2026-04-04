@@ -268,7 +268,7 @@ Sensor-Knoten ──► /cliff (Bool, Best-Effort, 20 Hz) ──┘
 
 - Bei `use_cliff_safety:=True` (Standard): `dashboard_bridge` wird per Launch-Remapping von `/cmd_vel` auf `/dashboard_cmd_vel` umgeleitet
 - Bei `use_cliff_safety:=False`: `dashboard_bridge` publiziert direkt auf `/cmd_vel`
-- Cliff-Safety blockiert bei Cliff (`/cliff` = true) ODER Ultraschall < 80 mm (Freigabe > 120 mm, Hysterese)
+- Cliff-Safety blockiert bei Cliff (`/cliff` = true) ODER Ultraschall < 100 mm (Freigabe > 140 mm, Hysterese)
 
 ---
 

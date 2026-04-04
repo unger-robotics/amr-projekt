@@ -18,7 +18,7 @@ Beide MCU-Knoten nutzen FreeRTOS mit fester Core-Zuordnung:
 
 ### Sensor-Knoten
 
-- **Core 0:** micro-ROS Executor — Subscriber (`/servo_cmd`, `/hardware`), Publisher (`/range` 10 Hz, `/cliff` 20 Hz, `/imu` 50 Hz, `/battery` 2 Hz), Servo-I2C 5 Hz
+- **Core 0:** micro-ROS Executor — Subscriber (`/servo_cmd`, `/hardware`), Publisher (`/range` 10 Hz, `/cliff` 20 Hz, `/imu` 50 Hz, `/battery` 2 Hz), Servo-I2C 10 Hz
 - **Core 1:** `sensorTask` — Cliff 20 Hz, Ultraschall 10 Hz, IMU 50 Hz, Batterie 2 Hz, CAN-Sends
 
 ### Synchronisation
@@ -41,7 +41,7 @@ Der AMR implementiert sechs gestaffelte Sicherheitsebenen. Die ersten vier liege
 | 2 | Batterie-Unterspannung | < 9.5 V (Hysterese +0.3 V) | Sofort | Sensor- und Sicherheitsbasis, INA260 |
 | 3 | CAN-Notstopp | Cliff (0x120) oder Battery-Shutdown (0x141) | < 20 ms | CAN-Bus, kein Pi 5 noetig |
 | 4 | Inter-Core-Watchdog | 50 Zyklen (~1 s) ohne Core-1-Heartbeat | ~1 s | Lokal auf Fahrkern |
-| 5 | Cliff-Safety-Knoten (ROS2) | `/cliff` OR `/range/front` < 80 mm | ~50 ms | Pi 5, Docker, micro-ROS |
+| 5 | Cliff-Safety-Knoten (ROS2) | `/cliff` OR `/range/front` < 100 mm | ~50 ms | Pi 5, Docker, micro-ROS |
 | 6 | Dashboard Deadman-Timer | Kein Heartbeat > 300 ms | 300 ms | Netzwerk, Browser |
 
 Zusaetzliche MCU-Schutzmechanismen:

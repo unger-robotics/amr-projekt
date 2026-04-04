@@ -46,7 +46,7 @@ CAN-Sends laufen auf Core 1 der jeweiligen MCU-Knoten (`controlTask` bzw. `senso
 │                                         │                                       │
 │                                         ▼                                       │
 │                              [gemini_semantic_node]──>/vision/semantics          │
-│                               Gemini 3.1 flash-lite         │                   │
+│                               Gemini 2.0 flash-lite         │                   │
 │                                                             ▼                   │
 │                                                      [tts_speak_node]           │
 │                                                       gTTS → mpg123            │
@@ -255,7 +255,7 @@ Der CAN-Bus verbindet die beiden ESP32-S3-Knoten direkt miteinander. Optional em
 | 0x131 | IMU Heading (float als float32) | 50 Hz | 4 |
 | 0x140 | Batterie V/I/P (uint16 mV + int16 mA + uint16 mW) | 2 Hz | 6 |
 | 0x141 | Battery Shutdown (uint8: 0=OK, 1=Shutdown) | Event | 1 |
-| 0x1F0 | Heartbeat (flags uint8 + uptime_mod256 uint8) | 1 Hz | 2 |
+| 0x1F0 | Heartbeat (Flags, Uptime, I2C/Servo-Diagnostik) | 1 Hz | 8 |
 
 Reservierter ID-Bereich: 0x110–0x1F0.
 
@@ -476,7 +476,7 @@ Der AMR implementiert sechs gestaffelte Sicherheitsebenen. Die Ebenen 1–4 lieg
 | 2 | Batterie-Unterspannung | < 9,5 V (Hysterese +0,3 V) | Sofort | Sensor- und Sicherheitsbasis, INA260 |
 | 3 | CAN-Notstopp | Cliff (0x120) oder Battery-Shutdown (0x141) | < 20 ms | CAN-Bus, kein Pi 5 noetig |
 | 4 | Inter-Core-Watchdog | 50 Zyklen (~1 s) ohne Core-0-Heartbeat | ~1 s | Lokal auf Fahrkern |
-| 5 | Cliff-Safety-Knoten (ROS2) | `/cliff` ODER `/range/front` < 80 mm | ~50 ms | Pi 5, Docker, micro-ROS |
+| 5 | Cliff-Safety-Knoten (ROS2) | `/cliff` ODER `/range/front` < 100 mm | ~50 ms | Pi 5, Docker, micro-ROS |
 | 6 | Dashboard Deadman-Timer | Kein Heartbeat > 300 ms | 300 ms | Netzwerk, Browser |
 
 Zusaetzliche MCU-Schutzmechanismen ergaenzen die gestaffelten Ebenen:
@@ -489,7 +489,7 @@ Die Ebenen sind redundant ausgelegt: Faellt Ebene B (Pi 5, Docker, ROS2) vollsta
 
 ### 9.2 Cliff-Safety-Multiplexer
 
-Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer zwischen Navigation, Dashboard-Steuerung und Fahrkern. Im Normalbetrieb leitet er Twist-Nachrichten von `/nav_cmd_vel` und `/dashboard_cmd_vel` an `/cmd_vel` weiter. Bei Cliff-Erkennung (`/cliff` = true) oder Unterschreitung der Ultraschall-Distanz von 80 mm blockiert der Multiplexer alle Fahrbefehle und erzeugt einen harten Stopp (v = 0 m/s, w = 0 rad/s) mit 20 Hz. Die Freigabe erfolgt erst bei einer Distanz ueber 120 mm (Hysterese). Ein einmaliger Audio-Alarm (`cliff_alarm`) wird bei Blockierung ausgeloest.
+Der Knoten `cliff_safety_node` fungiert als Befehlsmultiplexer zwischen Navigation, Dashboard-Steuerung und Fahrkern. Im Normalbetrieb leitet er Twist-Nachrichten von `/nav_cmd_vel` und `/dashboard_cmd_vel` an `/cmd_vel` weiter. Bei Cliff-Erkennung (`/cliff` = true) oder Unterschreitung der Ultraschall-Distanz von 100 mm blockiert der Multiplexer alle Fahrbefehle und erzeugt einen harten Stopp (v = 0 m/s, w = 0 rad/s) mit 20 Hz. Die Freigabe erfolgt erst bei einer Distanz ueber 140 mm (Hysterese). Ein einmaliger Audio-Alarm (`cliff_alarm`) wird bei Blockierung ausgeloest.
 
 Der CAN-Bus liefert parallel ein redundantes Cliff-Signal direkt vom Sensor-Knoten an den Fahrkern. Der Sensor-Knoten sendet den Cliff-Status auf CAN-ID 0x120 (20 Hz, 1 Byte: 0x00=OK, 0x01=Cliff) und das Batterie-Shutdown-Signal auf CAN-ID 0x141 (Event, 1 Byte). Der Fahrkern empfaengt diese Frames nicht blockierend in seinem Core-1-Task und setzt die Motoren bei positivem Signal direkt auf Null. Die Reaktionszeit des CAN-Pfads betraegt weniger als 20 ms (ein `controlTask`-Zyklus bei 50 Hz). Dieser Pfad funktioniert ohne laufenden Pi 5, Docker-Container oder micro-ROS-Agent.
 

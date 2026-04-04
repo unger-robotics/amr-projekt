@@ -37,7 +37,7 @@ Die Core-Zuordnung wird explizit festgelegt: `-DARDUINO_RUNNING_CORE=0` in `plat
 | Core | Aufgabe | Rate |
 |------|---------|------|
 | 0 | micro-ROS Executor: Sub `/servo_cmd`, `/hardware`; Pub `/range`, `/cliff`, `/imu`, `/battery` | je nach Sensor |
-| 0 | Servo-I2C-Write (PCA9685) | 5 Hz |
+| 0 | Servo-I2C-Write (PCA9685) | 10 Hz |
 | 1 | Cliff-Sensor (MH-B IR) | 20 Hz |
 | 1 | Ultraschall (HC-SR04, ISR) | 10 Hz |
 | 1 | IMU (MPU6050, I2C) | 50 Hz |

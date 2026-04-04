@@ -31,7 +31,7 @@ description: Zentrale Begriffe und Terminologie der AMR-Plattform.
 | **Navigation** | Nav2-Stack mit RPP Controller und NavFn Planer |
 | **Sicherheitslogik** | Cliff-Safety-Knoten: multiplext `/cmd_vel`, blockiert bei Cliff oder Hindernis |
 | **Freigabelogik** | Prueft Sprachbefehle auf zulaessige Missionskommandos |
-| **Sprachschnittstelle** | ReSpeaker + faster-whisper STT (lokal, offline) fuer freihaendige Bedienung |
+| **Sprachschnittstelle** | ReSpeaker + Gemini Audio-STT (Cloud, primaer) / faster-whisper (Offline-Fallback) fuer freihaendige Bedienung |
 | **Dual-Path** | micro-ROS/UART (primaer) + CAN-Bus (sekundaer, Redundanz) |
 
 ## Projektbezogene Begriffe

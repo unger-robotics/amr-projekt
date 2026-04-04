@@ -307,7 +307,7 @@ TF-Kette pruefen:
 
 ### 6.1 Rollen der Knoten
 
-Der Fahrkern (Ebene A) umfasst drei Teilsysteme. Der Drive-Knoten (ESP32-S3) verarbeitet Geschwindigkeitskommandos, regelt die Motoren und publiziert Odometrie. Der Sensor-Knoten (ESP32-S3) verarbeitet IMU, Batterieueberwachung, Kanten-Sensor und weitere hardwarenahe Signale. Der Raspberry Pi 5 fuehrt als Teil des Fahrkerns SLAM Toolbox, Nav2, EKF-Sensorfusion und die Cliff-Sicherheitslogik aus.
+Der Fahrkern (Ebene A) umfasst drei Teilsysteme. Der Drive-Knoten (ESP32-S3) verarbeitet Geschwindigkeitskommandos, regelt die Motoren und publiziert Odometrie. Der Sensor-Knoten (ESP32-S3) verarbeitet IMU, Batterieueberwachung, Kanten-Sensor und weitere hardwarenahe Signale. Der Raspberry Pi 5 fuehrt als Teil des Fahrkerns SLAM Toolbox, Nav2, Odometrie-TF und die Cliff-Sicherheitslogik aus.
 
 Die Bedien- und Leitstandsebene (Ebene B) umfasst Dashboard, Telemetrie, Joystick-Fernsteuerung und Audio-Rueckmeldungen auf dem Raspberry Pi 5.
 

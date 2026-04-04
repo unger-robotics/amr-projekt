@@ -25,7 +25,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `tts_speak_node` | `use_tts` | TTS via gTTS + mpg123 |
 | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array DoA/VAD |
-| `voice_command_node` | `use_voice` | Sprachsteuerung (lokales faster-whisper STT, offline) |
+| `voice_command_node` | `use_voice` | Sprachsteuerung (Gemini Audio-STT Cloud primaer / faster-whisper Offline-Fallback) |
 
 ## MCU-Topics (micro-ROS)
 

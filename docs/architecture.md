@@ -29,7 +29,7 @@ Detaillierte Beschreibungen der einzelnen Architekturaspekte:
 │                                         │                                       │
 │                                         ▼                                       │
 │                              [gemini_semantic_node]──>/vision/semantics          │
-│                               Gemini 3.1 flash-lite         │                   │
+│                               Gemini 2.0 flash-lite         │                   │
 │                                                             ▼                   │
 │                                                      [tts_speak_node]           │
 │                                                       gTTS → mpg123            │

@@ -7,7 +7,7 @@ Anleitung zur Wiederholung der Dashboard- und Telemetrietests (F05).
 ## Voraussetzungen
 
 - Roboter auf ebenem Hartboden (Laminat, Fliesen, Beton)
-- Kein Hindernis im Bereich < 80 mm vor dem Ultraschall-Sensor
+- Kein Hindernis im Bereich < 100 mm vor dem Ultraschall-Sensor
 - Akkuspannung > 10 V
 - Beide ESP32-S3 (Drive + Sensor) geflasht und per USB angeschlossen
 - Docker-Image gebaut (`docker compose build`)

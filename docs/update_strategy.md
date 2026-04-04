@@ -1,3 +1,8 @@
+---
+title: Update-Strategie
+description: Vorgehen fuer System-, Docker- und Firmware-Updates des AMR ohne Bruch der validierten Funktionskette.
+---
+
 # AMR - Update-Strategie
 
 **Leitfrage:** Wie laesst sich das AMR-System aktuell halten, ohne die validierte Funktionskette (ESP32-S3 → Pi5 ROS 2 → Hailo-8L) zu brechen?

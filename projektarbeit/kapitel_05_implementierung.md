@@ -158,7 +158,7 @@ Die Implementierung enthaelt eine eigene Sicherheitslogik, die regulaere Fahrkom
 
 ### 5.4.1 Cliff-Sicherheitsmultiplexer
 
-Der `cliff_safety_node` bildet den sicherheitsnahen Multiplexer fuer Kanten- und Hinderniserkennung. Er abonniert `/cliff` sowie `/range/front` und ueberwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante oder unterschreitet die Ultraschall-Distanz $80\,\mathrm{mm}$, unterbricht der Multiplexer den regulaeren Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic `/cmd_vel`. Die Freigabe erfolgt erst bei einer Distanz ueber $120\,\mathrm{mm}$ (Hysterese).
+Der `cliff_safety_node` bildet den sicherheitsnahen Multiplexer fuer Kanten- und Hinderniserkennung. Er abonniert `/cliff` sowie `/range/front` und ueberwacht gleichzeitig die eingehenden Fahrkommandos. Erkennt der Sensor-Knoten eine Kante oder unterschreitet die Ultraschall-Distanz $100\,\mathrm{mm}$, unterbricht der Multiplexer den regulaeren Kommandopfad und sendet stattdessen einen Stopp auf das finale Topic `/cmd_vel`. Die Freigabe erfolgt erst bei einer Distanz ueber $140\,\mathrm{mm}$ (Hysterese).
 
 Der sichere Halt entspricht im Ausloesefall der Vorgabe
 

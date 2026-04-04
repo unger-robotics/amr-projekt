@@ -29,7 +29,7 @@ Ebene B – Bedien- und Leitstandsebene           Kfz: Kombiinstrument + Infotai
   Joystick-Fernsteuerung (0,40 m/s)              → Manueller Fahrmodus (SAE Level 0)
 
 Ebene A – Fahrkern                               Kfz: Antriebsstrang + Fahrwerk + Bremse
-  Pi 5: Nav2, SLAM, EKF Sensorfusion             → ADAS-Zentralrechner
+  Pi 5: Nav2, SLAM, Odometrie-TF                  → ADAS-Zentralrechner
   Drive-Knoten (ESP32-S3, Core 1: PID 50 Hz)     → Motorsteuergeraet (ECM)
   Sensor-Knoten (ESP32-S3, IMU/Cliff/Batterie)   → Sensorsteuergeraet (ESC/ABS-ECU)
   Cliff-Safety + CAN-Direktpfad (2,0 ms)         → Notbremssystem (AEB)
@@ -38,7 +38,7 @@ Ebene A – Fahrkern                               Kfz: Antriebsstrang + Fahrwer
 ```
                         ┌─────────────────────────────────────────────────┐
                         │       Raspberry Pi 5 — ADAS-Zentralrechner     │
-                        │   ROS 2 Humble · Nav2 · SLAM Toolbox · EKF    │
+                        │   ROS 2 Humble · Nav2 · SLAM Toolbox           │
                         │   micro-ROS Agents · Dashboard Bridge          │
                         │   Vision · Audio · CAN Bridge                  │
                         └────────┬──────────────────┬────────────────────┘

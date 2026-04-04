@@ -88,7 +88,7 @@ cd amr/docker/
 
 # SLAM-Validierung starten (3 Minuten Aufzeichnung):
 ./run.sh bash -c "cd /amr_scripts && python3 slam_validation.py \
-  --live --duration 180 \
+  --live --duration 120 \
   --output /ros2_ws/build/my_bot/my_bot/"
 ```
 
@@ -98,7 +98,7 @@ cd amr/docker/
 3. SLAM-Validierung starten (siehe oben) — ab jetzt laeuft die Aufzeichnung
 4. Roboter per Dashboard durch den Raum fahren (geschlossene Runde)
 5. Zurueck zum Startpunkt fahren (Loop Closure)
-6. Warten bis die 180 s abgelaufen sind
+6. Warten bis die 120 s abgelaufen sind
 7. TF-Raten, Topic-Raten und ATE werden automatisch gemessen
 8. Kartenqualitaet visuell pruefen (RViz2 oder Dashboard-Karte):
    - Keine doppelten Wandlinien nach Loop Closure
@@ -151,7 +151,7 @@ Fuer saubere Ergebnisse:
 
 1. Dashboard-Benutzeroberflaeche starten (`cd dashboard/ && npm run dev -- --host 0.0.0.0`)
 2. Stack starten mit SLAM + Dashboard (ESP32-Reset)
-3. Test 3.1: Manuelle Rundfahrt mit Loop Closure (180 s)
+3. Test 3.1: Manuelle Rundfahrt mit Loop Closure (120 s)
 4. Stack stoppen, ESP32-Reset
 5. Stack neu starten mit `use_nav:=True use_dashboard:=True`
 6. Test 3.2: Autonome Rundfahrt mit ATE-Messung (120 s)

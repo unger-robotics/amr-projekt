@@ -406,7 +406,7 @@ Der Raspberry Pi 5 uebernimmt Lokalisierung und Kartierung (SLAM), Navigation, d
 Die Sicherheitslogik hat stets Vorrang vor Navigation und manueller Bedienung. Der Knoten `cliff_safety_node` multiplext alle eingehenden Fahrbefehle (`/nav_cmd_vel`, `/dashboard_cmd_vel`) und leitet sie an `/cmd_vel` weiter. Die Blockierung erfolgt in zwei Faellen:
 
 * Der Kanten-Sensor meldet eine kritische Situation (`/cliff` = true).
-* Der Ultraschall-Sensor misst weniger als 80 mm (`/range/front`). Die Freigabe erfolgt erst bei mehr als 120 mm (Hysterese).
+* Der Ultraschall-Sensor misst weniger als 100 mm (`/range/front`). Die Freigabe erfolgt erst bei mehr als 140 mm (Hysterese).
 
 Bei Blockierung wird ein Stop-Kommando mit Nullgeschwindigkeit erzeugt und ein akustischer Alarm (`cliff_alarm`) einmalig ausgeloest.
 

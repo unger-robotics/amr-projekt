@@ -41,7 +41,7 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 | `can_bridge_node` | `my_bot` | `can_bridge_node` | `use_can` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `tts_speak_node` | `my_bot` | `tts_speak_node` | `use_tts` | TTS via gTTS + mpg123 |
 | `respeaker_doa_node` | `my_bot` | `respeaker_doa_node` | `use_respeaker` | ReSpeaker Mic Array v2.0 DoA/VAD (USB, pyusb) |
-| `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + faster-whisper STT (offline) |
+| `voice_command_node` | `my_bot` | `voice_command_node` | `use_voice` | Sprachsteuerung ReSpeaker + Gemini Audio-STT (Cloud, primaer) / faster-whisper (Offline-Fallback) |
 | `aruco_docking` | `my_bot` | `aruco_docking` | manuell | ArUco-Marker Visual Servoing (Standalone) |
 | `hailo_inference_node` | `my_bot` | `hailo_inference_node` | manuell | Hailo-8L Echtzeit-Objekterkennung (YOLOv8) |
 
@@ -127,7 +127,7 @@ Alle Parameter fuer `full_stack.launch.py`:
 | `use_can` | `False` | CAN-to-ROS2-Bridge (SocketCAN) |
 | `use_tts` | `False` | TTS-Sprachausgabe (gTTS, Deutsch) |
 | `use_respeaker` | `False` | ReSpeaker DoA/VAD (USB, pyusb) |
-| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True`, offline via faster-whisper) |
+| `use_voice` | `False` | Sprachsteuerung (erfordert `use_respeaker:=True`, Gemini Audio-STT primaer / faster-whisper Fallback) |
 
 **Beispiele:**
 
@@ -221,14 +221,14 @@ Validierungstests: `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`,
 Nav2 controller_server ──→ /nav_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel ──→ Drive-Node
 Dashboard Joystick ──→ /dashboard_cmd_vel ──→ cliff_safety_node ──→ /cmd_vel ──→ Drive-Node
 Sensor-Node ──→ /cliff ──→ cliff_safety_node (blockiert bei true)
-Sensor-Node ──→ /range/front ──→ cliff_safety_node (Stopp < 80 mm, Freigabe > 120 mm)
+Sensor-Node ──→ /range/front ──→ cliff_safety_node (Stopp < 100 mm, Freigabe > 140 mm)
 cliff_safety_node ──→ /audio/play ──→ audio_feedback_node (einmaliger Alarm)
 ```
 
 **Funktionsweise:**
 - Normalbetrieb: Twist-Nachrichten werden an `/cmd_vel` weitergeleitet
 - Cliff (`/cliff` = true): Blockiert alle Fahrbefehle, sendet Null-Twist (20 Hz)
-- Ultraschall < 80 mm: Blockiert, Freigabe > 120 mm (Hysterese)
+- Ultraschall < 100 mm: Blockiert, Freigabe > 140 mm (Hysterese)
 - Audio-Alarm (`cliff_alarm`) einmalig bei Blockierung
 
 **Remapping:**
