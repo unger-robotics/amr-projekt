@@ -20,7 +20,7 @@ Das AMR operiert in einer strukturierten Indoor-Umgebung, vergleichbar mit einem
 Ebene C – Intelligente Interaktion              Kfz: ADAS Level 3+ / HMI
   Hailo-8L Vision (34 ms Inferenz)               → ADAS-Frontkamera + Edge-KI
   Gemini Cloud-Semantik + Sensorfusion             → Cloud-basierte Szenenanalyse + Umfelddaten
-  Sprachschnittstelle (VAD → faster-whisper STT)   → Sprachsteuerung (offline, HMI)
+  Sprachschnittstelle (Gemini Audio-STT / Whisper)  → Sprachsteuerung (Cloud + Offline-Fallback, HMI)
   ArUco-Docking (0,73 cm Versatz)                 → Automatisches Einparken (APA)
 
 Ebene B – Bedien- und Leitstandsebene           Kfz: Kombiinstrument + Infotainment
@@ -220,7 +220,7 @@ cd amr/docker/
 | `use_can`          | False   | Redundanter CAN-Bus          |
 | `use_tts`          | False   | Sprachausgabe (TTS)          |
 | `use_respeaker`    | False   | Richtungsmikrofon (DoA)      |
-| `use_voice`        | False   | Sprachsteuerung (STT)        |
+| `use_voice`        | False   | Sprachsteuerung (Gemini/Whisper STT) |
 
 ## Projektstruktur
 

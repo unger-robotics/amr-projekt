@@ -71,8 +71,8 @@ cd amr/docker/
 
 ### Sprache
 
-- **Transkription:** Live-Anzeige der erkannten Sprachbefehle (via `voice_transcript`)
-- **Mikrofon-Mute:** Toggle fuer ReSpeaker VAD (via `voice_mute`/`voice_mute_status`)
+- **Transkription:** Live-Anzeige der erkannten Sprachbefehle (via `voice_transcript`), Anzeige der STT-Engine (Gemini/Whisper)
+- **Mikrofon-Toggle:** Schaltet zwischen Wake-Word-Modus (stumm) und VAD-Modus (aktiv) (via `voice_mute`/`voice_mute_status`)
 - **Kommandoverlauf:** Chronologische Liste aller erkannten Sprachbefehle
 
 ### Referenz

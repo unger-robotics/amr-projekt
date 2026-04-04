@@ -984,6 +984,15 @@ class VoiceCommandNode(Node):
         """
         if not self._gemini_client:
             return None
+
+        # Mindest-Audiolaenge: 0.5 s bei 16 kHz mono int16 = 16000 Bytes PCM
+        pcm_length = len(wav_bytes) - WAV_HEADER_SIZE
+        if pcm_length < 16000:
+            self.get_logger().info(
+                f"Gemini-STT: Audio zu kurz ({pcm_length / 32000:.1f} s), ueberspringe"
+            )
+            return None
+
         try:
             response = self._gemini_client.models.generate_content(
                 model=self._gemini_model,
@@ -997,7 +1006,8 @@ class VoiceCommandNode(Node):
                     response_mime_type="application/json",
                 ),
             )
-            if not response or not response.text:
+            if not response or not response.text or not response.text.strip():
+                self.get_logger().info("Gemini-STT: Leere API-Antwort")
                 return None
 
             text = response.text.strip()
@@ -1005,6 +1015,11 @@ class VoiceCommandNode(Node):
             if text.startswith("```"):
                 text = re.sub(r"^```(?:json)?\s*\n?", "", text)
                 text = re.sub(r"\n?```\s*$", "", text)
+                text = text.strip()
+
+            if not text:
+                self.get_logger().info("Gemini-STT: Leerer Text nach Markdown-Cleaning")
+                return None
 
             data = json.loads(text)
             transcript = data.get("transcript", "").strip()

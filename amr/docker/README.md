@@ -46,7 +46,7 @@ docker compose build
 
 ## Container-Architektur
 
-**Basis-Image:** `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). `osrf/ros:humble-desktop` ist nicht fuer arm64 verfuegbar -- stattdessen werden RViz2, Nav2, SLAM Toolbox und micro-ROS Agent einzeln installiert. Der micro-ROS Agent wird aus Source gebaut, da kein arm64-apt-Paket existiert. Python-Abhaengigkeiten: `numpy<2` (ABI-Kompatibilitaet mit cv_bridge), `openwakeword==0.6.0` (fixierte Version), `faster-whisper` (lokales STT). openwakeword-Modelle (`hey_jarvis`) werden im Build heruntergeladen, mit Fallback im Entrypoint.
+**Basis-Image:** `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). `osrf/ros:humble-desktop` ist nicht fuer arm64 verfuegbar -- stattdessen werden RViz2, Nav2, SLAM Toolbox und micro-ROS Agent einzeln installiert. Der micro-ROS Agent wird aus Source gebaut, da kein arm64-apt-Paket existiert. Python-Abhaengigkeiten: `numpy<2` (ABI-Kompatibilitaet mit cv_bridge), `openwakeword==0.6.0` (fixierte Version), `faster-whisper` (lokales STT, Offline-Fallback), `google-genai` (Gemini Audio-STT, Cloud-primaer). openwakeword-Modelle (`hey_jarvis`) werden im Build heruntergeladen, mit Fallback im Entrypoint.
 
 **Netzwerk:** `network_mode: host` -- noetig fuer ROS2 DDS Multicast Discovery. Alle ROS2-Topics sind direkt auf dem Host sichtbar.
 
@@ -71,7 +71,7 @@ docker compose build
 |---|---|---|
 | `DISPLAY` | Host | X11-Display fuer RViz2 |
 | `ROS_DOMAIN_ID` | `0` | ROS2 DDS Domain |
-| `GEMINI_API_KEY` | Host-Env | Vision und TTS (optional; Sprachsteuerung arbeitet lokal ohne Key) |
+| `GEMINI_API_KEY` | Host-Env | Vision, TTS und Gemini Audio-STT (optional; Sprachsteuerung faellt auf lokales Whisper zurueck ohne Key) |
 | `OPENWEATHER_API_KEY` | Host-Env | Standort/Wetter in Sprachsteuerung (optional) |
 | `AMR_LOCATION` | Host-Env | Standort fuer Wetter-Abfragen (Default: "Wuppertal Vohwinkel") |
 

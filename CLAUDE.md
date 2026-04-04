@@ -78,7 +78,7 @@ Haeufig genutzte Toggles (`use_<name>:=True/False`):
 | `use_can` | False | CAN-Bus Bridge |
 | `use_tts` | False | TTS-Sprachausgabe (Gemini-Semantik) |
 | `use_respeaker` | False | ReSpeaker DoA |
-| `use_voice` | False | Sprachsteuerung (ReSpeaker + faster-whisper STT, offline) |
+| `use_voice` | False | Sprachsteuerung (Gemini Audio-STT / faster-whisper Fallback) |
 
 Beispiel: `./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false use_dashboard:=True use_rviz:=False`
 
@@ -299,7 +299,7 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 
 ## Umgebungsvariablen
 
-- `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`) und TTS (`use_tts`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten die betroffenen Knoten mit Fehler. Sprachsteuerung (`use_voice`) arbeitet lokal via faster-whisper und benoetigt keinen API-Key.
+- `GEMINI_API_KEY`: Erforderlich fuer Vision (`use_vision`), TTS (`use_tts`) und Gemini Audio-STT in der Sprachsteuerung (`use_voice` mit `use_gemini_stt:=True`). Wird via `docker-compose.yml` aus der Host-Umgebung in den Container durchgereicht (`${GEMINI_API_KEY:-}`). Ohne Key starten Vision/TTS mit Fehler; Sprachsteuerung faellt automatisch auf lokales faster-whisper zurueck (offline, kein API-Key noetig).
 
 ## Bekannte Fallstricke
 
