@@ -106,14 +106,14 @@ class GeminiSemanticNode(Node):
         # Modell: GEMINI_VISION_MODEL > GEMINI_MODEL > ROS-Parameter > Default
         env_model = os.environ.get("GEMINI_VISION_MODEL", os.environ.get("GEMINI_MODEL"))
         self.declare_parameter("model", env_model or "gemini-2.5-flash")
-        self.declare_parameter("max_tokens", 256)
+        self.declare_parameter("max_tokens", 4096)
         self.declare_parameter(
             "thinking_budget",
-            int(os.environ.get("GEMINI_THINKING_BUDGET", "0")),
+            int(os.environ.get("GEMINI_THINKING_BUDGET") or "0"),
         )
         self.declare_parameter(
             "request_interval",
-            float(os.environ.get("GEMINI_REQUEST_INTERVAL", str(DEFAULT_REQUEST_INTERVAL_S))),
+            float(os.environ.get("GEMINI_REQUEST_INTERVAL") or str(DEFAULT_REQUEST_INTERVAL_S)),
         )
 
         model_name = self.get_parameter("model").get_parameter_value().string_value
@@ -305,7 +305,11 @@ class GeminiSemanticNode(Node):
         thread.start()
 
     def _parse_robotics_response(self, response_text: str) -> list[dict] | None:
-        """Parst JSON-Antwort des Robotik-VLM. None bei Fehler."""
+        """Parst JSON-Antwort des Robotik-VLM. None bei Fehler.
+
+        Tolerant gegenueber abgeschnittenen Antworten: Extrahiert alle
+        vollstaendigen JSON-Objekte aus einem unvollstaendigen Array.
+        """
         text = response_text.strip()
         # Markdown-Codeblock-Wrapper entfernen
         if text.startswith("```"):
@@ -318,9 +322,44 @@ class GeminiSemanticNode(Node):
                 return parsed
             self.get_logger().warn(f"Gemini: Kein Array: {type(parsed)}")
             return None
-        except json.JSONDecodeError as e:
-            self.get_logger().warn(f"Gemini-JSON-Fehler: {e} — {text[:200]}")
+        except json.JSONDecodeError:
+            # Toleranter Parser: vollstaendige Objekte aus abgeschnittenem Array retten
+            recovered = self._recover_partial_json(text)
+            if recovered:
+                self.get_logger().info(
+                    f"Gemini-JSON repariert: {len(recovered)} Objekt(e) aus "
+                    f"abgeschnittener Antwort ({len(text)} Zeichen)"
+                )
+                return recovered
+            self.get_logger().warn(f"Gemini-JSON nicht reparierbar — {text[:200]}")
             return None
+
+    @staticmethod
+    def _recover_partial_json(text: str) -> list[dict] | None:
+        """Extrahiert vollstaendige JSON-Objekte aus abgeschnittenem Array."""
+        # Trailing-Comma entfernen und Array schliessen
+        stripped = text.rstrip().rstrip(",").rstrip()
+        if stripped.endswith("}"):
+            candidate = stripped + "]"
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, list) and parsed:
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+        # Letztes unvollstaendiges Objekt abschneiden
+        last_close = text.rfind("}")
+        if last_close > 0:
+            candidate = text[: last_close + 1].rstrip().rstrip(",").rstrip() + "]"
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, list) and parsed:
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+        return None
 
     def _build_sensor_context(self):
         """Liest Sensordaten und gibt (prompt_parts, us_range, lidar) zurueck."""
@@ -431,8 +470,11 @@ class GeminiSemanticNode(Node):
             # Gemini API-Aufruf mit Bild
             image_part = types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg")
 
-            # GenerateContentConfig mit optionalem Thinking-Budget
-            config_kwargs = {"max_output_tokens": self.max_tokens}
+            # GenerateContentConfig mit JSON-Modus und optionalem Thinking-Budget
+            config_kwargs = {
+                "max_output_tokens": self.max_tokens,
+                "response_mime_type": "application/json",
+            }
             if self.thinking_budget > 0:
                 try:
                     config_kwargs["thinking_config"] = types.ThinkingConfig(
@@ -449,6 +491,15 @@ class GeminiSemanticNode(Node):
                 contents=[prompt, image_part],
                 config=types.GenerateContentConfig(**config_kwargs),
             )
+
+            # Finish-Reason pruefen (MAX_TOKENS = Antwort abgeschnitten)
+            if response and response.candidates:
+                fr = response.candidates[0].finish_reason
+                if fr and str(fr) not in ("STOP", "FinishReason.STOP", "0"):
+                    self.get_logger().warn(
+                        f"Gemini finish_reason={fr} — Antwort moeglicherweise abgeschnitten",
+                        throttle_duration_sec=30.0,
+                    )
 
             if response and response.text:
                 # JSON-Antwort parsen
@@ -467,24 +518,24 @@ class GeminiSemanticNode(Node):
                     if new_objs:
                         speech_parts.append("Neu: " + ", ".join(d["label"] for d in new_objs))
                     speech_text = ". ".join(speech_parts)
+
+                    result = {
+                        "timestamp": time.time(),
+                        "detections_input": detections[:5],
+                        "semantic_analysis": speech_text,
+                        "structured_detections": structured,
+                        "model": self.model_name,
+                        "sensor_fusion": self._build_sensor_fusion_meta(us_range, lidar),
+                    }
+
+                    msg = String()
+                    msg.data = json.dumps(result, ensure_ascii=False)
+                    self.sem_pub.publish(msg)
+
+                    self.get_logger().info(f"Gemini-Analyse: {speech_text[:120]}")
                 else:
-                    # Fallback: Gemini-Rohtext als Sprechtext
-                    speech_text = response.text.strip()
-
-                result = {
-                    "timestamp": time.time(),
-                    "detections_input": detections[:5],
-                    "semantic_analysis": speech_text,
-                    "structured_detections": structured,
-                    "model": self.model_name,
-                    "sensor_fusion": self._build_sensor_fusion_meta(us_range, lidar),
-                }
-
-                msg = String()
-                msg.data = json.dumps(result, ensure_ascii=False)
-                self.sem_pub.publish(msg)
-
-                self.get_logger().info(f"Gemini-Analyse: {speech_text[:120]}")
+                    # JSON-Parse fehlgeschlagen — Hailo-Fallback statt rohem JSON
+                    self._publish_hailo_fallback(detections)
             else:
                 self.get_logger().warn("Gemini: Leere Antwort erhalten")
                 self._publish_hailo_fallback(detections)

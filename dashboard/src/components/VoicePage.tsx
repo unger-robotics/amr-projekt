@@ -26,12 +26,6 @@ const VOICE_COMMANDS = [
   { command: 'wetter', example: '"Wie ist das Wetter?"', description: 'Aktuelle Wetterdaten' },
 ] as const;
 
-const TEST_NAMES = [
-  'rplidar', 'imu', 'motor', 'encoder', 'sensor', 'kinematic',
-  'straight_drive', 'rotation', 'cliff_latency', 'slam', 'nav',
-  'nav_square', 'docking', 'dashboard_latency', 'can',
-];
-
 function formatTime(ts: number): string {
   const d = new Date(ts * 1000);
   return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -160,24 +154,6 @@ export default function VoicePage({ send, sendVoiceMute }: VoicePageProps) {
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Verfuegbare Tests */}
-          <div className="mt-3 pt-3 border-t border-hud-border/30">
-            <span className="text-[10px] text-hud-text-dim uppercase tracking-wider">
-              Verfuegbare Tests fuer &quot;test &lt;name&gt;&quot;:
-            </span>
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {TEST_NAMES.map((name) => (
-                <button
-                  key={name}
-                  onClick={() => handleSendCommand(`test ${name}`)}
-                  className="px-2 py-0.5 text-[10px] font-mono border border-hud-border/50 text-hud-text-dim hover:text-hud-cyan hover:border-hud-cyan/30 hover:bg-hud-cyan/5 transition-colors"
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 

@@ -479,7 +479,7 @@ def generate_launch_description():
                 "whisper_model": "base",
                 "use_wakeword": True,
                 "wakeword_model": "hey_jarvis_v0.1",
-                "wakeword_threshold": 0.5,
+                "wakeword_threshold": 0.3,
             }
         ],
         condition=IfCondition(LaunchConfiguration("use_voice")),

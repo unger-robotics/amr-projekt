@@ -166,7 +166,7 @@ export const useTelemetryStore = create<TelemetryState>((set) => ({
   sensorNodeActive: false, imuHz: 0, ultrasonicHz: 0, cliffHz: 0,
   ultrasonicRange: 0, cliffDetected: false,
   soundDirection: 0, doaFiltered: 0, doaQuadrant: '', isVoiceActive: false, audioNodeActive: false, respeakerActive: false, audioVolume: 80,
-  micMuted: false, voiceTranscript: '', voiceTranscriptTs: 0, voiceHistory: [],
+  micMuted: true, voiceTranscript: '', voiceTranscriptTs: 0, voiceHistory: [],
   estopEngaged: false, estopSource: '',
   commandHistory: [],
   availableTests: [], runningTest: null, testResults: {},

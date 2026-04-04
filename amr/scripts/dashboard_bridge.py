@@ -1320,7 +1320,7 @@ class DashboardBridge(Node):
         self.pub_emergency_stop = self.create_publisher(Bool, "/emergency_stop", 10)
         self.audio_volume_pct = 80  # Default-Lautstaerke
         self.vision_enabled = False  # Vision-Broadcast Default: aus
-        self.mic_muted = False  # Mikrofon-Mute Default: aus
+        self.mic_muted = True  # Mikrofon-Mute Default: stumm (Dashboard-Toggle aktiviert)
 
         # --- E-Stop State (Totmannschalter) ---
         self.estop_engaged = False
@@ -2101,7 +2101,6 @@ class DashboardBridge(Node):
             odom_hz = self._compute_hz(self.odom_times)
             scan_hz = self._compute_hz(self.scan_times)
             det_hz = self._compute_hz(self.detection_times)
-            imu_hz = self._compute_hz(self.imu_times)
             has_jpeg = self.latest_jpeg is not None
             has_battery = self.battery_data is not None
             last_sound_dir_time = self._last_sound_dir_time
@@ -2133,7 +2132,7 @@ class DashboardBridge(Node):
                 "camera": has_jpeg,
                 "hailo": det_hz > 0.5 or os.path.exists("/dev/hailo0"),
                 "ina260": has_battery,
-                "audio": bool(imu_hz > 0),
+                "audio": os.path.exists("/dev/snd/pcmC0D0p"),
                 "respeaker": bool(time.time() - last_sound_dir_time < 5.0),
             },
             "ip": self._get_host_ip(),

@@ -35,6 +35,7 @@ Verwendung:
 
 from __future__ import annotations
 
+import contextlib
 import io
 import math
 import os
@@ -219,7 +220,7 @@ class VoiceCommandNode(Node):
         self.declare_parameter("energy_threshold_rms", 500.0)
         self.declare_parameter("use_wakeword", True)
         self.declare_parameter("wakeword_model", "hey_jarvis_v0.1")
-        self.declare_parameter("wakeword_threshold", 0.5)
+        self.declare_parameter("wakeword_threshold", 0.3)
 
         whisper_size = self.get_parameter("whisper_model").get_parameter_value().string_value
         self._max_record_s = self.get_parameter("max_record_s").value
@@ -258,9 +259,10 @@ class VoiceCommandNode(Node):
             api_key = os.getenv("GEMINI_API_KEY")
             if api_key:
                 self._gemini_client = genai.Client(api_key=api_key)
-                self._gemini_model = os.environ.get(
-                    "GEMINI_VOICE_MODEL",
-                    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+                self._gemini_model = (
+                    os.environ.get("GEMINI_VOICE_MODEL")
+                    or os.environ.get("GEMINI_MODEL")
+                    or "gemini-2.5-flash"
                 )
                 self.get_logger().info(f"Gemini Voice-Fallback aktiv: {self._gemini_model}")
             else:
@@ -288,7 +290,7 @@ class VoiceCommandNode(Node):
         self.create_subscription(Bool, "/voice/mute", self._mute_cb, 10)
 
         # -- State Machine --
-        self._muted = False
+        self._muted = True  # Default: Mikrofon aus (Dashboard-Toggle aktiviert VAD-Modus)
         self._vad_active = False
         self._vad_last_true = 0.0
         self._vad_continuous_start = 0.0  # Beginn der aktuellen VAD-Aktivphase
@@ -305,6 +307,9 @@ class VoiceCommandNode(Node):
         self._wakeword_detected = False
         self._ww_stream_proc: subprocess.Popen | None = None
         self._ww_running = False
+
+        # Startzustand VOR Thread-Start setzen (Race Condition vermeiden)
+        self._state = _WAKE_LISTENING if self._use_wakeword else _IDLE
 
         if self._use_wakeword and HAS_OWW:
             try:
@@ -330,9 +335,6 @@ class VoiceCommandNode(Node):
                 "— Fallback auf VAD-Modus"
             )
             self._use_wakeword = False
-
-        # Startzustand: Wake-Listening oder Idle (je nach Modus)
-        self._state = _WAKE_LISTENING if self._use_wakeword else _IDLE
 
         # Timer: 20 Hz State-Machine Tick
         self.create_timer(0.05, self._tick)
@@ -374,9 +376,23 @@ class VoiceCommandNode(Node):
     # -----------------------------------------------------------------
 
     def _mute_cb(self, msg: Bool) -> None:
-        """Mute-Callback: Mikrofon stumm schalten / aktivieren."""
+        """Mute-Callback: Mikrofon stumm schalten / aktivieren.
+
+        Mikrofon an  (muted=False) → VAD-Modus: Sprachbefehle ohne Wake-Word
+        Mikrofon aus (muted=True)  → Aufnahme abbrechen, Wake-Word-Modus
+        """
         self._muted = msg.data
-        self.get_logger().info(f"Mikrofon {'stumm' if msg.data else 'aktiv'}")
+        if msg.data:
+            # Stumm: laufende Aufnahme abbrechen, zurueck zum Wake-Word-Modus
+            if self._state in (_LISTENING, _COOLDOWN):
+                self._stop_recording()
+                self._pending = False
+            self._state = self._idle_state
+            self.get_logger().info("Mikrofon stumm — Wake-Word-Modus")
+        else:
+            # Aktiv: direkt in VAD-Modus (kein Wake-Word noetig)
+            self._state = _IDLE
+            self.get_logger().info("Mikrofon aktiv — VAD-Modus (kein Wake-Word)")
 
     def _vad_cb(self, msg: Bool) -> None:
         """VAD-Callback: Aktualisiert Zeitstempel bei Spracherkennung."""
@@ -414,9 +430,21 @@ class VoiceCommandNode(Node):
                         "-",
                     ],
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
                 )
                 self._wakeword_stream_loop()
+                # Stream-Loop beendet — arecord-Exitcode und stderr pruefen
+                if self._ww_stream_proc is not None:
+                    rc = self._ww_stream_proc.poll()
+                    stderr_out = b""
+                    if self._ww_stream_proc.stderr:
+                        with contextlib.suppress(Exception):
+                            stderr_out = self._ww_stream_proc.stderr.read(512) or b""
+                    if rc is not None and rc != 0 and self._ww_running:
+                        self.get_logger().warn(
+                            f"arecord beendet (rc={rc}): "
+                            f"{stderr_out.decode(errors='replace').strip()[:200]}"
+                        )
             except Exception as e:  # noqa: BLE001
                 if self._ww_running:
                     self.get_logger().warn(f"Wake-Word-Stream-Fehler: {e}, Neustart in 2s")
@@ -436,6 +464,11 @@ class VoiceCommandNode(Node):
         if proc is None or proc.stdout is None or self._oww_model is None:
             return
 
+        chunk_count = 0
+        max_rms_seen = 0.0
+        max_score_seen = 0.0
+        last_diag_time = time.monotonic()
+
         while self._ww_running and proc.poll() is None:
             # Waehrend Recording oder Processing pausieren (ALSA Device Sharing)
             if self._state in (_LISTENING, _COOLDOWN, _PROCESSING):
@@ -446,16 +479,20 @@ class VoiceCommandNode(Node):
             if not chunk or len(chunk) < OWW_CHUNK_BYTES:
                 break
 
-            # Energy-Gate: RMS-Vorfilter vor Inference
+            chunk_count += 1
+
+            # RMS nur fuer Diagnose (KEIN Gate — openwakeword braucht kontinuierlichen Stream)
             samples = struct.unpack(f"<{OWW_CHUNK_SAMPLES}h", chunk)
             rms = math.sqrt(sum(s * s for s in samples) / OWW_CHUNK_SAMPLES)
-            if rms < self._energy_threshold_rms:
-                continue
+            if rms > max_rms_seen:
+                max_rms_seen = rms
 
-            # openwakeword Inference
+            # openwakeword Inference (alle Chunks, inkl. Stille)
             audio_array = np.frombuffer(chunk, dtype=np.int16)
             predictions = self._oww_model.predict(audio_array)
             for model_name, score in predictions.items():
+                if score > max_score_seen:
+                    max_score_seen = score
                 if score >= self._wakeword_threshold:
                     self._wakeword_detected = True
                     self._oww_model.reset()
@@ -463,6 +500,20 @@ class VoiceCommandNode(Node):
                         f"Wake-Word erkannt: '{model_name}' (Score: {score:.2f})"
                     )
                     break
+
+            # Periodische Diagnose (alle 30s)
+            now = time.monotonic()
+            if now - last_diag_time >= 30.0:
+                self.get_logger().info(
+                    f"Wake-Word-Diag: {chunk_count} Chunks, "
+                    f"max_RMS={max_rms_seen:.0f}, "
+                    f"max_Score={max_score_seen:.3f} "
+                    f"(Schwelle={self._wakeword_threshold})"
+                )
+                chunk_count = 0
+                max_rms_seen = 0.0
+                max_score_seen = 0.0
+                last_diag_time = now
 
     # -----------------------------------------------------------------
     # State Machine
