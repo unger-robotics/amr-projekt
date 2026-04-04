@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import io
 import math
+import os
 import re
 import shutil
 import struct
@@ -63,6 +64,14 @@ try:
 except ImportError:
     HAS_OWW = False
 
+try:
+    from google import genai
+    from google.genai import types as genai_types
+
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
+
 # State-Konstanten
 _IDLE = "idle"
 _WAKE_LISTENING = "wake_listening"
@@ -75,6 +84,42 @@ MIN_REQUEST_INTERVAL_S = 2.0
 WAV_HEADER_SIZE = 44  # Standard-WAV-Header-Laenge in Bytes
 OWW_CHUNK_SAMPLES = 1280  # 80 ms bei 16 kHz (openwakeword erwartet 80ms-Chunks)
 OWW_CHUNK_BYTES = OWW_CHUNK_SAMPLES * 2  # int16 = 2 Bytes/Sample
+
+# Gemini-Fallback Intent-Prompt (nur verwendet wenn Regex keinen Intent erkennt)
+VOICE_INTENT_PROMPT = (
+    "Du bist der Sprachassistent eines autonomen mobilen Roboters (AMR).\n"
+    "Der Benutzer hat folgenden Sprachbefehl gegeben:\n"
+    '"{transcript}"\n'
+    "\n"
+    "Erkenne den Intent und antworte NUR mit dem passenden Befehlsstring.\n"
+    "Verfuegbare Befehle:\n"
+    "\n"
+    "stop                     — Sofortstopp\n"
+    "forward <meter>          — Vorwaerts fahren (0.1-5.0 m, Default 1)\n"
+    "backward <meter>         — Rueckwaerts fahren (0.1-5.0 m, Default 1)\n"
+    "turn <grad>              — Drehen (positiv=links, negativ=rechts)\n"
+    "turn_to_speaker          — Zum Sprecher drehen\n"
+    "nav <x> <y>              — Navigation zu Koordinaten\n"
+    "schau nach links         — Kamera nach links\n"
+    "schau nach rechts        — Kamera nach rechts\n"
+    "schau nach vorne         — Kamera geradeaus\n"
+    "licht an                 — LED an (80%)\n"
+    "licht an <0-100>         — LED mit Helligkeit\n"
+    "licht aus                — LED aus\n"
+    "wie weit                 — Ultraschall-Distanz abfragen\n"
+    "akku                     — Batteriestatus abfragen\n"
+    "wo bin ich               — Position abfragen\n"
+    "wetter                   — Wetter abfragen\n"
+    "help                     — Hilfe anzeigen\n"
+    "test <name>              — Test starten (rplidar|imu|motor|encoder|sensor|\n"
+    "                           kinematic|straight_drive|rotation|cliff_latency|\n"
+    "                           slam|nav|nav_square|docking|dashboard_latency|can)\n"
+    "was siehst du            — Vision-Analyse anfordern\n"
+    "beschreibe umgebung      — Umgebungsbeschreibung\n"
+    "\n"
+    'Wenn der Befehl zu keinem Intent passt: antworte mit leerem String "".\n'
+    "Antworte NUR mit dem Befehlsstring, KEINE Erklaerung."
+)
 
 # Deutsche Zahlwoerter fuer Intent-Parser
 _ZAHLWOERTER: dict[str, float] = {
@@ -205,6 +250,23 @@ class VoiceCommandNode(Node):
         self.get_logger().info(f"Lade Whisper-Modell '{whisper_size}' (CPU/int8)...")
         self._whisper = WhisperModel(whisper_size, device="cpu", compute_type="int8")
         self.get_logger().info(f"Whisper-Modell '{whisper_size}' geladen")
+
+        # -- Gemini-Fallback fuer Intent-Erkennung (optional, Cloud) --
+        self._gemini_client = None
+        self._gemini_model: str | None = None
+        if HAS_GENAI:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if api_key:
+                self._gemini_client = genai.Client(api_key=api_key)
+                self._gemini_model = os.environ.get(
+                    "GEMINI_VOICE_MODEL",
+                    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+                )
+                self.get_logger().info(f"Gemini Voice-Fallback aktiv: {self._gemini_model}")
+            else:
+                self.get_logger().info("GEMINI_API_KEY nicht gesetzt — Voice bleibt Regex-only")
+        else:
+            self.get_logger().info("google-genai nicht installiert — Voice Regex-only")
 
         # -- ALSA-Device erkennen --
         device_param = self.get_parameter("audio_device").get_parameter_value().string_value
@@ -584,8 +646,10 @@ class VoiceCommandNode(Node):
                 self.get_logger().info("Whisper: Keine Sprache erkannt")
                 return
 
-            # Intent-Erkennung per erweitertem Regex-Parser
+            # Intent-Erkennung: Regex primaer, Gemini als Fallback
             command = self._parse_intent(transcript)
+            if not command and self._gemini_client:
+                command = self._gemini_parse_intent(transcript)
 
             # Deduplizierung: gleichen Befehl innerhalb dedup_s unterdruecken
             now = time.monotonic()
@@ -767,6 +831,30 @@ class VoiceCommandNode(Node):
 
         # 2. Patterns mit Zahlextraktion (forward, turn, licht an, nav, test)
         return cls._parse_numeric_intent(t)
+
+    def _gemini_parse_intent(self, transcript: str) -> str:
+        """Fallback-Intent-Parser via Gemini (Cloud, ~200 ms Latenz)."""
+        if not self._gemini_client:
+            return ""
+        try:
+            prompt = VOICE_INTENT_PROMPT.format(transcript=transcript)
+            response = self._gemini_client.models.generate_content(
+                model=self._gemini_model,
+                contents=[prompt],
+                config=genai_types.GenerateContentConfig(
+                    max_output_tokens=50,
+                    temperature=0.0,
+                ),
+            )
+            if response and response.text:
+                result = response.text.strip().strip('"').strip("'")
+                if result:
+                    self.get_logger().info(f"Gemini-Intent: '{result}' (aus: '{transcript}')")
+                return result
+            return ""
+        except Exception as e:
+            self.get_logger().warn(f"Gemini-Voice-Fehler: {e}")
+            return ""
 
     # -----------------------------------------------------------------
     # Cleanup
