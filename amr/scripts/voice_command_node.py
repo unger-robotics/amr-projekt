@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""ROS2-Node: Sprachsteuerung via ReSpeaker + lokales Whisper STT.
+"""ROS2-Node: Sprachsteuerung via ReSpeaker + Gemini Audio-STT / Whisper.
 
-Nimmt gesprochene Befehle ueber das ReSpeaker-Mikrofon auf (VAD-gesteuert),
-transkribiert lokal via faster-whisper und erkennt Intents per Regex-Parser.
-Keine Cloud-Abhaengigkeit, laeuft vollstaendig offline auf dem Pi 5.
+Audio-Architektur: Ein einziger arecord-Prozess liest den ReSpeaker-Stream.
+- Wake-Word-Modus (stumm): openwakeword erkennt Aktivierungswort, dann Aufnahme
+- VAD-Modus (Mikrofon an): Software-VAD via RMS-Energie erkennt Sprache
+Gepufferte PCM-Chunks werden als WAV transkribiert. Kein zweiter arecord noetig.
+
+STT-Engines:
+- Gemini Audio-STT (use_gemini_stt=True): Audio → Gemini Cloud → Transkript + Intent
+  in einem API-Call. Genauer bei Deutsch, erfordert GEMINI_API_KEY.
+- Whisper (Fallback): Lokales faster-whisper → Transkript, dann Regex + Gemini-Text-Intent.
 
 Subscriptions:
-  /is_voice       (std_msgs/Bool)   — VAD-Signal vom respeaker_doa_node (10 Hz)
+  /voice/mute     (std_msgs/Bool)   — Mikrofon-Toggle vom Dashboard
 
 Publications:
   /voice/command  (std_msgs/String) — Strukturierter Befehl (Freitext fuer _handle_command)
@@ -15,6 +21,7 @@ Publications:
 Parameter:
   audio_device   (string, "auto")           — ALSA-Device (auto = ReSpeaker erkennen)
   whisper_model  (string, "base")           — Whisper-Modellgroesse (tiny/base/small)
+  use_gemini_stt (bool, True)              — Gemini Audio-STT (Cloud, GEMINI_API_KEY)
   max_record_s   (float, 10.0)              — Max. Aufnahmedauer [s]
   min_record_s   (float, 0.5)               — Min. Aufnahmedauer [s]
   cooldown_s     (float, 0.5)               — VAD-Cooldown nach Sprachende [s]
@@ -23,20 +30,21 @@ Parameter:
   dedup_s        (float, 5.0)               — Deduplizierung: gleicher Befehl innerhalb [s] unterdrueckt
   confirm_tts    (bool, True)               — TTS-Bestaetigung nach Befehl
   min_vad_s      (float, 0.3)              — Min. kontinuierliche VAD-Dauer vor Aufnahme [s]
-  energy_threshold_rms (float, 500.0)     — RMS-Schwelle: Aufnahmen unter Schwelle verwerfen
+  energy_threshold_rms (float, 80.0)      — RMS-Schwelle: Aufnahmen unter Schwelle verwerfen
   use_wakeword   (bool, True)             — Lokale Wake-Word-Erkennung (openwakeword)
   wakeword_model (string, "hey_jarvis_v0.1") — openwakeword-Modellname
   wakeword_threshold (float, 0.5)         — Wake-Word-Erkennungsschwelle (0.0-1.0)
 
 Verwendung:
   ros2 run my_bot voice_command_node
-  ros2 run my_bot voice_command_node --ros-args -p whisper_model:=small
+  ros2 run my_bot voice_command_node --ros-args -p use_gemini_stt:=false -p whisper_model:=small
 """
 
 from __future__ import annotations
 
 import contextlib
 import io
+import json
 import math
 import os
 import re
@@ -76,8 +84,6 @@ except ImportError:
 # State-Konstanten
 _IDLE = "idle"
 _WAKE_LISTENING = "wake_listening"
-_LISTENING = "listening"
-_COOLDOWN = "cooldown"
 _PROCESSING = "processing"
 
 # Rate-Limiting
@@ -120,6 +126,46 @@ VOICE_INTENT_PROMPT = (
     "\n"
     'Wenn der Befehl zu keinem Intent passt: antworte mit leerem String "".\n'
     "Antworte NUR mit dem Befehlsstring, KEINE Erklaerung."
+)
+
+# Gemini Audio-STT Prompt (Audio beigefuegt → Transkript + Intent in einem Call)
+_VOICE_COMMANDS_BLOCK = (
+    "stop                     — Sofortstopp\n"
+    "forward <meter>          — Vorwaerts fahren (0.1-5.0 m, Default 1)\n"
+    "backward <meter>         — Rueckwaerts fahren (0.1-5.0 m, Default 1)\n"
+    "turn <grad>              — Drehen (positiv=links, negativ=rechts)\n"
+    "turn_to_speaker          — Zum Sprecher drehen\n"
+    "nav <x> <y>              — Navigation zu Koordinaten\n"
+    "schau nach links         — Kamera nach links\n"
+    "schau nach rechts        — Kamera nach rechts\n"
+    "schau nach vorne         — Kamera geradeaus\n"
+    "licht an                 — LED an (80%)\n"
+    "licht an <0-100>         — LED mit Helligkeit\n"
+    "licht aus                — LED aus\n"
+    "wie weit                 — Ultraschall-Distanz abfragen\n"
+    "akku                     — Batteriestatus abfragen\n"
+    "wo bin ich               — Position abfragen\n"
+    "wetter                   — Wetter abfragen\n"
+    "help                     — Hilfe anzeigen\n"
+    "test <name>              — Test starten (rplidar|imu|motor|encoder|sensor|\n"
+    "                           kinematic|straight_drive|rotation|cliff_latency|\n"
+    "                           slam|nav|nav_square|docking|dashboard_latency|can)\n"
+    "was siehst du            — Vision-Analyse anfordern\n"
+    "beschreibe umgebung      — Umgebungsbeschreibung\n"
+)
+
+VOICE_AUDIO_PROMPT = (
+    "Du bist der Sprachassistent eines autonomen mobilen Roboters (AMR).\n"
+    "Der Benutzer hat einen Sprachbefehl gesprochen (Audio beigefuegt).\n"
+    "\n"
+    "1. Transkribiere die Sprache wortwoertlich auf Deutsch.\n"
+    "2. Erkenne den Intent und gib den passenden Befehlsstring zurueck.\n"
+    "\n"
+    "Verfuegbare Befehle:\n\n" + _VOICE_COMMANDS_BLOCK + "\n"
+    'Wenn kein Intent erkannt wird: command = ""\n'
+    "\n"
+    'Antworte NUR mit JSON: {"transcript": "...", "command": "..."}\n'
+    "Keine Erklaerung, kein Markdown."
 )
 
 # Deutsche Zahlwoerter fuer Intent-Parser
@@ -211,13 +257,14 @@ class VoiceCommandNode(Node):
         self.declare_parameter("whisper_model", "base")
         self.declare_parameter("max_record_s", 10.0)
         self.declare_parameter("min_record_s", 0.5)
-        self.declare_parameter("cooldown_s", 0.5)
+        self.declare_parameter("cooldown_s", 0.8)
         self.declare_parameter("rate_limit_s", 2.0)
         self.declare_parameter("barge_in_s", 2.0)
         self.declare_parameter("dedup_s", 5.0)
         self.declare_parameter("confirm_tts", True)
         self.declare_parameter("min_vad_s", 0.3)
-        self.declare_parameter("energy_threshold_rms", 500.0)
+        self.declare_parameter("energy_threshold_rms", 80.0)
+        self.declare_parameter("use_gemini_stt", True)
         self.declare_parameter("use_wakeword", True)
         self.declare_parameter("wakeword_model", "hey_jarvis_v0.1")
         self.declare_parameter("wakeword_threshold", 0.3)
@@ -232,6 +279,7 @@ class VoiceCommandNode(Node):
         self._confirm_tts = self.get_parameter("confirm_tts").value
         self._min_vad_s = self.get_parameter("min_vad_s").value
         self._energy_threshold_rms = self.get_parameter("energy_threshold_rms").value
+        self._use_gemini_stt = self.get_parameter("use_gemini_stt").value
         self._use_wakeword = self.get_parameter("use_wakeword").value
         self._wakeword_model = (
             self.get_parameter("wakeword_model").get_parameter_value().string_value
@@ -270,6 +318,16 @@ class VoiceCommandNode(Node):
         else:
             self.get_logger().info("google-genai nicht installiert — Voice Regex-only")
 
+        # Gemini-STT-Verfuegbarkeit pruefen
+        if self._use_gemini_stt:
+            if self._gemini_client:
+                self.get_logger().info(
+                    f"Gemini Audio-STT aktiv: {self._gemini_model} (Whisper als Fallback)"
+                )
+            else:
+                self.get_logger().warn("use_gemini_stt=True aber kein GEMINI_API_KEY — nur Whisper")
+                self._use_gemini_stt = False
+
         # -- ALSA-Device erkennen --
         device_param = self.get_parameter("audio_device").get_parameter_value().string_value
         detected = self._find_respeaker_device() if device_param == "auto" else device_param
@@ -286,27 +344,20 @@ class VoiceCommandNode(Node):
         self._pub_command = self.create_publisher(String, "/voice/command", 10)
         self._pub_text = self.create_publisher(String, "/voice/text", 10)
         self._pub_audio_play = self.create_publisher(String, "/audio/play", 10)
-        self.create_subscription(Bool, "/is_voice", self._vad_cb, 10)
         self.create_subscription(Bool, "/voice/mute", self._mute_cb, 10)
 
         # -- State Machine --
         self._muted = True  # Default: Mikrofon aus (Dashboard-Toggle aktiviert VAD-Modus)
-        self._vad_active = False
-        self._vad_last_true = 0.0
-        self._vad_continuous_start = 0.0  # Beginn der aktuellen VAD-Aktivphase
-        self._record_proc: subprocess.Popen | None = None
-        self._record_start = 0.0
         self._last_stt_time = 0.0
         self._last_tts_time = 0.0
         self._last_command = ""
         self._last_command_time = 0.0
         self._pending = False
 
-        # -- Wake-Word-Erkennung (openwakeword) --
+        # -- Wake-Word-Erkennung (openwakeword, optional) --
         self._oww_model = None  # Optional[OwwModel] — nur wenn HAS_OWW
-        self._wakeword_detected = False
-        self._ww_stream_proc: subprocess.Popen | None = None
-        self._ww_running = False
+        self._stream_proc: subprocess.Popen | None = None
+        self._stream_running = False
 
         # Startzustand VOR Thread-Start setzen (Race Condition vermeiden)
         self._state = _WAKE_LISTENING if self._use_wakeword else _IDLE
@@ -317,9 +368,6 @@ class VoiceCommandNode(Node):
                     wakeword_models=[self._wakeword_model],
                     inference_framework="onnx",
                 )
-                self._ww_running = True
-                self._ww_thread = threading.Thread(target=self._wakeword_listener, daemon=True)
-                self._ww_thread.start()
                 self.get_logger().info(
                     f"Wake-Word-Erkennung aktiv (Modell: {self._wakeword_model}, "
                     f"Schwelle: {self._wakeword_threshold})"
@@ -336,7 +384,12 @@ class VoiceCommandNode(Node):
             )
             self._use_wakeword = False
 
-        # Timer: 20 Hz State-Machine Tick
+        # Audio-Stream-Thread immer starten (fuer Wake-Word UND VAD-Modus)
+        self._stream_running = True
+        self._stream_thread = threading.Thread(target=self._audio_stream_listener, daemon=True)
+        self._stream_thread.start()
+
+        # Timer: 20 Hz State-Machine Tick (nur PROCESSING → idle)
         self.create_timer(0.05, self._tick)
 
         ww_info = f", Wake-Word: {self._wakeword_model}" if self._use_wakeword else ""
@@ -372,48 +425,33 @@ class VoiceCommandNode(Node):
         return None
 
     # -----------------------------------------------------------------
-    # VAD Callback
+    # Mute Callback
     # -----------------------------------------------------------------
 
     def _mute_cb(self, msg: Bool) -> None:
         """Mute-Callback: Mikrofon stumm schalten / aktivieren.
 
-        Mikrofon an  (muted=False) → VAD-Modus: Sprachbefehle ohne Wake-Word
-        Mikrofon aus (muted=True)  → Aufnahme abbrechen, Wake-Word-Modus
+        Mikrofon an  (muted=False) → VAD-Modus: Software-VAD via RMS-Energie
+        Mikrofon aus (muted=True)  → Wake-Word-Modus (openwakeword)
         """
         self._muted = msg.data
         if msg.data:
-            # Stumm: laufende Aufnahme abbrechen, zurueck zum Wake-Word-Modus
-            if self._state in (_LISTENING, _COOLDOWN):
-                self._stop_recording()
-                self._pending = False
             self._state = self._idle_state
             self.get_logger().info("Mikrofon stumm — Wake-Word-Modus")
         else:
-            # Aktiv: direkt in VAD-Modus (kein Wake-Word noetig)
             self._state = _IDLE
             self.get_logger().info("Mikrofon aktiv — VAD-Modus (kein Wake-Word)")
 
-    def _vad_cb(self, msg: Bool) -> None:
-        """VAD-Callback: Aktualisiert Zeitstempel bei Spracherkennung."""
-        was_active = self._vad_active
-        self._vad_active = msg.data
-        if msg.data:
-            self._vad_last_true = time.monotonic()
-            # Beginn einer neuen kontinuierlichen VAD-Phase merken
-            if not was_active:
-                self._vad_continuous_start = time.monotonic()
-
     # -----------------------------------------------------------------
-    # Wake-Word-Erkennung (openwakeword)
+    # Audio-Stream (Wake-Word + Software-VAD, ein arecord-Prozess)
     # -----------------------------------------------------------------
 
-    def _wakeword_listener(self) -> None:
-        """Dauerhafter Audio-Stream fuer lokale Wake-Word-Erkennung (Daemon-Thread)."""
-        self.get_logger().info("Wake-Word-Listener gestartet")
-        while self._ww_running:
+    def _audio_stream_listener(self) -> None:
+        """Dauerhafter Audio-Stream fuer Wake-Word und VAD (Daemon-Thread)."""
+        self.get_logger().info("Audio-Stream-Listener gestartet")
+        while self._stream_running:
             try:
-                self._ww_stream_proc = subprocess.Popen(
+                self._stream_proc = subprocess.Popen(
                     [
                         "arecord",
                         "-D",
@@ -432,36 +470,42 @@ class VoiceCommandNode(Node):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
-                self._wakeword_stream_loop()
+                self._audio_stream_loop()
                 # Stream-Loop beendet — arecord-Exitcode und stderr pruefen
-                if self._ww_stream_proc is not None:
-                    rc = self._ww_stream_proc.poll()
+                if self._stream_proc is not None:
+                    rc = self._stream_proc.poll()
                     stderr_out = b""
-                    if self._ww_stream_proc.stderr:
+                    if self._stream_proc.stderr:
                         with contextlib.suppress(Exception):
-                            stderr_out = self._ww_stream_proc.stderr.read(512) or b""
-                    if rc is not None and rc != 0 and self._ww_running:
+                            stderr_out = self._stream_proc.stderr.read(512) or b""
+                    if rc is not None and rc != 0 and self._stream_running:
                         self.get_logger().warn(
                             f"arecord beendet (rc={rc}): "
                             f"{stderr_out.decode(errors='replace').strip()[:200]}"
                         )
             except Exception as e:  # noqa: BLE001
-                if self._ww_running:
-                    self.get_logger().warn(f"Wake-Word-Stream-Fehler: {e}, Neustart in 2s")
+                if self._stream_running:
+                    self.get_logger().warn(f"Audio-Stream-Fehler: {e}, Neustart in 2s")
                     time.sleep(2.0)
             finally:
-                if self._ww_stream_proc is not None:
+                if self._stream_proc is not None:
                     try:
-                        self._ww_stream_proc.kill()
-                        self._ww_stream_proc.wait(timeout=2.0)
+                        self._stream_proc.kill()
+                        self._stream_proc.wait(timeout=2.0)
                     except Exception:  # noqa: BLE001
                         pass
-                    self._ww_stream_proc = None
+                    self._stream_proc = None
 
-    def _wakeword_stream_loop(self) -> None:
-        """Liest Chunks aus dem arecord-Stream und fuettert openwakeword."""
-        proc = self._ww_stream_proc
-        if proc is None or proc.stdout is None or self._oww_model is None:
+    def _audio_stream_loop(self) -> None:  # noqa: C901
+        """Unified audio loop: Wake-Word (stumm) + Software-VAD (aktiv).
+
+        Ein einziger arecord-Stream fuer beide Modi. Im Wake-Word-Modus wird
+        openwakeword gefuettert; im VAD-Modus erkennt RMS-Energie Sprache.
+        Erkannte Sprache wird als PCM gepuffert, als WAV gebaut und an
+        Whisper uebergeben.
+        """
+        proc = self._stream_proc
+        if proc is None or proc.stdout is None:
             return
 
         chunk_count = 0
@@ -469,9 +513,30 @@ class VoiceCommandNode(Node):
         max_score_seen = 0.0
         last_diag_time = time.monotonic()
 
-        while self._ww_running and proc.poll() is None:
-            # Waehrend Recording oder Processing pausieren (ALSA Device Sharing)
-            if self._state in (_LISTENING, _COOLDOWN, _PROCESSING):
+        # Buffering-State
+        audio_buffer: list[bytes] = []
+        buffering = False
+        buffer_start = 0.0
+        last_energy_time = 0.0
+        energy_active = False
+        energy_active_start = 0.0
+        prev_muted = self._muted
+
+        # Pre-Buffer: letzte ~0.5s Audio vor VAD-Trigger mitpuffern,
+        # damit der Wortanfang nicht verloren geht
+        pre_buffer_max = 8  # 8 * 80ms = 640ms
+        pre_buffer: list[bytes] = []
+
+        # VAD-Trigger: halbe Schwelle fuer sensitivere Sprach-Erkennung
+        vad_trigger_rms = self._energy_threshold_rms * 0.5
+
+        while self._stream_running and proc.poll() is None:
+            # Waehrend Processing pausieren (Audio-Buffer verwerfen)
+            if self._pending:
+                buffering = False
+                audio_buffer.clear()
+                pre_buffer.clear()
+                energy_active = False
                 time.sleep(0.1)
                 continue
 
@@ -480,40 +545,167 @@ class VoiceCommandNode(Node):
                 break
 
             chunk_count += 1
+            now = time.monotonic()
 
-            # RMS nur fuer Diagnose (KEIN Gate — openwakeword braucht kontinuierlichen Stream)
+            # RMS berechnen
             samples = struct.unpack(f"<{OWW_CHUNK_SAMPLES}h", chunk)
             rms = math.sqrt(sum(s * s for s in samples) / OWW_CHUNK_SAMPLES)
             if rms > max_rms_seen:
                 max_rms_seen = rms
 
-            # openwakeword Inference (alle Chunks, inkl. Stille)
-            audio_array = np.frombuffer(chunk, dtype=np.int16)
-            predictions = self._oww_model.predict(audio_array)
-            for model_name, score in predictions.items():
-                if score > max_score_seen:
-                    max_score_seen = score
-                if score >= self._wakeword_threshold:
-                    self._wakeword_detected = True
+            # Barge-In-Schutz: Audio nach TTS verwerfen
+            if now - self._last_tts_time < self._barge_in_s:
+                buffering = False
+                audio_buffer.clear()
+                energy_active = False
+                continue
+
+            # Mode-Switch erkennen: Buffer verwerfen
+            if self._muted != prev_muted:
+                buffering = False
+                audio_buffer.clear()
+                pre_buffer.clear()
+                energy_active = False
+                prev_muted = self._muted
+                if self._oww_model is not None:
                     self._oww_model.reset()
-                    self.get_logger().info(
-                        f"Wake-Word erkannt: '{model_name}' (Score: {score:.2f})"
-                    )
-                    break
+
+            # Pre-Buffer fuellen (rollierendes Fenster, immer aktiv)
+            if not buffering:
+                pre_buffer.append(chunk)
+                if len(pre_buffer) > pre_buffer_max:
+                    pre_buffer.pop(0)
+
+            if self._muted:
+                # === WAKE-WORD-MODUS ===
+                if not buffering:
+                    if self._oww_model is not None:
+                        audio_array = np.frombuffer(chunk, dtype=np.int16)
+                        predictions = self._oww_model.predict(audio_array)
+                        for model_name, score in predictions.items():
+                            if score > max_score_seen:
+                                max_score_seen = score
+                            if score >= self._wakeword_threshold:
+                                # Wake-Word erkannt → Pre-Buffer + Puffern
+                                if now - self._last_stt_time >= self._rate_limit_s:
+                                    buffering = True
+                                    buffer_start = now - len(pre_buffer) * 0.08
+                                    audio_buffer = list(pre_buffer)
+                                    pre_buffer.clear()
+                                    last_energy_time = now
+                                self._oww_model.reset()
+                                self.get_logger().info(
+                                    f"Wake-Word erkannt: '{model_name}' (Score: {score:.2f})"
+                                )
+                                break
+                else:
+                    # Puffern nach Wake-Word bis Stille eintritt
+                    audio_buffer.append(chunk)
+                    if rms >= vad_trigger_rms:
+                        last_energy_time = now
+                    elapsed = now - buffer_start
+                    silence_dur = now - last_energy_time
+                    if (
+                        silence_dur >= self._cooldown_s and elapsed >= self._min_record_s
+                    ) or elapsed >= self._max_record_s:
+                        self._submit_buffered_audio(audio_buffer, elapsed)
+                        audio_buffer = []
+                        buffering = False
+            else:
+                # === VAD-MODUS (Mikrofon aktiv, Software-Energie-VAD) ===
+                was_active = energy_active
+                energy_active = rms >= vad_trigger_rms
+                if energy_active and not was_active:
+                    energy_active_start = now
+                if energy_active:
+                    last_energy_time = now
+
+                if not buffering:
+                    # Warten auf anhaltende Energie ueber Schwelle
+                    if (
+                        energy_active
+                        and now - energy_active_start >= self._min_vad_s
+                        and now - self._last_stt_time >= self._rate_limit_s
+                    ):
+                        buffering = True
+                        # Pre-Buffer einbeziehen (Wortanfang retten)
+                        buffer_start = now - len(pre_buffer) * 0.08
+                        audio_buffer = list(pre_buffer)
+                        pre_buffer.clear()
+                        self.get_logger().info(
+                            f"VAD: Sprache erkannt (RMS={rms:.0f}), nehme auf..."
+                        )
+                else:
+                    audio_buffer.append(chunk)
+                    elapsed = now - buffer_start
+                    silence_dur = now - last_energy_time
+                    if (
+                        silence_dur >= self._cooldown_s and elapsed >= self._min_record_s
+                    ) or elapsed >= self._max_record_s:
+                        self._submit_buffered_audio(audio_buffer, elapsed)
+                        audio_buffer = []
+                        buffering = False
 
             # Periodische Diagnose (alle 30s)
-            now = time.monotonic()
             if now - last_diag_time >= 30.0:
+                mode = "Wake-Word" if self._muted else "VAD"
                 self.get_logger().info(
-                    f"Wake-Word-Diag: {chunk_count} Chunks, "
+                    f"{mode}-Diag: {chunk_count} Chunks, "
                     f"max_RMS={max_rms_seen:.0f}, "
                     f"max_Score={max_score_seen:.3f} "
-                    f"(Schwelle={self._wakeword_threshold})"
+                    f"(WW-Schwelle={self._wakeword_threshold}, "
+                    f"VAD-Schwelle={vad_trigger_rms:.0f})"
                 )
                 chunk_count = 0
                 max_rms_seen = 0.0
                 max_score_seen = 0.0
                 last_diag_time = now
+
+    # -----------------------------------------------------------------
+    # Audio-Buffer → WAV → Whisper
+    # -----------------------------------------------------------------
+
+    @staticmethod
+    def _build_wav(chunks: list[bytes]) -> bytes:
+        """Erzeugt WAV-Bytes (16 kHz, mono, int16) aus rohen PCM-Chunks."""
+        pcm_data = b"".join(chunks)
+        data_size = len(pcm_data)
+        header = struct.pack(
+            "<4sI4s4sIHHIIHH4sI",
+            b"RIFF",
+            36 + data_size,
+            b"WAVE",
+            b"fmt ",
+            16,  # fmt chunk size
+            1,  # PCM format
+            1,  # mono
+            16000,  # sample rate
+            32000,  # byte rate (16000 * 1 * 2)
+            2,  # block align (1 * 2)
+            16,  # bits per sample
+            b"data",
+            data_size,
+        )
+        return header + pcm_data
+
+    def _submit_buffered_audio(self, chunks: list[bytes], duration: float) -> None:
+        """Erstellt WAV aus gepufferten Chunks und startet Whisper-Verarbeitung."""
+        if not chunks:
+            return
+        wav_bytes = self._build_wav(chunks)
+        rms = self._compute_rms(wav_bytes)
+        if rms < self._energy_threshold_rms:
+            self.get_logger().info(
+                f"Aufnahme verworfen: RMS={rms:.0f} < Schwelle {self._energy_threshold_rms:.0f}"
+            )
+            return
+        self._pending = True
+        self._state = _PROCESSING
+        self.get_logger().info(
+            f"Aufnahme beendet ({duration:.1f} s, RMS={rms:.0f}), transkribiere lokal..."
+        )
+        thread = threading.Thread(target=self._process_audio, args=(wav_bytes,), daemon=True)
+        thread.start()
 
     # -----------------------------------------------------------------
     # State Machine
@@ -522,122 +714,17 @@ class VoiceCommandNode(Node):
     @property
     def _idle_state(self) -> str:
         """Gibt den korrekten Ruhezustand zurueck (WAKE_LISTENING oder IDLE)."""
-        return _WAKE_LISTENING if self._use_wakeword else _IDLE
+        if self._use_wakeword and self._muted:
+            return _WAKE_LISTENING
+        return _IDLE
 
     def _tick(self) -> None:
-        """State-Machine Tick (20 Hz)."""
-        now = time.monotonic()
-
-        # Barge-In-Schutz: Nicht aufnehmen waehrend TTS-Ausgabe
-        if now - self._last_tts_time < self._barge_in_s:
-            return
-
-        if self._state == _WAKE_LISTENING:
-            # Wake-Word-Modus: Nur auf Wake-Word-Flag reagieren
-            if (
-                self._wakeword_detected
-                and not self._muted
-                and now - self._last_stt_time >= self._rate_limit_s
-            ):
-                self._wakeword_detected = False
-                self._start_recording()
-                self._state = _LISTENING
-                self.get_logger().info("WAKE_LISTENING -> LISTENING: Wake-Word erkannt")
-
-        elif self._state == _IDLE:
-            # VAD-Modus (Fallback): Warte auf VAD=True
-            if (
-                self._vad_active
-                and not self._muted
-                and now - self._last_stt_time >= self._rate_limit_s
-                and now - self._vad_continuous_start >= self._min_vad_s
-            ):
-                self._start_recording()
-                self._state = _LISTENING
-                self.get_logger().debug("IDLE -> LISTENING: VAD aktiv")
-
-        elif self._state == _LISTENING:
-            elapsed = now - self._record_start
-
-            # Max-Aufnahmedauer erreicht → direkt zu PROCESSING
-            if elapsed >= self._max_record_s:
-                self._transition_to_processing()
-                return
-
-            # VAD wurde inaktiv → COOLDOWN starten
-            if not self._vad_active:
-                self._state = _COOLDOWN
-                self.get_logger().debug("LISTENING -> COOLDOWN: VAD inaktiv")
-
-        elif self._state == _COOLDOWN:
-            elapsed = now - self._record_start
-
-            # Max-Aufnahmedauer auch im Cooldown beachten
-            if elapsed >= self._max_record_s:
-                self._transition_to_processing()
-                return
-
-            # VAD wieder aktiv → zurueck zu LISTENING
-            if self._vad_active:
-                self._state = _LISTENING
-                self.get_logger().debug("COOLDOWN -> LISTENING: VAD wieder aktiv")
-                return
-
-            # Cooldown abgelaufen → PROCESSING
-            time_since_last_voice = now - self._vad_last_true
-            if time_since_last_voice >= self._cooldown_s:
-                self._transition_to_processing()
-
-        elif self._state == _PROCESSING and not self._pending:
+        """State-Machine Tick (20 Hz): PROCESSING → idle Transition."""
+        if self._state == _PROCESSING and not self._pending:
             self._state = self._idle_state
 
     # -----------------------------------------------------------------
-    # Audio-Aufnahme
-    # -----------------------------------------------------------------
-
-    def _start_recording(self) -> None:
-        """Startet arecord als Subprocess (stdout=PIPE fuer WAV-Daten)."""
-        max_s = str(int(self._max_record_s + 1))
-        self._record_proc = subprocess.Popen(
-            [
-                "arecord",
-                "-D",
-                self._audio_device,
-                "-f",
-                "S16_LE",
-                "-r",
-                "16000",
-                "-c",
-                "1",
-                "-t",
-                "wav",
-                "-d",
-                max_s,
-                "-q",
-                "-",  # stdout
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
-        self._record_start = time.monotonic()
-
-    def _stop_recording(self) -> bytes:
-        """Stoppt arecord und gibt WAV-Bytes zurueck."""
-        if self._record_proc is None:
-            return b""
-        try:
-            self._record_proc.terminate()
-            stdout, _ = self._record_proc.communicate(timeout=3.0)
-            return stdout or b""
-        except (subprocess.TimeoutExpired, Exception):  # noqa: BLE001
-            self._record_proc.kill()
-            self._record_proc.wait(timeout=2.0)
-            return b""
-        finally:
-            self._record_proc = None
-
-    # -----------------------------------------------------------------
-    # Processing (Gemini API im Daemon-Thread)
+    # Whisper-Verarbeitung
     # -----------------------------------------------------------------
 
     @staticmethod
@@ -651,56 +738,38 @@ class VoiceCommandNode(Node):
         sum_sq = sum(s * s for s in samples)
         return math.sqrt(sum_sq / n_samples)
 
-    def _transition_to_processing(self) -> None:
-        """Stoppt Aufnahme und startet Gemini-Verarbeitung."""
-        wav_bytes = self._stop_recording()
-        duration = time.monotonic() - self._record_start
-
-        if duration < self._min_record_s or len(wav_bytes) < 1000:
-            self.get_logger().debug(f"Aufnahme zu kurz ({duration:.1f} s) oder leer — verworfen")
-            self._state = self._idle_state
-            return
-
-        # Energy-Gate: RMS unter Schwellwert → kein API-Call
-        rms = self._compute_rms(wav_bytes)
-        if rms < self._energy_threshold_rms:
-            self.get_logger().info(
-                f"Aufnahme verworfen: RMS={rms:.0f} < Schwelle {self._energy_threshold_rms:.0f}"
-            )
-            self._state = self._idle_state
-            return
-
-        self._pending = True
-        self._state = _PROCESSING
-        self.get_logger().info(
-            f"Aufnahme beendet ({duration:.1f} s, RMS={rms:.0f}), transkribiere lokal..."
-        )
-
-        thread = threading.Thread(target=self._process_audio, args=(wav_bytes,), daemon=True)
-        thread.start()
-
     def _process_audio(self, wav_bytes: bytes) -> None:
-        """Transkribiert WAV lokal via Whisper, erkennt Intent per Regex."""
+        """Transkribiert WAV via Gemini Audio-STT oder Whisper, erkennt Intent."""
         try:
-            # faster-whisper akzeptiert file-like objects (BinaryIO)
-            audio_stream = io.BytesIO(wav_bytes)
-            segments, info = self._whisper.transcribe(
-                audio_stream,
-                language="de",
-                beam_size=3,
-                vad_filter=True,
-            )
-            transcript = " ".join(seg.text.strip() for seg in segments).strip()
-            self._last_stt_time = time.monotonic()
+            transcript = ""
+            command = ""
 
+            # 1. Gemini Audio-STT (Cloud: Audio → Transkript + Intent in einem Call)
+            if self._use_gemini_stt and self._gemini_client:
+                result = self._gemini_audio_stt(wav_bytes)
+                if result:
+                    transcript, command = result
+
+            # 2. Whisper-Fallback (lokal, offline)
             if not transcript:
-                self.get_logger().info("Whisper: Keine Sprache erkannt")
-                return
+                audio_stream = io.BytesIO(wav_bytes)
+                segments, _info = self._whisper.transcribe(
+                    audio_stream,
+                    language="de",
+                    beam_size=3,
+                    vad_filter=True,
+                )
+                transcript = " ".join(seg.text.strip() for seg in segments).strip()
+                self._last_stt_time = time.monotonic()
 
-            # Intent-Erkennung: Regex primaer, Gemini als Fallback
-            command = self._parse_intent(transcript)
-            if not command and self._gemini_client:
-                command = self._gemini_parse_intent(transcript)
+                if not transcript:
+                    self.get_logger().info("STT: Keine Sprache erkannt")
+                    return
+
+                # Intent-Erkennung: Regex primaer, Gemini-Text als Fallback
+                command = self._parse_intent(transcript)
+                if not command and self._gemini_client:
+                    command = self._gemini_parse_intent(transcript)
 
             # Deduplizierung: gleichen Befehl innerhalb dedup_s unterdruecken
             now = time.monotonic()
@@ -742,7 +811,7 @@ class VoiceCommandNode(Node):
                 self.get_logger().info(f"Transkription: '{transcript}'")
 
         except Exception as e:  # noqa: BLE001
-            self.get_logger().error(f"Whisper-Fehler: {e}")
+            self.get_logger().error(f"STT-Fehler: {e}")
         finally:
             self._pending = False
 
@@ -907,20 +976,66 @@ class VoiceCommandNode(Node):
             self.get_logger().warn(f"Gemini-Voice-Fehler: {e}")
             return ""
 
+    def _gemini_audio_stt(self, wav_bytes: bytes) -> tuple[str, str] | None:
+        """Gemini Audio-STT: WAV → Transkript + Intent in einem API-Call.
+
+        Sendet Audio als Inline-Daten an Gemini, erhaelt JSON mit
+        transcript und command. Latenz ~500-1500 ms je nach Audiolaenge.
+        """
+        if not self._gemini_client:
+            return None
+        try:
+            response = self._gemini_client.models.generate_content(
+                model=self._gemini_model,
+                contents=[
+                    genai_types.Part.from_bytes(data=wav_bytes, mime_type="audio/wav"),
+                    VOICE_AUDIO_PROMPT,
+                ],
+                config=genai_types.GenerateContentConfig(
+                    max_output_tokens=200,
+                    temperature=0.0,
+                    response_mime_type="application/json",
+                ),
+            )
+            if not response or not response.text:
+                return None
+
+            text = response.text.strip()
+            # Markdown-Fences entfernen (Gemini antwortet manchmal mit ```json)
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\s*\n?", "", text)
+                text = re.sub(r"\n?```\s*$", "", text)
+
+            data = json.loads(text)
+            transcript = data.get("transcript", "").strip()
+            command = data.get("command", "").strip()
+
+            if transcript:
+                self._last_stt_time = time.monotonic()
+                self.get_logger().info(f"Gemini-STT: '{transcript}' → Befehl: '{command}'")
+                return (transcript, command)
+            return None
+
+        except json.JSONDecodeError as e:
+            self.get_logger().warn(f"Gemini-STT JSON-Fehler: {e}")
+            return None
+        except Exception as e:  # noqa: BLE001
+            self.get_logger().warn(f"Gemini-STT-Fehler: {e}")
+            return None
+
     # -----------------------------------------------------------------
     # Cleanup
     # -----------------------------------------------------------------
 
     def destroy_node(self) -> None:
-        """Bereinigung: Laufende arecord-Prozesse und Wake-Word-Stream beenden."""
-        self._ww_running = False
-        for proc in (self._record_proc, self._ww_stream_proc):
-            if proc is not None:
-                try:
-                    proc.kill()
-                    proc.wait(timeout=2.0)
-                except Exception:  # noqa: BLE001
-                    pass
+        """Bereinigung: Audio-Stream beenden."""
+        self._stream_running = False
+        if self._stream_proc is not None:
+            try:
+                self._stream_proc.kill()
+                self._stream_proc.wait(timeout=2.0)
+            except Exception:  # noqa: BLE001
+                pass
         super().destroy_node()
 
 
