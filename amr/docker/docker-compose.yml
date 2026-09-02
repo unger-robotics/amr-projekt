@@ -46,6 +46,13 @@ services:
       # Hardware-Konfiguration (read-only)
       - ../../hardware:/hardware:ro
 
+      # MCU-Firmware (read-only): baseline_snapshot liest die Firmware-Versionen
+      # aus config_drive.h / config_sensors.h. Schreibzugriff wird erst in
+      # Paket K2 benoetigt, wenn der DBC-Generator can_signals_generated.h
+      # erzeugt; bis dahin bleibt der Firmwarebaum aus dem Container heraus
+      # unveraenderbar.
+      - ../mcu_firmware:/mcu_firmware:ro
+
       # TLS-Zertifikate fuer Dashboard HTTPS/WSS (mkcert)
       - ../../dashboard:/dashboard:ro
 

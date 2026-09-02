@@ -53,6 +53,7 @@ setup(
             "sensor_test = my_bot.sensor_test:main",
             "cliff_latency_test = my_bot.cliff_latency_test:main",
             "dashboard_latency_test = my_bot.dashboard_latency_test:main",
+            "baseline_snapshot = my_bot.baseline_snapshot:main",
         ],
     },
 )

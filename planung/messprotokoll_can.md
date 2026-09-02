@@ -1,5 +1,17 @@
 # Messprotokoll CAN-Bus-Validierung
 
+> **Historischer Messlauf.** Fuer den CAN-Bus existieren mehrere Messlaeufe
+> (07.03.2026 in `hardware/can-bus/CAN-Bus.md`, 31.03.2026 in dieser Datei,
+> 03.04.2026 in `dashboard/can_results.json`). Referenz fuer alle
+> Regressionspruefungen des Ausbaus ist die laengere K0-Baseline vom
+> 02.09.2026 (`planung/baseline_k0_b.json`, 120 s statt 30 s). Dieses
+> Protokoll bleibt als Nachweis der Phase-CAN-Validierung erhalten.
+> Gegenueberstellung: `planung/baseline_k0_referenzwerte.md`, Abschnitt 8.
+>
+> Abweichung zum heutigen Stand: Die unten dokumentierte Unterschreitung der
+> Odometrie-Soll-Rate (16,1 / 16,7 Hz statt 20 Hz) besteht nicht mehr; die
+> K0-Messung ergab 19,08 / 20,00 Hz.
+
 Datum: 31.03.2026
 Pruefer: ---
 Testareal: Innenraum, Roboter stationaer

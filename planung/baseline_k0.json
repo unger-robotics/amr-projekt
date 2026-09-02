@@ -1,0 +1,1079 @@
+{
+  "run_a_ros_reference": {
+    "topics": [
+      {
+        "name": "/audio/play",
+        "type": "std_msgs/msg/String",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 128.0,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/backup/_action/feedback",
+        "type": "nav2_msgs/action/BackUp_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 128.0,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/backup/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 128.0,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/battery",
+        "type": "sensor_msgs/msg/BatteryState",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 256,
+        "observed_s": 127.9,
+        "rate_hz": 2.0
+      },
+      {
+        "name": "/battery_shutdown",
+        "type": "std_msgs/msg/Bool",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/behavior_server/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/behavior_tree_log",
+        "type": "nav2_msgs/msg/BehaviorTreeLog",
+        "publishers": 2,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/bond",
+        "type": "bond/msg/Status",
+        "publishers": 14,
+        "subscribers": 14,
+        "messages": 17823,
+        "observed_s": 127.9,
+        "rate_hz": 139.34
+      },
+      {
+        "name": "/bt_navigator/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/cliff",
+        "type": "std_msgs/msg/Bool",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 2028,
+        "observed_s": 127.9,
+        "rate_hz": 15.86
+      },
+      {
+        "name": "/cmd_vel",
+        "type": "geometry_msgs/msg/Twist",
+        "publishers": 2,
+        "subscribers": 1,
+        "messages": 2558,
+        "observed_s": 127.9,
+        "rate_hz": 20.0
+      },
+      {
+        "name": "/compute_path_through_poses/_action/feedback",
+        "type": "nav2_msgs/action/ComputePathThroughPoses_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/compute_path_through_poses/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/compute_path_to_pose/_action/feedback",
+        "type": "nav2_msgs/action/ComputePathToPose_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/compute_path_to_pose/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/controller_server/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/dashboard_cmd_vel",
+        "type": "geometry_msgs/msg/Twist",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/diagnostics",
+        "type": "diagnostic_msgs/msg/DiagnosticArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 127,
+        "observed_s": 127.9,
+        "rate_hz": 0.99
+      },
+      {
+        "name": "/drive_on_heading/_action/feedback",
+        "type": "nav2_msgs/action/DriveOnHeading_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/drive_on_heading/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/emergency_stop",
+        "type": "std_msgs/msg/Bool",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/follow_path/_action/feedback",
+        "type": "nav2_msgs/action/FollowPath_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/follow_path/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.9,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/follow_waypoints/_action/feedback",
+        "type": "nav2_msgs/action/FollowWaypoints_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/follow_waypoints/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/global_costmap/costmap",
+        "type": "nav_msgs/msg/OccupancyGrid",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/global_costmap/costmap_raw",
+        "type": "nav2_msgs/msg/Costmap",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 81,
+        "observed_s": 127.8,
+        "rate_hz": 0.63
+      },
+      {
+        "name": "/global_costmap/costmap_updates",
+        "type": "map_msgs/msg/OccupancyGridUpdate",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 81,
+        "observed_s": 127.8,
+        "rate_hz": 0.63
+      },
+      {
+        "name": "/global_costmap/footprint",
+        "type": "geometry_msgs/msg/Polygon",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.2,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/global_costmap/global_costmap/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/global_costmap/published_footprint",
+        "type": "geometry_msgs/msg/PolygonStamped",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 127,
+        "observed_s": 127.8,
+        "rate_hz": 0.99
+      },
+      {
+        "name": "/goal_pose",
+        "type": "geometry_msgs/msg/PoseStamped",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/hardware_cmd",
+        "type": "geometry_msgs/msg/Point",
+        "publishers": 0,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/imu",
+        "type": "sensor_msgs/msg/Imu",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 4866,
+        "observed_s": 127.8,
+        "rate_hz": 38.07
+      },
+      {
+        "name": "/local_costmap/clearing_endpoints",
+        "type": "sensor_msgs/msg/PointCloud2",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 633,
+        "observed_s": 127.8,
+        "rate_hz": 4.95
+      },
+      {
+        "name": "/local_costmap/costmap",
+        "type": "nav_msgs/msg/OccupancyGrid",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/local_costmap/costmap_raw",
+        "type": "nav2_msgs/msg/Costmap",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 211,
+        "observed_s": 127.8,
+        "rate_hz": 1.65
+      },
+      {
+        "name": "/local_costmap/costmap_updates",
+        "type": "map_msgs/msg/OccupancyGridUpdate",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 211,
+        "observed_s": 127.8,
+        "rate_hz": 1.65
+      },
+      {
+        "name": "/local_costmap/footprint",
+        "type": "geometry_msgs/msg/Polygon",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.2,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/local_costmap/local_costmap/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/local_costmap/published_footprint",
+        "type": "geometry_msgs/msg/PolygonStamped",
+        "publishers": 1,
+        "subscribers": 1,
+        "messages": 632,
+        "observed_s": 127.8,
+        "rate_hz": 4.95
+      },
+      {
+        "name": "/local_costmap/voxel_grid",
+        "type": "nav2_msgs/msg/VoxelGrid",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 632,
+        "observed_s": 127.8,
+        "rate_hz": 4.95
+      },
+      {
+        "name": "/lookahead_collision_arc",
+        "type": "nav_msgs/msg/Path",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/lookahead_point",
+        "type": "geometry_msgs/msg/PointStamped",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/map",
+        "type": "nav_msgs/msg/OccupancyGrid",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 254,
+        "observed_s": 127.8,
+        "rate_hz": 1.99
+      },
+      {
+        "name": "/map_metadata",
+        "type": "nav_msgs/msg/MapMetaData",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 254,
+        "observed_s": 127.8,
+        "rate_hz": 1.99
+      },
+      {
+        "name": "/nav_cmd_vel",
+        "type": "geometry_msgs/msg/Twist",
+        "publishers": 5,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/navigate_through_poses/_action/feedback",
+        "type": "nav2_msgs/action/NavigateThroughPoses_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/navigate_through_poses/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/navigate_to_pose/_action/feedback",
+        "type": "nav2_msgs/action/NavigateToPose_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/navigate_to_pose/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/odom",
+        "type": "nav_msgs/msg/Odometry",
+        "publishers": 1,
+        "subscribers": 4,
+        "messages": 2536,
+        "observed_s": 127.8,
+        "rate_hz": 19.85
+      },
+      {
+        "name": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent",
+        "publishers": 20,
+        "subscribers": 21,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/plan",
+        "type": "nav_msgs/msg/Path",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/plan_smoothed",
+        "type": "nav_msgs/msg/Path",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/planner_server/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/pose",
+        "type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/range/front",
+        "type": "sensor_msgs/msg/Range",
+        "publishers": 1,
+        "subscribers": 3,
+        "messages": 1157,
+        "observed_s": 127.8,
+        "rate_hz": 9.06
+      },
+      {
+        "name": "/received_global_plan",
+        "type": "nav_msgs/msg/Path",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.8,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/rosout",
+        "type": "rcl_interfaces/msg/Log",
+        "publishers": 25,
+        "subscribers": 0,
+        "messages": 6,
+        "observed_s": 127.8,
+        "rate_hz": 0.05
+      },
+      {
+        "name": "/scan",
+        "type": "sensor_msgs/msg/LaserScan",
+        "publishers": 1,
+        "subscribers": 3,
+        "messages": 959,
+        "observed_s": 127.7,
+        "rate_hz": 7.51
+      },
+      {
+        "name": "/servo_cmd",
+        "type": "geometry_msgs/msg/Point",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/slam_toolbox/feedback",
+        "type": "visualization_msgs/msg/InteractiveMarkerFeedback",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/slam_toolbox/graph_visualization",
+        "type": "visualization_msgs/msg/MarkerArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 254,
+        "observed_s": 127.7,
+        "rate_hz": 1.99
+      },
+      {
+        "name": "/slam_toolbox/scan_visualization",
+        "type": "sensor_msgs/msg/LaserScan",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/slam_toolbox/update",
+        "type": "visualization_msgs/msg/InteractiveMarkerUpdate",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/smooth_path/_action/feedback",
+        "type": "nav2_msgs/action/SmoothPath_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/smooth_path/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/smoother_server/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/speed_limit",
+        "type": "nav2_msgs/msg/SpeedLimit",
+        "publishers": 0,
+        "subscribers": 1,
+        "messages": 0,
+        "observed_s": 127.2,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/spin/_action/feedback",
+        "type": "nav2_msgs/action/Spin_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/spin/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/tf",
+        "type": "tf2_msgs/msg/TFMessage",
+        "publishers": 3,
+        "subscribers": 6,
+        "messages": 5079,
+        "observed_s": 127.7,
+        "rate_hz": 39.77
+      },
+      {
+        "name": "/tf_static",
+        "type": "tf2_msgs/msg/TFMessage",
+        "publishers": 2,
+        "subscribers": 6,
+        "messages": 2,
+        "observed_s": 127.7,
+        "rate_hz": 0.02
+      },
+      {
+        "name": "/velocity_smoother/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/wait/_action/feedback",
+        "type": "nav2_msgs/action/Wait_FeedbackMessage",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/wait/_action/status",
+        "type": "action_msgs/msg/GoalStatusArray",
+        "publishers": 1,
+        "subscribers": 2,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      },
+      {
+        "name": "/waypoint_follower/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent",
+        "publishers": 1,
+        "subscribers": 0,
+        "messages": 0,
+        "observed_s": 127.7,
+        "rate_hz": 0.0
+      }
+    ],
+    "tf_edges": [
+      {
+        "parent": "base_link",
+        "child": "laser"
+      },
+      {
+        "parent": "base_link",
+        "child": "ultrasonic_link"
+      },
+      {
+        "parent": "map",
+        "child": "odom"
+      },
+      {
+        "parent": "odom",
+        "child": "base_link"
+      }
+    ],
+    "mode": "ros",
+    "timestamp": "2026-09-02T18:58:59",
+    "duration_s": 120.0,
+    "git_commit": "dad529a",
+    "git_tag": "baseline-k0",
+    "firmware_versions": {
+      "config_drive.h": "4.0.0",
+      "config_sensors.h": "3.0.0"
+    },
+    "launch_arguments": [
+      {
+        "name": "use_slam",
+        "default": "True"
+      },
+      {
+        "name": "use_nav",
+        "default": "True"
+      },
+      {
+        "name": "use_rviz",
+        "default": "False"
+      },
+      {
+        "name": "drive_serial_port",
+        "default": "/dev/amr_drive"
+      },
+      {
+        "name": "sensor_serial_port",
+        "default": "/dev/amr_sensor"
+      },
+      {
+        "name": "use_sensors",
+        "default": "True"
+      },
+      {
+        "name": "params_file",
+        "default": "default_nav2_params"
+      },
+      {
+        "name": "slam_params_file",
+        "default": "default_slam_params"
+      },
+      {
+        "name": "use_camera",
+        "default": "False"
+      },
+      {
+        "name": "camera_device",
+        "default": "/dev/video10"
+      },
+      {
+        "name": "use_dashboard",
+        "default": "False"
+      },
+      {
+        "name": "use_vision",
+        "default": "False"
+      },
+      {
+        "name": "use_cliff_safety",
+        "default": "True"
+      },
+      {
+        "name": "use_audio",
+        "default": "False"
+      },
+      {
+        "name": "use_can",
+        "default": "False"
+      },
+      {
+        "name": "use_respeaker",
+        "default": "False"
+      },
+      {
+        "name": "use_tts",
+        "default": "False"
+      },
+      {
+        "name": "use_voice",
+        "default": "False"
+      }
+    ],
+    "entry_points": [
+      "aruco_docking",
+      "audio_feedback_node",
+      "baseline_snapshot",
+      "can_bridge_node",
+      "can_validation_test",
+      "cliff_latency_test",
+      "cliff_safety_node",
+      "dashboard_bridge",
+      "dashboard_latency_test",
+      "docking_test",
+      "encoder_test",
+      "gemini_semantic_node",
+      "hailo_inference_node",
+      "hailo_udp_receiver_node",
+      "imu_test",
+      "kinematic_test",
+      "motor_test",
+      "nav_square_test",
+      "nav_test",
+      "odom_to_tf",
+      "pid_tuning",
+      "respeaker_doa_node",
+      "rotation_test",
+      "rplidar_test",
+      "sensor_test",
+      "serial_latency_logger",
+      "slam_validation",
+      "straight_drive_test",
+      "tts_speak_node",
+      "voice_command_node"
+    ],
+    "can": {
+      "interface": "can0",
+      "recorded": false,
+      "available": false,
+      "error_frames": 0,
+      "link_state": {},
+      "statistics": {},
+      "statistics_delta": {},
+      "frames": []
+    }
+  },
+  "run_b_can_baseline": {
+    "topics": [],
+    "tf_edges": [],
+    "mode": "can",
+    "timestamp": "2026-09-02T21:03:08",
+    "duration_s": 120.0,
+    "git_commit": "dad529a",
+    "git_tag": "baseline-k0",
+    "firmware_versions": {
+      "config_drive.h": "4.0.0",
+      "config_sensors.h": "3.0.0"
+    },
+    "launch_arguments": [
+      {
+        "name": "use_slam",
+        "default": "True"
+      },
+      {
+        "name": "use_nav",
+        "default": "True"
+      },
+      {
+        "name": "use_rviz",
+        "default": "False"
+      },
+      {
+        "name": "drive_serial_port",
+        "default": "/dev/amr_drive"
+      },
+      {
+        "name": "sensor_serial_port",
+        "default": "/dev/amr_sensor"
+      },
+      {
+        "name": "use_sensors",
+        "default": "True"
+      },
+      {
+        "name": "params_file",
+        "default": "default_nav2_params"
+      },
+      {
+        "name": "slam_params_file",
+        "default": "default_slam_params"
+      },
+      {
+        "name": "use_camera",
+        "default": "False"
+      },
+      {
+        "name": "camera_device",
+        "default": "/dev/video10"
+      },
+      {
+        "name": "use_dashboard",
+        "default": "False"
+      },
+      {
+        "name": "use_vision",
+        "default": "False"
+      },
+      {
+        "name": "use_cliff_safety",
+        "default": "True"
+      },
+      {
+        "name": "use_audio",
+        "default": "False"
+      },
+      {
+        "name": "use_can",
+        "default": "False"
+      },
+      {
+        "name": "use_respeaker",
+        "default": "False"
+      },
+      {
+        "name": "use_tts",
+        "default": "False"
+      },
+      {
+        "name": "use_voice",
+        "default": "False"
+      }
+    ],
+    "entry_points": [
+      "aruco_docking",
+      "audio_feedback_node",
+      "baseline_snapshot",
+      "can_bridge_node",
+      "can_validation_test",
+      "cliff_latency_test",
+      "cliff_safety_node",
+      "dashboard_bridge",
+      "dashboard_latency_test",
+      "docking_test",
+      "encoder_test",
+      "gemini_semantic_node",
+      "hailo_inference_node",
+      "hailo_udp_receiver_node",
+      "imu_test",
+      "kinematic_test",
+      "motor_test",
+      "nav_square_test",
+      "nav_test",
+      "odom_to_tf",
+      "pid_tuning",
+      "respeaker_doa_node",
+      "rotation_test",
+      "rplidar_test",
+      "sensor_test",
+      "serial_latency_logger",
+      "slam_validation",
+      "straight_drive_test",
+      "tts_speak_node",
+      "voice_command_node"
+    ],
+    "can": {
+      "interface": "can0",
+      "recorded": true,
+      "available": true,
+      "error_frames": 0,
+      "link_state": {
+        "operstate": "up",
+        "can_state": "ERROR-ACTIVE",
+        "bitrate": "1000000",
+        "sample_point": "0.750",
+        "restarts": "0",
+        "bus_errors": "0",
+        "arbitration_lost": "0",
+        "error_warning": "0",
+        "error_passive": "0",
+        "bus_off": "0"
+      },
+      "statistics": {
+        "rx_packets": 1138484,
+        "tx_packets": 0,
+        "rx_errors": 63374,
+        "tx_errors": 0,
+        "rx_dropped": 907769
+      },
+      "statistics_delta": {
+        "rx_packets": 23175,
+        "tx_packets": 0,
+        "rx_errors": 1200,
+        "tx_errors": 0,
+        "rx_dropped": 0
+      },
+      "frames": [
+        {
+          "id": 272,
+          "dlc": 4,
+          "count": 1200,
+          "rate_hz": 10.0
+        },
+        {
+          "id": 288,
+          "dlc": 1,
+          "count": 2401,
+          "rate_hz": 20.01
+        },
+        {
+          "id": 304,
+          "dlc": 8,
+          "count": 6001,
+          "rate_hz": 50.0
+        },
+        {
+          "id": 305,
+          "dlc": 4,
+          "count": 6001,
+          "rate_hz": 50.0
+        },
+        {
+          "id": 320,
+          "dlc": 6,
+          "count": 240,
+          "rate_hz": 2.0
+        },
+        {
+          "id": 496,
+          "dlc": 8,
+          "count": 120,
+          "rate_hz": 1.0
+        },
+        {
+          "id": 512,
+          "dlc": 8,
+          "count": 2290,
+          "rate_hz": 19.08
+        },
+        {
+          "id": 513,
+          "dlc": 8,
+          "count": 2400,
+          "rate_hz": 20.0
+        },
+        {
+          "id": 528,
+          "dlc": 8,
+          "count": 1200,
+          "rate_hz": 10.0
+        },
+        {
+          "id": 544,
+          "dlc": 4,
+          "count": 1200,
+          "rate_hz": 10.0
+        },
+        {
+          "id": 752,
+          "dlc": 2,
+          "count": 120,
+          "rate_hz": 1.0
+        }
+      ]
+    }
+  },
+  "metadata": {
+    "git_commit": "dad529a",
+    "git_tag": "baseline-k0",
+    "merged_at": "2026-09-02T21:03:56",
+    "firmware_versions": {
+      "config_drive.h": "4.0.0",
+      "config_sensors.h": "3.0.0"
+    }
+  }
+}

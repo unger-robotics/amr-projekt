@@ -22,6 +22,40 @@ Kurzarchitektur:
 - Kleine, pruefbare Aenderungen bevorzugen
 - Folgen fuer Architektur, Schnittstellen und Sicherheit explizit beachten
 
+## Freigaberegeln fuer Hardwaretests
+
+Diese Regeln gelten fuer alle Arbeiten am Projekt. Sie verhindern nicht nur
+Software-Regressionen, sondern auch unbeabsichtigte reale Fahrzeugbewegung.
+
+### Ohne Rueckfrage erlaubt (statisch oder passiv)
+
+| Kategorie | Beispiele |
+|---|---|
+| Versionsstand | `git status`, `git diff`, `git log`, `git tag` |
+| Software-Build | `colcon build`, `docker compose build`, `npm run build` |
+| Firmware-Build **ohne** Upload | `pio run -e drive_node`, `pio run -e sensor_node` |
+| Lint und Typpruefung | `ruff check`, `ruff format --check`, `mypy`, `clang-format --dry-run`, `npm run lint`, `npx tsc --noEmit`, `pre-commit run` |
+| Statische Tests | `can_dbc_check` und andere Konsistenzpruefungen ohne Hardwarezugriff |
+| Systempruefung | `./verify.sh`, `pre_flight_check.py` |
+| Passive CAN-Diagnose | `candump can0`, `ip -details -statistics link show can0`, `can_validation_test`, `can_bus_load_test`, `baseline_snapshot` |
+| Passive ROS-2-Diagnose | `ros2 topic list/hz/echo/info`, `ros2 node info`, `tf2_echo` |
+| Dokumentation | `mkdocs build --strict`, `mkdocs serve` |
+
+### Nur nach ausdruecklicher Freigabe
+
+| Kategorie | Beispiele |
+|---|---|
+| Firmware flashen | `pio run -e <env> -t upload`, DTR/RTS-Reset-Skripte |
+| Aktorik-Tests (Raeder drehen) | `motor_test`, `pid_tuning`, `encoder_test` |
+| Fahrversuche | `straight_drive_test`, `rotation_test`, `kinematic_test`, `nav_test`, `nav_square_test`, `docking_test`, `cliff_latency_test` |
+| Aktives CAN-Senden | `cansend`, `can_cmd_latency_test`, `can_failover_test`, jeder TX auf `can0` |
+| Start des Gesamtstacks | `ros2 launch my_bot full_stack.launch.py` (aktiviert LiDAR-Motor und micro-ROS-Agents) |
+| Jede reale Fahrzeugbewegung | auch manuelles Fahren ueber das Dashboard |
+
+Die Freigabe wird je Testlauf eingeholt, nicht pauschal. Vor jedem Aktorik-Test
+wird der Aufbau benannt: aufgebockt mit freien Raedern oder Fahrversuch auf
+definierter Flaeche.
+
 ## Zentrale Begriffe
 
 - Drive-Node (Fahrkern): ESP32-S3 fuer Motorregelung, Encoder, Odometrie, LED
