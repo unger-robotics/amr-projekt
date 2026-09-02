@@ -65,3 +65,31 @@ description: Zentrale Begriffe und Terminologie der AMR-Plattform.
 | TWAI | Two-Wire Automotive Interface (ESP32 CAN) |
 | VAD | Voice Activity Detection |
 | XRCE-DDS | eXtremely Resource Constrained Environments DDS |
+
+## Steuergeraetearchitektur und Funktionskette (Zielbild)
+
+Begriffe des laufenden Ausbaus. Das Zielbild beschreibt
+[Zielarchitektur](../architecture/zielarchitektur.md); der gemessene
+Ausgangszustand steht in `planung/baseline_k0_referenzwerte.md`.
+
+| Begriff | Beschreibung |
+|---------|-------------|
+| **Steuergeraet** | Deutscher Begriff fuer ECU. Drive-ECU und Sensor-ECU bleiben als Eigennamen der beiden ESP32-S3-Knoten zulaessig |
+| **Fahrzeug-CAN-Gateway** | Der eine ROS-2-Knoten auf dem Pi 5, der den gesamten CAN-Zugriff in Sende- und Empfangsrichtung kapselt (SA-12) |
+| **Betriebsbus** | Der Bus, ueber den im Regelbetrieb Fahr- und Sicherheitssignale laufen. Im Zielbild der CAN-Bus |
+| **Referenzpfad** | Der USB-/micro-ROS-Pfad, solange er den Betriebspfad stellt oder als Rueckfallebene dient |
+| **Servicepfad** | Der USB-Pfad nach der Umstellung: Service, Flashen und Fehlersuche, keine Betriebsdaten (SA-16) |
+| **Arbitrierung** | Auswahl der gueltigen Fahrbefehlsquelle im Fahrkern nach fester Prioritaet und Zeitueberwachung (SIA-11) |
+| **Signaldatenbank** | Versionierte Beschreibung aller CAN-Signale; alleinige Quelle fuer Firmware-Konstanten und Pi-seitige Dekodierung (SA-10) |
+| **Signalbedarf** | Fachliche Beschreibung der benoetigten Signale ohne Kennung und Bitbelegung; Eingangsgroesse der Signaldatenbank |
+| **Sensorvorverarbeitung** | Filterung, Plausibilisierung und Zeitsynchronisation der Rohdaten vor der Wahrnehmung (FA-18) |
+| **Umfeldmodell** | Fusionierte Objektliste mit stabiler Verfolgungskennung aus LiDAR, Ultraschall, Kamera und Radar (FA-19) |
+| **Praediktion** | Schaetzung kuenftiger Objekttrajektorien ueber einen definierten Horizont (FA-20) |
+| **Verhaltensentscheidung** | Wahl des Fahrmanoevers als Zustandsautomat. Publiziert keine Fahrbefehle (FA-21, SIA-15) |
+| **Trajektorienplanung** | Erzeugung der kollisionsfreien Solltrajektorie aus der Verhaltensvorgabe (FA-22) |
+| **Fahrzeugbewegungsregelung** | Stufe 1 der Regelung auf dem Pi 5. Ausgang sind Fahrzeug-Sollgroessen v und omega |
+| **Raddrehzahlregelung** | Stufe 2 der Regelung auf dem Fahrkern. PID mit 50 Hz, Rueckfuehrung ueber die Encoder (SIA-17) |
+| **Baseline** | Gemessener Referenzzustand vor dem Ausbau. Beschreibt den Istwert und ist ausdruecklich keine Anforderung |
+| **Regressionstoleranz** | Zulaessige Verschlechterung gegenueber der Baseline, unabhaengig von der Mindestanforderung |
+| **Ausbaupaket** | Eine der Einheiten K0 bis K10, in denen der Ausbau umgesetzt und einzeln nachgewiesen wird |
+| **Freigabe-Gate** | Pruefpunkt zwischen zwei Ausbaupaketen, der ohne bestandenen Nachweis nicht ueberschritten wird |

@@ -140,6 +140,8 @@ nav:
       - Systemübersicht: architecture/system-overview.md
       - Zwei-Ebenen-Architektur: architecture/two-tier.md
       - Kommunikation: architecture/communication.md
+      - Zielarchitektur: architecture/zielarchitektur.md
+      - Signalbedarf: architecture/signalbedarf.md
       - Systemdokumentation: systemdokumentation.md
       - Komponentenübersicht: architecture.md
   - Firmware (ESP32-S3):

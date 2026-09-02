@@ -16,6 +16,11 @@ Detaillierte Beschreibungen der einzelnen Architekturaspekte:
 - [Zwei-Ebenen-Architektur](architecture/two-tier.md) — Sicherheitsarchitektur (6 Ebenen), Dual-Core-Pattern, Watchdog
 - [Kommunikation](architecture/communication.md) — Dual-Path (micro-ROS/UART + CAN-Bus), CAN-Notstopp-Redundanzpfad
 
+Zielbild des laufenden Ausbaus (noch nicht umgesetzt, Stand K1):
+
+- [Zielarchitektur](architecture/zielarchitektur.md) — Kfz-nahe Steuergeraetearchitektur, zweistufige Regelung, Funktionskette automatisiertes Fahren, Funktionszuordnung
+- [Signalbedarf](architecture/signalbedarf.md) — fachlicher Signalbedarf als Eingangsgroesse fuer die CAN-Signaldatenbank
+
 ## Vollstaendiges Systemdiagramm
 
 ```
@@ -161,6 +166,9 @@ Der LiDAR ist 180° gedreht montiert — die TF-Transformation (`yaw=pi`) kompen
 | Vision-Pipeline | [Vision-Pipeline](vision_pipeline.md) |
 | Hardware und Schaltplan | `hardware/docs/hardware-setup.md` |
 | CAN-Bus Spezifikation | `hardware/can-bus/CAN-Bus.md` |
+| Zielarchitektur des Ausbaus | [Zielarchitektur](architecture/zielarchitektur.md) |
+| Signalbedarf fuer die CAN-Signaldatenbank | [Signalbedarf](architecture/signalbedarf.md) |
+| Referenzzustand vor dem Ausbau | `planung/baseline_k0_referenzwerte.md` |
 | Serielle Ports und udev | [Serielle Schnittstellen](serial_port_management.md) |
 | Roboter-Parameter | [Roboter-Parameter](robot_parameters.md) |
 | Build und Deployment | [Build und Deployment](build_and_deploy.md) |

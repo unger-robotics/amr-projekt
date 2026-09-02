@@ -103,12 +103,16 @@ und kein Fahrbefehl gesendet.
 Beobachtete TF-Kanten: `base_link` nach `laser`, `base_link` nach
 `ultrasonic_link`, `map` nach `odom`, `odom` nach `base_link`.
 
-Diese Raten sind die Vergleichsbasis fuer den CAN-Betriebsbus in K3 bis K6.
-Die Abnahme in K6 fordert: `/imu` >= 45 Hz, `/cliff` >= 18 Hz,
-`/range/front` >= 9 Hz, `/odom` >= 15 Hz. Die hier gemessenen Werte
-unterschreiten diese Schwellen teilweise (siehe Abschnitt 10, BA-05);
-massgeblich fuer die Regressionspruefung sind die Ist-Werte dieser Tabelle,
-nicht die urspruenglich geschaetzten Zielwerte.
+**Diese Werte sind Baseline-Istwerte, keine Anforderungen.** Sie beschreiben,
+was das System im Ausgangszustand geleistet hat, und dienen dem spaeteren
+Regressionsvergleich. Sie ersetzen keine Mindestanforderung und begruenden
+fuer sich genommen kein Abnahmekriterium.
+
+Die geltenden Mindestanforderungen stehen in `docs/anforderungsliste-L1.md`
+(NFA-03 Odometrie >= 10 Hz, NFA-04 IMU >= 20 Hz, NFA-02 LiDAR >= 5 Hz). Sie
+werden durch eine Baseline-Messung nicht veraendert. Die Abgrenzung von
+Anforderung, Baseline, spaeterem Messergebnis und Regressionstoleranz fuehrt
+Abschnitt 10 der Anforderungsliste.
 
 ## 7 CAN-Bus, Lauf B (Quelle: baseline_k0_b.json, 120 s)
 
@@ -340,7 +344,7 @@ Regressionsmassstab, solange BA-04 offen ist.
 | `mypy` meldet zwei Typfehler in `can_validation_test.py` (`can.interface.Bus` als Typ, `recv`-Attribut) | `mypy --config-file mypy.ini` | Baseline; Behebung optional in K3 |
 | `messprotokoll_phase4.md` Testfall 4.1 Schritt 1 unausgefuellt (`___`) | messprotokoll_phase4.md Zeilen 23 bis 30 | Baseline, nicht Teil des Ausbaus |
 | `rx_dropped` bei 907.769 absolut, Delta im Messfenster 0 | `/sys/class/net/can0/statistics` | historisch angefallen; im Messfenster kein Zuwachs |
-| Sensorraten unterschreiten die zunaechst geschaetzten K6-Zielwerte (`/imu` 38,07 statt >= 45 Hz, `/cliff` 15,86 statt >= 18 Hz) | Abschnitt 6 | K6-Abnahmekriterien in K1 auf die K0-Ist-Werte umstellen |
+| Im Planungsentwurf genannte K6-Zielwerte (`/imu` >= 45 Hz, `/cliff` >= 18 Hz) waren Schaetzungen ohne Anforderungsstatus und liegen ueber den K0-Istwerten | Abschnitt 6 | In K1 als Schaetzung verworfen. Es gelten weiterhin NFA-02, NFA-03 und NFA-04; die K0-Istwerte bleiben reine Referenz |
 | DoD Phase 6 beschreibt eine 4-Knoten-Sprachschnittstelle, real ist ein konsolidierter Knoten | OP-06 | Angleichung in K1 |
 | `can_validation_test` fuehrt 0x1F0 mit DLC 2, real ist DLC 8; 0x150 fehlt in `EXPECTED` | `can_validation_test.py` Zeilen 76 bis 175 | Korrektur in K2 |
 
