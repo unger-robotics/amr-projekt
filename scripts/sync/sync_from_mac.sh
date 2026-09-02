@@ -3,11 +3,11 @@
 # Nur fuer Restore-Faelle oder wenn auf dem Ziel neue Dateien hinzugefuegt wurden.
 #
 # Verwendung: ./scripts/sync/sync_from_mac.sh [QUELLE]
-#   QUELLE: mac, book (Standard: mac)
+#   QUELLE: mac, book (alias mbp) (Standard: mac)
 #
 # Hosts (aus ~/.ssh/config):
-#   mac  = 192.168.1.210 (iMac)
-#   book = 192.168.1.163 (MacBook)
+#   mac         = 192.168.1.210 (iMac)
+#   book / mbp  = mbp.local (MacBook, Bonjour-Name statt fester IP)
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -17,9 +17,11 @@ SOURCE="${1:-mac}"
 
 case "${SOURCE}" in
     mac|book) ;;
+    # mbp ist derselbe Host wie book; beide Namen stehen in ~/.ssh/config
+    mbp) SOURCE="book" ;;
     *)
         echo "Unbekannte Quelle: ${SOURCE}"
-        echo "Verwendung: $0 [mac|book]"
+        echo "Verwendung: $0 [mac|book|mbp]"
         exit 1
         ;;
 esac
@@ -39,6 +41,7 @@ rsync -avz --progress \
     --exclude='__pycache__/' \
     --exclude='.pio/' \
     --exclude='dashboard/dist/' \
+    --exclude='site/' \
     --exclude='.DS_Store' \
     --include='*/' \
     --include='*.pdf' \

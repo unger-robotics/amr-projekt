@@ -3,11 +3,11 @@
 # Erfasst automatisch alle Binaries im gesamten Projektbaum.
 #
 # Verwendung: ./scripts/sync/sync_to_mac.sh [ZIEL]
-#   ZIEL: mac, book, all (Standard: all)
+#   ZIEL: mac, book (alias mbp), all (Standard: all)
 #
 # Hosts (aus ~/.ssh/config):
-#   mac  = 192.168.1.210 (iMac)
-#   book = 192.168.1.163 (MacBook)
+#   mac         = 192.168.1.210 (iMac)
+#   book / mbp  = mbp.local (MacBook, Bonjour-Name statt fester IP)
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -31,6 +31,7 @@ sync_to_host() {
         --exclude='__pycache__/' \
         --exclude='.pio/' \
         --exclude='dashboard/dist/' \
+        --exclude='site/' \
         --exclude='.DS_Store' \
         --include='*/' \
         --include='*.pdf' \
@@ -61,13 +62,17 @@ case "${TARGET}" in
     mac|book)
         sync_to_host "${TARGET}"
         ;;
+    mbp)
+        # mbp ist derselbe Host wie book; beide Namen stehen in ~/.ssh/config
+        sync_to_host "book"
+        ;;
     all)
         sync_to_host "mac"
         sync_to_host "book"
         ;;
     *)
         echo "Unbekanntes Ziel: ${TARGET}"
-        echo "Verwendung: $0 [mac|book|all]"
+        echo "Verwendung: $0 [mac|book|mbp|all]"
         exit 1
         ;;
 esac
