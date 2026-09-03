@@ -142,6 +142,7 @@ nav:
       - Kommunikation: architecture/communication.md
       - Zielarchitektur: architecture/zielarchitektur.md
       - Signalbedarf: architecture/signalbedarf.md
+      - CAN-Signalkatalog: architecture/can-signalkatalog.md
       - Systemdokumentation: systemdokumentation.md
       - Komponentenübersicht: architecture.md
   - Firmware (ESP32-S3):

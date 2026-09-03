@@ -3,10 +3,10 @@
 | Feld | Inhalt |
 | --- | --- |
 | Dokumenttyp | Arbeitsplan zu Phasenplan v2.1 (Pakete K0, K1, K2; Spike S-A Teil A) |
-| Version | 1.1 (Entwurf; 1.0 vom 2026-09-03 bei Uebernahme ins Repository um Anhang A ergaenzt, Tabelle 3.2 nach Firmware korrigiert) |
+| Version | 1.2 (Entwurf; 1.1 um die Ergebnisse von S-A vorher ergaenzt: Tick-Regel und Zykluszeit 0x200/0x201 = 40 ms, T-09 Schritte 9 und 10, Umsetzungsstand K2 in Anhang A.8) |
 | Datum | 2026-09-03 |
 | Autor | Jan (Entwurf erstellt mit KI-Assistent, Freigabe offen) |
-| Bezug | docs/plan/phasenplan-v2.md (v2.1; noch nicht im Repository, folgt), Anforderungsliste L1 v1.1 (docs/anforderungsliste-L1.md), docs/firmware/sensors-actuators.md, docs/architecture/signalbedarf.md (K1), amr/mcu_firmware/*/include/twai_can.hpp (Bestandslayout) |
+| Bezug | docs/plan/phasenplan-v2.md (v2.1), Anforderungsliste L1 v1.1 (docs/anforderungsliste-L1.md), docs/firmware/sensors-actuators.md, docs/architecture/signalbedarf.md (K1), amr/mcu_firmware/*/include/twai_can.hpp (Bestandslayout) |
 | Zweck | Was liegt vor (K0, K1), was ist vor K2 zu pruefen, was liefert K2 in welcher Reihenfolge, wie wird S-A vorher gemessen und ausgewertet |
 
 Reihenfolge der Arbeit: **S-A vorher zuerst** (10 min je Lastprofil, Bestand unveraendert), dann K2. Grund: S-A misst das System, wie es heute ist; jede K2-Aenderung an Firmware oder Verdrahtung wuerde die Vorher-Messung entwerten. K2 aendert weder Firmware noch Verdrahtung, kann also parallel beginnen — aber der Messlauf laeuft vor dem ersten Commit.
@@ -59,12 +59,14 @@ Ausgang der Eingangspruefung: eine kurze Liste "aus K1 uebernommen" / "in K2 vor
 | K2.1 | DBC-Geruest: Nodes PI_VCU, DRIVE_ECU, SENSOR_ECU, RADAR_ECU; Attribute GenMsgCycleTime, GenMsgStartDelayTime, GenMsgSendType definieren | amr_vehicle.dbc laedt mit cantools (strict=True) | T-09 Schritt 1 |
 | K2.2 | 13 Bestandsnachrichten exakt nach Firmware (Abschnitt 3.2); Byte-Order Intel (LE); float32 als SIG_VALTYPE_ | Roundtrip je Nachricht | T-09 Schritt 2–3 |
 | K2.3 | Kommandoframes VCU_DRIVE_COMMAND, VCU_SENSOR_COMMAND (Abschnitt 3.3) mit alive_counter und crc8; Semantik als Kommentar (Einheit, Timeout, Degraded) | Vertrag fuer MZ2 | T-09 Schritt 2–3, Review |
+| K2.3a | Restlicher Signalbedarf aus K1 (Vorrang vor Abschnitt 3.3): Notstopp P-05, Gateway-Lebenszeichen P-06, Pfadstatus D-05, zyklische Wiederholung der Batterieabschaltung S-02, Stellgroessenbegrenzung P-04 | jede Zeile des Signalbedarfs abgedeckt (SA-10) | T-09 Schritt 10 |
 | K2.4 | Zykluszeit und Sendeoffset je zyklischer Nachricht (Abschnitt 3.4) — **nur Spezifikation**, Firmware setzt sie erst in K3/K4 um | Sendeplan in der DBC | T-09 Schritt 4 |
 | K2.5 | Radar-Reservierung 0x300–0x3F0 als Platzhalter (Abschnitt 3.5) | Bereich belegt, keine Ueberlappung | T-09 Schritt 2 |
 | K2.6 | cantools-Integration: Python-Zugriff (Pi), C-Codegenerierung (ESP32) in mcu_firmware/common/can/ — generierte Dateien nicht handeditieren | Header/Sourcen aus DBC | T-09 Schritt 5 |
 | K2.7 | T-09 can_dbc_check als pytest (Abschnitt 3.6) | gruener Lauf in CI/lokal | — |
 | K2.8 | P-CAN2 vorbereitet: Protokollvorlage + Skripte (Abschnitt 4) liegen unter validation/ | Vorlage, s_a_vorher.sh, s_a_analyse.py | Probelauf 60 s |
-| K2.9 | Doku: docs/architecture/can-signalkatalog.md aus der DBC generiert (cantools dump) | Seite in mkdocs | Review |
+| K2.9 | Doku: docs/architecture/can-signalkatalog.md aus der DBC generiert | Seite in mkdocs | Review |
+| K2.10 | Doku-Abweichungen des Ist-Zustands bereinigen (signalbedarf.md 7.6): Servosollwert 0x150, Kennzeichnung der vom Fahrkern empfangenen Sicherheitssignale, DLC von 0x1F0 | hardware/can-bus/CAN-Bus.md korrigiert | Review |
 
 Nicht in K2: Firmwarelogik aendern, Fahrbefehle ueber CAN aktivieren, USB abschalten, Fahrbewegung, Hardwarezustaende annehmen, Controllertausch.
 
@@ -82,19 +84,23 @@ Byte-Order: Intel (Little Endian); alle Mehrbyte-Werte werden in der Firmware pe
 | 0x141 | SENSOR_BATTERY_SHUTDOWN | SENSOR_ECU | Event | 1 | shutdown uint8 (0 OK, 1 Shutdown) |
 | 0x150 | VCU_SERVO_COMMAND_LEGACY *(Name Vorschlag)* | **PI_VCU → SENSOR_ECU** | Event, max. 10 Hz | 4 | pan int16 0,1 Grad; tilt int16 0,1 Grad. Kein Statusframe: Empfangs-ID `id_servo_cmd_rx` der Sensor-Firmware (K1.7 geklaert, Anhang A.3). Verhaeltnis zu 0x410 in K2 entscheiden |
 | 0x1F0 | SENSOR_HEARTBEAT | SENSOR_ECU | 1 Hz | 8 | [0] flags: bit0 imu_ok, bit1 ina260_ok, bit2 pca9685_ok, bit3 bat_shutdown, bit4 core1_ok; [1] uptime_s mod 256; [2-3] i2c_err uint16; [4-5] servo_err uint16; [6-7] servo_ok uint16 (Zaehler saturiert bei 65535) |
-| 0x200 | DRIVE_ODOM_XY | DRIVE_ECU | 20 Hz | 8 | x, y float32 m |
-| 0x201 | DRIVE_ODOM_HEADING_SPEED | DRIVE_ECU | 20 Hz | 8 | yaw float32 rad; v_linear float32 m/s |
-| 0x210 | DRIVE_WHEEL_SPEED | DRIVE_ECU | 10 Hz | 8 | wheel_l, wheel_r float32 rad/s |
-| 0x220 | DRIVE_MOTOR_PWM | DRIVE_ECU | 10 Hz | 4 | pwm_l, pwm_r int16 |
+| 0x200 | DRIVE_ODOM_XY | DRIVE_ECU | 20 Hz nominell; Ist 40/60-ms-Wechsel (tick-quantisiert) -> DBC 40 ms | 8 | x, y float32 m |
+| 0x201 | DRIVE_ODOM_HEADING_SPEED | DRIVE_ECU | 20 Hz nominell; Ist wie 0x200 -> DBC 40 ms | 8 | yaw float32 rad; v_linear float32 m/s |
+| 0x210 | DRIVE_WHEEL_SPEED | DRIVE_ECU | 10 Hz; DBC 80 ms (12,5 Hz) | 8 | wheel_l, wheel_r float32 rad/s |
+| 0x220 | DRIVE_MOTOR_PWM | DRIVE_ECU | 10 Hz; DBC 80 ms (12,5 Hz) | 4 | pwm_l, pwm_r int16 |
 | 0x2F0 | DRIVE_HEARTBEAT | DRIVE_ECU | 1 Hz | 2 | [0] flags: bit0 encoder_ok, bit1 motor_ok, bit2 pid_active, bit3 bat_shutdown, bit4 core1_ok, bit5 failsafe (bit0/1/4 heute fest 1, D-06); [1] uptime_s mod 256 |
 
-Rechnerische Buslast des Bestands (ohne Stuffing, 11-Bit-ID): ca. 18 kbit/s = 1,8 % bei 1 Mbit/s; 194 Frames/s. Mit beiden Kommandoframes (50 Hz, 10 Hz) ca. 2,5 %. T-09 rechnet das aus der DBC nach.
+Zykluszeit-Regel (aus S-A vorher): Zykluszeiten in der DBC sind ganzzahlige Vielfache des Sender-Ticks. Der Fahrkern arbeitet mit 20 ms; 50 ms (2,5 Ticks) fuehren zum gemessenen 40/60-ms-Wechsel (Median 59,5 ms bei 12 000 erwarteten Frames in 600 s). 0x200/0x201 werden daher mit 40 ms (25 Hz) spezifiziert -- das erfuellt NFA-03 (Soll 20 Hz) mit Reserve. Die Sensorbasis arbeitet mit 10 ms; ihre Zykluszeiten sind bereits Vielfache davon. Umsetzung in der Firmware in K3 (Sensorbasis) und K4 (Fahrkern); bis dahin dokumentiert die DBC den Sollwert, T-09 Schritt 9 prueft die Regel.
+
+Rechnerische Buslast des Bestands (ohne Stuffing, 11-Bit-ID): ca. 18 kbit/s = 1,8 % bei 1 Mbit/s; 194 Frames/s (gemessen: 1,75 %, 188,6 Frames/s). Mit beiden Kommandoframes (50 Hz, 10 Hz) ca. 2,5 %. T-09 rechnet das aus der DBC nach.
 
 Hinweis Codegenerierung: Der cantools-C-Generator unterstuetzt float32-Signale (SIG_VALTYPE_): Probelauf mit cantools 43.0.2 am 2026-09-03 erzeugt `float`-Strukturfelder, packt per `memcpy` in uint32 und Little-Endian-Bytes, Encode/Decode als Cast; Python-Roundtrip exakt (Anhang A.4). Das Umpacken auf skalierte Integer bleibt Kuer.
 
 ### 3.3 Kommandoframes (Vorschlag, falls K1 nichts vorgibt)
 
 ID-Regel: numerisch ueber 0x120 und 0x141, damit Cliff und Shutdown die Arbitrierung gewinnen. Bestehende Pi-Kommando-ID im Sensorbereich: 0x150 (Servo, Abschnitt 3.2); sie bleibt unveraendert, bis K2 ihr Verhaeltnis zu 0x410 festlegt. Vorschlag: eigener PI_VCU-Bereich 0x400–0x4F0 (niedrigste Prioritaet auf dem Bus — bei 2 % Buslast ohne praktische Auswirkung, Kfz-Lehre: Notstopp vor Kommando).
+
+Entscheidung in K2 (Abweichung vom Vorschlag): signalbedarf.md 7.4 fordert fuer sicherheitsrelevante Signale eine hoehere Buspriorisierung als fuer Diagnosesignale. Der Notstopp (P-05) und das Gateway-Lebenszeichen (P-06) erhalten deshalb 0x160 und 0x170 — numerisch ueber 0x141, damit Kantenerkennung und Batterieabschaltung weiterhin gewinnen, aber vor der gesamten 0x2xx-Diagnosereihe. Fahrbefehl und Servokommando bleiben im Bereich 0x400. Der Pfadstatus (D-05) ist ein Frame der Drive-ECU und liegt bei 0x230. Alle drei Nachrichten sind unten spezifiziert.
 
 VCU_DRIVE_COMMAND, 0x400, PI_VCU → DRIVE_ECU, 50 Hz (Tick des Fahrkerns), DLC 8:
 
@@ -121,7 +127,29 @@ VCU_SENSOR_COMMAND, 0x410, PI_VCU → SENSOR_ECU, 10 Hz (heute /servo_cmd-Rate),
 
 Semantik (als Kommentar in die DBC): Timeout t_timeout (D-05) ohne gueltiges Kommando → Degraded Mode (v = 0, omega = 0, Stopp-Rampe); SIA-04 (500 ms) bleibt uebergeordnet. Im Shadow Mode (K4) werden E2E-Fehler nur gezaehlt.
 
-Offen (D-07): LED-PWM und Motor-Limit aus /hardware_cmd — in VCU_DRIVE_COMMAND reserved-Bits oder eigener Frame 0x420.
+Motor-Limit (P-04) liegt in VCU_DRIVE_COMMAND als `motor_limit_percent` (7 Bit, 0-100 %). Offen (D-07): LED-PWM aus /hardware_cmd — in K1 nicht als Signalbedarf gelistet; entweder reservierte Bits in VCU_DRIVE_COMMAND oder ein eigener Frame 0x420. In K2 nicht vergeben.
+
+Weitere Nachrichten aus dem Signalbedarf (K1 hat Vorrang vor diesem Abschnitt):
+
+VCU_EMERGENCY_STOP, 0x160, PI_VCU → DRIVE_ECU und SENSOR_ECU, 10 Hz, DLC 4 (P-05):
+
+| Signal | Bits | Typ | Bemerkung |
+| --- | --- | --- | --- |
+| estop_request | 0 | bool | 0 = kein Notstopp, 1 = Notstopp |
+| estop_source | 1–4 | uint4 | 0 NONE, 1 DASHBOARD, 2 VOICE, 3 SAFETY_NODE, 4 NAVIGATION, 5 WATCHDOG |
+| estop_counter | 8–15 | uint8 | fortlaufend; macht ein verlorenes Ereignis erkennbar |
+| alive_counter | 16–19 | uint4 | E2E |
+| crc8 | 24–31 | uint8 | ueber Byte 0–2 + Data-ID 0x60 |
+
+VCU_HEARTBEAT, 0x170, PI_VCU → DRIVE_ECU und SENSOR_ECU, 10 Hz, DLC 8 (P-06): hb_counter uint8, vcu_state uint4 (Enum wie operating_mode), uptime_s uint32, alive_counter uint4, crc8 (Data-ID 0x70).
+
+DRIVE_PATH_STATUS, 0x230, DRIVE_ECU → PI_VCU, 5 Hz, DLC 8 (D-05): active_source uint4 (0 NONE, 1 SERIAL_REFERENCE, 2 CAN), operating_mode uint4, age_serial_ms uint16, age_can_ms uint16, Statusbits (cliff_armed, cliff_timeout, estop_latched, vcu_hb_timeout), alive_counter uint4, crc8 (Data-ID 0x30).
+
+S-02 (zyklische Wiederholung der Batterieabschaltung) benoetigt keine neue Kennung: 0x141 erhaelt in der DBC GenMsgSendType `cyclicAndEvent` mit 1000 ms. Die Firmware sendet heute nur ereignisgesteuert; die Umsetzung erfolgt in K3.
+
+Betriebsmodus-Enum (K1, Anforderungsliste Abschnitt 13.1; Zahlenwerte in K2 vergeben): 0 SERIAL_REFERENCE, 1 CAN_SHADOW, 2 CAN_PRIMARY, 3 SERVICE, 4 FAILSAFE. Zeitueberwachung im Modus CAN_PRIMARY: 300 ms (D-05 des Phasenplans damit entschieden).
+
+Verhaeltnis 0x150 zu 0x410: 0x410 ersetzt 0x150 **nicht** in K2. 0x150 bleibt unveraendert in Betrieb, damit aeltere Firmware betriebsfaehig bleibt (signalbedarf.md 7.3); die Umstellung auf 0x410 erfolgt in K5.
 
 ### 3.4 Zykluszeiten und Sendeoffsets (Spezifikation; Umsetzung Sensor-ECU in K3, Drive-ECU in K4)
 
@@ -135,15 +163,21 @@ Ziel: Je Sender maximal 2 Frames back-to-back je Tick. Offsets gelten innerhalb 
 | SENSOR_ECU | 0x110 | 100 ms | 15 ms |
 | SENSOR_ECU | 0x140 | 500 ms | 25 ms |
 | SENSOR_ECU | 0x1F0 | 1000 ms | 35 ms |
-| DRIVE_ECU | 0x200 | 50 ms | 0 ms |
-| DRIVE_ECU | 0x201 | 50 ms | 10 ms |
-| DRIVE_ECU | 0x210 | 100 ms | 20 ms |
-| DRIVE_ECU | 0x220 | 100 ms | 30 ms |
-| DRIVE_ECU | 0x2F0 | 1000 ms | 40 ms |
+| SENSOR_ECU | 0x141 | 1000 ms (Wiederholung zusaetzlich zum Ereignis, S-02) | 45 ms |
+| DRIVE_ECU | 0x200 | 40 ms (2 Ticks) | 0 ms |
+| DRIVE_ECU | 0x201 | 40 ms (2 Ticks) | 0 ms -- gleicher Tick wie 0x200, damit x/y und yaw/v zusammengehoeren; 2 Frames back-to-back sind erlaubt |
+| DRIVE_ECU | 0x210 | 80 ms (4 Ticks) *(Vorschlag; 12,5 Hz statt 10 Hz)* | 20 ms -- ungerader Tick, trifft nie auf das Odom-Paar |
+| DRIVE_ECU | 0x220 | 80 ms (4 Ticks) *(Vorschlag)* | 60 ms -- ungerader Tick |
+| DRIVE_ECU | 0x230 | 200 ms (10 Ticks) | 40 ms |
+| DRIVE_ECU | 0x2F0 | 1000 ms (50 Ticks) | 60 ms -- ungerader Tick |
+| PI_VCU | 0x160 | 100 ms | 0 ms |
+| PI_VCU | 0x170 | 100 ms | 5 ms |
 | PI_VCU | 0x400 | 20 ms | 0 ms |
 | PI_VCU | 0x410 | 100 ms | 5 ms |
 
-Wichtig fuer S-A: Die Vorher-Messung sieht das heutige Sendeverhalten (0x130/0x131 und 0x200/0x201 back-to-back). Die Offsets wirken erst nach K3/K4 und sind Teil der Nachher-Bewertung.
+Alternative zu 80 ms fuer 0x210/0x220: 100 ms beibehalten und den dann jeden zweiten Zyklus entstehenden 4-Frame-Burst dem MCP2518FD ueberlassen; die Regel "max. 2 Frames je Tick" waere dann eine Soll-, keine Muss-Regel. In K2 wurde die 80-ms-Variante gewaehlt, weil sie den in S-A vorher gemessenen Burst ohne zusaetzliche Hardware entschaerft.
+
+Wichtig fuer S-A: Die Vorher-Messung (Teil A, erledigt) zeigt das heutige Sendeverhalten (0x130/0x131 und 0x200/0x201 back-to-back, Odom im 40/60-ms-Wechsel). Die Offsets und die 40-ms-Zykluszeit wirken erst nach K3/K4 und sind Teil der Nachher-Bewertung.
 
 ### 3.5 Radar-Reservierung (Platzhalter, RADAR_ECU, Layout in S-B zu bestaetigen)
 
@@ -168,7 +202,9 @@ Testtyp: Komponententest ohne Hardware (pytest, laeuft in CI). Abdeckungsziel: j
 | 5 | Codegenerierung: generierte C-Header aus DBC neu erzeugen und mit eingecheckten vergleichen | diff leer |
 | 6 | Buslast: Summe(Rate x Bits) / 1e6 ausgeben; Bits je Frame = 47 + 8 x DLC (ohne Stuffing) | < 30 % (NFA-14); Wert im Testprotokoll |
 | 7 | E2E: crc8-Berechnung gegen drei bekannte Vektoren (Referenzimplementierung in Python) | Gleichheit |
-| 8 | ID-Regel: alle PI_VCU-IDs numerisch > 0x141 | wahr |
+| 8 | ID-Regel: alle PI_VCU-IDs numerisch > 0x141; zusaetzlich Sicherheit vor Diagnose (0x160/0x170 vor der 0x2xx-Reihe) | wahr |
+| 9 | Tick-Regel: GenMsgCycleTime jeder DRIVE_ECU-Nachricht ist ganzzahliges Vielfaches von 20 ms und jeder SENSOR_ECU-Nachricht von 10 ms; 0x200/0x201 == 40 ms | wahr |
+| 10 | Abdeckung: jede Zeile des Signalbedarfs (P-01 bis P-07, D-01 bis D-06, S-01 bis S-07) ist genau einer Nachricht und einem Signal zugeordnet; keine Nachricht ausser den Radar-Platzhaltern ohne Zeile im Signalbedarf (SA-10) | vollstaendig |
 
 Beispiel-Testfall (Schritt 3):
 
@@ -203,6 +239,9 @@ Wichtig:
 - bestehende CAN-IDs und Layouts nicht aendern; Layouts aus config_*.h
   lesen, nicht aus der Doku raten (0x150 und 0x1F0 pruefen)
 - Kommando-IDs numerisch ueber 0x141
+- Zykluszeiten als ganzzahlige Vielfache des Sender-Ticks (DRIVE_ECU 20 ms,
+  SENSOR_ECU 10 ms): 0x200/0x201 = 40 ms, nicht 50 ms (Begruendung: S-A vorher,
+  Arbeitsplan 3.2/3.4); Sendeoffsets nur spezifizieren, nicht in Firmware umsetzen
 - keine Firmwarelogik aendern, keine Fahrbefehle ueber CAN, USB unveraendert,
   keine Fahrbewegung, keine Hardwarezustaende annehmen, kein Controllertausch
 - generierte Dateien nicht handeditieren; Generator-Aufruf in Makefile/Skript
@@ -213,7 +252,7 @@ Wichtig:
 Zeige vor dem Commit:
 1. finale DBC-Nachrichten und Signale (cantools dump),
 2. Aenderungen gegenueber dem bisherigen CAN-Layout (erwartet: keine),
-3. Ergebnisse von T-09 inkl. Buslast,
+3. Ergebnisse von T-09 inkl. Buslast und Tick-Regel,
 4. Liste "K1 uebernommen / K2 vorgeschlagen",
 5. Diff-Zusammenfassung,
 6. geplanten K2-Commit.
@@ -412,6 +451,42 @@ Probelauf in einer temporaeren Umgebung (kein Repo-Eingriff): cantools 43.0.2, M
 | A1 (ohne Objekterkennung) | 6674 | 0 | 21,51 % | 0x220 6,33 %, 0x131 0,77 %, 0x210 0,48 %, sonst 0 | 1,2-3,2 |
 | A2 (mit Hailo, Gemini, Overlay) | 6001 | 0 | 27,35 % | alle 0 | 2,1-3,2 |
 
-**Fall 1 bestaetigt** (4.5): Ueberlauf-Error-Frames folgen unmittelbar auf 0x220 bzw. 0x201, Verlust trifft 0x200 als 3. Frame des Fahrkern-Bursts; Terminierung 60 Ohm, keine Busfehler. Fall 5 nicht erfuellt (Gesamtverlust A1 3221, A2 3282 Frames). **Entscheidung D-01: Tausch auf MCP2518FD in K3, kein Schieben; Umpacken bleibt Kuer.** Die Sendeoffsets aus 3.4 gehoeren unabhaengig davon in K4. Offen: Verlust liegt weit ueber K0 (4,58 %), Ursache der Differenz nicht geklaert; Eintrag in Phasenplan 8.1 folgt mit dem Phasenplan.
+**Fall 1 bestaetigt** (4.5): Ueberlauf-Error-Frames folgen unmittelbar auf 0x220 bzw. 0x201, Verlust trifft 0x200 als 3. Frame des Fahrkern-Bursts; Terminierung 60 Ohm, keine Busfehler. Fall 5 nicht erfuellt (Gesamtverlust A1 3221, A2 3282 Frames). **Entscheidung D-01: Tausch auf MCP2518FD in K3, kein Schieben; Umpacken bleibt Kuer.** Die Sendeoffsets aus 3.4 gehoeren unabhaengig davon in K4. Offen: Verlust liegt weit ueber K0 (4,58 %), Ursache der Differenz nicht geklaert. Der Eintrag in Phasenplan 8.1 (D-01) liegt mit Phasenplan v2.2 vor (docs/plan/phasenplan-v2.md).
 
-Ausgangsbedingung G0 (3.8): P-CAN2 Teil A abgelegt, Entscheidung getroffen; T-09 und Tag k2-dbc-v1 stehen mit K2 aus.
+Ausgangsbedingung G0 (3.8): P-CAN2 Teil A abgelegt, Entscheidung getroffen, T-09 gruen (Anhang A.8); offen ist allein der Tag k2-dbc-v1.
+
+### A.8 Umsetzungsstand K2 (2026-09-03)
+
+Alle Artefakte sind erstellt; Firmware, CAN-Bruecke, Launch-Dateien, Docker-Image
+und Verdrahtung sind unveraendert. Kein Flash, kein CAN-TX, keine Fahrbewegung.
+
+| Artefakt | Pfad | Bemerkung |
+| --- | --- | --- |
+| Signaldatenbank | `hardware/can-bus/amr_vehicle.dbc` | 28 Nachrichten: 13 Bestand, 5 neu, 10 Radar-Platzhalter; vier Knoten |
+| Generierter C-Code | `amr/mcu_firmware/common/can/amr_vehicle.{h,c}` | aus der DBC erzeugt, nicht handeditiert; Firmware nutzt ihn erst ab K3/K4 |
+| Generator | `scripts/can_generate.sh`, `scripts/can_signalkatalog.py`, `scripts/can_model.py` | `--check` vergleicht Generat gegen eingecheckten Stand |
+| E2E-Referenz | `amr/scripts/can_e2e.py` | CRC-8 SAE J1850 und Alive-Counter |
+| T-09 | `tests/test_can_dbc_check.py`, `tests/conftest.py` | 65 Testfaelle, zehn Schritte |
+| Signalkatalog | `docs/architecture/can-signalkatalog.md` | erzeugt, in mkdocs eingehaengt |
+| Werkzeuge | `requirements-dev.txt` | cantools 43.0.2, pytest; Host-venv, Docker-Image unveraendert |
+
+Ergebnisse: Buslast rechnerisch 3,94 % bei 1 Mbit/s (NFA-14 Grenze 30 %);
+Tick-Regel erfuellt (0x200/0x201 = 40 ms); alle Bestandslayouts unveraendert
+gegenueber Anhang A.3; jede Zeile des Signalbedarfs ist genau einer Nachricht
+zugeordnet (SA-10).
+
+Abweichungen vom Entwurf dieses Arbeitsplans, jeweils mit K1 begruendet:
+
+| Punkt | Entwurf | Umsetzung | Grund |
+| --- | --- | --- | --- |
+| Umfang | zwei Kommandoframes | zusaetzlich 0x160, 0x170, 0x230 und 0x141 zyklisch | K1 hat Vorrang; SA-10 fordert vollstaendige Abdeckung des Signalbedarfs |
+| Kennungen Notstopp und Lebenszeichen | Bereich 0x400–0x4F0 | 0x160 und 0x170 | signalbedarf.md 7.4: Sicherheit vor Diagnose |
+| Betriebsmodus-Enum | OFF/SERVICE/MANUAL/AUTONOMOUS/DEGRADED | K1-Modi mit Werten 0 bis 4 | Anforderungsliste Abschnitt 13.1 |
+| t_timeout (D-05 des Phasenplans) | 60 ms oder 500 ms | 300 ms | Anforderungsliste Abschnitt 13.3 |
+| T-09 | acht Schritte | zehn Schritte (Tick-Regel, K1-Abdeckung) | Ergebnis S-A vorher und SA-10 |
+| Motor-Limit | offen (D-07) | `motor_limit_percent` in 0x400 | K1 P-04 |
+| LED-PWM | offen (D-07) | weiterhin offen, keine Kennung vergeben | in K1 nicht als Signalbedarf gelistet |
+
+Offen zu G0: allein der Tag `k2-dbc-v1` (nach Freigabe). T-09 ist gruen, P-CAN2
+Teil A liegt unter `validation/P-CAN2/`, und die D-01-Entscheidung steht in
+Phasenplan v2.2 Abschnitt 8.1.

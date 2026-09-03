@@ -1,0 +1,16 @@
+# Entwicklungs- und Pruefwerkzeuge auf dem Host (Python 3.13, .venv)
+#
+# Installation:
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements-dev.txt
+#
+# Verwendung:
+#   .venv/bin/python -m pytest tests/       # T-09 can_dbc_check (Ausbaupaket K2)
+#   ./scripts/can_generate.sh               # C-Code und Signalkatalog aus der DBC
+#
+# Diese Datei betrifft nur den Host. Die ROS-2-Laufzeit im Container hat eigene
+# Abhaengigkeiten (amr/docker/Dockerfile). cantools wird dort erst mit
+# Ausbaupaket K3 benoetigt, wenn can_bridge_node die Signaldatenbank nutzt.
+
+cantools==43.0.2
+pytest==9.1.1

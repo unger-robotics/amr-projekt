@@ -1,0 +1,43 @@
+# T-09 can_dbc_check: prueft die CAN-Signaldatenbank ohne Hardware.
+# Testplan: docs/plan/arbeitsplan-k0-k2-s-a.md, Abschnitt 3.6.
+name: CAN-DBC pruefen
+
+on:
+  push:
+    paths:
+      - "hardware/can-bus/**"
+      - "amr/mcu_firmware/common/can/**"
+      - "amr/scripts/can_e2e.py"
+      - "scripts/can_*.py"
+      - "scripts/can_generate.sh"
+      - "tests/**"
+      - "requirements-dev.txt"
+      - ".github/workflows/can-dbc-check.yml"
+  pull_request:
+    paths:
+      - "hardware/can-bus/**"
+      - "amr/mcu_firmware/common/can/**"
+      - "amr/scripts/can_e2e.py"
+      - "scripts/can_*.py"
+      - "scripts/can_generate.sh"
+      - "tests/**"
+      - "requirements-dev.txt"
+  workflow_dispatch:
+
+jobs:
+  can-dbc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Werkzeuge installieren
+        run: pip install -r requirements-dev.txt
+
+      - name: T-09 ausfuehren
+        env:
+          PYTHON: python
+        run: python -m pytest tests/ -v

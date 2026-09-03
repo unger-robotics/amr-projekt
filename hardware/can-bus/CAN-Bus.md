@@ -167,27 +167,54 @@ void can_init(void)
 
 ### Nachrichtenmodell
 
-**Sensor-Node (0x110-0x1F0):**
+> **Quelle:** Seit Ausbaupaket K2 ist `hardware/can-bus/amr_vehicle.dbc` die
+> alleinige Quelle fuer Kennungen, Nutzdatenlaengen, Bitlagen, Skalierungen und
+> Zykluszeiten (SA-10). Die Tabellen hier beschreiben den **Ist-Zustand der
+> Firmware**; die vollstaendige Spezifikation einschliesslich der in K2 neu
+> festgelegten Kommandoframes steht im erzeugten Signalkatalog
+> `docs/architecture/can-signalkatalog.md`.
 
-| CAN-ID  | DLC    | Inhalt                                | Frequenz |
-|:--------|:-------|:--------------------------------------|:---------|
-| `0x110` | 4 Byte | Range (float32, m)                    | 10 Hz    |
-| `0x120` | 1 Byte | Cliff (0x00=OK, 0x01=Cliff)           | 20 Hz    |
-| `0x130` | 8 Byte | IMU Accel+GyroZ (3x int16 + 1x int16) | 50 Hz    |
-| `0x131` | 4 Byte | IMU Heading (float32, rad)            | 50 Hz    |
-| `0x140` | 6 Byte | Batterie (V mV, I mA, P mW)           | 2 Hz     |
-| `0x141` | 1 Byte | Battery Shutdown Flag                 | Event    |
-| `0x1F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)    | 1 Hz     |
+**Sensor-Node, gesendet (0x110-0x1F0):**
 
-**Drive-Node (0x200-0x2F0):**
+| CAN-ID  | DLC    | Inhalt                                | Frequenz | Empfaenger     |
+|:--------|:-------|:--------------------------------------|:---------|:---------------|
+| `0x110` | 4 Byte | Range (float32, m)                    | 10 Hz    | Pi 5           |
+| `0x120` | 1 Byte | Cliff (0x00=OK, 0x01=Cliff)           | 20 Hz    | Pi 5, **Drive-Node** |
+| `0x130` | 8 Byte | IMU Accel+GyroZ (3x int16 + 1x int16) | 50 Hz    | Pi 5           |
+| `0x131` | 4 Byte | IMU Heading (float32, rad)            | 50 Hz    | Pi 5           |
+| `0x140` | 6 Byte | Batterie (V mV, I mA, P mW)           | 2 Hz     | Pi 5           |
+| `0x141` | 1 Byte | Battery Shutdown Flag                 | Event    | Pi 5, **Drive-Node** |
+| `0x1F0` | 8 Byte | Heartbeat (Flags, Uptime mod 256, I2C-Fehler, Servo-Fehler, Servo-OK) | 1 Hz | Pi 5 |
 
-| CAN-ID  | DLC    | Inhalt                               | Frequenz |
-|:--------|:-------|:-------------------------------------|:---------|
-| `0x200` | 8 Byte | Odom Position x,y (2x float32)       | 20 Hz    |
-| `0x201` | 8 Byte | Odom Heading+Speed (2x float32)      | 20 Hz    |
-| `0x210` | 8 Byte | Encoder L/R (2x float32, rad/s)      | 10 Hz    |
-| `0x220` | 4 Byte | Motor-PWM L/R (2x int16, -255..+255) | 10 Hz    |
-| `0x2F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)   | 1 Hz     |
+**Sensor-Node, empfangen:**
+
+| CAN-ID  | DLC    | Inhalt                                     | Frequenz        | Sender |
+|:--------|:-------|:-------------------------------------------|:----------------|:-------|
+| `0x150` | 4 Byte | Servosollwert Pan/Tilt (2x int16, 0,1 Grad) | Event, max. 10 Hz | Pi 5 |
+
+`0x150` ist der bestehende Redundanzpfad zum ROS-2-Topic `/servo_cmd`
+(`can_bridge_node.py`). Die Firmware begrenzt die empfangenen Werte auf die
+mechanischen Grenzen aus `config_sensors.h`.
+
+**Drive-Node, gesendet (0x200-0x2F0):**
+
+| CAN-ID  | DLC    | Inhalt                               | Frequenz | Empfaenger |
+|:--------|:-------|:-------------------------------------|:---------|:-----------|
+| `0x200` | 8 Byte | Odom Position x,y (2x float32)       | 20 Hz    | Pi 5       |
+| `0x201` | 8 Byte | Odom Heading+Speed (2x float32)      | 20 Hz    | Pi 5       |
+| `0x210` | 8 Byte | Encoder L/R (2x float32, rad/s)      | 10 Hz    | Pi 5       |
+| `0x220` | 4 Byte | Motor-PWM L/R (2x int16, -255..+255) | 10 Hz    | Pi 5       |
+| `0x2F0` | 2 Byte | Heartbeat (Flags + Uptime mod 256)   | 1 Hz     | Pi 5       |
+
+**Drive-Node, empfangen (Sicherheitspfad ohne Zentralrechner):**
+
+| CAN-ID  | DLC    | Inhalt                      | Wirkung im Fahrkern            |
+|:--------|:-------|:----------------------------|:-------------------------------|
+| `0x120` | 1 Byte | Cliff (0x01 = Kante)        | `can_cliff_stop`, tv = tw = 0  |
+| `0x141` | 1 Byte | Battery Shutdown (0x01)     | `can_battery_stop`, tv = tw = 0 |
+
+Der Fahrkern wertet beide Sicherheitssignale direkt aus; der Stopp benoetigt
+weder micro-ROS noch den Pi 5.
 
 ### Sende-Implementierung
 

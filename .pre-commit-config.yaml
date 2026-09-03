@@ -49,9 +49,13 @@ repos:
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-        exclude: ^(projektarbeit|suche|sources)/
+        exclude: >-
+          (?x)^(projektarbeit|suche|sources)/
+          |^amr/mcu_firmware/common/can/amr_vehicle\.(c|h)$
       - id: end-of-file-fixer
-        exclude: ^(projektarbeit|suche|sources)/
+        exclude: >-
+          (?x)^(projektarbeit|suche|sources)/
+          |^amr/mcu_firmware/common/can/amr_vehicle\.(c|h)$
       - id: check-yaml
         args: [--allow-multiple-documents, --unsafe]
       - id: check-added-large-files
