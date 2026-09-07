@@ -1,0 +1,40 @@
+19:56:35
+load average: 3.19, 1.42, 0.70
+%Cpu(s): 25.0 us,  4.2 sy,  4.2 ni, 64.6 id,  2.1 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=48.8'C
+19:57:35
+load average: 2.25, 1.49, 0.77
+%Cpu(s): 15.8 us,  2.6 sy,  0.0 ni, 81.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=47.7'C
+19:58:35
+load average: 2.42, 1.75, 0.90
+%Cpu(s): 12.5 us,  5.0 sy,  2.5 ni, 80.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=46.6'C
+19:59:36
+load average: 1.85, 1.79, 0.98
+%Cpu(s):  9.8 us,  4.9 sy,  4.9 ni, 80.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=46.1'C
+20:00:36
+load average: 1.67, 1.78, 1.03
+%Cpu(s): 14.0 us,  2.3 sy,  4.7 ni, 79.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=46.6'C
+20:01:36
+load average: 1.40, 1.73, 1.06
+%Cpu(s): 14.3 us,  0.0 sy,  7.1 ni, 78.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=47.7'C
+20:02:36
+load average: 1.56, 1.75, 1.11
+%Cpu(s):  9.5 us,  7.1 sy,  2.4 ni, 81.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=48.3'C
+20:03:37
+load average: 1.83, 1.88, 1.20
+%Cpu(s): 20.9 us,  2.3 sy,  4.7 ni, 72.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=49.4'C
+20:04:37
+load average: 1.23, 1.72, 1.18
+%Cpu(s): 11.9 us,  2.4 sy,  4.8 ni, 81.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=48.3'C
+20:05:37
+load average: 1.20, 1.64, 1.19
+%Cpu(s): 19.0 us,  2.4 sy,  2.4 ni, 76.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+temp=47.7'C

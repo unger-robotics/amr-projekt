@@ -1,0 +1,14 @@
+label=A1
+interface=can0
+duration_s=600
+host=amr
+kernel=6.12.62+rpt-rpi-2712
+driver=mcp251x
+overlay=dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25,spimaxfrequency=1000000
+bittiming=	 bitrate 1000000 sample-point 0.750 	 tq 125 prop-seg 2 phase-seg1 3 phase-seg2 2 sjw 1 brp 1
+git_commit=18cc7bb
+git_describe=k0-complete-2-g18cc7bb
+config_drive_version=4.0.0
+config_sensors_version=3.0.0
+start=2026-09-03T19:56:18+02:00
+end=2026-09-03T20:06:18+02:00
