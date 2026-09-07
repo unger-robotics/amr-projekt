@@ -20,6 +20,25 @@ vim /home/pi/amr-projekt/scripts/.gemini_api.key
 
 ./gemini_abfrage.py "Was ist ROS2?"
 
-# 7. Wenn du fertig bist: Virtuelle Umgebung wieder verlassen
+# Jupyter Lab
+# venv erstellen und aktivieren
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Pakete installieren
+pip install --upgrade pip
+pip install jupyterlab numpy matplotlib scipy
+
+# PDF-Export (nbconvert + LaTeX)
+pip install nbconvert[webpdf]
+playwright install chromium
+
+# Jupyter Lab starten
+jupyter lab --no-browser --ip=0.0.0.0 --port=8888
+
+# Notebook als PDF exportieren
+jupyter nbconvert --to webpdf trajektorienanalyse.ipynb
+
+# venv verlassen
 deactivate
 ```
