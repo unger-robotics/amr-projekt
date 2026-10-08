@@ -11,15 +11,28 @@ Empfaengt:
 Publications:
   /vision/detections (std_msgs/String) - JSON-kodierte Detektionen
 
-JSON-Format (identisch zu hailo_inference_node):
+JSON-Format (Feldtabelle in docs/vision_pipeline.md):
   {
     "timestamp": <float>,
+    "capture_time": <float>,   # optional
+    "seq": <int>,              # optional
     "inference_ms": <float>,
     "detections": [
       {"class_id": <int>, "label": <str>, "confidence": <float>,
        "bbox": [x1, y1, x2, y2]}
     ]
   }
+
+  timestamp und capture_time sind Host-Uhr (time.time()) des Runners:
+  timestamp beim Versand nach der Inferenz, capture_time direkt nach der
+  Bildentnahme (cap.read()). Wegen des gepufferten MJPEG-Stroms ist
+  capture_time nur eine Obergrenze des Bildzeitpunkts. seq zaehlt die
+  gesendeten Pakete ab 0 je Start des Runners. Der Fallback-Modus des Runners
+  liefert nur seq, hailo_inference_node keines der beiden Felder. Optional je
+  Detektion: reclassified und original_labels (Reklassifizierung im Runner).
+
+  Der Knoten serialisiert das gesamte JSON-Objekt neu und reicht so alle
+  Felder weiter; neue Felder brauchen hier keine Codeaenderung.
 
 Verwendung:
   ros2 run my_bot hailo_udp_receiver_node

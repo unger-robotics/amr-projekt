@@ -7,6 +7,16 @@ Detektionsergebnisse via UDP an den Docker-Container (hailo_udp_receiver_node).
 Architektur:
   MJPEG-Stream (:8082) → Hailo-8 YOLOv8 @ 5 Hz → UDP :5005 → ROS2 Container
 
+JSON-Paket (UDP), Feldtabelle in docs/vision_pipeline.md:
+  timestamp     Host-Uhr (time.time()) beim Versand, nach der Inferenz
+  capture_time  Host-Uhr direkt nach cap.read(), nur im Hailo-Modus. Der
+                MJPEG-Strom ist gepuffert; capture_time ist deshalb eine
+                Obergrenze des Bildzeitpunkts, keine Sensorzeit
+  seq           Laufende Nummer der gesendeten Pakete, ab 0 je Start
+  inference_ms  Dauer der Hailo-Inferenz
+  detections    Liste mit class_id, label, confidence, bbox [x1, y1, x2, y2];
+                optional reclassified und original_labels
+
 Voraussetzungen:
   - dashboard_bridge muss laufen (MJPEG auf Port 8082)
   - hailort Python-Paket installiert (oder --fallback Modus)
@@ -373,6 +383,7 @@ def run_fallback(udp_sock: socket.socket):
         payload = json.dumps(
             {
                 "timestamp": time.time(),
+                "seq": count,
                 "inference_ms": 0.0,
                 "detections": [
                     {
@@ -468,6 +479,8 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
             t_start = time.monotonic()
 
             ret, frame = cap.read()
+            # Erfassungszeit im Runner (Host-Uhr), unmittelbar nach der Entnahme
+            t_capture = time.time()
             if not ret:
                 # Reconnect bei Stream-Abbruch
                 cap.release()
@@ -500,6 +513,8 @@ def run_hailo(model_path: str, threshold: float, udp_sock: socket.socket):
             payload = json.dumps(
                 {
                     "timestamp": time.time(),
+                    "capture_time": t_capture,
+                    "seq": count,
                     "inference_ms": round(dt_ms, 1),
                     "detections": detections,
                 }
