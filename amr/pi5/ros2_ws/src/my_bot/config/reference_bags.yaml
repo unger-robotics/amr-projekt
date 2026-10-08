@@ -1,0 +1,231 @@
+# =============================================================================
+# Referenzaufnahmen K7-V: Topicliste, Szenenkatalog und Bewertungsgrundlage
+#
+# Gelesen von amr/scripts/bag_check.py und amr/scripts/record_reference_bags.sh.
+# Grundlage: transfer/auftrag-k7v.md (Abschnitt 4) und
+# docs/plan/bericht-k7v-phase0.md (Abschnitte b und g).
+#
+# Die Topicliste gilt fuer alle Szenen und bleibt fuer Wiederholungen fest,
+# damit Vorher-Nachher-Vergleiche moeglich sind. Aenderungen nur mit neuer
+# version. Rohbilder (/camera/image_raw, ca. 830 MB/min) sind bewusst nicht
+# enthalten.
+# =============================================================================
+
+version: 1
+
+# Je Topic: Typ, Sollrate in Hz (0 = ereignisgetrieben oder latched),
+# Stempelart und Zeitbasis des Stempels.
+#   header    = std_msgs/Header; ausgewertet wird Aufnahmezeit - header.stamp
+#   tf        = je Transformation (Kante) einer TFMessage
+#   tf_static = wie tf, aber nur Kanten und Anzahl (latched)
+#   json      = Detektions-JSON (timestamp, capture_time, seq)
+#   keine     = ohne Zeitstempel
+# MCU-Stempel sind Publizierzeit, nicht Messzeit (Phase-0-Bericht, Abschnitt c).
+topics:
+  /scan:
+    typ: sensor_msgs/msg/LaserScan
+    soll_hz: 7.0                # scan_frequency; Stempel markiert den Beginn des Umlaufs
+    stempel: header
+    zeitbasis: Pi (rplidar_node)
+  /odom:
+    typ: nav_msgs/msg/Odometry
+    soll_hz: 20.0
+    stempel: header
+    zeitbasis: MCU Fahrkern
+  /tf:
+    typ: tf2_msgs/msg/TFMessage
+    soll_hz: 0                  # zwei Publisher; Sollrate und Luecken je Kante
+    stempel: tf
+    zeitbasis: je Kante
+    kanten:
+      odom->base_link:
+        soll_hz: 20.0
+        zeitbasis: MCU Fahrkern (aus /odom)
+      map->odom:
+        soll_hz: 20.0
+        zeitbasis: Pi (slam_toolbox)
+  /tf_static:
+    typ: tf2_msgs/msg/TFMessage
+    soll_hz: 0
+    stempel: tf_static
+    zeitbasis: Pi
+  /imu:
+    typ: sensor_msgs/msg/Imu
+    soll_hz: 50.0
+    stempel: header
+    zeitbasis: MCU Sensor- und Sicherheitsbasis
+  /range/front:
+    typ: sensor_msgs/msg/Range
+    soll_hz: 10.0
+    stempel: header
+    zeitbasis: MCU Sensor- und Sicherheitsbasis
+  /cliff:
+    typ: std_msgs/msg/Bool
+    soll_hz: 20.0
+    stempel: keine
+  /battery:
+    typ: sensor_msgs/msg/BatteryState
+    soll_hz: 2.0
+    stempel: header
+    zeitbasis: MCU Sensor- und Sicherheitsbasis
+  /vision/detections:
+    typ: std_msgs/msg/String
+    soll_hz: 5.0
+    stempel: json
+    zeitbasis: Host-Uhr des Runners (JSON)
+  /map:
+    typ: nav_msgs/msg/OccupancyGrid
+    soll_hz: 2.0
+    stempel: header
+    zeitbasis: Pi (slam_toolbox)
+  /pose:
+    typ: geometry_msgs/msg/PoseWithCovarianceStamped
+    soll_hz: 0                  # SLAM-Pose, nur nach verarbeiteten Scans
+    stempel: header
+    zeitbasis: Pi (slam_toolbox)
+  /plan:
+    typ: nav_msgs/msg/Path
+    soll_hz: 0
+    stempel: header
+    zeitbasis: Pi (planner_server)
+  /lookahead_point:
+    typ: geometry_msgs/msg/PointStamped
+    soll_hz: 0                  # RPP, nur waehrend einer Fahrt
+    stempel: header
+    zeitbasis: Pi (controller_server)
+  /cmd_vel:
+    typ: geometry_msgs/msg/Twist
+    soll_hz: 20.0               # wirksamer Fahrbefehl; zwei Publisher (BA-03)
+    stempel: keine
+  /nav_cmd_vel:
+    typ: geometry_msgs/msg/Twist
+    soll_hz: 0
+    stempel: keine
+  /dashboard_cmd_vel:
+    typ: geometry_msgs/msg/Twist
+    soll_hz: 0
+    stempel: keine
+  /emergency_stop:
+    typ: std_msgs/msg/Bool
+    soll_hz: 0
+    stempel: keine
+
+# Szenen (transfer/auftrag-k7v.md, Abschnitt 4).
+#   launch:   erwartete Launch-Argumente, woertlich verglichen. Die Bedingungen
+#             fuer Nav2 und die Benutzeroberflaeche pruefen auf 'True'/'False'
+#             (B-V10). use_can bleibt aus, damit /imu, /cliff, /range/front und
+#             /battery nur eine Quelle haben.
+#   erwartet: Topics, die in der Szene Nachrichten tragen muessen.
+# Detektionen brauchen use_dashboard:=True, weil host_hailo_runner.py den
+# MJPEG-Strom der dashboard_bridge liest (B-V10).
+szenen:
+  a_stand:
+    beschreibung: "Stand, statisch: Roboter steht, Hindernis ca. 1 m frontal, niemand im Raum"
+    dauer_s: 60
+    launch: &launch_vision
+      use_slam: "True"
+      use_nav: "True"
+      use_sensors: "True"
+      use_cliff_safety: "True"
+      use_can: "False"
+      use_camera: "True"
+      use_dashboard: "True"
+      use_vision: "True"
+    erwartet: &erwartet_stand
+      - /scan
+      - /odom
+      - /tf
+      - /tf_static
+      - /imu
+      - /range/front
+      - /cliff
+      - /battery
+      - /map
+      - /cmd_vel
+      - /vision/detections
+  b_nav2:
+    beschreibung: "Nav2-Fahrt: Ziel ca. 2 m geradeaus, danach Stand (Jan setzt das Ziel selbst)"
+    dauer_s: 60
+    launch:
+      use_slam: "True"
+      use_nav: "True"
+      use_sensors: "True"
+      use_cliff_safety: "True"
+      use_can: "False"
+    erwartet:
+      - /scan
+      - /odom
+      - /tf
+      - /tf_static
+      - /imu
+      - /range/front
+      - /cliff
+      - /battery
+      - /map
+      - /cmd_vel
+      - /nav_cmd_vel
+      - /plan
+      - /lookahead_point
+      - /pose
+  c_person:
+    beschreibung: "Person quert: Roboter steht, Person geht in ca. 1,5 m dreimal quer durchs Sichtfeld"
+    dauer_s: 60
+    launch: *launch_vision
+    erwartet: *erwartet_stand
+  probe:
+    beschreibung: "Probeaufnahme (Selbsttest K7-V): Roboter steht, Launch-Argumente wie Szene a"
+    dauer_s: 10
+    launch: *launch_vision
+    erwartet: *erwartet_stand
+
+# Bewertung nach docs/anforderungsliste-L1.md (v1.1), Abschnitt 10.2:
+# Anforderung, K0-Baseline (planung/baseline_k0_referenzwerte.md, 02.09.2026),
+# Messwert und Regressionstoleranz werden getrennt ausgewiesen (Abschnitt 10.1).
+# Regressionsgrenze = max(toleranz_min_hz, (1 - toleranz_max_abfall) * k0_hz).
+bewertung:
+  - topic: /odom
+    groesse: Odometrie-Rate
+    anforderung: "NFA-03: >= 10 Hz"
+    anforderung_min_hz: 10.0
+    k0_hz: 19.85
+    toleranz: ">= 15 Hz und nicht mehr als 25 % unter der Baseline"
+    toleranz_min_hz: 15.0
+    toleranz_max_abfall: 0.25
+  - topic: /scan
+    groesse: LiDAR-Scanrate
+    anforderung: "NFA-02: >= 5 Hz"
+    anforderung_min_hz: 5.0
+    k0_hz: 7.51
+    toleranz: ">= 5 Hz"
+    toleranz_min_hz: 5.0
+  - topic: /imu
+    groesse: IMU-Rate
+    anforderung: "NFA-04: >= 20 Hz"
+    anforderung_min_hz: 20.0
+    k0_hz: 38.07
+    toleranz: ">= 20 Hz und nicht mehr als 25 % unter der Baseline"
+    toleranz_min_hz: 20.0
+    toleranz_max_abfall: 0.25
+  - topic: /range/front
+    groesse: Ultraschall-Rate
+    anforderung: "DoD Phase 2: >= 7,0 Hz"
+    anforderung_min_hz: 7.0
+    k0_hz: 9.06
+    toleranz: ">= 7,0 Hz"
+    toleranz_min_hz: 7.0
+  - topic: /battery
+    groesse: Batterie-Rate
+    anforderung: "keine eigene Anforderung (Firmware-Sollwert 2 Hz)"
+    k0_hz: 2.00
+    toleranz: ">= 1,5 Hz"
+    toleranz_min_hz: 1.5
+  - topic: /cliff
+    groesse: Kantensignal-Rate
+    anforderung: "keine eigene Anforderung (Firmware-Sollwert 20 Hz)"
+    k0_hz: 15.86
+    toleranz: "kein Abnahmekriterium ableitbar, solange OP-11 offen ist"
+  - topic: /cmd_vel
+    groesse: Fahrbefehls-Rate auf dem Fahrkern-Topic
+    anforderung: "keine eigene Anforderung"
+    k0_hz: 20.0
+    toleranz: "kein Regressionsmassstab, solange OP-11 offen ist"

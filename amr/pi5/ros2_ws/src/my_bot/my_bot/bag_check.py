@@ -1,0 +1,1 @@
+../../../../../scripts/bag_check.py

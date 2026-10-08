@@ -1,0 +1,76 @@
+# K7-V Referenzaufnahme, erzeugt von amr/scripts/record_reference_bags.sh
+# Enthaelt keine Umgebungsvariablen und keine Schluessel.
+format: amr-referenzaufnahme/1
+szene: probe
+beschreibung: 'Probeaufnahme (Selbsttest K7-V): Roboter steht, Launch-Argumente wie
+  Szene a'
+aufnahme_start: '2026-10-08T23:35:24+02:00'
+dauer_soll_s: 10
+abgebrochen: false
+host: amr
+git_commit: 73b01989c6c36a8b6c1ed418afa3b48b5c05f883
+git_dirty: true
+git_aenderungen:
+- .gitignore
+- CLAUDE.md
+- amr/docker/README.md
+- amr/docker/docker-compose.yml
+- amr/pi5/ros2_ws/src/my_bot/setup.py
+- amr/scripts/hailo_udp_receiver_node.py
+- amr/scripts/host_hailo_runner.py
+- docs/architecture.md
+- docs/architecture/system-overview.md
+- docs/plan/bericht-k7v-phase0.md
+- docs/plan/phasenplan-v2.md
+- docs/ros2_system.md
+- docs/systemdokumentation.md
+- docs/vision_pipeline.md
+- mkdocs.yml
+- mypy.ini
+- amr/docker/docker-compose.dev.yml
+- amr/pi5/ros2_ws/src/my_bot/config/reference_bags.yaml
+- amr/pi5/ros2_ws/src/my_bot/config/reference_bags_qos.yaml
+- amr/pi5/ros2_ws/src/my_bot/my_bot/bag_check.py
+- amr/scripts/bag_check.py
+- amr/scripts/record_reference_bags.sh
+- docs/ros2/referenz-bags.md
+- tests/test_bag_check.py
+launch_zeile: ros2 launch my_bot full_stack.launch.py use_camera:=True use_dashboard:=True
+  use_vision:=True
+launch_argumente:
+  use_camera: 'True'
+  use_dashboard: 'True'
+  use_vision: 'True'
+launch_wirksam:
+  use_slam: 'True'
+  use_nav: 'True'
+  use_sensors: 'True'
+  use_cliff_safety: 'True'
+  use_can: 'False'
+  use_camera: 'True'
+  use_dashboard: 'True'
+  use_vision: 'True'
+launch_abweichungen: []
+topics:
+- /scan
+- /odom
+- /tf
+- /tf_static
+- /imu
+- /range/front
+- /cliff
+- /battery
+- /vision/detections
+- /map
+- /pose
+- /plan
+- /lookahead_point
+- /cmd_vel
+- /nav_cmd_vel
+- /dashboard_cmd_vel
+- /emergency_stop
+katalog_version: 1
+qos_overrides: my_bot/config/reference_bags_qos.yaml
+image_id: sha256:3a18a09abc7290df3c30783f12e191bc2cfaf7da76924550b22cd18cdc0c8f2c
+rosbag2_version: 0.15.16-1jammy.20260326.140657
+storage: sqlite3

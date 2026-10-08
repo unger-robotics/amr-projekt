@@ -1,0 +1,17 @@
+# rosbag2-QoS-Overrides fuer Referenzaufnahmen (K7-V)
+#
+# Verwendung: ros2 bag record --qos-profile-overrides-path <diese Datei> ...
+# (aufgerufen von amr/scripts/record_reference_bags.sh)
+#
+# /tf_static und /map werden latched (transient_local) publiziert. Mit diesen
+# Overrides erhaelt die Aufnahme auch Nachrichten, die vor ihrem Start gesendet
+# wurden.
+/tf_static:
+  history: keep_all
+  reliability: reliable
+  durability: transient_local
+/map:
+  history: keep_last
+  depth: 1
+  reliability: reliable
+  durability: transient_local
