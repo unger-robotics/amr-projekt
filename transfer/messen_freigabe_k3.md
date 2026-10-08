@@ -13,13 +13,13 @@ dmesg | grep -i mcp251xfd         # Treiber geladen, keine "CRC"- oder "FIFO"-Fe
 
 Firmware auf beiden XIAO = Baseline-Commit, nichts geflasht. V4 vorher stromlos messen: CAN_H–CAN_L, Soll 60 Ω.
 
-**Messen** — exakt wie Teil A, nur mit dem Label B:
+**Messen** — exakt wie Teil A, nur mit dem Label B (aus `~/amr-projekt`, ohne `sudo`):
 
 ```bash
-sudo ./s_a_vorher.sh B1 600        # Stack an, Objekterkennung AUS, Dashboard ohne Kamera-Overlay
-python3 s_a_analyse.py validation/P-CAN2/<datum>_B1
-sudo ./s_a_vorher.sh B2 600        # Objekterkennung AN, wie bei A2
-python3 s_a_analyse.py validation/P-CAN2/<datum>_B2
+./validation/P-CAN2/s_a_vorher.sh B1 600   # Stack an, Objekterkennung AUS, Dashboard ohne Kamera-Overlay
+python3 validation/P-CAN2/s_a_analyse.py validation/P-CAN2/<datum>_B1
+./validation/P-CAN2/s_a_vorher.sh B2 600   # Objekterkennung AN, wie bei A2
+python3 validation/P-CAN2/s_a_analyse.py validation/P-CAN2/<datum>_B2
 ```
 
 Gleiche Dashboard-Ansichten wie in A1/A2, gleiche 600 s. Der mcp251xfd-Treiber führt `rx_over_errors` und `bus_error` unter denselben Namen — das Skript passt unverändert.
