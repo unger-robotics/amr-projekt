@@ -101,50 +101,50 @@ Synchronisation: SharedData-Mutex     Synchronisation: SharedData + i2c_mutex
 
 ## Hardware
 
-| Komponente       | Typ                     | Kfz-Pendant                    |
-|------------------|-------------------------|--------------------------------|
-| Recheneinheit    | Raspberry Pi 5, 8 GB    | ADAS-Zentralrechner            |
-| MCU Drive        | XIAO ESP32-S3           | Motorsteuergeraet (ECM)        |
-| MCU Sensor       | XIAO ESP32-S3           | Sensorsteuergeraet (ESC)       |
-| Motoren          | JGA25-370 (1:34)        | Elektroantrieb + Drehzahlgeber |
-| Motortreiber     | Cytron MDD3A            | Leistungselektronik (Inverter) |
-| LiDAR            | RPLIDAR A1 (12 m)       | Lidar-Umfeldmodell             |
-| IMU              | MPU6050 (30–35 Hz)      | Beschleunigungssensor ESP      |
-| Batterie         | Samsung 3S 10,8 V       | HV-Batterie (skaliert)         |
-| Batteriemonitor  | INA260                  | BMS (Batterie-Management)      |
-| KI-Beschleuniger | Hailo-8L (13 TOPS)      | Edge-KI-Chip (Mobileye)        |
-| Kamera           | IMX296 Global Shutter   | ADAS-Frontkamera               |
-| Servos           | MG996R via PCA9685      | Lenkstellmotor                 |
-| Audio            | MAX98357A + Lautsprecher | Lautsprecher (HMI)            |
-| Mikrofon         | ReSpeaker Mic Array v2.0 | Mikrofon (Sprachsteuerung)    |
-| CAN-Bus          | MCP2515, SN65HVD230     | Kfz-CAN-Bus (ISO 11898)       |
+| Komponente       | Typ                      | Kfz-Pendant                    |
+|------------------|--------------------------|--------------------------------|
+| Recheneinheit    | Raspberry Pi 5, 8 GB     | ADAS-Zentralrechner            |
+| MCU Drive        | XIAO ESP32-S3            | Motorsteuergeraet (ECM)        |
+| MCU Sensor       | XIAO ESP32-S3            | Sensorsteuergeraet (ESC)       |
+| Motoren          | JGA25-370 (1:34)         | Elektroantrieb + Drehzahlgeber |
+| Motortreiber     | Cytron MDD3A             | Leistungselektronik (Inverter) |
+| LiDAR            | RPLIDAR A1 (12 m)        | Lidar-Umfeldmodell             |
+| IMU              | MPU6050 (30–35 Hz)       | Beschleunigungssensor ESP      |
+| Batterie         | Samsung 3S 10,8 V        | HV-Batterie (skaliert)         |
+| Batteriemonitor  | INA260                   | BMS (Batterie-Management)      |
+| KI-Beschleuniger | Hailo-8L (13 TOPS)       | Edge-KI-Chip (Mobileye)        |
+| Kamera           | IMX296 Global Shutter    | ADAS-Frontkamera               |
+| Servos           | MG996R via PCA9685       | Lenkstellmotor                 |
+| Audio            | MAX98357A + Lautsprecher | Lautsprecher (HMI)             |
+| Mikrofon         | ReSpeaker Mic Array v2.0 | Mikrofon (Sprachsteuerung)     |
+| CAN-Bus          | MCP2515, SN65HVD230      | Kfz-CAN-Bus (ISO 11898)        |
 
 Raddurchmesser: 65,67 mm · Spurbreite: 178,0 mm · PID: Kp=0,4 Ki=0,1 Kd=0,0
 
 ## Validierungsergebnisse (Kfz: Pruefstandergebnisse)
 
-| Messung                 | Ergebnis                     | Kfz-Pendant              | Status |
-|-------------------------|------------------------------|--------------------------|--------|
-| PID-Regelfrequenz       | 50 Hz, Jitter < 2 ms        | ECU-Zykluszeit           | PASS   |
-| Geradeausfahrt mit IMU  | 2,1 cm Drift, 0,06° Heading | Spurhaltung (LKA)        | PASS   |
-| Rotation 360°           | 1,88° Fehler                 | Lenkwinkelkalibrierung   | PASS   |
-| Cliff-Latenz E2E        | 2,0 ms                       | AEB-Ansprechzeit         | PASS   |
-| Cliff-Bremsweg          | 1,0 cm                       | Bremsweg bei v_max       | PASS   |
-| LiDAR-Scanrate          | 7,7 Hz                       | Lidar-Scanrate           | PASS   |
-| Datenverlust micro-ROS  | < 0,1 %                      | CAN-Frameverlust         | PASS   |
-| Hailo-8L Inferenz       | 34 ms                        | ADAS-Latenz              | PASS   |
-| ArUco-Docking           | 100 %, 0,73 cm Versatz       | Einparkquote (APA)       | PASS   |
-| Pfadfolgefehler (ATE)   | MAE 0,16 m / RMSE 0,19 m (T3.1) | Fahrdynamik-Pruefstand   | PASS   |
-| CAN-Bus (Dual-Path)     | 5604 Frames/30 s, 11/12 IDs  | Redundanter CAN-Bus      | PASS   |
+| Messung                | Ergebnis                        | Kfz-Pendant            | Status |
+|------------------------|---------------------------------|------------------------|--------|
+| PID-Regelfrequenz      | 50 Hz, Jitter < 2 ms            | ECU-Zykluszeit         | PASS   |
+| Geradeausfahrt mit IMU | 2,1 cm Drift, 0,06° Heading     | Spurhaltung (LKA)      | PASS   |
+| Rotation 360°          | 1,88° Fehler                    | Lenkwinkelkalibrierung | PASS   |
+| Cliff-Latenz E2E       | 2,0 ms                          | AEB-Ansprechzeit       | PASS   |
+| Cliff-Bremsweg         | 1,0 cm                          | Bremsweg bei v_max     | PASS   |
+| LiDAR-Scanrate         | 7,7 Hz                          | Lidar-Scanrate         | PASS   |
+| Datenverlust micro-ROS | < 0,1 %                         | CAN-Frameverlust       | PASS   |
+| Hailo-8L Inferenz      | 34 ms                           | ADAS-Latenz            | PASS   |
+| ArUco-Docking          | 100 %, 0,73 cm Versatz          | Einparkquote (APA)     | PASS   |
+| Pfadfolgefehler (ATE)  | MAE 0,16 m / RMSE 0,19 m (T3.1) | Fahrdynamik-Pruefstand | PASS   |
+| CAN-Bus (Dual-Path)    | 5604 Frames/30 s, 11/12 IDs     | Redundanter CAN-Bus    | PASS   |
 
 ## Architekturvergleich AMR vs. Kfz
 
-| Architekturprinzip           | AMR (Option C)                        | Kfz (SAE L3+)                          |
-|------------------------------|---------------------------------------|----------------------------------------|
-| Redundante Kommunikation     | UART (micro-ROS) + CAN (Watchdog)     | CAN + CAN FD + Ethernet + FlexRay     |
-| Gestaffelte Sicherheit       | 7 Ebenen, CAN-Notstopp ohne Pi 5     | ASIL A–D (ISO 26262), Safety-MCU      |
-| Compute-Schichttrennung      | MCU (Echtzeit) + Pi 5 (KI/Nav)       | Zone-ECU + Central Compute + GPU/NPU  |
-| Deterministische Regelung    | FreeRTOS Dual-Core, 50 Hz PID        | AUTOSAR Classic (OSEK/VDX), 1–10 ms   |
+| Architekturprinzip        | AMR (Option C)                    | Kfz (SAE L3+)                        |
+|---------------------------|-----------------------------------|--------------------------------------|
+| Redundante Kommunikation  | UART (micro-ROS) + CAN (Watchdog) | CAN + CAN FD + Ethernet + FlexRay    |
+| Gestaffelte Sicherheit    | 7 Ebenen, CAN-Notstopp ohne Pi 5  | ASIL A–D (ISO 26262), Safety-MCU     |
+| Compute-Schichttrennung   | MCU (Echtzeit) + Pi 5 (KI/Nav)    | Zone-ECU + Central Compute + GPU/NPU |
+| Deterministische Regelung | FreeRTOS Dual-Core, 50 Hz PID     | AUTOSAR Classic (OSEK/VDX), 1–10 ms  |
 
 **Systematische Luecken zum Kfz:** Kein ASIL-Nachweis (ISO 26262), kein Fail-operational (nur Fail-safe), keine Radar-Fusion (nur Ultraschall+LiDAR+Kamera), kein AUTOSAR-konformes BSW, keine HW-Diversitaet (2x gleiche MCU), keine V2X-Kommunikation.
 
@@ -191,6 +191,95 @@ docker compose build              # Image bauen (~15-20 Min)
 # Terminal 2: Vite Dev-Server
 cd dashboard/
 npm install && npm run dev -- --host 0.0.0.0   # https://amr.local:5173
+
+
+
+
+
+
+
+
+
+# AMR Vollstart — vier Terminals
+
+Mac - AMR
+
+```bash
+ssh amr
+```
+
+## T1 — Vorbereitung (einmalig, Host)
+
+```bash
+lsusb
+ls /dev/ttyACM* /dev/ttyUSB* /dev/amr_*
+
+cd ~/amr-projekt
+python3 -c "import serial,time; [exec('s=serial.Serial(p,921600);s.dtr=False;s.rts=True;time.sleep(0.1);s.dtr=True;s.rts=False;s.close()') for p in ['/dev/amr_drive','/dev/amr_sensor']]"
+```
+
+Setzt beide ESP32-S3 per DTR/RTS zurueck.
+`GEMINI_API_KEY` muss in der Host-Umgebung gesetzt sein.
+
+## T2 — Full-Stack (ROS2 im Container)
+
+```bash
+cd ~/amr-projekt/amr/docker
+./run.sh ros2 launch my_bot full_stack.launch.py \
+    use_dashboard:=True use_camera:=True use_vision:=True \
+    use_audio:=True use_respeaker:=True use_tts:=True use_voice:=True
+```
+
+`run.sh` startet den Container bei Bedarf, aktualisiert die seriellen Symlinks
+und gibt belegte Ports frei. SLAM, Nav2, Sensor-Node und Cliff-Safety sind
+per Default aktiv.
+
+## T3 — Hailo-8L Vision (Host-Python 3.13, nicht im Container)
+
+```bash
+cd ~/amr-projekt
+python3 amr/scripts/host_hailo_runner.py
+```
+
+Ohne diesen Prozess wartet `hailo_udp_receiver_node` dauerhaft.
+
+## T4 — Dashboard-Frontend
+
+```bash
+cd ~/amr-projekt/dashboard
+npm run dev -- --host 0.0.0.0
+```
+
+Erreichbar unter `https://amr.local:5173`
+(mkcert-Zertifikate erforderlich, sonst crasht Vite).
+
+## Nuetzliche Varianten
+
+```bash
+# Nur SLAM, ohne Navigation
+./run.sh ros2 launch my_bot full_stack.launch.py use_nav:=false
+
+# Sprachsteuerung offline (faster-whisper statt Gemini Audio-STT)
+./run.sh ros2 run my_bot voice_command_node --ros-args -p use_gemini_stt:=false
+
+# Zweites Terminal im laufenden Container
+./run.sh exec bash
+
+# Gesamtpruefung
+./verify.sh
+```
+
+`use_gemini_stt` ist ein Node-Parameter (Default `True`), kein Launch-Argument —
+im Full-Stack laeuft die Sprachsteuerung also mit Gemini Audio-STT und faellt
+ohne API-Key automatisch auf Whisper zurueck.
+
+
+
+
+
+
+
+
 ```
 
 ### 4. System verifizieren
@@ -206,20 +295,20 @@ cd amr/docker/
 ./run.sh ros2 launch my_bot full_stack.launch.py [use_<name>:=True/False]
 ```
 
-| Argument           | Default | Kfz-Pendant                  |
-|--------------------|---------|------------------------------|
-| `use_slam`         | True    | HD-Karte (Kartierung)        |
-| `use_nav`          | True    | Routenplanung (Navigation)   |
-| `use_rviz`         | False   | Diagnose-Display             |
-| `use_sensors`      | True    | Sensorsteuergeraet           |
-| `use_cliff_safety` | True    | Notbremssystem (AEB)         |
-| `use_camera`       | False   | Frontkamera                  |
-| `use_dashboard`    | False   | Kombiinstrument              |
-| `use_vision`       | False   | ADAS-Objekterkennung         |
-| `use_audio`        | False   | Audio-Feedback (HMI)         |
-| `use_can`          | False   | Redundanter CAN-Bus          |
-| `use_tts`          | False   | Sprachausgabe (TTS)          |
-| `use_respeaker`    | False   | Richtungsmikrofon (DoA)      |
+| Argument           | Default | Kfz-Pendant                          |
+|--------------------|---------|--------------------------------------|
+| `use_slam`         | True    | HD-Karte (Kartierung)                |
+| `use_nav`          | True    | Routenplanung (Navigation)           |
+| `use_rviz`         | False   | Diagnose-Display                     |
+| `use_sensors`      | True    | Sensorsteuergeraet                   |
+| `use_cliff_safety` | True    | Notbremssystem (AEB)                 |
+| `use_camera`       | False   | Frontkamera                          |
+| `use_dashboard`    | False   | Kombiinstrument                      |
+| `use_vision`       | False   | ADAS-Objekterkennung                 |
+| `use_audio`        | False   | Audio-Feedback (HMI)                 |
+| `use_can`          | False   | Redundanter CAN-Bus                  |
+| `use_tts`          | False   | Sprachausgabe (TTS)                  |
+| `use_respeaker`    | False   | Richtungsmikrofon (DoA)              |
 | `use_voice`        | False   | Sprachsteuerung (Gemini/Whisper STT) |
 
 ## Projektstruktur
@@ -269,19 +358,19 @@ Einmalig: `pip3 install pre-commit && pre-commit install`
 
 ## Dokumentation
 
-| Dokument                         | Inhalt                                    |
-|----------------------------------|-------------------------------------------|
-| `docs/architecture.md`           | Systemarchitektur, Dreischicht-Modell     |
+| Dokument                         | Inhalt                                       |
+|----------------------------------|----------------------------------------------|
+| `docs/architecture.md`           | Systemarchitektur, Dreischicht-Modell        |
 | `docs/anforderungsliste-L1.md`   | Anforderungen nach VDI 2206 mit Kfz-Analogie |
-| `docs/ros2_system.md`            | Topics, TF-Baum, QoS-Konfiguration       |
-| `docs/firmware.md`               | MCU-Firmware, Dual-Core, micro-ROS        |
-| `docs/robot_parameters.md`       | Kinematik, PID, PWM, Timing              |
-| `docs/dashboard.md`              | WebSocket-Protokoll, MJPEG-Server         |
-| `docs/vision_pipeline.md`        | Hailo/Gemini Vision-Pipeline              |
-| `docs/serial_port_management.md` | udev-Regeln, Seriennummern                |
-| `docs/build_and_deploy.md`       | Build- und Deployment-Prozesse            |
-| `docs/validation.md`             | Validierungskonzept (V-Modell)            |
-| `planung/benutzerhandbuch.md`    | Einrichtung und Betrieb                   |
+| `docs/ros2_system.md`            | Topics, TF-Baum, QoS-Konfiguration           |
+| `docs/firmware.md`               | MCU-Firmware, Dual-Core, micro-ROS           |
+| `docs/robot_parameters.md`       | Kinematik, PID, PWM, Timing                  |
+| `docs/dashboard.md`              | WebSocket-Protokoll, MJPEG-Server            |
+| `docs/vision_pipeline.md`        | Hailo/Gemini Vision-Pipeline                 |
+| `docs/serial_port_management.md` | udev-Regeln, Seriennummern                   |
+| `docs/build_and_deploy.md`       | Build- und Deployment-Prozesse               |
+| `docs/validation.md`             | Validierungskonzept (V-Modell)               |
+| `planung/benutzerhandbuch.md`    | Einrichtung und Betrieb                      |
 
 ## Entwicklungs-Workflow
 
