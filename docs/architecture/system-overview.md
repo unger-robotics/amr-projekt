@@ -81,7 +81,7 @@ graph LR
     direction TB
     NODES["ROS2 Nodes:<br>micro-ROS Agents, SLAM, Nav2,<br>cliff_safety, dashboard_bridge,<br>audio, can_bridge, vision, TTS"]
     DEV["Devices:<br>/dev/amr_drive, /dev/amr_sensor,<br>/dev/ttyUSB0, /dev/snd"]
-    VOL["Volumes:<br>my_bot (rw), scripts (ro),<br>dashboard (ro), Named Volumes"]
+    VOL["Volumes:<br>src (rw), scripts (ro), amr_bags (rw),<br>dashboard (ro), Named Volumes"]
     NET["Network: host, Privileged: true"]
   end
 

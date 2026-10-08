@@ -56,14 +56,18 @@ docker compose build
 
 | Mount (Host)         | Ziel im Container            | Modus | Zweck                                            |
 |----------------------|------------------------------|-------|--------------------------------------------------|
-| `ros2_ws/src/my_bot` | `/ros2_ws/src/my_bot`        | rw    | ROS2-Paket (Quellcode)                           |
+| `ros2_ws/src`        | `/ros2_ws/src`               | rw    | ROS2-Pakete (Quellcode, ab K7 auch weitere)      |
 | `amr/scripts`        | `/amr_scripts`               | ro    | Validierungsskripte                              |
 | `amr/scripts`        | `/scripts`                   | ro    | Symlink-Aufloesung fuer `my_bot/my_bot/`         |
 | `hardware/`          | `/hardware`                  | ro    | HEF-Modelle (`models/`), Dokumentation (`docs/`) |
+| `amr/mcu_firmware`   | `/mcu_firmware`              | ro    | Firmware-Versionen fuer `baseline_snapshot`      |
 | `dashboard/`         | `/dashboard`                 | ro    | TLS-Zertifikate fuer HTTPS/WSS                   |
 | `asound.conf`        | `/etc/asound.conf`           | ro    | ALSA-Konfiguration                               |
 | `/tmp/.X11-unix`     | `/tmp/.X11-unix`             | rw    | X11-Socket fuer RViz2                            |
+| `~/amr_bags`         | `/amr_bags`                  | rw    | Referenzaufnahmen (rosbag2, K7-V)                |
 | Docker Volumes       | `/ros2_ws/build,install,log` | rw    | Persistenter Build-Cache                         |
+
+`~/amr_bags` vor dem ersten Start als Benutzer anlegen (`mkdir -p ~/amr_bags`), sonst legt Docker das Verzeichnis mit Eigentuemer root an.
 
 **Umgebungsvariablen:**
 
@@ -91,6 +95,70 @@ docker compose build
 **verify.sh** -- Automatischer Verifikationstest: Prueft Image-Existenz, ROS2-Distribution, installierte Pakete, Device-Zugriff, Kamera-Bridge, Workspace-Build und Paket-Executables. Gibt eine PASS/FAIL/WARN-Zusammenfassung aus.
 
 **host_setup.sh** -- Einmalige Host-Konfiguration: Gruppen, udev-Regeln (`/dev/amr_drive`, `/dev/amr_sensor`, `/dev/amr_lidar`), X11-Pakete, v4l2loopback-Installation mit modprobe-Config, IMX296-Kamera-Erkennung, und Installation des systemd-Services fuer die Kamera-Bridge.
+
+## Entwicklung ohne Roboter (docker-compose.dev.yml)
+
+`docker-compose.dev.yml` startet dasselbe Image ohne Roboter, etwa auf dem Mac (arm64) oder dem iMac (x86_64). Der Container dient dem Paketbau und der Wiedergabe von Referenzaufnahmen (rosbag2, K7-V). Er bindet keine Geraete ein und laeuft ohne `privileged`, ohne Audio-, Kamera-, X11- und Zertifikat-Mounts und ohne API-Schluessel.
+
+**Isolation (sicherheitsrelevant):** Referenzaufnahmen enthalten Fahrbefehle (`/cmd_vel`, `/nav_cmd_vel`, `/dashboard_cmd_vel`). Der Container laeuft deshalb im Bridge-Netz statt mit `network_mode: host`, dazu mit `ROS_DOMAIN_ID=42` und `ROS_LOCALHOST_ONLY=1`. Eine Wiedergabe erreicht so keinen ROS-2-Teilnehmer ausserhalb des Containers.
+
+**Aufnahmen nur im dev-Container abspielen, auch auf dem Pi.** Der Pi-Container `amr_ros2` laeuft im Host-Netz mit `ROS_DOMAIN_ID=0`. Ein dort abgespieltes `/cmd_vel` erreicht den Fahrkern. `/nav_cmd_vel` und `/dashboard_cmd_vel` leiten `velocity_smoother` bzw. `cliff_safety_node` im laufenden Stack auf `/cmd_vel` weiter; ein Umbenennen von `/cmd_vel` allein reicht deshalb nicht. Ein abgespieltes `/tf` stoert zudem SLAM und Nav2. Der Container `amr_ros2_dev` kann neben `amr_ros2` laufen; `run.sh` beachtet ihn nicht.
+
+| Mount (Host)                     | Ziel im Container            | Modus | Zweck                                          |
+|----------------------------------|------------------------------|-------|------------------------------------------------|
+| `ros2_ws/src`                    | `/ros2_ws/src`               | rw    | ROS2-Pakete (Quellcode)                        |
+| `amr/scripts`                    | `/amr_scripts`, `/scripts`   | ro    | Symlink-Aufloesung fuer `my_bot/my_bot/`       |
+| `~/amr_bags`                     | `/amr_bags`                  | ro    | Referenzaufnahmen                              |
+| Volumes `dev_build/install/log`  | `/ros2_ws/build,install,log` | rw    | Eigener Build-Cache, getrennt vom Pi-Container |
+
+**Einrichtung** (einmalig):
+
+```bash
+mkdir -p ~/amr_bags                              # vor dem ersten Start, sonst legt Docker es als root an
+cd amr-projekt/amr/docker
+docker compose -f docker-compose.dev.yml build   # nur Mac/iMac; braucht Internet (auf dem Pi ca. 15-20 Min)
+```
+
+Auf dem Pi existiert das Image bereits. Dort mit dieser Datei **nicht** bauen, sonst ersetzt ein Neubau das Produktiv-Image `amr-ros2-humble:latest`; stattdessen immer `up -d --no-build` verwenden.
+
+**Start, Shell und Paketbau:**
+
+```bash
+docker compose -f docker-compose.dev.yml up -d   # auf dem Pi: up -d --no-build
+docker compose -f docker-compose.dev.yml exec amr-dev /entrypoint.sh bash
+
+# im Container
+cd /ros2_ws && colcon build --packages-select my_bot --symlink-install
+source install/setup.bash
+```
+
+**Selbsttest ohne Aufnahme vom Pi** (im Container):
+
+```bash
+ros2 topic pub -r 10 /k7v_probe std_msgs/msg/String "{data: probe}" > /dev/null &
+timeout -s INT 5 ros2 bag record -s sqlite3 -o /tmp/k7v_probe /k7v_probe
+kill %1
+ros2 bag info /tmp/k7v_probe
+ros2 bag play /tmp/k7v_probe
+```
+
+**Referenzaufnahmen holen und abspielen:**
+
+```bash
+# auf dem Mac
+rsync -av pi@amr.local:amr_bags/ ~/amr_bags/
+
+# im Container
+ros2 bag info /amr_bags/<JJJJMMTT_HHMM>_<szene>
+ros2 bag play /amr_bags/<JJJJMMTT_HHMM>_<szene> --clock
+# Knoten, die gegen die Aufnahme laufen, mit use_sim_time:=true starten
+```
+
+**Beenden:**
+
+```bash
+docker compose -f docker-compose.dev.yml down    # Volumes (Build-Cache) bleiben erhalten
+```
 
 ## Kamera-Bridge (IMX296 Global Shutter)
 

@@ -165,9 +165,10 @@ services:
       - "/dev/ttyUSB0:/dev/ttyUSB0"
       - "/dev/snd:/dev/snd"
     volumes:
-      - ../pi5/ros2_ws/src/my_bot:/ros2_ws/src/my_bot:rw
+      - ../pi5/ros2_ws/src:/ros2_ws/src:rw
       - ../scripts:/amr_scripts:ro
       - ../scripts:/scripts:ro         # Dual-Mount fuer Symlinks
+      - ${HOME}/amr_bags:/amr_bags:rw  # Referenzaufnahmen (rosbag2)
       - ros2_build:/ros2_ws/build
       - ros2_install:/ros2_ws/install
     environment:
@@ -177,6 +178,8 @@ services:
 ```
 
 **Kritisch:** `../scripts` wird doppelt gemountet (`/amr_scripts` + `/scripts`), damit Symlinks in beiden Kontexten aufgeloest werden.
+
+Fuer die Entwicklung ohne Roboter gibt es `amr/docker/docker-compose.dev.yml`: dasselbe Image ohne Geraete, im Bridge-Netz mit `ROS_DOMAIN_ID=42` und `ROS_LOCALHOST_ONLY=1`. Referenzaufnahmen werden nur dort abgespielt (Bedienung in `amr/docker/README.md`).
 
 ### Convenience-Befehle (run.sh)
 

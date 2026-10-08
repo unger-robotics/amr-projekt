@@ -5,6 +5,8 @@
 #   docker compose build          # Image bauen (~15-20 Min auf Pi 5)
 #   docker compose run --rm amr   # Interaktive Shell
 #   docker compose run --rm amr ros2 launch my_bot full_stack.launch.py
+#
+# Entwicklung ohne Roboter (ohne Geraete, isoliert): docker-compose.dev.yml
 # =============================================================================
 
 services:
@@ -36,8 +38,9 @@ services:
       - "/dev/snd:/dev/snd"                 # I2S Audio-Ausgabe (MAX98357A)
 
     volumes:
-      # ROS2 Workspace (read-write fuer colcon build)
-      - ../pi5/ros2_ws/src/my_bot:/ros2_ws/src/my_bot:rw
+      # ROS2 Workspace (read-write fuer colcon build); ganzes src/, damit
+      # weitere Pakete (ab K7) ohne Aenderung dieser Datei gebaut werden
+      - ../pi5/ros2_ws/src:/ros2_ws/src:rw
 
       # Validierungsskripte (read-only)
       - ../scripts:/amr_scripts:ro
@@ -61,6 +64,11 @@ services:
 
       # X11-Socket fuer RViz2
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+      # Referenzaufnahmen (rosbag2, K7-V); liegen ausserhalb des Repos.
+      # Verzeichnis vorher als Benutzer anlegen (mkdir -p ~/amr_bags),
+      # sonst legt Docker es mit Eigentuemer root an.
+      - ${HOME}/amr_bags:/amr_bags:rw
 
       # Persistenter Build-Cache (colcon build/install/log)
       - ros2_build:/ros2_ws/build

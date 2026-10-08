@@ -94,8 +94,9 @@ Zielbild des laufenden Ausbaus (noch nicht umgesetzt, Stand K1):
 │              odom_to_tf, aruco_docking                                │
 │                                                                       │
 │  Devices:  /dev/amr_drive, /dev/amr_sensor, /dev/ttyUSB0, /dev/snd   │
-│  Volumes:  my_bot (rw), scripts (ro), dashboard (ro, TLS-Certs),     │
-│            hardware (ro), asound.conf, X11, Named (build/install/log) │
+│  Volumes:  src (rw), scripts (ro), dashboard (ro, TLS-Certs),         │
+│            hardware (ro), mcu_firmware (ro), amr_bags (rw),           │
+│            asound.conf, X11, Named (build/install/log)                │
 │  Network:  host (kein Bridge-Netzwerk)                                │
 │  Privileged: true                                                     │
 │                                                                       │

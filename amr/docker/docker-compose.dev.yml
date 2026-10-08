@@ -1,0 +1,67 @@
+# =============================================================================
+# Docker Compose fuer die Entwicklung ohne Roboter (K7-V)
+#
+# Gleiches Image wie docker-compose.yml, aber ohne Geraete, ohne privileged,
+# ohne Audio-, Kamera-, X11- und Zertifikat-Mounts und ohne API-Schluessel.
+# Zweck: colcon build und Wiedergabe von Referenzaufnahmen (rosbag2) auf
+# Mac (arm64), iMac (x86_64) oder dem Pi selbst.
+#
+# Isolation (sicherheitsrelevant, Referenzaufnahmen enthalten /cmd_vel):
+# Bridge-Netz statt network_mode: host, ROS_DOMAIN_ID=42 und
+# ROS_LOCALHOST_ONLY=1. Eine Wiedergabe erreicht so keinen ROS-2-Teilnehmer
+# ausserhalb des Containers, also auch nicht den Fahrkern.
+#
+# Verwendung (Details in README.md, Abschnitt "Entwicklung ohne Roboter"):
+#   mkdir -p ~/amr_bags                                 # einmalig
+#   docker compose -f docker-compose.dev.yml build      # nur Mac/iMac, NICHT auf dem Pi
+#   docker compose -f docker-compose.dev.yml up -d      # auf dem Pi: up -d --no-build
+#   docker compose -f docker-compose.dev.yml exec amr-dev /entrypoint.sh bash
+#   docker compose -f docker-compose.dev.yml down
+# =============================================================================
+
+# Eigener Projektname: Ohne ihn gehoerte der Dienst zum Projekt "docker" des
+# Pi-Containers amr_ros2 (gleiches Verzeichnis), und Compose behandelte
+# amr_ros2 als verwaisten Container dieses Projekts.
+name: amr-dev
+
+services:
+  amr-dev:
+    build:
+      context: ../..
+      dockerfile: amr/docker/Dockerfile
+    # Gleiches Image-Tag wie auf dem Pi. Auf dem Pi nicht ueber diese Datei
+    # bauen, sonst wird das Produktiv-Image durch einen Neubau ersetzt.
+    image: amr-ros2-humble:latest
+    # run.sh erkennt den Pi-Container am exakten Namen amr_ros2
+    container_name: amr_ros2_dev
+
+    # Kein network_mode: host -> Standard-Bridge-Netz des Projekts (amr-dev_default)
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ROS_LOCALHOST_ONLY=1
+      - TERM=xterm-256color
+
+    volumes:
+      # Alle ROS2-Pakete (read-write fuer colcon build)
+      - ../pi5/ros2_ws/src:/ros2_ws/src:rw
+
+      # Pflicht: Die Symlinks in my_bot/my_bot/ zeigen auf /scripts
+      - ../scripts:/amr_scripts:ro
+      - ../scripts:/scripts:ro
+
+      # Referenzaufnahmen (nur lesen)
+      - ${HOME}/amr_bags:/amr_bags:ro
+
+      # Eigener Build-Cache, getrennt von den Volumes des Pi-Containers
+      - dev_build:/ros2_ws/build
+      - dev_install:/ros2_ws/install
+      - dev_log:/ros2_ws/log
+
+    # Container bleibt interaktiv
+    stdin_open: true
+    tty: true
+
+volumes:
+  dev_build:
+  dev_install:
+  dev_log:
