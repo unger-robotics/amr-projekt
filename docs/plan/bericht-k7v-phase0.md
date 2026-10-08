@@ -5,10 +5,10 @@
 | Dokumenttyp | Phase-0-Bericht zum Claude-Code-Auftrag K7-V (`transfer/auftrag-k7v.md`, Version 1.0) |
 | Version | 1.0 |
 | Datum | 2026-10-08 |
-| Autor | Jan (Bericht erstellt mit Claude Code, Freigabe J2 offen) |
+| Autor | Jan (Bericht erstellt mit Claude Code) |
 | Bezug | `docs/plan/phasenplan-v2.md` (v2.2, Abschnitt 5, Paket K7), `docs/anforderungsliste-L1.md` (v1.1), `transfer/auftrag-k7v.md` |
 | Eingangsbedingung | J1 erfuellt: Tag `k2-dbc-v1` liegt auf GitHub (zeigt auf `7dd12bf`), `main` = `origin/main` |
-| Status | Phase 0 abgeschlossen: read-only, dazu eine passive Messung nach Freigabe des Stack-Starts. Phase 1–4 beginnen erst nach Freigabe J2 |
+| Status | Phase 0 abgeschlossen: read-only, dazu eine passive Messung nach Freigabe des Stack-Starts. Freigabe J2 am 2026-10-08 erteilt (Phase 1–4 ohne Streichungen); Umsetzung und Korrektur zu B-V9 in `docs/plan/bericht-k7v-phase1-4.md` |
 | Aenderungen am Bestand | Keine. Repo unveraendert, Container `amr_ros2` nach der Messung wieder gestoppt |
 
 ## 1 Kurzfassung

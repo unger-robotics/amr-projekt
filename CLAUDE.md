@@ -351,6 +351,7 @@ Detaillierte CLAUDE.md fuer Teilbereiche: `amr/CLAUDE.md`, `amr/mcu_firmware/CLA
 - **Docker numpy<2 Pin**: cv_bridge (apt) ist gegen NumPy 1.x ABI kompiliert. Ohne `numpy<2` Pin crasht cv_bridge mit `_ARRAY_API`-Fehler. `openwakeword==0.6.0` ist fixiert (neuere Versionen aendern Modell-API)
 - **Gemini-Quota (Free-Tier)**: `gemini-2.0-flash-lite` Free-Tier hat 1500 RPD (Requests/Tag) und 30 RPM. Bei 8s-Intervall (~450 Req/h) ist das Tageslimit nach ~3h erreicht. Symptom: `429 RESOURCE_EXHAUSTED` in Logs, Dashboard zeigt dauerhaft "Warte auf Vision-Pipeline...". Quota-Status pruefen unter https://aistudio.google.com/
 - **Vision-Pipeline stille Fehler**: `gemini_semantic_node` scheitert still wenn `/camera/image_raw` fehlt (v4l2_camera_node abgestuerzt) oder Gemini-Quota erschoepft. Warn-Log fuer fehlendes Kamerabild seit 03.04.2026 eingebaut (gedrosselt 10s)
+- **Referenzaufnahmen nur im dev-Container abspielen**: Bags in `~/amr_bags/` enthalten `/cmd_vel`, `/nav_cmd_vel` und `/dashboard_cmd_vel`. Im Pi-Container `amr_ros2` (Host-Netz, Domain 0) erreicht eine Wiedergabe den Fahrkern. Abspielen nur mit `amr/docker/docker-compose.dev.yml` (isoliert, Domain 42, localhost only; auf dem Pi `up -d --no-build`, nie `build`). Aufnahme und Pruefung: `amr/scripts/record_reference_bags.sh`, `bag_check` (`docs/ros2/referenz-bags.md`)
 
 ## Harte Randbedingungen
 

@@ -302,11 +302,11 @@ Der Convenience-Wrapper `run.sh` verwaltet den Container-Lebenszyklus. Er starte
 ./run.sh colcon build --packages-select my_bot --symlink-install
 ```
 
-Die Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und ueber `setup.py` entry_points als `ros2 run my_bot <name>` ausfuehrbar gemacht. Insgesamt stehen 29 Executables bereit: 11 Runtime-Knoten und 18 Validierungstests. Umgebungsvariablen (`ROS_DOMAIN_ID`, `GEMINI_API_KEY`) werden ueber `docker-compose.yml` an den Container durchgereicht.
+Die Skripte in `amr/scripts/` werden als Symlinks in `my_bot/my_bot/` referenziert und ueber `setup.py` entry_points als `ros2 run my_bot <name>` ausfuehrbar gemacht. Insgesamt stehen 31 Executables bereit: 11 Runtime-Knoten, 18 Validierungstests und 2 Mess- und Auswertewerkzeuge (`baseline_snapshot`, `bag_check`). Umgebungsvariablen (`ROS_DOMAIN_ID`, `GEMINI_API_KEY`) werden ueber `docker-compose.yml` an den Container durchgereicht.
 
 ### 5.2 Knoten-Uebersicht
 
-Das zentrale Launch-File `full_stack.launch.py` orchestriert alle ROS2-Knoten. Vier Basisknoten (RPLidar, Laser-TF, micro-ROS-Agent Drive, odom_to_tf) sind immer aktiv. Zwoelf optionale Knoten (SLAM, Nav2, Cliff-Safety, Dashboard, Vision, Audio, CAN, TTS, ReSpeaker, Voice) werden ueber boolesche Launch-Parameter gesteuert. Insgesamt stehen 29 Executables bereit: 11 Runtime-Knoten und 18 Validierungstests.
+Das zentrale Launch-File `full_stack.launch.py` orchestriert alle ROS2-Knoten. Vier Basisknoten (RPLidar, Laser-TF, micro-ROS-Agent Drive, odom_to_tf) sind immer aktiv. Zwoelf optionale Knoten (SLAM, Nav2, Cliff-Safety, Dashboard, Vision, Audio, CAN, TTS, ReSpeaker, Voice) werden ueber boolesche Launch-Parameter gesteuert. Insgesamt stehen 31 Executables bereit: 11 Runtime-Knoten, 18 Validierungstests und 2 Mess- und Auswertewerkzeuge (`baseline_snapshot`, `bag_check`).
 
 Vollstaendige Knotenliste mit allen Parametern: [ros2_system.md](ros2_system.md)
 

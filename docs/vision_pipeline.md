@@ -97,6 +97,26 @@ python3 amr/scripts/host_hailo_runner.py --fallback
 
 Ohne Hailo-8L NPU oder bei deaktivierter Vision (`use_vision:=False`) laufen Kamera und Dashboard-Stream weiterhin. Die Topics `/vision/detections` und `/vision/semantics` werden dann nicht publiziert. Navigation und SLAM sind davon unabhaengig.
 
+## Detektions-JSON
+
+`host_hailo_runner.py` sendet je verarbeitetem Bild ein JSON-Paket per UDP. `hailo_udp_receiver_node` publiziert es mit allen Feldern als `std_msgs/String` auf `/vision/detections`. Die Nachricht hat keinen Header; eine typisierte Nachricht folgt in K7 mit `amr_chain_msgs`.
+
+| Feld | Typ, Einheit | Bedeutung | Vorhanden |
+|---|---|---|---|
+| `timestamp` | float, s | Host-Uhr (`time.time()`) beim Versand, nach Inferenz und Nachverarbeitung | immer |
+| `capture_time` | float, s | Host-Uhr direkt nach `cap.read()`, also Entnahme des Bildes im Runner | Hailo-Modus (seit K7-V) |
+| `seq` | int | Laufende Nummer der gesendeten Pakete, ab 0 je Start des Runners | Hailo- und Fallback-Modus (seit K7-V) |
+| `inference_ms` | float, ms | Dauer der Hailo-Inferenz; im Fallback-Modus 0,0 | immer |
+| `detections` | Liste | Je Objekt `class_id`, `label` (deutsch), `confidence` und `bbox` [x1, y1, x2, y2] in Pixeln des um 180° gedrehten Bildes; optional `reclassified` und `original_labels` | immer |
+
+`timestamp - capture_time` ist die Verarbeitungszeit im Runner. `capture_time` ist dagegen keine Sensorzeit:
+
+- Der Runner liest den MJPEG-Strom mit hoechstens 5 Hz und ohne Puffersteuerung; der Server sendet ungedrosselt. `cap.read()` liefert deshalb das aelteste gepufferte Bild.
+- Die Stempel von `/camera/image_raw` gehen beim JPEG-Schritt der `dashboard_bridge` verloren.
+- `capture_time` ist damit eine Obergrenze des Bildzeitpunkts (Phase-0-Bericht K7-V, B-V7).
+
+Die Konsumenten werten die neuen Felder nicht aus: `dashboard_bridge` uebernimmt nur `detections` und `inference_ms`, `gemini_semantic_node` nur `detections`. `hailo_inference_node` (nicht im Launch) liefert nur `timestamp`, und zwar in ROS-Zeit. Die Auswertung von `capture_time` und `seq` in Aufnahmen uebernimmt `bag_check` (siehe [Referenzaufnahmen](ros2/referenz-bags.md)).
+
 ## TTS-Sprachausgabe (optional)
 
 Der `tts_speak_node` subscribt `/vision/semantics` und spricht die Gemini-Analyse ueber den Lautsprecher (MAX98357A I2S) aus. Die Synthese erfolgt via Google Text-to-Speech (gTTS, Cloud) auf Deutsch mit Wiedergabe ueber mpg123. Rate-Limiting: maximal alle 10 Sekunden.

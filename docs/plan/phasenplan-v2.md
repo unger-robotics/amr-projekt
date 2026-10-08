@@ -338,6 +338,12 @@ K7 ist fuer MZ2, was K1 fuer MZ1 war: linke Seite des V.
 | SA-14 (neu) | D-04 | MUSS | Jede Winner-Stufe ist ein Knoten mit definierter Ein-/Ausgangsnachricht, Zeitstempel und Quell-ID | Schnittstellenliste | 1 Eingang, 1 Ausgang je Stufe; Zeitstempel = Sensorzeit | Funktionsarchitektur ADAS (Signalschnittstellen) | Winner et al. 2024 (A4) | T-12 (neu, chain_latency_test) |
 | FA-22 (neu) | D-04 | MUSS | Durchstich Simulator-Ereignis → Fahrbefehl | Ende-zu-Ende-Latenz | < 100 ms *(Vorschlag: 5 Ticks; entspricht 1,5 cm Weg bei 0,15 m/s nach NFA-05)* | Reaktionszeit ADAS-Funktionskette | NFA-01, NFA-05 | T-12 |
 
+**Vorbereitung K7-V** (Ergaenzung vom 2026-10-08, `transfer/auftrag-k7v.md`, Berichte in `docs/plan/bericht-k7v-phase0.md` und `docs/plan/bericht-k7v-phase1-4.md`):
+
+- **Stand:** Die Entwicklungsumgebung ohne Roboter (`amr/docker/docker-compose.dev.yml`) ist umgesetzt, ebenso Erfassungszeit `capture_time` und Sequenznummer `seq` im Detektions-JSON sowie die Werkzeuge fuer Referenz-Bags (`record_reference_bags.sh`, `bag_check`). Offen sind noch die Referenz-Bags (a) bis (c) und der Tag `k7v-refbags-v1`.
+- **Offener Punkt fuer K7, Zeitbasis der MCU-Stempel** (Entscheidung, keine Aenderung in K7-V): Der TF odom->base_link traegt bereits die MCU-Zeit aus /odom (Korrektur zu B-V3 des Auftrags). Die MCU-Uhren werden nur beim Boot synchronisiert; gemessen wurde eine Drift von etwa 15 bis 20 ppm. Zu entscheiden ist zwischen periodischem Re-Sync in der Firmware und Stempelung auf der Pi-Seite, jeweils mit eigenem Test.
+- **ID-Vergabe (D-06):** SA-14, FA-22 und T-12 dieses Abschnitts sind in L1 v1.1 (Erweiterung K1) mit anderer Bedeutung vergeben (B-V8). Nach Annahme A3 gelten die L1-IDs; die Umbenennung erfolgt mit D-06.
+
 ### K8a – Perception
 
 | ID | PF | Prio | Beschreibung | Messgroesse | Schwellwert | Kfz-Pendant | Referenz | Testfall-ID |

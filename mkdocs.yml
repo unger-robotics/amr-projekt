@@ -156,6 +156,7 @@ nav:
       - Navigation (Nav2): ros2/navigation.md
       - SLAM: ros2/slam.md
       - Topics & TF-Baum: ros2_system.md
+      - Referenzaufnahmen: ros2/referenz-bags.md
   - Benutzeroberfläche:
       - Dashboard: dashboard.md
       - Vision-Pipeline: vision_pipeline.md

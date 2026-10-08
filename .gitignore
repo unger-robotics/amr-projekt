@@ -26,6 +26,10 @@ scripts/.gemini_api.key
 # rosbag recordings
 *.db3
 metadata.yaml
+# rosbag2-Aufnahmen liegen ausserhalb des Repos (~/amr_bags/, K7-V)
+*.mcap
+*.db3-*
+amr_bags/
 
 # SLAM test maps (lokal generiert)
 *_map.pgm

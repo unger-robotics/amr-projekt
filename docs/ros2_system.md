@@ -208,11 +208,13 @@ Skripte leben in `amr/scripts/`, werden als Symlinks in `my_bot/my_bot/` referen
 3. Entry-Point in `setup.py` ergaenzen: `'<name> = my_bot.<name>:main'`
 4. Rebuild: `cd amr/docker && ./run.sh colcon build --packages-select my_bot --symlink-install`
 
-### Entry-Points (29 Executables)
+### Entry-Points (31 Executables)
 
 Runtime-Knoten: `odom_to_tf`, `dashboard_bridge`, `cliff_safety_node`, `can_bridge_node`, `hailo_udp_receiver_node`, `hailo_inference_node`, `gemini_semantic_node`, `audio_feedback_node`, `tts_speak_node`, `respeaker_doa_node`, `voice_command_node`
 
 Validierungstests: `encoder_test`, `motor_test`, `pid_tuning`, `kinematic_test`, `imu_test`, `rotation_test`, `straight_drive_test`, `rplidar_test`, `slam_validation`, `nav_test`, `nav_square_test`, `docking_test`, `sensor_test`, `serial_latency_logger`, `aruco_docking`, `can_validation_test`, `cliff_latency_test`, `dashboard_latency_test`
+
+Mess- und Auswertewerkzeuge: `baseline_snapshot` (K0-Baseline), `bag_check` (Pruefung von Referenzaufnahmen, siehe [Referenzaufnahmen](ros2/referenz-bags.md))
 
 ---
 
