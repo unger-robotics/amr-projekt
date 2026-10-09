@@ -149,6 +149,7 @@ Zeitkritische Low-Level-Funktionen bleiben auf den MCU-Knoten. Koordination, Kar
 ## TF-Baum
 
 ```
+map → odom                    (dynamisch, slam_toolbox, use_slam, 20 Hz)
 odom → base_link              (dynamisch, odom_to_tf, 20 Hz)
   ├── laser                   (statisch, x=0.10, z=0.235, yaw=pi)
   ├── camera_link             (statisch, x=0.10, z=0.08, use_camera)

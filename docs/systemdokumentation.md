@@ -322,7 +322,7 @@ Vollstaendige Topic-Tabelle: [ros2_system.md](ros2_system.md)
 
 ### 5.4 TF-Baum
 
-Der Transformationsbaum folgt der Kette `odom → base_link → laser/camera_link/ultrasonic_link`. Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische Transformation `odom` → `base_link`. Der LiDAR ist 180 Grad gedreht montiert; die statische TF-Transformation (`yaw=pi`) kompensiert diese Orientierung.
+Der Transformationsbaum folgt der Kette `map → odom → base_link → laser/camera_link/ultrasonic_link`; die Kante `map → odom` publiziert `slam_toolbox`. Da micro-ROS keinen TF-Broadcast bereitstellt, konvertiert der Knoten `odom_to_tf` die `/odom`-Nachrichten mit 20 Hz in die dynamische Transformation `odom` → `base_link`. Der LiDAR ist 180 Grad gedreht montiert; die statische TF-Transformation (`yaw=pi`) kompensiert diese Orientierung.
 
 Vollstaendiger TF-Baum mit Frame-Offsets: [ros2_system.md](ros2_system.md)
 
@@ -344,9 +344,9 @@ Vollstaendige Launch-Parameter und Startkombinationen: [build_and_deploy.md](bui
 
 Der SLAM-Knoten abonniert `/scan` und `/tf` und publiziert die Belegungskarte auf `/map`. Die Kartenaktualisierung erfolgt asynchron, um die CPU-Last auf dem Raspberry Pi 5 zu begrenzen. Die Parameter liegen in `config/mapper_params_online_async.yaml`.
 
-### 6.2 Nav2 (AMCL, NavFn, Regulated Pure Pursuit)
+### 6.2 Nav2 (NavFn, Regulated Pure Pursuit)
 
-Die Navigation erfolgt in drei Schritten. Zuerst erzeugt `slam_toolbox` die Belegungskarte. Danach verfeinert AMCL (Adaptive Monte Carlo Localization) die Pose mit 500 bis 2000 Partikeln im Differentialantriebs-Modell und publiziert die Transformation `map` → `odom`. Abschliessend berechnet NavFn mit 10 Hz einen globalen Pfad, waehrend Regulated Pure Pursuit mit 20 Hz die lokale Bahnverfolgung bei maximal 0,15 m/s ausfuehrt.
+Die Navigation erfolgt in zwei Schritten. Zuerst erzeugt `slam_toolbox` die Belegungskarte, lokalisiert den Roboter darin und publiziert die Transformation `map` → `odom`. Danach berechnet NavFn mit 10 Hz einen globalen Pfad, waehrend Regulated Pure Pursuit mit 20 Hz die lokale Bahnverfolgung bei maximal 0,15 m/s ausfuehrt. AMCL (Adaptive Monte Carlo Localization) ist in `nav2_params.yaml` parametriert, wird aber nicht gestartet, weil `full_stack.launch.py` von Nav2 nur `navigation_launch.py` einbindet.
 
 Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 3 cm (0,03 m) und einer Yaw-Toleranz von 0,05 rad (2,9 Grad). Die Nav2-Parameter liegen in `config/nav2_params.yaml`.
 

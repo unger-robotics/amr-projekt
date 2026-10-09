@@ -86,21 +86,23 @@ Alle Knoten werden ueber `full_stack.launch.py` orchestriert. Optionale Knoten s
 ## 3. TF-Baum
 
 ```
-odom
-  └── base_link              (dynamisch, odom_to_tf, aus /odom)
-        ├── laser             (statisch, x=0.10, z=0.235, Yaw=180 Grad/pi)
-        ├── camera_link       (statisch, x=0.10, z=0.08, optional: use_camera)
-        └── ultrasonic_link   (statisch, x=0.15, z=0.05, optional: use_sensors)
+map
+  └── odom                         (dynamisch, slam_toolbox, use_slam, 20 Hz)
+        └── base_link              (dynamisch, odom_to_tf, aus /odom, 20 Hz)
+              ├── laser             (statisch, x=0.10, z=0.235, Yaw=180 Grad/pi)
+              ├── camera_link       (statisch, x=0.10, z=0.08, optional: use_camera)
+              └── ultrasonic_link   (statisch, x=0.15, z=0.05, optional: use_sensors)
 ```
 
 | Frame | Parent | Typ | Knoten | Bedingung |
 |---|---|---|---|---|
+| `odom` | `map` | dynamisch | `slam_toolbox` | `use_slam:=True` |
 | `base_link` | `odom` | dynamisch | `odom_to_tf` | immer |
 | `laser` | `base_link` | statisch | `laser_tf_publisher` | immer |
 | `camera_link` | `base_link` | statisch | `camera_tf_publisher` | `use_camera:=True` |
 | `ultrasonic_link` | `base_link` | statisch | `ultrasonic_tf_publisher` | `use_sensors:=True` |
 
-Der `odom_to_tf`-Knoten subscribt `/odom` und broadcastet `odom` → `base_link`, da micro-ROS keinen eigenen TF-Broadcaster enthaelt.
+Der `odom_to_tf`-Knoten subscribt `/odom` und broadcastet `odom` → `base_link`, da micro-ROS keinen eigenen TF-Broadcaster enthaelt. Die Kante `map` → `odom` publiziert `slam_toolbox`; sie ist um etwa 0,3 s in die Zukunft datiert (`transform_timeout`, Phase-0-Bericht K7-V, Abschnitt c). Einen `amcl`-Knoten gibt es nicht.
 
 ---
 
@@ -266,7 +268,7 @@ UDP-Bruecke noetig weil `hailort` nur mit Host-Python 3.13 kompatibel. Dashboard
 
 | Datei | Inhalt |
 |---|---|
-| `config/nav2_params.yaml` | AMCL (2000 Partikel, diff-drive), BT Navigator, RPP Controller, NavFn Planer |
+| `config/nav2_params.yaml` | BT Navigator, RPP Controller, NavFn Planer; AMCL (2000 Partikel, diff-drive) parametriert, aber nicht gestartet |
 | `config/mapper_params_online_async.yaml` | SLAM Toolbox Ceres-Solver (SPARSE_NORMAL_CHOLESKY), 0.05 m Aufloesung, 12 m LiDAR-Reichweite |
 | `config/amr_camera.yaml` | v4l2_camera: 640x480, YUYV, bgr8 |
 

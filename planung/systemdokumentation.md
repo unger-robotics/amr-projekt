@@ -56,7 +56,7 @@ Der Knoten `odom_to_tf` konvertiert die Rad-Odometrie in die TF-Transformation `
 
 `slam_toolbox` arbeitet im asynchronen Online-Modus und nutzt den Ceres-Solver zur nichtlinearen Optimierung der Pose. Der Knoten erzeugt eine Belegungskarte mit 5 cm Aufloesung. Loop Closure ist aktiv (Suchradius 8 m, Mindestkettenlaenge 10 Scans).
 
-Nav2 stellt den Navigations-Stack bereit. AMCL (Adaptive Monte Carlo Localization) lokalisiert den Roboter mit 500 bis 2000 Partikeln. NavFn plant den globalen Pfad. Regulated Pure Pursuit fuehrt die lokale Bahnverfolgung mit maximal 0,15 m/s aus.
+Nav2 stellt den Navigations-Stack bereit. Die Lokalisierung uebernimmt `slam_toolbox`; AMCL (Adaptive Monte Carlo Localization) ist in `nav2_params.yaml` parametriert, wird aber nicht gestartet. NavFn plant den globalen Pfad. Regulated Pure Pursuit fuehrt die lokale Bahnverfolgung mit maximal 0,15 m/s aus.
 
 ## 4. Kommunikationsarchitektur
 
@@ -70,7 +70,7 @@ Die Topic-Struktur trennt Fahrkommandos, Odometrie, IMU und Laserscan. Die strik
 
 ## 5. Navigations-Stack
 
-Die Navigation erfolgt in drei Schritten. Zuerst erzeugt `slam_toolbox` eine Belegungskarte. Danach verfeinert AMCL die Pose und publiziert die Transformation `map -> odom`. Abschliessend berechnet NavFn einen globalen Pfad, waehrend Regulated Pure Pursuit die lokale Bahnverfolgung uebernimmt.
+Die Navigation erfolgt in zwei Schritten. Zuerst erzeugt `slam_toolbox` eine Belegungskarte, lokalisiert den Roboter darin und publiziert die Transformation `map -> odom`. Danach berechnet NavFn einen globalen Pfad, waehrend Regulated Pure Pursuit die lokale Bahnverfolgung uebernimmt.
 
 Die lokale Costmap (Kostenkarte zur Hindernisvermeidung) nutzt ein Rolling Window von 3x3 m. Sie kombiniert einen VoxelLayer (3D-Hinderniserfassung) und einen InflationLayer (Sicherheitsabstand) bei einem Inflationsradius von 25 cm. Der Goal Checker akzeptiert den Zielpunkt bei einer Positionstoleranz von 3 cm (0,03 m) und einer Yaw-Toleranz von 2,9 Grad (0,05 rad).
 

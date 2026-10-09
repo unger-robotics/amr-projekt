@@ -17,24 +17,33 @@ Die Vision-Pipeline nutzt eine UDP-Bruecke, weil der host-seitig installierte NP
 ## Datenfluss
 
 ```
+Host (camera-v4l2-bridge.service):
+  IMX296 (CSI) -> rpicam-vid (MJPEG, 640x480, 15 fps) -> ffmpeg
+      |
+      v  /dev/video10 (v4l2loopback, YUYV422)
+
+Docker (Python 3.10, ROS2 Humble):
+  v4l2_camera_node (use_camera)
+      |
+      v  /camera/image_raw (ROS2 Topic)
+      |
+      v
+  dashboard_bridge (use_dashboard)
+      |
+      v  MJPEG-Stream https://127.0.0.1:8082/stream (ohne Zertifikate HTTP)
+
 Host (Python 3.13):
-  v4l2_camera_node (ROS2, Docker)
-      |
-      v
-  MJPEG-Stream (Port 8082, bereitgestellt von dashboard_bridge)
-      |
-      v
-  host_hailo_runner.py (Host-Python, Hailo-8L YOLOv8 @ 5 Hz)
+  host_hailo_runner.py (Hailo-8L YOLOv8 @ 5 Hz)
       |
       v  UDP 127.0.0.1:5005 (JSON-Detektionen)
 
 Docker (Python 3.10, ROS2 Humble):
-  hailo_udp_receiver_node (empfaengt UDP:5005)
+  hailo_udp_receiver_node (empfaengt UDP:5005, use_vision)
       |
       v  /vision/detections (ROS2 Topic)
       |
       v
-  gemini_semantic_node (Gemini Cloud API, gemini-2.0-flash-lite)
+  gemini_semantic_node (Gemini Cloud API, Standard gemini-2.5-flash)
       + /range/front (Ultraschall, optional)
       + /scan (LiDAR 360°, optional)
       |
@@ -48,8 +57,9 @@ Docker (Python 3.10, ROS2 Humble):
 
 | Komponente | Laufzeitumgebung | Aufgabe |
 |---|---|---|
-| `v4l2_camera_node` | Docker (ROS2) | USB-Kamera-Treiber, publiziert `/camera/image_raw` |
-| `dashboard_bridge` | Docker (ROS2) | MJPEG-Stream auf Port 8082 |
+| `camera-v4l2-bridge.service` | Host (systemd) | Liest die CSI-Kamera IMX296 mit `rpicam-vid` und schreibt die Bilder ueber `ffmpeg` nach `/dev/video10` (v4l2loopback) |
+| `v4l2_camera_node` | Docker (ROS2) | Liest `/dev/video10`, publiziert `/camera/image_raw` |
+| `dashboard_bridge` | Docker (ROS2) | MJPEG-Stream auf Port 8082 (HTTPS, ohne Zertifikate HTTP) |
 | `host_hailo_runner.py` | Host (Python 3.13) | YOLOv8-Inferenz via Hailo-8L NPU, sendet Detektionen per UDP |
 | `hailo_udp_receiver_node` | Docker (ROS2) | Empfaengt UDP-JSON, publiziert `/vision/detections` |
 | `gemini_semantic_node` | Docker (ROS2) | Semantische Auswertung via Gemini Cloud mit Sensorfusion (Ultraschall + LiDAR), publiziert `/vision/semantics` |
@@ -60,9 +70,11 @@ Docker (Python 3.10, ROS2 Humble):
 | Port | Protokoll | Zweck |
 |---|---|---|
 | 5005 | UDP | Hailo-Detektionen (Host → Docker) |
-| 8082 | HTTP | MJPEG-Kamerastream |
-| 9090 | WebSocket | Dashboard-Telemetrie |
-| 5173 | HTTP | Vite-Entwicklungsserver (Dashboard) |
+| 8082 | HTTPS (ohne Zertifikate HTTP) | MJPEG-Kamerastream |
+| 9090 | WSS (ohne Zertifikate WS) | Dashboard-Telemetrie |
+| 5173 | HTTPS (mkcert, ohne Zertifikate kein Start) | Vite-Entwicklungsserver (Dashboard) |
+
+`dashboard_bridge` nutzt die mkcert-Zertifikate aus `dashboard/` und faellt ohne sie auf HTTP bzw. WS zurueck.
 
 ## Aktivierung
 
@@ -132,11 +144,13 @@ Abhaengigkeiten im Docker-Image: `gTTS` (pip), `mpg123` (apt). Internetzugang er
 
 ## Gemini-Modell
 
-Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-2.0-flash-lite` (Free-Tier: 30 RPM). Das Modell kann per ROS2-Parameter geaendert werden:
+Der `gemini_semantic_node` verwendet standardmaessig das Modell `gemini-2.5-flash`. Die Umgebungsvariable `GEMINI_VISION_MODEL` aus der Host-Umgebung oder aus `amr/docker/.env` legt einen anderen Standardwert fest; der ROS2-Parameter `model` ueberschreibt ihn:
 
 ```bash
-ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.0-flash-lite
+ros2 run my_bot gemini_semantic_node --ros-args -p model:=gemini-2.5-flash
 ```
+
+Die Kontingente des Free-Tiers (Anfragen pro Minute und pro Tag) haengen vom Modell ab.
 
 Die Umgebungsvariable `GEMINI_API_KEY` muss gesetzt sein (wird ueber `docker-compose.yml` an den Container durchgereicht).
 

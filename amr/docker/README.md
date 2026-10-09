@@ -46,7 +46,7 @@ docker compose build
 
 ## Container-Architektur
 
-**Basis-Image:** `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). `osrf/ros:humble-desktop` ist nicht fuer arm64 verfuegbar -- stattdessen werden RViz2, Nav2, SLAM Toolbox und micro-ROS Agent einzeln installiert. Der micro-ROS Agent wird aus Source gebaut, da kein arm64-apt-Paket existiert. Python-Abhaengigkeiten: `numpy<2` (ABI-Kompatibilitaet mit cv_bridge), `openwakeword==0.6.0` (fixierte Version), `faster-whisper` (lokales STT, Offline-Fallback), `google-genai` (Gemini Audio-STT, Cloud-primaer). openwakeword-Modelle (`hey_jarvis`) werden im Build heruntergeladen, mit Fallback im Entrypoint.
+**Basis-Image:** `ros:humble-ros-base` (Ubuntu 22.04, arm64 multi-arch). `osrf/ros:humble-desktop` ist nicht fuer arm64 verfuegbar -- stattdessen werden RViz2, Nav2, SLAM Toolbox und micro-ROS Agent einzeln installiert. Der micro-ROS Agent wird aus Source gebaut, da es fuer Humble kein apt-Paket `ros-humble-micro-ros-agent` gibt, weder fuer arm64 noch fuer x86_64 (geprueft am 2026-10-09). Python-Abhaengigkeiten: `numpy<2` (ABI-Kompatibilitaet mit cv_bridge), `openwakeword==0.6.0` (fixierte Version), `faster-whisper` (lokales STT, Offline-Fallback), `google-genai` (Gemini Audio-STT, Cloud-primaer). openwakeword-Modelle (`hey_jarvis`) werden im Build heruntergeladen, mit Fallback im Entrypoint.
 
 **Netzwerk:** `network_mode: host` -- noetig fuer ROS2 DDS Multicast Discovery. Alle ROS2-Topics sind direkt auf dem Host sichtbar.
 
@@ -116,7 +116,7 @@ docker compose build
 ```bash
 mkdir -p ~/amr_bags                              # vor dem ersten Start, sonst legt Docker es als root an
 cd amr-projekt/amr/docker
-docker compose -f docker-compose.dev.yml build   # nur Mac/iMac; braucht Internet (auf dem Pi ca. 15-20 Min)
+docker compose -f docker-compose.dev.yml build   # nur Mac/iMac; braucht Internet (iMac x86_64: ca. 7 Min)
 ```
 
 Auf dem Pi existiert das Image bereits. Dort mit dieser Datei **nicht** bauen, sonst ersetzt ein Neubau das Produktiv-Image `amr-ros2-humble:latest`; stattdessen immer `up -d --no-build` verwenden.

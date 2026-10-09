@@ -49,8 +49,8 @@
 **Messgroesse / Modell:** Erfolgsquote der Zielerreichung und Positionstoleranz.
 
 * **Dateien:** `nav2_params.yaml`, `full_stack.launch.py` (mit `use_nav`)
-* **ROS-2-Knoten:** `controller_server`, `planner_server`, `amcl`, `bt_navigator`
-* **Topics:** `/goal_pose` (Sub), `/nav_cmd_vel` (Pub), `/local_plan` (Pub)
+* **ROS-2-Knoten:** `controller_server` (Regulated Pure Pursuit), `planner_server` (NavFn), `bt_navigator`, `velocity_smoother`; Lokalisierung ueber `slam_toolbox` (kein `amcl`)
+* **Topics:** `/goal_pose` (Sub), `/nav_cmd_vel` (Pub), `/plan` (Pub), `/lookahead_point` (Pub)
 * **Testfall:** Skript `nav_test`. Vorgabe von Wegpunkten innerhalb der kartierten Wohnung.
 * **Kriterium:** Die Ziele werden ohne physische Kollision erreicht; die Endposition liegt innerhalb eines Radius von 10 cm um die Zielkoordinate; der Gierfehler betraegt weniger als 8,6 Grad (0,15 rad).
 * **Testfall 2 (ArUco-Docking):** Skript `docking_test`. Zehn aufeinanderfolgende Docking-Versuche an der ArUco-Ladestation.
