@@ -164,7 +164,7 @@ Die Werte stimmen mit Phase 0 c ueberein (`/scan` 135,1 ms, map->odom -302,1 ms)
 | --- | --- | --- |
 | J3 | dev-Compose auf iMac (x86_64) | **Erledigt am 2026-10-09** (Anhang B.1) |
 | J3 | dev-Compose auf dem MacBook (arm64) | **Erledigt am 2026-10-09** (Anhang B.2) |
-| J5 | Szenen a, b und c mit `amr/scripts/record_reference_bags.sh <szene> 60` | Vorher ESP32-Reset (B-V11). Launch-Argumente genau wie im Katalog; a und c mit `use_camera:=True use_dashboard:=True use_vision:=True`, b mit Standardargumenten. Das Nav2-Ziel in b setzt Jan selbst |
+| J5 | Szenen a, b und c mit `amr/scripts/record_reference_bags.sh <szene> 60` | Vorher ESP32-Reset (B-V11). Launch-Argumente genau wie im Katalog; a und c mit `use_camera:=True use_dashboard:=True use_vision:=True`, b mit Standardargumenten. Das Nav2-Ziel in b setzt Jan selbst. Ablauf Schritt fuer Schritt: `planung/testanleitung_k7v_j5.md` |
 | J6 | Berichte in `validation/P-AD1/` pruefen, Abweichungen markieren, Tag `k7v-refbags-v1` setzen | Dann im Phasenplan "Stand" zu "erledigt" aendern |
 | – | Tags `baseline-k0` und `k0-complete` nach GitHub | **Erledigt am 2026-10-09** (vom Pi gepusht) |
 | – | Optional: Fix B-V11 und Messvorschlag B-V12 auf dem Pi pruefen | Anhang C; je Lauf mit Freigabe und Benennung des Aufbaus |
