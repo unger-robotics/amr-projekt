@@ -10,6 +10,7 @@ Ausbaupaket K2, Phasenplan v2.1.
 from __future__ import annotations
 
 import os
+from typing import cast
 
 import cantools
 
@@ -62,7 +63,12 @@ EXPECTED_FRAME_IDS: tuple[int, ...] = tuple(
 
 def load_database(path: str | None = None) -> cantools.database.can.database.Database:
     """Laedt die Signaldatenbank mit strenger Pruefung (T-09 Schritt 1)."""
-    return cantools.database.load_file(path or DBC_PATH, strict=True)
+    # load_file ist als Vereinigung aus CAN- und Diagnose-Datenbank typisiert;
+    # eine DBC-Datei liefert immer die CAN-Datenbank.
+    return cast(
+        "cantools.database.can.database.Database",
+        cantools.database.load_file(path or DBC_PATH, strict=True),
+    )
 
 
 def frame_bits(dlc: int) -> int:

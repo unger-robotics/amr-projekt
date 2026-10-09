@@ -27,6 +27,7 @@ Einschränkungen: Setzt die Datei `scripts/.gemini_api.key` im Ausführungsverze
 import os
 import sys
 from datetime import datetime
+from typing import Any
 
 import requests
 
@@ -111,7 +112,7 @@ def main() -> None:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={api_key}"
 
     # Datenstruktur für die REST-API initialisieren
-    daten_nutzlast = {
+    daten_nutzlast: dict[str, Any] = {
         "system_instruction": {"parts": [{"text": SYSTEM_VORGABE}]},
         "contents": [{"parts": [{"text": mein_prompt}]}],
     }

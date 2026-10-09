@@ -176,7 +176,7 @@ EXPECTED: dict[int, dict[str, Any]] = {
 
 
 def collect_frames(
-    bus: can.Bus, duration_s: int
+    bus: can.BusABC, duration_s: int
 ) -> tuple[dict[int, list[float]], dict[int, bytes], int]:
     """Sammelt CAN-Frames fuer die angegebene Dauer."""
     frames: dict[int, list[float]] = defaultdict(list)

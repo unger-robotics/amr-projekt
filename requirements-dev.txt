@@ -5,12 +5,15 @@
 #   .venv/bin/pip install -r requirements-dev.txt
 #
 # Verwendung:
-#   .venv/bin/python -m pytest tests/       # T-09 can_dbc_check (Ausbaupaket K2)
+#   .venv/bin/python -m pytest tests/       # T-09 can_dbc_check (K2), bag_check (K7-V)
 #   ./scripts/can_generate.sh               # C-Code und Signalkatalog aus der DBC
 #
 # Diese Datei betrifft nur den Host. Die ROS-2-Laufzeit im Container hat eigene
 # Abhaengigkeiten (amr/docker/Dockerfile). cantools wird dort erst mit
 # Ausbaupaket K3 benoetigt, wenn can_bridge_node die Signaldatenbank nutzt.
+# PyYAML braucht die Katalogpruefung in tests/test_bag_check.py
+# (reference_bags.yaml); ohne PyYAML wird sie uebersprungen.
 
 cantools==43.0.2
 pytest==9.1.1
+PyYAML==6.0.3
