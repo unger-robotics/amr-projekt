@@ -8,7 +8,7 @@
 | Autor | Jan (Bericht erstellt mit Claude Code) |
 | Bezug | `docs/plan/bericht-k7v-phase0.md` (Phase 0, Befunde B-V1 bis B-V11), `docs/plan/phasenplan-v2.md` (v2.2, K7), `docs/anforderungsliste-L1.md` (v1.1) |
 | Freigaben | J2 am 2026-10-08, ohne Streichungen. Auf Rueckfrage festgelegt: B-V9 erst messen; ein gemeinsamer Stacklauf fuer den Phase-2-Nachweis und die Probeaufnahme. Stacklauf am 2026-10-08, 23:32 bis 23:36 MESZ, Roboter aufgebockt, keine Fahrbefehle |
-| Status | Phase 1–4 umgesetzt, geprueft und in vier Commits abgelegt (Abschnitt 2.6). Nachtrag 2026-10-09: J3 auf dem iMac erledigt (Anhang B), B-V11 und B-V12 eingegrenzt (Anhang C), Nebenbefunde behoben (Anhang D), Tags `baseline-k0` und `k0-complete` auf GitHub. Offen sind J3 auf dem MacBook, J5 (Szenen a bis c) und J6 (Review, Tag `k7v-refbags-v1`) |
+| Status | Phase 1–4 umgesetzt, geprueft und in vier Commits abgelegt (Abschnitt 2.6). Nachtrag 2026-10-09: J3 auf iMac und MacBook erledigt (Anhang B), B-V11 und B-V12 eingegrenzt (Anhang C), Nebenbefunde behoben (Anhang D), Tags `baseline-k0` und `k0-complete` auf GitHub. Offen sind J5 (Szenen a bis c) und J6 (Review, Tag `k7v-refbags-v1`) |
 
 ## 1 Kurzfassung
 
@@ -162,8 +162,8 @@ Die Werte stimmen mit Phase 0 c ueberein (`/scan` 135,1 ms, map->odom -302,1 ms)
 
 | Nr. | Schritt | Hinweis |
 | --- | --- | --- |
-| J3 | dev-Compose auf iMac (x86_64) | **Erledigt am 2026-10-09** (Anhang B) |
-| J3 | dev-Compose auf dem MacBook (arm64): `build`, `up -d`, `colcon build`, `ros2 bag info`, `ros2 bag play` | Bedienung in `amr/docker/README.md`. Der Selbsttest braucht keine Aufnahme vom Pi; alternativ die Probeaufnahmen per `rsync` holen und `bag_check` gegen `validation/P-AD1/` vergleichen (Anhang B). Das MacBook ist eine rsync-Kopie |
+| J3 | dev-Compose auf iMac (x86_64) | **Erledigt am 2026-10-09** (Anhang B.1) |
+| J3 | dev-Compose auf dem MacBook (arm64) | **Erledigt am 2026-10-09** (Anhang B.2) |
 | J5 | Szenen a, b und c mit `amr/scripts/record_reference_bags.sh <szene> 60` | Vorher ESP32-Reset (B-V11). Launch-Argumente genau wie im Katalog; a und c mit `use_camera:=True use_dashboard:=True use_vision:=True`, b mit Standardargumenten. Das Nav2-Ziel in b setzt Jan selbst |
 | J6 | Berichte in `validation/P-AD1/` pruefen, Abweichungen markieren, Tag `k7v-refbags-v1` setzen | Dann im Phasenplan "Stand" zu "erledigt" aendern |
 | – | Tags `baseline-k0` und `k0-complete` nach GitHub | **Erledigt am 2026-10-09** (vom Pi gepusht) |
@@ -184,7 +184,9 @@ Die Werte stimmen mit Phase 0 c ueberein (`/scan` 135,1 ms, map->odom -302,1 ms)
 | `.venv/bin/python -m pytest tests/` | 82 bestanden, 1 uebersprungen |
 | `mkdocs build --strict` | gruen |
 
-## Anhang B – Nachweis J3 auf dem iMac (Nachtrag 2026-10-09)
+## Anhang B – Nachweis J3 auf iMac und MacBook (Nachtrag 2026-10-09)
+
+### B.1 iMac (x86_64)
 
 Ausgefuehrt nach `amr/docker/README.md`, Abschnitt "Entwicklung ohne Roboter". Die Probeaufnahmen kamen per `rsync -av amr:amr_bags/ ~/amr_bags/` vom Pi (11 MB, nur lesend).
 
@@ -203,7 +205,27 @@ Ausgefuehrt nach `amr/docker/README.md`, Abschnitt "Entwicklung ohne Roboter". D
 
 **Abweichungen gegenueber dem Pi-Image:** Der Neubau zieht neuere Pakete, zum Beispiel rosbag2 `0.15.17-1jammy.20260908` (Pi: `0.15.16-1jammy.20260326`) und ctranslate2 4.8.2 (Pi: 4.7.1). Gleich sind Python 3.10.12, numpy 1.26.4, onnxruntime 1.23.2, openwakeword 0.6.0 und python-can 4.6.1. Fuer Lesen und Auswerten der Aufnahmen hat das keine Folgen; die bag_check-Berichte sind identisch.
 
-**Offen:** dieselben Schritte auf dem MacBook (arm64).
+### B.2 MacBook (arm64)
+
+Dieselben Schritte liefen per `ssh mbp` vom iMac aus. Vorher wurde das Repo per `git pull --ff-only` von `a247c7b` auf `1c8feb5` gebracht, und die Probeaufnahmen kamen per `rsync` vom iMac.
+
+**Umgebung:** MacBook mit Apple M5 Pro (arm64), 24 GB, macOS 27.0.1, Docker Desktop 29.8.0 (VM mit 15 CPU und 8 GB), Compose v5.5.1.
+
+| Pruefung | Ergebnis |
+| --- | --- |
+| `docker compose -f docker-compose.dev.yml build` | Exit 0 nach 2:10 min. Build-Kontext 1,67 kB, apt-Pakete 39 s, pip 21 s |
+| micro-ROS-Agent | `E: Unable to locate package ros-humble-micro-ros-agent` auch auf arm64, Source-Build nach `/opt/microros_ws` (27,6 s) |
+| Image | `amr-ros2-humble:latest`, arm64, 4,44 GB, ID `1c5f9b7e61fc` |
+| Isolation (`docker inspect amr_ros2_dev`) | `Privileged=false`, 0 Devices, Netz `amr-dev_default`, `ROS_DOMAIN_ID=42`, `ROS_LOCALHOST_ONLY=1`, keine `GEMINI_*`-Variable. Schreibversuch auf `/amr_bags`: "Read-only file system" |
+| `colcon build --packages-select my_bot --symlink-install` | `Summary: 1 package finished [0.46s]`; `git status` danach unveraendert |
+| Selbsttest (Aufnahme `/k7v_probe`, 5 s) | 43 Nachrichten in 4,2 s; `ros2 bag info` vollstaendig; `ros2 bag play` mit Exit 0 |
+| `ros2 bag info` der Probeaufnahmen | 9502 Nachrichten, 59,5 s bzw. 1399 Nachrichten, 9,3 s, wie auf dem iMac |
+| `ros2 run my_bot bag_check` auf arm64 | Exit 0. Beide Berichte sind byteweise gleich mit `validation/P-AD1/<name>/bag_check.md` (SHA-256 `527b4da5...` bzw. `9ef586a5...`) |
+| Versionen | rosbag2 `0.15.17-1jammy.20260909`, Python 3.10.12, numpy 1.26.4, onnxruntime 1.23.2, ctranslate2 4.8.2, openwakeword 0.6.0, python-can 4.6.1 |
+
+**Bau per SSH auf macOS:** Docker Desktop fragt Registry-Zugangsdaten ueber den Schluesselbund ab (`credsStore: desktop`). In einer SSH-Sitzung scheitert der Bau deshalb mit "keychain cannot be accessed because the current session does not allow user interaction". Ohne `credsStore` sucht die Docker-CLI von selbst `docker-credential-osxkeychain` im `PATH`. Fuer diesen Lauf diente deshalb eine temporaere Konfiguration: `DOCKER_CONFIG` mit einer Kopie von `config.json` ohne `credsStore`, dazu ein `PATH` ohne die Hilfsprogramme. Das oeffentliche Basis-Image wird anonym geladen; `~/.docker/config.json` blieb unveraendert. Im Terminal am MacBook selbst tritt das Problem nicht auf.
+
+**Ergebnis J3:** Bau, Paketbau, `ros2 bag info` und `ros2 bag play` laufen auf x86_64 und arm64 ohne Hardware; die Abnahmezeile "dev-Compose" des Auftrags ist erfuellt. `bag_check` liefert auf Pi, iMac und MacBook byteweise dieselben Berichte.
 
 ## Anhang C – Eingrenzung B-V11 und B-V12 (Nachtrag 2026-10-09)
 

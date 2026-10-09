@@ -116,8 +116,10 @@ docker compose build
 ```bash
 mkdir -p ~/amr_bags                              # vor dem ersten Start, sonst legt Docker es als root an
 cd amr-projekt/amr/docker
-docker compose -f docker-compose.dev.yml build   # nur Mac/iMac; braucht Internet (iMac x86_64: ca. 7 Min)
+docker compose -f docker-compose.dev.yml build   # nur Mac/iMac; braucht Internet (iMac x86_64: ca. 7 Min, MacBook arm64: ca. 2 Min)
 ```
+
+Per SSH scheitert der Bau auf macOS am Schluesselbund: Docker Desktop fragt Zugangsdaten ueber `credsStore: desktop` ab ("keychain cannot be accessed because the current session does not allow user interaction"). Im Terminal am Mac selbst bauen oder fuer den Lauf eine Docker-Konfiguration ohne Schluesselbund verwenden (Bericht K7-V Phase 1-4, Anhang B.2).
 
 Auf dem Pi existiert das Image bereits. Dort mit dieser Datei **nicht** bauen, sonst ersetzt ein Neubau das Produktiv-Image `amr-ros2-humble:latest`; stattdessen immer `up -d --no-build` verwenden.
 
